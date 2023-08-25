@@ -1,4 +1,4 @@
 import kima as m
 
-def test_add():
-    assert m.add(1, 2) == 3
+def test_glob():
+    assert m.glob('*.md') == ['README.md']
