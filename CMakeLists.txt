@@ -9,8 +9,11 @@ set(DNEST4_PATH src/vendor/DNest4/code)
 FILE(GLOB DNEST4_SRC 
      ${DNEST4_PATH}/*.cpp
      ${DNEST4_PATH}/Distributions/*.cpp
-     ${DNEST4_PATH}/RJObject/ConditionalPriors/*.cpp)
+     ${DNEST4_PATH}/RJObject/ConditionalPriors/*.cpp
+)
+
 add_library(dnest4 STATIC ${DNEST4_SRC})
+target_compile_features(dnest4 PRIVATE cxx_std_17)
 
 
 # import Python components needed by nanobind
