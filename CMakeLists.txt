@@ -26,9 +26,21 @@ find_package(nanobind CONFIG REQUIRED)
 
 # compile the extension modules
 nanobind_add_module(Data STABLE_ABI NB_STATIC src/kima/Data.cpp)
+# nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC src/kima/ConditionalPrior.cpp)
+nanobind_add_module(RVmodel STABLE_ABI NB_STATIC
+                    src/kima/RVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-set(INCLUDES src/vendor/cpp-loadtxt/src)
-target_include_directories(Data PRIVATE ${INCLUDES})
+set(INCLUDES src/vendor/cpp-loadtxt/src src/vendor/DNest4/code)
+
+foreach(targ Data RVmodel)
+  target_compile_features(${targ} PRIVATE cxx_std_17)
+  target_include_directories(${targ} PRIVATE ${INCLUDES})
+  target_link_libraries(${targ} PRIVATE dnest4)
+endforeach()
+
 
 # install directive for scikit-build-core
 install(TARGETS Data LIBRARY DESTINATION kima)
+# install(TARGETS ConditionalPrior LIBRARY DESTINATION kima)
+install(TARGETS RVmodel LIBRARY DESTINATION kima)
