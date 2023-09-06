@@ -5,6 +5,15 @@
 #include <algorithm>
 #include <iostream>
 
+#ifdef __APPLE__
+    #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        #define sincos(x, s, c) __sincos(x, s, c)
+        #define sincosf(x, s, c) __sincosf(x, s, c)
+    #else
+        #define sincos(x,s,c) (*s = sin(x), *c = cos(x))
+    #endif
+#endif
+
 double mod2pi(const double &angle);
 
 namespace murison
