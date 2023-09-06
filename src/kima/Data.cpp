@@ -42,22 +42,252 @@ std::vector<std::string> glob(const std::string& pattern)
 RVData::RVData() {};
 
 
-void RVData::load(const std::string filename, const std::string units, int skip,
-                  const std::string delimiter, const std::vector<std::string>& indicators)
-{
-    auto data = loadtxt(filename)
-                    .skiprows(skip)
-                    .delimiter(delimiter)();
-}
+    /**
+     * @brief Load RV data from a file.
+     *
+     * Read a tab/space separated file with columns
+     * ```
+     *   time  vrad  error  quant  error
+     *   ...   ...   ...    ...    ...
+     * ```
+     *
+     * @param filename   the name of the file
+     * @param units      units of the RVs and errors, either "kms" or "ms"
+     * @param skip       number of lines to skip in the beginning of the file (default = 2)
+     * @param indicators
+     */
+    void RVData::load(const string filename, const string units, int skip,
+                      const string delimiter, const vector<string>& indicators)
+    {
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .delimiter(delimiter)();
+
+        if (data.size() < 3) {
+            printf("Data file (%s) contains less than 3 columns!\n", filename.c_str());
+            exit(1);
+        }
+        
+
+        datafile = filename;
+        dataunits = units;
+        dataskip = skip;
+        datamulti = false;
+        number_instruments = 1;
+
+        t = data[0];
+        y = data[1];
+        sig = data[2];
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
+        // set the indicator vectors to the right columns
+        if (indicator_correlations)
+        {
+            int j = 0;
+            for (size_t i = 0; i < number_indicators + nempty; i++)
+            {
+                if (indicators[i] == "")
+                    continue; // skip column
+                else
+                {
+                    actind[j] = data[3 + i];
+                    j++;
+                }
+            }
+        }
+
+        double factor = 1.;
+        if (units == "kms") factor = 1E3;
+
+        for (size_t n = 0; n < t.size(); n++) {
+            y[n] = y[n] * factor;
+            sig[n] = sig[n] * factor;
+        }
+
+        // epoch for the mean anomaly, by default the time of the first observation
+        M0_epoch = t[0];
+
+        // How many points did we read?
+        if (VERBOSE)
+            printf("# Loaded %zu data points from file %s\n", t.size(),
+                filename.c_str());
+
+        // What are the units?
+        if (units == "kms" && VERBOSE)
+            printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+    }
+
+    double RVData::get_RV_mean() const
+    {
+        double sum = accumulate(begin(y), end(y), 0.0);
+        return sum / y.size();
+    }
+
+    double RVData::get_RV_var() const
+    {
+        double sum = accumulate(begin(y), end(y), 0.0);
+        double mean = sum / y.size();
+
+        double accum = 0.0;
+        for_each(begin(y), end(y),
+                [&](const double d) { accum += (d - mean) * (d - mean); });
+        return accum / (y.size() - 1);
+    }
+
+    /**
+     * @brief Calculate the maximum slope "allowed" by the data
+     *
+     * This calculates peak-to-peak(RV) / peak-to-peak(time), which is a good upper
+     * bound for the linear slope of a given dataset. When there are multiple
+     * instruments, the function returns the maximum of this peak-to-peak ratio of
+     * all individual instruments.
+     */
+    double RVData::topslope() const
+    {
+        if (datamulti) {
+            double slope = 0.0;
+            for (size_t j = 0; j < number_instruments; j++) {
+                vector<double> obsy, obst;
+                for (size_t i = 0; i < y.size(); ++i) {
+                    if (obsi[i] == j + 1) {
+                        obsy.push_back(y[i]);
+                        obst.push_back(t[i]);
+                    }
+                }
+                const auto miny = min_element(obsy.begin(), obsy.end());
+                const auto maxy = max_element(obsy.begin(), obsy.end());
+                const auto mint = min_element(obst.begin(), obst.end());
+                const auto maxt = max_element(obst.begin(), obst.end());
+                double this_obs_topslope = (*maxy - *miny) / (*maxt - *mint);
+                if (this_obs_topslope > slope) slope = this_obs_topslope;
+            }
+            return slope;
+        }
+
+        else {
+            return get_RV_span() / get_timespan();
+        }
+    }
+
+    /**
+     * @brief Calculate the maximum span (peak to peak) of the radial velocities
+     *
+     * This is different from get_RV_span only in the case of multiple instruments:
+     * it returns the maximum of the spans of each instrument's RVs.
+     */
+    double RVData::get_max_RV_span() const
+    {
+        // for multiple instruments, calculate individual RV spans and return
+        // the largest one
+        if (datamulti) {
+            double span = 0.0;
+            for (size_t j = 0; j < number_instruments; j++) {
+                vector<double> obsy;
+                for (size_t i = 0; i < y.size(); ++i) {
+                    if (obsi[i] == j + 1) {
+                        obsy.push_back(y[i]);
+                    }
+                }
+                const auto min = min_element(obsy.begin(), obsy.end());
+                const auto max = max_element(obsy.begin(), obsy.end());
+                double this_obs_span = *max - *min;
+                if (this_obs_span > span) span = this_obs_span;
+            }
+            return span;
+        }
+
+        // for one instrument only, this is easy
+        else {
+            return get_RV_span();
+        }
+    }
+
+    double RVData::get_adjusted_RV_var() const
+    {
+        int ni;
+        double sum, mean;
+        vector<double> rva(t.size());
+
+        for (size_t j = 0; j < number_instruments; j++) {
+            ni = 0;
+            sum = 0.;
+            for (size_t i = 0; i < t.size(); i++)
+                if (obsi[i] == j + 1) {
+                    sum += y[i];
+                    ni++;
+                }
+            mean = sum / ni;
+            // cout << "sum: " << sum << endl;
+            // cout << "mean: " << mean << endl;
+            for (size_t i = 0; i < t.size(); i++)
+                if (obsi[i] == j + 1) rva[i] = y[i] - mean;
+        }
+
+        mean = accumulate(rva.begin(), rva.end(), 0.0) / rva.size();
+        double accum = 0.0;
+        for_each(rva.begin(), rva.end(),
+                [&](const double d) { accum += (d - mean) * (d - mean); });
+        return accum / (y.size() - 1);
+    }
+
+    /**
+     * @brief Order of magnitude of trend coefficient (of degree) given the data
+     *
+     * Returns the expected order of magnitude of the trend coefficient of degree
+     * `degree` supported by the data. It calculates the order of magnitude of
+     *    RVspan / timespan^degree
+     */
+    int RVData::get_trend_magnitude(int degree) const
+    {
+        return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+    }
+
+
+    ostream& operator<<(ostream& os, const RVData& d)
+    {
+        os << "RV data from file " << d.datafile << " with " << d.N() << " points";
+        return os;
+    }
+
 
 
 NB_MODULE(Data, m) {
     m.def("add", [](int a, int b) { return a + b; }, "a"_a, "b"_a);
     m.def("glob", [](const std::string& pattern) { return glob(pattern); });
     // 
+    nb::class_<loadtxt>(m, "loadtxt")
+        .def(nb::init<std::string>())
+        .def("skiprows", &loadtxt::skiprows)
+        .def("comments", &loadtxt::comments)
+        .def("delimiter", &loadtxt::delimiter)
+        .def("usecols", &loadtxt::usecols)
+        .def("max_rows", &loadtxt::max_rows)
+        .def("__call__", &loadtxt::operator());
+    // 
     nb::class_<RVData>(m, "RVData")
-        // .def(nb::init<>())
-        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a=2, "delimiter"_a=" ", "indicators"_a,
+        .def(nb::init<>())
+        .def(nb::init<const string>())
+        .def_prop_ro("t", [](RVData &d) { return d.get_t(); })
+        .def_prop_ro("y", [](RVData &d) { return d.get_y(); })
+        .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); })
+        .def_prop_ro("N", [](RVData &d) { return d.N(); })
+        .def("topslope", &RVData::topslope)
+        // ...
+        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
              R"D(
 Load RV data from a tab/space separated file with columns
@@ -70,7 +300,6 @@ Args:
     untis (str): units of the RVs and errors, either "kms" or "ms"
     skip (int): number of lines to skip in the beginning of the file (default = 2)
     indicators (list[str]): nodoc
-)D")
+)D");
 // )
-        .def("N", &RVData::N, "Total number of points");
 }
