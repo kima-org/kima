@@ -44,6 +44,7 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 class RVData {
 
   friend class RVmodel;
+  friend class GPmodel;
 
   private:
     vector<double> t, y, sig;
