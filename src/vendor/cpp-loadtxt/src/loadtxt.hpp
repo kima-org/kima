@@ -28,7 +28,7 @@ struct loadtxt {
     {
         ifstream infile( _fname );
         if (infile.fail()) {
-            cerr << "Could not read file (" << _fname << ")!\n";
+            cerr << "loadtxt: could not read file (" << _fname << ")!\n";
             exit(1);
         }
         
@@ -70,7 +70,7 @@ struct loadtxt {
         // complain if something went wrong
         if (!infile.eof())
         {
-            cout << "Could not read file (" << _fname << ")!\n";
+            cout << "loadtxt: could not read file (" << _fname << ")!\n";
             exit(1);
         }
 
