@@ -4,6 +4,8 @@ using namespace nb::literals;
 
 #include "GPmodel.h"
 
+using namespace Eigen;
+
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
@@ -17,6 +19,7 @@ void GPmodel::initialize_from_data(RVData& data)
     individual_offset_prior.resize(data.number_instruments - 1);
 
     mu.resize(data.N());
+    C.resize(data.N(), data.N());
 }
 
 /* set default priors if the user didn't change them */
@@ -66,8 +69,15 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (studentt)
-        nu_prior = make_prior<LogUniform>(2, 1000);
+    /* GP parameters */
+    if (!eta1_prior)
+        eta1_prior = make_prior<LogUniform>(0.1, 100);
+    if (!eta2_prior)
+        eta2_prior = make_prior<LogUniform>(1, 100);
+    if (!eta3_prior)
+        eta3_prior = make_prior<Uniform>(10, 40);
+    if (!eta4_prior)
+        eta4_prior = make_prior<Uniform>(0.2, 5);
 
 }
 
@@ -125,10 +135,14 @@ void GPmodel::from_prior(RNG& rng)
         }
     }
 
-    if (studentt)
-        nu = nu_prior->generate(rng);
+    // GP
+    eta1 = eta1_prior->generate(rng);  // m/s
+    eta2 = eta2_prior->generate(rng); // days
+    eta3 = eta3_prior->generate(rng); // days
+    eta4 = eta4_prior->generate(rng);
 
     calculate_mu();
+    calculate_C();
 }
 
 /**
@@ -226,6 +240,51 @@ void GPmodel::calculate_mu()
 
 }
 
+/// @brief Fill the GP covariance matrix
+void GPmodel::calculate_C()
+{
+    size_t N = data.N();
+
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
+    /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+    for(size_t i=0; i<N; i++)
+    {
+        for(size_t j=i; j<N; j++)
+        {
+            double r = data.t[i] - data.t[j];
+            C(i, j) = eta1*eta1*exp(-0.5*pow(r/eta2, 2)
+                        -2.0*pow(sin(M_PI*r/eta3)/eta4, 2) );
+
+            if(i==j)
+            {
+                double sig = data.sig[i];
+                if (data.datamulti)
+                {
+                    double jit = jitters[data.obsi[i]-1];
+                    C(i, j) += sig*sig + jit*jit;
+                }
+                else
+                {
+                    C(i, j) += sig*sig + extra_sigma*extra_sigma;
+                }
+            }
+            else
+            {
+                C(j, i) = C(i, j);
+            }
+        }
+    }
+
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "GP build matrix: ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    cout << " ns" << "\t"; // << std::endl;
+    #endif
+}
 
 void GPmodel::remove_known_object()
 {
@@ -286,11 +345,32 @@ double GPmodel::perturb(RNG& rng)
     double tmid = data.get_t_middle();
 
 
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(rng.rand() <= 0.5) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
+    }
+    else if(rng.rand() <= 0.5) // perturb GP parameters
+    {
+        if (rng.rand() <= 0.25)
+        {
+            eta1_prior->perturb(eta1, rng);
+        }
+        else if(rng.rand() <= 0.33330)
+        {
+            eta3_prior->perturb(eta3, rng);
+        }
+        else if(rng.rand() <= 0.5)
+        {
+            eta2_prior->perturb(eta2, rng);
+        }
+        else
+        {
+            eta4_prior->perturb(eta4, rng);
+        }
+        
+        calculate_C(); // recalculate covariance matrix
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
@@ -304,9 +384,7 @@ double GPmodel::perturb(RNG& rng)
             Jprior->perturb(extra_sigma, rng);
         }
 
-        if (studentt)
-            nu_prior->perturb(nu, rng);
-
+        calculate_C(); // recalculate covariance matrix
 
         if (known_object)
         {
@@ -424,50 +502,33 @@ double GPmodel::log_likelihood() const
             return -std::numeric_limits<double>::infinity();
     }
 
-
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    if (studentt){
-        // The following code calculates the log likelihood 
-        // in the case of a t-Student model
-        double var, jit;
-        for(size_t i=0; i<N; i++)
-        {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-            }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+    /** The following code calculates the log likelihood of a GP model */
+    // residual vector (observed y minus model y)
+    VectorXd residual(y.size());
+    for (size_t i = 0; i < y.size(); i++)
+        residual(i) = y[i] - mu[i];
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-        }
+    // perform the cholesky decomposition of C
+    Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+    // get the lower triangular matrix L
+    MatrixXd L = cholesky.matrixL();
 
-    }
+    double logDeterminant = 0.;
+    for (size_t i = 0; i < y.size(); i++)
+        logDeterminant += 2. * log(L(i, i));
 
-    else{
-        // The following code calculates the log likelihood
-        // in the case of a Gaussian likelihood
-        double var, jit;
-        for(size_t i=0; i<N; i++)
-        {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-            }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+    VectorXd solution = cholesky.solve(residual);
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
-        }
-    }
+    // y*solution
+    double exponent = 0.;
+    for (size_t i = 0; i < y.size(); i++)
+        exponent += residual(i) * solution(i);
+
+    logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -516,7 +577,10 @@ void GPmodel::print(std::ostream& out) const
             out<<betas[j]<<'\t';
         }
     }
-    
+
+    // write GP parameters
+    out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
+
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
@@ -528,9 +592,6 @@ void GPmodel::print(std::ostream& out) const
     planets.print(out);
 
     out << staleness << '\t';
-
-    if (studentt)
-        out << nu << '\t';
 
     out << background;
 }
@@ -567,7 +628,10 @@ string GPmodel::description() const
             desc += "beta" + std::to_string(j+1) + sep;
         }
     }
-    
+
+    // GP parameters
+    desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
+
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
@@ -597,8 +661,6 @@ string GPmodel::description() const
     }
 
     desc += "staleness" + sep;
-    if (studentt)
-        desc += "nu" + sep;
     
     desc += "vsys";
 

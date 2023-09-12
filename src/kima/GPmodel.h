@@ -38,9 +38,6 @@ class GPmodel
         /// and its degree
         int degree {0};
 
-        /// use a Student-t distribution for the likelihood (instead of Gaussian)
-        bool studentt {false};
-
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
         bool known_object {false};
         int n_known_object {0};
@@ -65,10 +62,17 @@ class GPmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
 
+        double eta1, eta2, eta3, eta4;
+        double log_eta1, log_eta2, log_eta3, log_eta4;
+
+
         // The signal
         std::vector<double> mu; // = std::vector<double>(data.N());
+        // The covariance matrix for the data
+        Eigen::MatrixXd C; // {data.N(), data.N()};
 
         void calculate_mu();
+        void calculate_C();
         void add_known_object();
         void remove_known_object();
 
@@ -84,7 +88,6 @@ class GPmodel
         GPmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
-
 
         void initialize_from_data(RVData& data);
 
@@ -125,8 +128,16 @@ class GPmodel
         /// Prior for the KO argument(s) of pericenter
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
 
-        /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
-        std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
+        // priors for the GP hyperparameters
+        /// Prior for $\eta_1$, the GP "amplitude"
+        std::shared_ptr<DNest4::ContinuousDistribution> eta1_prior;
+        /// Prior for $\eta_2$, the GP correlation timescale
+        std::shared_ptr<DNest4::ContinuousDistribution> eta2_prior;
+        /// Prior for $\eta_3$, the GP period
+        std::shared_ptr<DNest4::ContinuousDistribution> eta3_prior;
+        /// Prior for $\eta_4$, the recurrence timescale
+        std::shared_ptr<DNest4::ContinuousDistribution> eta4_prior;
+
 
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }
