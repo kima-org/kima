@@ -59,12 +59,17 @@ RVData::RVData() {};
     void RVData::load(const string filename, const string units, int skip,
                       const string delimiter, const vector<string>& indicators)
     {
+        if (filename.empty()) {
+            std::cerr << "kima: RVData: filename is empty\n";
+            exit(1);
+        }
+
         auto data = loadtxt(filename)
                         .skiprows(skip)
                         .delimiter(delimiter)();
 
         if (data.size() < 3) {
-            printf("Data file (%s) contains less than 3 columns!\n", filename.c_str());
+            printf("kima: RVData: data file (%s) contains less than 3 columns!\n", filename.c_str());
             exit(1);
         }
         
