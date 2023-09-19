@@ -23,6 +23,12 @@ class Exponential:public ContinuousDistribution
         double cdf(double x) const;
         double cdf_inverse(double p) const;
         double log_pdf(double x) const;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "Exponential(" << scale << ")";
+            return out;
+        }
 };
 
 /*

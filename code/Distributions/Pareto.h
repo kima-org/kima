@@ -24,6 +24,12 @@ class Pareto:public ContinuousDistribution
         double cdf(double x) const;
         double cdf_inverse(double x) const;
         double log_pdf(double x) const;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "Pareto(" << min << "; " << alpha << ")";
+            return out;
+        }
 };
 
 } // namespace DNest4

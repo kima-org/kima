@@ -23,6 +23,12 @@ class Cauchy:public ContinuousDistribution
         double cdf(double x) const;
         double cdf_inverse(double x) const;
         double log_pdf(double x) const;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "Cauchy(" << center << "; " << width << ")";
+            return out;
+        }
 };
 
 class TruncatedCauchy:public ContinuousDistribution
@@ -43,6 +49,12 @@ class TruncatedCauchy:public ContinuousDistribution
         double pdf(double x) const;
         double log_pdf(double x) const;
         double rvs(RNG& rng) const;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "TruncatedCauchy(" << center << "; " << width << "; [" << lower << " , " << upper << "])";
+            return out;
+        }
 };
 
 

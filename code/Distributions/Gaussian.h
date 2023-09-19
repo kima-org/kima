@@ -22,6 +22,11 @@ class Gaussian:public ContinuousDistribution
         double cdf_inverse(double x) const;
         double log_pdf(double x) const;
 
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "Gaussian(" << center << "; " << width << ")";
+            return out;
+        }
 };
 
 } // namespace DNest4
