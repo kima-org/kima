@@ -27,6 +27,11 @@ find_package(Python 3.8
 find_package(nanobind CONFIG REQUIRED)
 
 # compile the extension modules
+
+nanobind_add_module(distributions STABLE_ABI NB_STATIC 
+                    src/kima/distributions.cpp)
+
+
 nanobind_add_module(Data STABLE_ABI NB_STATIC src/kima/Data.cpp)
 
 # nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC src/kima/ConditionalPrior.cpp)
@@ -46,9 +51,16 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 
+nanobind_add_module(kepler STABLE_ABI NB_STATIC 
+                    src/kima/kepler.cpp)
+
+target_compile_features(kepler PRIVATE cxx_std_17)
+
+
+
 set(INCLUDES src/vendor/cpp-loadtxt/src src/vendor/DNest4/code)
 
-foreach(targ Data RVmodel)
+foreach(targ distributions Data RVmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -63,10 +75,13 @@ foreach(targ GPmodel Sampler)
 endforeach()
 
 
-
 # install directive for scikit-build-core
+install(TARGETS distributions LIBRARY DESTINATION kima)
+# 
 install(TARGETS Data LIBRARY DESTINATION kima)
 # install(TARGETS ConditionalPrior LIBRARY DESTINATION kima)
 install(TARGETS RVmodel LIBRARY DESTINATION kima)
 install(TARGETS GPmodel LIBRARY DESTINATION kima)
 install(TARGETS Sampler LIBRARY DESTINATION kima)
+# 
+install(TARGETS kepler LIBRARY DESTINATION kima)
