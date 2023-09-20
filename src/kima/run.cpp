@@ -40,7 +40,7 @@ NB_MODULE(Sampler, m)
             if (seed == 0)
                 seed = static_cast<unsigned int>(time(NULL));
             sampler.initialise(seed);
-            sampler.run();
+            sampler.run(50);
         },
         "m"_a, "steps"_a = 100, "num_threads"_a = 1, "num_particles"_a = 1,
         "new_level_interval"_a = 3000, "save_interval"_a = 1, "thread_steps"_a = 10,
@@ -68,7 +68,7 @@ NB_MODULE(Sampler, m)
             if (seed == 0)
                 seed = static_cast<unsigned int>(time(NULL));
             sampler.initialise(seed);
-            sampler.run();
+            sampler.run(50);
         },
         "m"_a, "steps"_a = 100, "num_threads"_a = 1, "num_particles"_a = 1,
         "new_level_interval"_a = 3000, "save_interval"_a = 1, "thread_steps"_a = 10,
