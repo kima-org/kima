@@ -136,6 +136,259 @@ RVData::RVData() {};
             printf("# Multiplied all RVs by 1000; units are now m/s.\n");
     }
 
+    /**
+     * @brief Load RV data from a multi-instrument file.
+     *
+     * Read a tab/space separated file with columns
+     * ```
+     *   time  vrad  error  ...  obs
+     *   ...   ...   ...    ...  ...
+     * ```
+     * The `obs` column should be an integer identifying the instrument.
+     *
+     * @param filename   the name of the file
+     * @param units      units of the RVs and errors, either "kms" or "ms"
+     * @param skip       number of lines to skip in the beginning of the file (default = 2)
+     */
+    void RVData::load_multi(const string filename, const string units, int skip,
+                            const string delimiter, const vector<string> &indicators)
+    {
+
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .delimiter(delimiter)();
+
+        if (data.size() < 4) {
+            printf("Data file (%s) contains less than 4 columns!\n", filename.c_str());
+            exit(1);
+        }
+
+        auto Ncol = data.size();
+        auto N = data[0].size();
+
+        datafile = filename;
+        dataunits = units;
+        dataskip = skip;
+        datamulti = true;
+
+        t = data[0];
+        y = data[1];
+        sig = data[2];
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
+        // set the indicator vectors to the right columns
+        if (indicator_correlations)
+        {
+            int j = 0;
+            for (size_t i = 0; i < number_indicators + nempty; i++)
+            {
+                if (indicators[i] == "")
+                    continue; // skip column
+                else
+                {
+                    actind[j] = data[3 + i];
+                    j++;
+                }
+            }
+        }
+
+        double factor = 1.;
+        if (units == "kms") factor = 1E3;
+        for (size_t n = 0; n < t.size(); n++) {
+            y[n] = y[n] * factor;
+            sig[n] = sig[n] * factor;
+        }
+
+        // the 4th column of the file identifies the instrument; it can have "0"s
+        // this is to make sure the obsi vector always starts at 1, to avoid
+        // segmentation faults later
+        vector<int> inst_id;
+        inst_id.push_back(data[Ncol - 1][0]);
+
+        for (size_t n = 1; n < N; n++) {
+            if (data[Ncol - 1][n] != inst_id.back()) {
+                inst_id.push_back(data[Ncol - 1][n]);
+            }
+        }
+        int id_offset = *min_element(inst_id.begin(), inst_id.end());
+
+        obsi.clear();
+        for (unsigned n = 0; n < N; n++) {
+            obsi.push_back(data[Ncol - 1][n] - id_offset + 1);
+        }
+
+        // How many points did we read?
+        if (VERBOSE)
+            printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
+
+        // Of how many instruments?
+        set<int> s(obsi.begin(), obsi.end());
+        number_instruments = s.size();
+        if (VERBOSE)
+            printf("# RVs come from %zu different instruments.\n", s.size());
+
+        if (units == "kms" && VERBOSE)
+            cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
+
+        // epoch for the mean anomaly, by default the time of the first observation
+        M0_epoch = t[0];
+    }
+
+    /**
+     * @brief Load RV data from a multiple files.
+     *
+     * Read a tab/space separated files, each with columns
+     * ```
+     *   time  vrad  error
+     *   ...   ...   ...
+     * ```
+     * All files should have the same structure and values in the same units.
+     *
+     * @param filenames  the names of the files
+     * @param units      units of the RVs and errors, either "kms" or "ms"
+     * @param skip       number of lines to skip in the beginning of the file (default = 2)
+     * @param indicators
+     */
+    void RVData::load_multi(vector<string> filenames, const string units, int skip,
+                            const string delimiter, const vector<string>& indicators)
+    {
+        t.clear();
+        y.clear();
+        sig.clear();
+        obsi.clear();
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
+
+        int filecount = 1;
+        for (auto& filename : filenames) {
+            auto data = loadtxt(filename).skiprows(skip)();
+
+            if (data.size() < 3) {
+                printf("Data file (%s) contains less than 3 columns!\n", filename.c_str());
+                exit(1);
+            }
+
+            t.insert(t.end(), data[0].begin(), data[0].end());
+            y.insert(y.end(), data[1].begin(), data[1].end());
+            sig.insert(sig.end(), data[2].begin(), data[2].end());
+
+            // set the indicator vectors to the right columns
+            if (indicator_correlations)
+            {
+                int j = 0;
+                for (size_t i = 0; i < number_indicators + nempty; i++)
+                {
+                    if (indicators[i] == "")
+                        continue; // skip column
+                    else
+                    {
+                        actind[j].insert(actind[j].end(), 
+                                         data[3 + i].begin(), 
+                                         data[3 + i].end());
+                        j++;
+                    }
+                }
+            }
+
+            for (size_t n = 0; n < data[0].size(); n++)
+                obsi.push_back(filecount);
+            filecount++;
+        }
+
+        double factor = 1.;
+        if (units == "kms") factor = 1E3;
+
+        for (size_t n = 0; n < t.size(); n++) {
+            y[n] = y[n] * factor;
+            sig[n] = sig[n] * factor;
+        }
+
+        datafile = "";
+        datafiles = filenames;
+        dataunits = units;
+        dataskip = skip;
+        datamulti = true;
+
+        // How many points did we read?
+        printf("# Loaded %zu data points from files\n", t.size());
+        cout << "#   ";
+        for (auto f : filenames) {
+            cout << f.c_str();
+            (f != filenames.back()) ? cout << " | " : cout << " ";
+        }
+        cout << endl;
+
+        // Of how many instruments?
+        set<int> s(obsi.begin(), obsi.end());
+        // set<int>::iterator iter;
+        // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
+        printf("# RVs come from %zu different instruments.\n", s.size());
+        number_instruments = s.size();
+
+        if (units == "kms")
+            cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
+
+        if (number_instruments > 1) {
+            // We need to sort t because it comes from different instruments
+            size_t N = t.size();
+            vector<double> tt(N), yy(N);
+            vector<double> sigsig(N), obsiobsi(N);
+            vector<int> order(N);
+
+            // order = argsort(t)
+            int x = 0;
+            std::iota(order.begin(), order.end(), x++);
+            sort(order.begin(), order.end(),
+                [&](int i, int j) { return t[i] < t[j]; });
+
+            for (unsigned i = 0; i < N; i++) {
+                tt[i] = t[order[i]];
+                yy[i] = y[order[i]];
+                sigsig[i] = sig[order[i]];
+                obsiobsi[i] = obsi[order[i]];
+            }
+
+            for (unsigned i = 0; i < N; i++) {
+                t[i] = tt[i];
+                y[i] = yy[i];
+                sig[i] = sigsig[i];
+                obsi[i] = obsiobsi[i];
+            }
+        }
+
+        // epoch for the mean anomaly, by default the time of the first observation
+        M0_epoch = t[0];
+    }
+
+
     double RVData::get_RV_mean() const
     {
         double sum = accumulate(begin(y), end(y), 0.0);
@@ -284,12 +537,18 @@ NB_MODULE(Data, m) {
         .def("__call__", &loadtxt::operator());
     // 
     nb::class_<RVData>(m, "RVData")
+        // constructors
         .def(nb::init<>(),
              "Create an unitialized instance")
         .def(nb::init<const string>(), "filename"_a, 
              "Load RV data from a file")
         .def(nb::init<const string, int>(), "filename"_a, "skip"_a, 
              "Load RV data from a file, skipping lines in the header")
+        .def(nb::init<const vector<string>>(), "filenames"_a, 
+             "Load RV data from a list of files")
+        .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
+             "Load RV data from a list of files, skipping lines in the header")
+        // properties
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")
         .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); }, "The observed RV uncertainties")

@@ -53,8 +53,14 @@ class RVData {
 
   public:
     RVData();
+    // 
     RVData(const string filename) { load(filename, "ms"); }
     RVData(const string filename, int skip) { load(filename, "ms", skip); }
+    // 
+    RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
+    RVData(const vector<string> filenames, int skip) { load_multi(filenames, "ms", skip); }
+
+
     friend ostream& operator<<(ostream& os, const RVData& d);
 
     // to read data from one file, one instrument
