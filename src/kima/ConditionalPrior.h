@@ -6,6 +6,12 @@
 #include "DNest4.h"
 #include "Data.h"
 
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
 
 class RVConditionalPrior:public DNest4::ConditionalPrior
 {
@@ -22,18 +28,21 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 	public:
 		RVConditionalPrior();
 
+		void set_default_priors(const RVData &data);
+
 		// priors for all planet parameters
+		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 		
 		/// Prior for the orbital periods.
-		std::shared_ptr<DNest4::ContinuousDistribution> Pprior;
+		distribution Pprior;
 		/// Prior for the semi-amplitudes (in m/s).
-		std::shared_ptr<DNest4::ContinuousDistribution> Kprior;
+		distribution Kprior;
 		/// Prior for the eccentricities.
-		std::shared_ptr<DNest4::ContinuousDistribution> eprior;
+		distribution eprior;
 		/// Prior for the phases.
-		std::shared_ptr<DNest4::ContinuousDistribution> phiprior;
+		distribution phiprior;
 		/// Prior for the .
-		std::shared_ptr<DNest4::ContinuousDistribution> wprior;
+		distribution wprior;
 
 		// hyperpriors
 
@@ -41,11 +50,11 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 		void use_hyperpriors();
 
 		/// Prior for the log of the median orbital period
-		std::shared_ptr<DNest4::ContinuousDistribution> log_muP_prior;
+		distribution log_muP_prior;
 		/// Prior for the diversity of orbital periods
-		std::shared_ptr<DNest4::ContinuousDistribution> wP_prior;
+		distribution wP_prior;
 		/// Prior for the log of the mean semi-amplitude
-		std::shared_ptr<DNest4::ContinuousDistribution> log_muK_prior;
+		distribution log_muK_prior;
 
 
 		/// Generate a point from the prior
@@ -63,4 +72,5 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 };
 
 
+void bind_RVConditionalPrior(nb::module_ &m);
 

@@ -1,7 +1,3 @@
-#include <nanobind/nanobind.h>
-namespace nb = nanobind;
-using namespace nb::literals;
-
 #include "GPmodel.h"
 
 using namespace Eigen;
@@ -20,6 +16,10 @@ void GPmodel::initialize_from_data(RVData& data)
 
     mu.resize(data.N());
     C.resize(data.N(), data.N());
+
+    // set default conditional priors that depend on data
+    auto conditional = planets.get_conditional_prior();
+    conditional->set_default_priors(data);
 }
 
 /* set default priors if the user didn't change them */
@@ -672,93 +672,92 @@ string GPmodel::description() const
  * 
 */
 void GPmodel::save_setup() {
-	// std::fstream fout("kima_model_setup.txt", std::ios::out);
-    // fout << std::boolalpha;
+	std::fstream fout("kima_model_setup.txt", std::ios::out);
+    fout << std::boolalpha;
 
-    // time_t rawtime;
-    // time (&rawtime);
-    // fout << ";" << ctime(&rawtime) << endl;
+    time_t rawtime;
+    time (&rawtime);
+    fout << ";" << ctime(&rawtime) << endl;
 
-    // fout << "[kima]" << endl;
+    fout << "[kima]" << endl;
 
-    // fout << "model: " << "GPmodel" << endl << endl;
-    // fout << "fix: " << fix << endl;
-    // fout << "npmax: " << npmax << endl << endl;
+    fout << "model: " << "GPmodel" << endl << endl;
+    fout << "fix: " << fix << endl;
+    fout << "npmax: " << npmax << endl << endl;
 
-    // fout << "hyperpriors: " << false << endl;
-    // fout << "trend: " << trend << endl;
-    // fout << "degree: " << degree << endl;
-    // fout << "multi_instrument: " << data.datamulti << endl;
-    // fout << "known_object: " << known_object << endl;
-    // fout << "n_known_object: " << n_known_object << endl;
-    // fout << "studentt: " << studentt << endl;
-    // fout << endl;
+    fout << "hyperpriors: " << false << endl;
+    fout << "trend: " << trend << endl;
+    fout << "degree: " << degree << endl;
+    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "known_object: " << known_object << endl;
+    fout << "n_known_object: " << n_known_object << endl;
+    fout << endl;
 
-    // fout << endl;
+    fout << endl;
 
-    // fout << "[data]" << endl;
-    // fout << "file: " << data.datafile << endl;
-    // fout << "units: " << data.dataunits << endl;
-    // fout << "skip: " << data.dataskip << endl;
-    // fout << "multi: " << data.datamulti << endl;
+    fout << "[data]" << endl;
+    fout << "file: " << data.datafile << endl;
+    fout << "units: " << data.dataunits << endl;
+    fout << "skip: " << data.dataskip << endl;
+    fout << "multi: " << data.datamulti << endl;
 
-    // fout << "files: ";
-    // for (auto f: data.datafiles)
-    //     fout << f << ",";
-    // fout << endl;
+    fout << "files: ";
+    for (auto f: data.datafiles)
+        fout << f << ",";
+    fout << endl;
 
-    // fout.precision(15);
-    // fout << "M0_epoch: " << data.M0_epoch << endl;
-    // fout.precision(6);
+    fout.precision(15);
+    fout << "M0_epoch: " << data.M0_epoch << endl;
+    fout.precision(6);
 
-    // fout << endl;
+    fout << endl;
 
-    // fout << "[priors.general]" << endl;
-    // fout << "Cprior: " << *Cprior << endl;
-    // fout << "Jprior: " << *Jprior << endl;
-    // if (trend){
-    //     if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
-    //     if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
-    //     if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
-    // }
-    // if (data.datamulti)
-    //     fout << "offsets_prior: " << *offsets_prior << endl;
-    // if (studentt)
-    //     fout << "nu_prior: " << *nu_prior << endl;
+    fout << "[priors.general]" << endl;
+    fout << "Cprior: " << *Cprior << endl;
+    fout << "Jprior: " << *Jprior << endl;
+    if (trend){
+        if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
+        if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
+        if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
+    }
+    if (data.datamulti)
+        fout << "offsets_prior: " << *offsets_prior << endl;
 
-    // if (planets.get_max_num_components()>0){
-    //     auto conditional = planets.get_conditional_prior();
+    fout << endl << "[priors.GP]" << endl;
+    fout << "eta1_prior: " << *eta1_prior << endl;
+    fout << "eta2_prior: " << *eta2_prior << endl;
+    fout << "eta3_prior: " << *eta3_prior << endl;
+    fout << "eta4_prior: " << *eta4_prior << endl;
+    fout << endl;
 
-    //     if (false){
-    //         fout << endl << "[prior.hyperpriors]" << endl;
-    //         fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
-    //         fout << "wP_prior: " << *conditional->wP_prior << endl;
-    //         fout << "log_muK_prior: " << *conditional->log_muK_prior << endl;
-    //     }
+    if (planets.get_max_num_components()>0){
+        auto conditional = planets.get_conditional_prior();
 
-    //     fout << endl << "[priors.planets]" << endl;
-    //     fout << "Pprior: " << *conditional->Pprior << endl;
-    //     fout << "Kprior: " << *conditional->Kprior << endl;
-    //     fout << "eprior: " << *conditional->eprior << endl;
-    //     fout << "phiprior: " << *conditional->phiprior << endl;
-    //     fout << "wprior: " << *conditional->wprior << endl;
-    // }
+        fout << endl << "[priors.planets]" << endl;
+        fout << "Pprior: " << *conditional->Pprior << endl;
+        fout << "Kprior: " << *conditional->Kprior << endl;
+        fout << "eprior: " << *conditional->eprior << endl;
+        fout << "phiprior: " << *conditional->phiprior << endl;
+        fout << "wprior: " << *conditional->wprior << endl;
+    }
 
-    // if (known_object) {
-    //     fout << endl << "[priors.known_object]" << endl;
-    //     for(int i=0; i<n_known_object; i++){
-    //         fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-    //         fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
-    //         fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
-    //         fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-    //         fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
-    //     }
-    // }
+    if (known_object) {
+        fout << endl << "[priors.known_object]" << endl;
+        // for(int i=0; i<n_known_object; i++){
+        //     fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
+        //     fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+        //     fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
+        //     fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
+        //     fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+        // }
+    }
 
-    // fout << endl;
-	// fout.close();
+    fout << endl;
+	fout.close();
 }
 
+
+using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel>(m, "GPmodel")
@@ -768,6 +767,47 @@ NB_MODULE(GPmodel, m) {
                      [](GPmodel &m, bool t) { m.set_trend(t); })
         .def_prop_rw("degree",
                      [](GPmodel &m) { return m.get_degree(); },
-                     [](GPmodel &m, double t) { m.set_degree(t); });
-        // .def_rw("trend", GPmodel::trend);
+                     [](GPmodel &m, double t) { m.set_degree(t); })
+        // priors
+        .def_prop_rw("Cprior",
+            [](GPmodel &m) { return m.Cprior; },
+            [](GPmodel &m, distribution &d) { m.Cprior = d; },
+            "Prior for the systemic velocity")
+        .def_prop_rw("Jprior",
+            [](GPmodel &m) { return m.Jprior; },
+            [](GPmodel &m, distribution &d) { m.Jprior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("slope_prior",
+            [](GPmodel &m) { return m.slope_prior; },
+            [](GPmodel &m, distribution &d) { m.slope_prior = d; },
+            "Prior for the slope")
+        .def_prop_rw("quadr_prior",
+            [](GPmodel &m) { return m.quadr_prior; },
+            [](GPmodel &m, distribution &d) { m.quadr_prior = d; },
+            "Prior for the quadratic coefficient of the trend")
+        .def_prop_rw("cubic_prior",
+            [](GPmodel &m) { return m.cubic_prior; },
+            [](GPmodel &m, distribution &d) { m.cubic_prior = d; },
+            "Prior for the cubic coefficient of the trend")
+        // priors for the GP hyperparameters
+        .def_prop_rw("eta1_prior",
+            [](GPmodel &m) { return m.eta1_prior; },
+            [](GPmodel &m, distribution &d) { m.eta1_prior = d; },
+            "Prior for η1, the GP 'amplitude'")
+        .def_prop_rw("eta2_prior",
+            [](GPmodel &m) { return m.eta2_prior; },
+            [](GPmodel &m, distribution &d) { m.eta2_prior = d; },
+            "Prior for η2, the GP correlation timescale")
+        .def_prop_rw("eta3_prior",
+            [](GPmodel &m) { return m.eta3_prior; },
+            [](GPmodel &m, distribution &d) { m.eta3_prior = d; },
+            "Prior for η3, the GP period")
+        .def_prop_rw("eta4_prior",
+            [](GPmodel &m) { return m.eta4_prior; },
+            [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
+            "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
+        // conditional object
+        .def_prop_rw("conditional",
+                     [](GPmodel &m) { return m.get_conditional_prior(); },
+                     [](GPmodel &m, RVConditionalPrior& c) { /* does nothing */ });
 }

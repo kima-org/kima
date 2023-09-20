@@ -1,8 +1,3 @@
-#include <nanobind/nanobind.h>
-#include <nanobind/stl/shared_ptr.h>
-namespace nb = nanobind;
-using namespace nb::literals;
-
 #include "RVmodel.h"
 
 #define TIMING false
@@ -17,11 +12,16 @@ void RVmodel::initialize_from_data(RVData& data)
     betas.resize(data.number_indicators);
     individual_offset_prior.resize(data.number_instruments - 1);
 
+    // resize RV model vector
     mu.resize(data.N());
+
+    // set default conditional priors that depend on data
+    auto conditional = planets.get_conditional_prior();
+    conditional->set_default_priors(data);
 }
 
-/* set default priors if the user didn't change them */
 
+/* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
     betaprior = make_prior<Gaussian>(0, 1);
@@ -653,27 +653,27 @@ void RVmodel::save_setup() {
     fout << endl;
 
     fout << "[priors.general]" << endl;
-    // fout << "Cprior: " << *Cprior << endl;
-    // fout << "Jprior: " << *Jprior << endl;
+    fout << "Cprior: " << *Cprior << endl;
+    fout << "Jprior: " << *Jprior << endl;
     if (trend){
-        // if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
-        // if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
-        // if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
+        if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
+        if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
+        if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    // if (data.datamulti)
-    //     fout << "offsets_prior: " << *offsets_prior << endl;
-    // if (studentt)
-    //     fout << "nu_prior: " << *nu_prior << endl;
+    if (data.datamulti)
+        fout << "offsets_prior: " << *offsets_prior << endl;
+    if (studentt)
+        fout << "nu_prior: " << *nu_prior << endl;
 
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
 
         fout << endl << "[priors.planets]" << endl;
-        // fout << "Pprior: " << *conditional->Pprior << endl;
-        // fout << "Kprior: " << *conditional->Kprior << endl;
-        // fout << "eprior: " << *conditional->eprior << endl;
-        // fout << "phiprior: " << *conditional->phiprior << endl;
-        // fout << "wprior: " << *conditional->wprior << endl;
+        fout << "Pprior: " << *conditional->Pprior << endl;
+        fout << "Kprior: " << *conditional->Kprior << endl;
+        fout << "eprior: " << *conditional->eprior << endl;
+        fout << "phiprior: " << *conditional->phiprior << endl;
+        fout << "wprior: " << *conditional->wprior << endl;
     }
 
     if (known_object) {
@@ -688,7 +688,7 @@ void RVmodel::save_setup() {
     }
 
     fout << endl;
-	// fout.close();
+	fout.close();
 }
 
 
@@ -705,7 +705,9 @@ Args:
 )D";
 
 NB_MODULE(RVmodel, m) {
-    // nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
+    // bind RVConditionalPrior so it can be returned
+    bind_RVConditionalPrior(m);
+
     nb::class_<RVmodel>(m, "RVmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
         .def_prop_rw("trend",
@@ -738,5 +740,9 @@ NB_MODULE(RVmodel, m) {
         .def_prop_rw("nu_prior",
             [](RVmodel &m) { return m.nu_prior; },
             [](RVmodel &m, distribution &d) { m.nu_prior = d; },
-            "Prior for the degrees of freedom of the Student-t likelihood");
+            "Prior for the degrees of freedom of the Student-t likelihood")
+        // conditional object
+        .def_prop_rw("conditional",
+                     [](RVmodel &m) { return m.get_conditional_prior(); },
+                     [](RVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
 }

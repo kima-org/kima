@@ -12,6 +12,12 @@
 using namespace std;
 using namespace DNest4;
 
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
 
 class RVmodel
 {
@@ -81,7 +87,6 @@ class RVmodel
             initialize_from_data(data);
         };
 
-
         void initialize_from_data(RVData& data);
 
         // getter and setter for trend
@@ -127,6 +132,13 @@ class RVmodel
 
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }
+
+        RVConditionalPrior* get_conditional_prior() {
+            return planets.get_conditional_prior();
+        }
+        void set_conditional_prior(const RVConditionalPrior &conditional) {
+            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
+        }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

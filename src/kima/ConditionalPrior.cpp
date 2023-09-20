@@ -1,7 +1,3 @@
-#include <nanobind/nanobind.h>
-namespace nb = nanobind;
-using namespace nb::literals;
-
 #include "ConditionalPrior.h"
 
 using namespace std;
@@ -9,50 +5,54 @@ using namespace DNest4;
 
 RVConditionalPrior::RVConditionalPrior():hyperpriors(false)
 {
-    if (hyperpriors){
-        if (!log_muP_prior)
-            /** 
-             * By default, Cauchy prior centered on log(365 days), scale=1
-             * for log(muP), with muP in days
-             * truncated to (~-15.1, ~26.9)
-            */
-            log_muP_prior = make_shared<TruncatedCauchy>(log(365), 1., log(365)-21, log(365)+21);
-        // TruncatedCauchy *log_muP_prior = new TruncatedCauchy(log(365), 1., log(365)-21, log(365)+21);
+    // if (hyperpriors){
+    //     if (!log_muP_prior)
+    //         /** 
+    //          * By default, Cauchy prior centered on log(365 days), scale=1
+    //          * for log(muP), with muP in days
+    //          * truncated to (~-15.1, ~26.9)
+    //         */
+    //         log_muP_prior = make_shared<TruncatedCauchy>(log(365), 1., log(365)-21, log(365)+21);
+    //     // TruncatedCauchy *log_muP_prior = new TruncatedCauchy(log(365), 1., log(365)-21, log(365)+21);
 
-        /**
-         * By default, uniform prior for wP
-        */
-        if (!wP_prior)
-            wP_prior = make_shared<Uniform>(0.1, 3);
-        // Uniform *wP_prior = new Uniform(0.1, 3.);
+    //     /**
+    //      * By default, uniform prior for wP
+    //     */
+    //     if (!wP_prior)
+    //         wP_prior = make_shared<Uniform>(0.1, 3);
+    //     // Uniform *wP_prior = new Uniform(0.1, 3.);
     
 
-        /**
-         * By default, Cauchy prior centered on log(1), scale=1
-         * for log(muK), with muK in m/s
-         * truncated to (-21, 21)
-         * NOTE: we actually sample on muK itself, just the prior is for log(muK)
-        */
-        if (!log_muK_prior)
-            log_muK_prior = make_shared<TruncatedCauchy>(0., 1., 0.-21, 0.+21);
-        // TruncatedCauchy *log_muK_prior = new TruncatedCauchy(0., 1., 0.-21, 0.+21);
+    //     /**
+    //      * By default, Cauchy prior centered on log(1), scale=1
+    //      * for log(muK), with muK in m/s
+    //      * truncated to (-21, 21)
+    //      * NOTE: we actually sample on muK itself, just the prior is for log(muK)
+    //     */
+    //     if (!log_muK_prior)
+    //         log_muK_prior = make_shared<TruncatedCauchy>(0., 1., 0.-21, 0.+21);
+    //     // TruncatedCauchy *log_muK_prior = new TruncatedCauchy(0., 1., 0.-21, 0.+21);
 
-        Pprior = make_shared<Laplace>();
-        Kprior = make_shared<Exponential>();
-    }
-    else {
-        if (!Pprior)
-            Pprior = make_shared<LogUniform>(1.0, 1e3);
-        if (!Kprior)
-            Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
-    }
+    //     Pprior = make_shared<Laplace>();
+    //     Kprior = make_shared<Exponential>();
+    // }
 
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1.0, 1000.0);
+    if (!Kprior)
+        Kprior = make_shared<Uniform>(0.0, 100.0);
     if (!eprior)
         eprior = make_shared<Uniform>(0, 1);
     if (!phiprior)
         phiprior = make_shared<Uniform>(0, 2*M_PI);
     if (!wprior)
         wprior = make_shared<Uniform>(0, 2*M_PI);
+}
+
+void RVConditionalPrior::set_default_priors(const RVData &data)
+{
+    Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
+    Kprior = make_shared<Uniform>(0.0, data.get_RV_span());
 }
 
 void RVConditionalPrior::use_hyperpriors()
@@ -162,8 +162,32 @@ void RVConditionalPrior::print(std::ostream& out) const
 }
 
 
+using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+
+void bind_RVConditionalPrior(nb::module_ &m) {
+    nb::class_<RVConditionalPrior>(m, "RVConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](RVConditionalPrior &c) { return c.Pprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)")
+        .def_prop_rw("Kprior",
+            [](RVConditionalPrior &c) { return c.Kprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            "Prior for the semi-amplitude(s)")
+        .def_prop_rw("eprior",
+            [](RVConditionalPrior &c) { return c.eprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricities(s)")
+        .def_prop_rw("wprior",
+            [](RVConditionalPrior &c) { return c.wprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
+            "Prior for the argument(s) of periastron")
+        .def_prop_rw("Pprior",
+            [](RVConditionalPrior &c) { return c.Pprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)");
+}
 
 // NB_MODULE(ConditionalPrior, m) {
-//     nb::class_<RVConditionalPrior>(m, "RVConditionalPrior");
-//         // .def(nb::init<>());
 // }
