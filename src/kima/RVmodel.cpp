@@ -1,4 +1,5 @@
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
 namespace nb = nanobind;
 using namespace nb::literals;
 
@@ -610,102 +611,132 @@ string RVmodel::description() const
  * 
 */
 void RVmodel::save_setup() {
-	// std::fstream fout("kima_model_setup.txt", std::ios::out);
-    // fout << std::boolalpha;
+	std::fstream fout("kima_model_setup.txt", std::ios::out);
+    fout << std::boolalpha;
 
-    // time_t rawtime;
-    // time (&rawtime);
-    // fout << ";" << ctime(&rawtime) << endl;
+    time_t rawtime;
+    time (&rawtime);
+    fout << ";" << ctime(&rawtime) << endl;
 
-    // fout << "[kima]" << endl;
+    fout << "[kima]" << endl;
 
-    // fout << "model: " << "RVmodel" << endl << endl;
-    // fout << "fix: " << fix << endl;
-    // fout << "npmax: " << npmax << endl << endl;
+    fout << "model: " << "RVmodel" << endl << endl;
+    fout << "fix: " << fix << endl;
+    fout << "npmax: " << npmax << endl << endl;
 
-    // fout << "hyperpriors: " << false << endl;
-    // fout << "trend: " << trend << endl;
-    // fout << "degree: " << degree << endl;
-    // fout << "multi_instrument: " << data.datamulti << endl;
-    // fout << "known_object: " << known_object << endl;
-    // fout << "n_known_object: " << n_known_object << endl;
-    // fout << "studentt: " << studentt << endl;
-    // fout << endl;
+    fout << "hyperpriors: " << false << endl;
+    fout << "trend: " << trend << endl;
+    fout << "degree: " << degree << endl;
+    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "known_object: " << known_object << endl;
+    fout << "n_known_object: " << n_known_object << endl;
+    fout << "studentt: " << studentt << endl;
+    fout << endl;
 
-    // fout << endl;
+    fout << endl;
 
-    // fout << "[data]" << endl;
-    // fout << "file: " << data.datafile << endl;
-    // fout << "units: " << data.dataunits << endl;
-    // fout << "skip: " << data.dataskip << endl;
-    // fout << "multi: " << data.datamulti << endl;
+    fout << "[data]" << endl;
+    fout << "file: " << data.datafile << endl;
+    fout << "units: " << data.dataunits << endl;
+    fout << "skip: " << data.dataskip << endl;
+    fout << "multi: " << data.datamulti << endl;
 
-    // fout << "files: ";
-    // for (auto f: data.datafiles)
-    //     fout << f << ",";
-    // fout << endl;
+    fout << "files: ";
+    for (auto f: data.datafiles)
+        fout << f << ",";
+    fout << endl;
 
-    // fout.precision(15);
-    // fout << "M0_epoch: " << data.M0_epoch << endl;
-    // fout.precision(6);
+    fout.precision(15);
+    fout << "M0_epoch: " << data.M0_epoch << endl;
+    fout.precision(6);
 
-    // fout << endl;
+    fout << endl;
 
-    // fout << "[priors.general]" << endl;
+    fout << "[priors.general]" << endl;
     // fout << "Cprior: " << *Cprior << endl;
     // fout << "Jprior: " << *Jprior << endl;
-    // if (trend){
-    //     if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
-    //     if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
-    //     if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
-    // }
+    if (trend){
+        // if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
+        // if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
+        // if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
+    }
     // if (data.datamulti)
     //     fout << "offsets_prior: " << *offsets_prior << endl;
     // if (studentt)
     //     fout << "nu_prior: " << *nu_prior << endl;
 
-    // if (planets.get_max_num_components()>0){
-    //     auto conditional = planets.get_conditional_prior();
+    if (planets.get_max_num_components()>0){
+        auto conditional = planets.get_conditional_prior();
 
-    //     if (false){
-    //         fout << endl << "[prior.hyperpriors]" << endl;
-    //         fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
-    //         fout << "wP_prior: " << *conditional->wP_prior << endl;
-    //         fout << "log_muK_prior: " << *conditional->log_muK_prior << endl;
-    //     }
+        fout << endl << "[priors.planets]" << endl;
+        // fout << "Pprior: " << *conditional->Pprior << endl;
+        // fout << "Kprior: " << *conditional->Kprior << endl;
+        // fout << "eprior: " << *conditional->eprior << endl;
+        // fout << "phiprior: " << *conditional->phiprior << endl;
+        // fout << "wprior: " << *conditional->wprior << endl;
+    }
 
-    //     fout << endl << "[priors.planets]" << endl;
-    //     fout << "Pprior: " << *conditional->Pprior << endl;
-    //     fout << "Kprior: " << *conditional->Kprior << endl;
-    //     fout << "eprior: " << *conditional->eprior << endl;
-    //     fout << "phiprior: " << *conditional->phiprior << endl;
-    //     fout << "wprior: " << *conditional->wprior << endl;
-    // }
+    if (known_object) {
+        fout << endl << "[priors.known_object]" << endl;
+        // for(int i=0; i<n_known_object; i++){
+        //     fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
+        //     fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+        //     fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
+        //     fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
+        //     fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+        // }
+    }
 
-    // if (known_object) {
-    //     fout << endl << "[priors.known_object]" << endl;
-    //     for(int i=0; i<n_known_object; i++){
-    //         fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-    //         fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
-    //         fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
-    //         fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-    //         fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
-    //     }
-    // }
-
-    // fout << endl;
+    fout << endl;
 	// fout.close();
 }
 
 
+using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+
+auto RVMODEL_DOC = R"D(
+Implements a sum-of-Keplerians model where the number of Keplerians can be free.
+This model assumes white, uncorrelated noise.
+
+Args:
+    fix (bool, default=True): whether the number of Keplerians should be fixed
+    npmax (int, default=0): maximum number of Keplerians
+    data (RVData): the RV data
+)D";
+
 NB_MODULE(RVmodel, m) {
+    // nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
     nb::class_<RVmodel>(m, "RVmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
         .def_prop_rw("trend",
                      [](RVmodel &m) { return m.get_trend(); },
                      [](RVmodel &m, bool t) { m.set_trend(t); })
         .def_prop_rw("degree",
                      [](RVmodel &m) { return m.get_degree(); },
-                     [](RVmodel &m, double t) { m.set_degree(t); });
-        // .def_rw("trend", RVmodel::trend);
+                     [](RVmodel &m, double t) { m.set_degree(t); })
+        // priors
+        .def_prop_rw("Cprior",
+            [](RVmodel &m) { return m.Cprior; },
+            [](RVmodel &m, distribution &d) { m.Cprior = d; },
+            "Prior for the systemic velocity")
+        .def_prop_rw("Jprior",
+            [](RVmodel &m) { return m.Jprior; },
+            [](RVmodel &m, distribution &d) { m.Jprior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("slope_prior",
+            [](RVmodel &m) { return m.slope_prior; },
+            [](RVmodel &m, distribution &d) { m.slope_prior = d; },
+            "Prior for the slope")
+        .def_prop_rw("quadr_prior",
+            [](RVmodel &m) { return m.quadr_prior; },
+            [](RVmodel &m, distribution &d) { m.quadr_prior = d; },
+            "Prior for the quadratic coefficient of the trend")
+        .def_prop_rw("cubic_prior",
+            [](RVmodel &m) { return m.cubic_prior; },
+            [](RVmodel &m, distribution &d) { m.cubic_prior = d; },
+            "Prior for the cubic coefficient of the trend")
+        .def_prop_rw("nu_prior",
+            [](RVmodel &m) { return m.nu_prior; },
+            [](RVmodel &m, distribution &d) { m.nu_prior = d; },
+            "Prior for the degrees of freedom of the Student-t likelihood");
 }
