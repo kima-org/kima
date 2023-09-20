@@ -92,37 +92,38 @@ class RVmodel
         void set_degree(double d) { degree = d; };
 
         // priors for parameters *not* belonging to the planets
+        using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         /// Prior for the systemic velocity.
-        std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
+        distribution Cprior;
         /// Prior for the extra white noise (jitter).
-        std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        distribution Jprior;
         /// Prior for the slope
-        std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
+        distribution slope_prior;
         /// Prior for the quadratic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> quadr_prior;
+        distribution quadr_prior;
         /// Prior for the cubic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
+        distribution cubic_prior;
         /// (Common) prior for the between-instruments offsets.
-        std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior;
+        distribution offsets_prior;
+        std::vector<distribution> individual_offset_prior;
         // { (size_t) data.number_instruments - 1 };
         /// no doc.
-        std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        distribution betaprior;
 
         // priors for KO mode!
         /// Prior for the KO orbital period(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Pprior {(size_t) n_known_object};
         /// Prior for the KO semi-amplitude(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Kprior {(size_t) n_known_object};
         /// Prior for the KO eccentricity(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
+        std::vector<distribution> KO_eprior {(size_t) n_known_object};
         /// Prior for the KO mean anomaly(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
+        std::vector<distribution> KO_phiprior {(size_t) n_known_object};
         /// Prior for the KO argument(s) of pericenter
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
+        std::vector<distribution> KO_wprior {(size_t) n_known_object};
 
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
-        std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
+        distribution nu_prior;
 
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }
