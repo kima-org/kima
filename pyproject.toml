@@ -15,8 +15,27 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "corner",
+    "loguniform",
+    "kumaraswamy",
+    "urepr",
+    "astropy",
+    "jaxlib", 
+    "jax",
+    "rebound",
+    "psutil",
+    "tinygp",
+]
+
+
 [project.urls]
 Homepage = "https://github.com/kima-org/kima"
+
+
 
 
 [tool.scikit-build]
