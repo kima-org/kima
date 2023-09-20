@@ -4,6 +4,7 @@ from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 from .Sampler import run
 
+from . import distributions
 from .pykima.showresults import showresults as load_results
 
 # examples
