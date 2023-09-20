@@ -994,3 +994,44 @@ namespace contour
 
 }
 
+
+
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/ndarray.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
+NB_MODULE(kepler, m) {
+    m.def("keplerian", &brandt::keplerian);
+        //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
+        //      const double &P, const double &K, const double &ecc,
+        //      const double &w, const double &M0, const double &M0_epoch) 
+        //      {
+        //         using array_type = nb::ndarray<nb::numpy, double, nb::shape<1, nb::any>>;
+        //         std::vector<double> rv(t.size());
+        //         // mean motion, once per orbit
+        //         double n = 2. * M_PI / P;
+        //         // sin and cos of argument of periastron, once per orbit
+        //         double sinw, cosw;
+        //         sincos(w, &sinw, &cosw);
+        //         // ecentricity factor for g, once per orbit
+        //         double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        //         // brandt solver calculations, once per orbit
+        //         double bounds[13];
+        //         double EA_tab[6 * 13];
+        //         brandt::get_bounds(bounds, EA_tab, ecc);
+
+        //         for (size_t i = 0; i < t.size(); i++) {
+        //             double sinE, cosE;
+        //             double M = n * (t(i) - M0_epoch) - M0;
+        //             brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+        //             double g = g_e * ((1 - cosE) / sinE);
+        //             double g2 = g * g;
+        //             rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+        //         }
+        //         return rv;
+        //         // return nb::ndarray<nb::numpy, double, nb::shape<nb::any>>(rv.data(), 1, shape);
+        //   }, "keplerian function");
+}
