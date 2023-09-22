@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 #if defined(_WIN32)
-    #include <io.h>
+    #include <getopt_port.h>
 #else
     #include <unistd.h>	// for getopt
 #endif
