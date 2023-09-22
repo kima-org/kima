@@ -4,6 +4,26 @@ project(kima LANGUAGES CXX)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Deployment target/architectures for macOS
+if(APPLE)
+  # on macOS "uname -m" returns the architecture (x86_64 or arm64)
+  execute_process(
+      COMMAND uname -m
+      RESULT_VARIABLE result
+      OUTPUT_VARIABLE OSX_NATIVE_ARCHITECTURE
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  # determine if we do universal build or native build
+  if((CMAKE_GENERATOR STREQUAL "Xcode")                # works only with Xcode
+      AND (OSX_NATIVE_ARCHITECTURE STREQUAL "arm64"))  # and only when running on arm64
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "")
+    set(ARCHIVE_ARCHITECTURE "macOS_universal")
+    message(STATUS "macOS universal (x86_64 / arm64) build")
+  else()
+    set(ARCHIVE_ARCHITECTURE "macOS_${JAMBA_OSX_NATIVE_ARCHITECTURE}")
+    message(STATUS "macOS native ${JAMBA_OSX_NATIVE_ARCHITECTURE} build")
+  endif()
+endif()
 
 set(DNEST4_PATH src/vendor/DNest4/code)
 FILE(GLOB DNEST4_SRC 
