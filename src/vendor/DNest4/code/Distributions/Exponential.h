@@ -20,9 +20,9 @@ class Exponential:public ContinuousDistribution
         Exponential(double scale=1.0);
         void setpars(double scale); // setter
 
-        double cdf(double x) const;
-        double cdf_inverse(double p) const;
-        double log_pdf(double x) const;
+        double cdf(double x) const override;
+        double cdf_inverse(double p) const override;
+        double log_pdf(double x) const override;
 
         virtual std::ostream& print(std::ostream& out) const override
         {
@@ -46,9 +46,9 @@ class TruncatedExponential:public ContinuousDistribution
         TruncatedExponential(double scale=1.0, double lower=0., double upper=1./0.);
         void setpars(double scale); // setter
 
-        double cdf(double x) const;
-        double cdf_inverse(double p) const;
-        double log_pdf(double x) const;
+        double cdf(double x) const override;
+        double cdf_inverse(double p) const override;
+        double log_pdf(double x) const override;
 };
 
 
