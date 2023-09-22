@@ -19,6 +19,14 @@
 
 using namespace std;
 
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+#include "nb_shared.h"
+
 // from https://stackoverflow.com/a/8615450
 vector<string> glob(const string& pattern);
 
@@ -41,7 +49,7 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 }
 
 
-class RVData {
+class KIMA_API RVData {
 
   friend class RVmodel;
   friend class GPmodel;

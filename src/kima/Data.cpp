@@ -1,9 +1,3 @@
-#include <nanobind/nanobind.h>
-#include <nanobind/stl/string.h>
-#include <nanobind/stl/vector.h>
-namespace nb = nanobind;
-using namespace nb::literals;
-
 #include "Data.h"
 
 /**
@@ -40,7 +34,6 @@ std::vector<std::string> glob(const std::string& pattern)
 
 
 RVData::RVData() {};
-
 
     /**
      * @brief Load RV data from a file.

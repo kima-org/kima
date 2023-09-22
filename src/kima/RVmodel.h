@@ -17,9 +17,10 @@ using namespace DNest4;
 #include <nanobind/stl/shared_ptr.h>
 namespace nb = nanobind;
 using namespace nb::literals;
+#include "nb_shared.h"
 
 
-class RVmodel
+class KIMA_API RVmodel
 {
     private:
         RVData data;// = RVData::get_instance();
