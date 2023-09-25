@@ -58,6 +58,10 @@ nanobind_add_module(kepler STABLE_ABI NB_STATIC
                     src/kima/kepler.cpp)
 
 target_compile_features(kepler PRIVATE cxx_std_17)
+IF (WIN32)
+  target_compile_options(dnest4 PRIVATE /D_USE_MATH_DEFINES)
+ENDIF()
+
 
 
 
