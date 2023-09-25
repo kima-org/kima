@@ -531,8 +531,8 @@ NB_MODULE(Data, m) {
     // 
     nb::class_<RVData>(m, "RVData")
         // constructors
-        .def(nb::init<>(),
-             "Create an unitialized instance")
+        // .def(nb::init<>(),
+        //      "Create an unitialized instance")
         .def(nb::init<const string>(), "filename"_a, 
              "Load RV data from a file")
         .def(nb::init<const string, int>(), "filename"_a, "skip"_a, 
@@ -541,11 +541,15 @@ NB_MODULE(Data, m) {
              "Load RV data from a list of files")
         .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
              "Load RV data from a list of files, skipping lines in the header")
+        // full constructors
+        .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
+             "Load RV data from a list of files, skipping lines in the header")
         // properties
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")
         .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); }, "The observed RV uncertainties")
         .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
+        .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
         //
         .def("__getstate__", [](const RVData &d) { return d.datafile; })
         .def("__setstate__", [](RVData &d, const string datafile) { new (&d) RVData(datafile); })

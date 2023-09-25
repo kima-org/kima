@@ -6,6 +6,8 @@ def test_glob():
 def test_extensions_exist():
     kima.RVData
     kima.RVmodel
+    kima.GPmodel
+    kima.RVFWHMmodel
     kima.run
 
 def test_api():
@@ -21,14 +23,18 @@ def test_RVData():
     D = kima.RVData('tests/simulated1.txt')
     D = kima.RVData(['tests/simulated1.txt', 'tests/simulated2.txt'])
 
+def test_RVmodel():
+    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+
 def test_GPmodel():
-    D = kima.RVData('tests/simulated1.txt')
-    m = kima.GPmodel(True, 0, D)
-    # kima.run(m)
+    m = kima.GPmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+
+def test_RVFWHMmodel():
+    m = kima.RVFWHMmodel(True, 0, kima.RVData('tests/simulated1.txt'))
 
 
 def test_distributions():
     from kima import distributions
     from kima.distributions import Gaussian, Uniform
     u = Uniform()
-    print(u)
+    # print(u)

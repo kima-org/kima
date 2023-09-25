@@ -1,43 +1,58 @@
-#include "GPmodel.h"
+#include "RVFWHMmodel.h"
 
 using namespace Eigen;
-
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void GPmodel::initialize_from_data(RVData& data)
+void RVFWHMmodel::initialize_from_data(RVData& data)
 {
-    offsets.resize(data.number_instruments - 1);
-    jitters.resize(data.number_instruments);
-    betas.resize(data.number_indicators);
+    offsets.resize(2 * data.number_instruments - 2);
+    jitters.resize(2 * data.number_instruments);
     individual_offset_prior.resize(data.number_instruments - 1);
+    individual_offset_fwhm_prior.resize(data.number_instruments - 1);
 
-    // resize RV model vector
+    // resize RV, FWHM model vectors
     mu.resize(data.N());
-    // resize covariance matrix
+    mu_fwhm.resize(data.N());
+    // resize covariance matrices
     C.resize(data.N(), data.N());
+    C_fwhm.resize(data.N(), data.N());
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
     conditional->set_default_priors(data);
 }
 
-/* set default priors if the user didn't change them */
 
-void GPmodel::setPriors()  // BUG: should be done by only one thread!
+/// set default priors if the user didn't change them
+void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    betaprior = make_prior<Gaussian>(0, 1);
-
+    // systemic velocity
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+    
+    // "systemic FWHM"
+    if (!C2prior)
+    {
+        auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
+        auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
+        C2prior = make_prior<Uniform>(minFWHM, maxFWHM);
+    }
 
+    // jitter for the RVs
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1*data.get_max_RV_span()), 
-            data.get_max_RV_span()
-        );
+        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1 * data.get_max_RV_span()), data.get_max_RV_span());
+
+    // jitter for the FWHM
+    if (!J2prior)
+    {
+        auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
+        auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
+        auto spanFWHM = maxFWHM - minFWHM;
+        J2prior = make_prior<ModifiedLogUniform>(min(1.0, 0.1 * spanFWHM), spanFWHM);
+    }
 
     if (trend){
         if (degree == 0)
@@ -53,14 +68,25 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
-
-    for (size_t j = 0; j < data.number_instruments - 1; j++)
+    if (data.datamulti)
     {
-        // if individual_offset_prior is not (re)defined, assume a offsets_prior
-        if (!individual_offset_prior[j])
-            individual_offset_prior[j] = offsets_prior;
+        if (!offsets_prior)
+            offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+        if (!offsets_fwhm_prior) {
+            auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
+            auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
+            auto spanFWHM = maxFWHM - minFWHM;
+            offsets_fwhm_prior = make_prior<Uniform>( -spanFWHM, spanFWHM );
+        }
+
+        for (size_t j = 0; j < data.number_instruments - 1; j++)
+        {
+            // if individual_offset_prior is not (re)defined, assume offsets_prior
+            if (!individual_offset_prior[j])
+                individual_offset_prior[j] = offsets_prior;
+            if (!individual_offset_fwhm_prior[j])
+                individual_offset_fwhm_prior[j] = offsets_fwhm_prior;
+        }
     }
 
     if (known_object) { // KO mode!
@@ -74,17 +100,28 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     /* GP parameters */
     if (!eta1_prior)
         eta1_prior = make_prior<LogUniform>(0.1, 100);
+    if (!eta1_fwhm_prior)
+        eta1_fwhm_prior = make_prior<LogUniform>(0.1, 100);
+
     if (!eta2_prior)
         eta2_prior = make_prior<LogUniform>(1, 100);
+    if (!eta2_fwhm_prior)
+        eta2_fwhm_prior = make_prior<LogUniform>(1, 100);
+
     if (!eta3_prior)
         eta3_prior = make_prior<Uniform>(10, 40);
+    if (!eta3_fwhm_prior)
+        eta3_fwhm_prior = make_prior<Uniform>(10, 40);
+
     if (!eta4_prior)
         eta4_prior = make_prior<Uniform>(0.2, 5);
+    if (!eta4_fwhm_prior)
+        eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
 
 }
 
 
-void GPmodel::from_prior(RNG& rng)
+void RVFWHMmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -93,18 +130,27 @@ void GPmodel::from_prior(RNG& rng)
     planets.from_prior(rng);
     planets.consolidate_diff();
 
-    background = Cprior->generate(rng);
+    bkg = Cprior->generate(rng);
+    bkg_fwhm = C2prior->generate(rng);
 
     if(data.datamulti)
     {
-        for(int i=0; i<offsets.size(); i++)
+        // draw instrument offsets for the RVs
+        for (size_t i = 0; i < offsets.size() / 2; i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
-        for(int i=0; i<jitters.size(); i++)
+        // draw instrument offsets for the FWHM
+        for (size_t i = offsets.size() / 2; i < offsets.size(); i++)
+            offsets[i] = individual_offset_fwhm_prior[i]->generate(rng);
+
+        for (size_t i = 0; i < jitters.size() / 2; i++)
             jitters[i] = Jprior->generate(rng);
+        for (size_t i = jitters.size() / 2; i < jitters.size(); i++)
+            jitters[i] = J2prior->generate(rng);
     }
     else
     {
-        extra_sigma = Jprior->generate(rng);
+        jitter = Jprior->generate(rng);
+        jitter_fwhm = J2prior->generate(rng);
     }
 
 
@@ -115,11 +161,6 @@ void GPmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-    if (data.indicator_correlations)
-    {
-        for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
-    }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -138,20 +179,31 @@ void GPmodel::from_prior(RNG& rng)
     }
 
     // GP
-    eta1 = eta1_prior->generate(rng);  // m/s
-    eta2 = eta2_prior->generate(rng); // days
-    eta3 = eta3_prior->generate(rng); // days
-    eta4 = eta4_prior->generate(rng);
 
+    eta1 = eta1_prior->generate(rng);  // m/s
+    eta1_fw = eta1_fwhm_prior->generate(rng);  // m/s
+
+    eta3 = eta3_prior->generate(rng); // days
+    if (!share_eta3)
+        eta3_fw = eta3_fwhm_prior->generate(rng); // days
+
+    eta2 = eta2_prior->generate(rng); // days
+    if (!share_eta2)
+        eta2_fw = eta2_fwhm_prior->generate(rng); // days
+
+    eta4 = exp(eta4_prior->generate(rng));
+    if (!share_eta4)
+        eta4_fw = eta4_fwhm_prior->generate(rng);
+    
     calculate_mu();
+    calculate_mu_fwhm();
+
     calculate_C();
+    calculate_C_fwhm();
 }
 
-/**
- * @brief Calculate the full RV model
- * 
-*/
-void GPmodel::calculate_mu()
+/// @brief Calculate the full RV model
+void RVFWHMmodel::calculate_mu()
 {
     size_t N = data.N();
 
@@ -169,7 +221,7 @@ void GPmodel::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), background);
+        mu.assign(mu.size(), bkg);
         staleness = 0;
         if(trend)
         {
@@ -184,22 +236,13 @@ void GPmodel::calculate_mu()
 
         if(data.datamulti)
         {
-            for(size_t j=0; j<offsets.size(); j++)
+            for (size_t j = 0; j < offsets.size() / 2; j++)
             {
-                for(size_t i=0; i<N; i++)
+                for (size_t i = 0; i < N; i++)
                 {
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
-        }
-
-        if(data.indicator_correlations)
-        {
-            for(size_t i=0; i<N; i++)
-            {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * data.actind[j][i];
-            }   
         }
 
         if (known_object) { // KO mode!
@@ -242,8 +285,30 @@ void GPmodel::calculate_mu()
 
 }
 
+
+/// @brief Calculate the full FWHM model
+void RVFWHMmodel::calculate_mu_fwhm()
+{
+    size_t N = data.N();
+    int Ni = data.Ninstruments();
+
+    mu_fwhm.assign(mu_fwhm.size(), bkg_fwhm);
+
+    if (data.datamulti) {
+        auto obsi = data.get_obsi();
+        for (size_t j = offsets.size() / 2; j < offsets.size(); j++) {
+            for (size_t i = 0; i < N; i++) {
+                if (obsi[i] == j + 2 - Ni) {
+                    mu_fwhm[i] += offsets[j];
+                }
+            }
+        }
+    }
+}
+
+
 /// @brief Fill the GP covariance matrix
-void GPmodel::calculate_C()
+void RVFWHMmodel::calculate_C()
 {
     size_t N = data.N();
 
@@ -252,25 +317,25 @@ void GPmodel::calculate_C()
     #endif
 
     /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    for(size_t i=0; i<N; i++)
+    for (size_t i = 0; i < N; i++)
     {
-        for(size_t j=i; j<N; j++)
+        for (size_t j = i; j < N; j++)
         {
             double r = data.t[i] - data.t[j];
             C(i, j) = eta1*eta1*exp(-0.5*pow(r/eta2, 2)
                         -2.0*pow(sin(M_PI*r/eta3)/eta4, 2) );
 
-            if(i==j)
+            if (i == j)
             {
                 double sig = data.sig[i];
                 if (data.datamulti)
                 {
-                    double jit = jitters[data.obsi[i]-1];
-                    C(i, j) += sig*sig + jit*jit;
+                    double jit = jitters[data.obsi[i] - 1];
+                    C(i, j) += sig * sig + jit * jit;
                 }
                 else
                 {
-                    C(i, j) += sig*sig + extra_sigma*extra_sigma;
+                    C(i, j) += sig * sig + jitter * jitter;
                 }
             }
             else
@@ -288,7 +353,55 @@ void GPmodel::calculate_C()
     #endif
 }
 
-void GPmodel::remove_known_object()
+
+/// @brief Fill the GP covariance matrix
+void RVFWHMmodel::calculate_C_fwhm()
+{
+    size_t N = data.N();
+    auto t = data.get_t();
+    auto sig = data.get_actind()[1];
+
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
+    /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = i; j < N; j++)
+        {
+            double r = data.t[i] - data.t[j];
+            C_fwhm(i, j) = eta1_fw * eta1_fw * exp(-0.5 * pow(r / eta2_fw, 2) - 2.0 * pow(sin(M_PI * r / eta3_fw) / eta4_fw, 2));
+
+            if (i == j)
+            {
+                if (data.datamulti)
+                {
+                    double jit = jitters[data.obsi[i] - 1];
+                    C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
+                }
+                else
+                {
+                    C_fwhm(i, j) += sig[i] * sig[i] + jitter * jitter;
+                }
+            }
+            else
+            {
+                C_fwhm(j, i) = C_fwhm(i, j);
+            }
+        }
+    }
+
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "GP build matrix: ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    cout << " ns" << "\t"; // << std::endl;
+    #endif
+}
+
+
+void RVFWHMmodel::remove_known_object()
 {
     double f, v, ti, Tp;
     for (int j = 0; j < n_known_object; j++) {
@@ -299,7 +412,7 @@ void GPmodel::remove_known_object()
     }
 }
 
-void GPmodel::add_known_object()
+void RVFWHMmodel::add_known_object()
 {
     for (int j = 0; j < n_known_object; j++) {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
@@ -309,7 +422,8 @@ void GPmodel::add_known_object()
     }
 }
 
-int GPmodel::is_stable() const
+
+int RVFWHMmodel::is_stable() const
 {
     // Get the components
     const vector< vector<double> >& components = planets.get_components();
@@ -336,7 +450,7 @@ int GPmodel::is_stable() const
 }
 
 
-double GPmodel::perturb(RNG& rng)
+double RVFWHMmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -355,25 +469,41 @@ double GPmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb GP parameters
     {
-        if (rng.rand() <= 0.25)
+        if(rng.rand() <= 0.25)
         {
             eta1_prior->perturb(eta1, rng);
+            eta1_fwhm_prior->perturb(eta1_fw, rng);
         }
         else if(rng.rand() <= 0.33330)
         {
             eta3_prior->perturb(eta3, rng);
+            if (share_eta3)
+                eta3_fw = eta3;
+            else
+                eta3_fwhm_prior->perturb(eta3_fw, rng);
         }
         else if(rng.rand() <= 0.5)
         {
             eta2_prior->perturb(eta2, rng);
+            if (share_eta2)
+                eta2_fw = eta2;
+            else
+                eta2_fwhm_prior->perturb(eta2_fw, rng);
         }
         else
         {
             eta4_prior->perturb(eta4, rng);
+            if (share_eta4)
+                eta4_fw = eta4;
+            else
+                eta4_fwhm_prior->perturb(eta4_fw, rng);
         }
-        
-        calculate_C(); // recalculate covariance matrix
+
+
+        calculate_C();
+        calculate_C_fwhm();
     }
+
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
         if(data.datamulti)
@@ -383,10 +513,12 @@ double GPmodel::perturb(RNG& rng)
         }
         else
         {
-            Jprior->perturb(extra_sigma, rng);
+            Jprior->perturb(jitter, rng);
+            J2prior->perturb(jitter_fwhm, rng);
         }
 
         calculate_C(); // recalculate covariance matrix
+        calculate_C_fwhm(); // recalculate covariance matrix
 
         if (known_object)
         {
@@ -408,7 +540,7 @@ double GPmodel::perturb(RNG& rng)
     {
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] -= background;
+            mu[i] -= bkg;
             if(trend) {
                 mu[i] -= slope * (data.t[i] - tmid) +
                             quadr * pow(data.t[i] - tmid, 2) +
@@ -420,15 +552,10 @@ double GPmodel::perturb(RNG& rng)
                 }
             }
 
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] -= betas[j] * actind[j][i];
-                }
-            }
         }
 
         // propose new vsys
-        Cprior->perturb(background, rng);
+        Cprior->perturb(bkg, rng);
 
         // propose new instrument offsets
         if (data.datamulti){
@@ -444,16 +571,10 @@ double GPmodel::perturb(RNG& rng)
             if (degree == 3) cubic_prior->perturb(cubic, rng);
         }
 
-        // propose new indicator correlations
-        if(data.indicator_correlations){
-            for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
-            }
-        }
 
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += background;
+            mu[i] += bkg;
             if(trend) {
                 mu[i] += slope * (data.t[i] - tmid) +
                             quadr * pow(data.t[i] - tmid, 2) +
@@ -462,12 +583,6 @@ double GPmodel::perturb(RNG& rng)
             if(data.datamulti) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] += betas[j]*actind[j][i];
                 }
             }
         }
@@ -484,12 +599,8 @@ double GPmodel::perturb(RNG& rng)
     return logH;
 }
 
-/**
- * Calculate the log-likelihood for the current values of the parameters.
- * 
- * @return double the log-likelihood
-*/
-double GPmodel::log_likelihood() const
+
+double RVFWHMmodel::log_likelihood() const
 {
     size_t N = data.N();
     const auto& y = data.get_y();
@@ -503,6 +614,7 @@ double GPmodel::log_likelihood() const
         if (stable != 0)
             return -std::numeric_limits<double>::infinity();
     }
+
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -532,6 +644,7 @@ double GPmodel::log_likelihood() const
 
     logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
 
+
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
@@ -545,7 +658,7 @@ double GPmodel::log_likelihood() const
 }
 
 
-void GPmodel::print(std::ostream& out) const
+void RVFWHMmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
@@ -553,11 +666,14 @@ void GPmodel::print(std::ostream& out) const
 
     if (data.datamulti)
     {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
+        for (int j = 0; j < jitters.size(); j++)
+            out << jitters[j] << '\t';
     }
     else
-        out<<extra_sigma<<'\t';
+    {
+        out << jitter << '\t';
+        out << jitter_fwhm << '\t';
+    }
 
     if(trend)
     {
@@ -569,20 +685,25 @@ void GPmodel::print(std::ostream& out) const
     }
         
     if (data.datamulti){
-        for(int j=0; j<offsets.size(); j++){
-            out<<offsets[j]<<'\t';
-        }
-    }
-
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
+        for (int j = 0; j < offsets.size(); j++)
+        {
+            out << offsets[j] << '\t';
         }
     }
 
     // write GP parameters
-    out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
+    out << eta1 << '\t' << eta1_fw << '\t';
 
+    out << eta2 << '\t';
+    if (!share_eta2) out << eta2_fw << '\t';
+
+    out << eta3 << '\t';
+    if (!share_eta3) out << eta3_fw << '\t';
+    
+    out << eta4 << '\t';
+    if (!share_eta4) out << eta4_fw << '\t';
+
+    // write KO parameters
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
@@ -591,15 +712,17 @@ void GPmodel::print(std::ostream& out) const
         for (auto w: KO_w) out << w << "\t";
     }
 
+    // write planet parameters
     planets.print(out);
 
     out << staleness << '\t';
 
-    out << background;
+    out << bkg_fwhm << '\t';
+    out << bkg;
 }
 
 
-string GPmodel::description() const
+string RVFWHMmodel::description() const
 {
     string desc;
     string sep = "   ";
@@ -610,7 +733,10 @@ string GPmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma" + sep;
+    {
+        desc += "jitter1" + sep;
+        desc += "jitter2" + sep;
+    }
 
     if(trend)
     {
@@ -625,14 +751,18 @@ string GPmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
-        }
-    }
-
     // GP parameters
-    desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
+    desc += "eta1" + sep + "eta1_fw" + sep;
+
+    desc += "eta2" + sep;
+    if (!share_eta2) desc += "eta2_fw" + sep;
+
+    desc += "eta3" + sep;
+    if (!share_eta3) desc += "eta3_fw" + sep;
+
+    desc += "eta4" + sep;
+    if (!share_eta4) desc += "eta4_fw" + sep;
+
 
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
@@ -663,17 +793,15 @@ string GPmodel::description() const
     }
 
     desc += "staleness" + sep;
-    
+
+    desc += "cfwhm" + sep;
     desc += "vsys";
 
     return desc;
 }
 
-/**
- * Save the options of the current model in a INI file.
- * 
-*/
-void GPmodel::save_setup() {
+
+void RVFWHMmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -683,9 +811,15 @@ void GPmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "GPmodel" << endl << endl;
+    fout << "model: " << "RVFWHMmodel" << endl << endl;
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
+
+    fout << "GP: " << true << endl;
+    fout << "kernel: " << "standard" << endl;
+    fout << "share_eta2: " << share_eta2 << endl;
+    fout << "share_eta3: " << share_eta3 << endl;
+    fout << "share_eta4: " << share_eta4 << endl;
 
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
@@ -725,15 +859,15 @@ void GPmodel::save_setup() {
     if (data.datamulti)
         fout << "offsets_prior: " << *offsets_prior << endl;
 
-    fout << endl << "[priors.GP]" << endl;
-    fout << "eta1_prior: " << *eta1_prior << endl;
-    fout << "eta2_prior: " << *eta2_prior << endl;
-    fout << "eta3_prior: " << *eta3_prior << endl;
-    fout << "eta4_prior: " << *eta4_prior << endl;
-    fout << endl;
-
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
+
+        if (false){
+            fout << endl << "[prior.hyperpriors]" << endl;
+            fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
+            fout << "wP_prior: " << *conditional->wP_prior << endl;
+            fout << "log_muK_prior: " << *conditional->log_muK_prior << endl;
+        }
 
         fout << endl << "[priors.planets]" << endl;
         fout << "Pprior: " << *conditional->Pprior << endl;
@@ -745,13 +879,13 @@ void GPmodel::save_setup() {
 
     if (known_object) {
         fout << endl << "[priors.known_object]" << endl;
-        // for(int i=0; i<n_known_object; i++){
-        //     fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-        //     fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
-        //     fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
-        //     fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-        //     fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
-        // }
+        for(int i=0; i<n_known_object; i++){
+            fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+            fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
+            fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
+            fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+        }
     }
 
     fout << endl;
@@ -759,57 +893,7 @@ void GPmodel::save_setup() {
 }
 
 
-using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
-
-NB_MODULE(GPmodel, m) {
-    nb::class_<GPmodel>(m, "GPmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
-        .def_prop_rw("trend",
-                     [](GPmodel &m) { return m.get_trend(); },
-                     [](GPmodel &m, bool t) { m.set_trend(t); })
-        .def_prop_rw("degree",
-                     [](GPmodel &m) { return m.get_degree(); },
-                     [](GPmodel &m, double t) { m.set_degree(t); })
-        // priors
-        .def_prop_rw("Cprior",
-            [](GPmodel &m) { return m.Cprior; },
-            [](GPmodel &m, distribution &d) { m.Cprior = d; },
-            "Prior for the systemic velocity")
-        .def_prop_rw("Jprior",
-            [](GPmodel &m) { return m.Jprior; },
-            [](GPmodel &m, distribution &d) { m.Jprior = d; },
-            "Prior for the extra white noise (jitter)")
-        .def_prop_rw("slope_prior",
-            [](GPmodel &m) { return m.slope_prior; },
-            [](GPmodel &m, distribution &d) { m.slope_prior = d; },
-            "Prior for the slope")
-        .def_prop_rw("quadr_prior",
-            [](GPmodel &m) { return m.quadr_prior; },
-            [](GPmodel &m, distribution &d) { m.quadr_prior = d; },
-            "Prior for the quadratic coefficient of the trend")
-        .def_prop_rw("cubic_prior",
-            [](GPmodel &m) { return m.cubic_prior; },
-            [](GPmodel &m, distribution &d) { m.cubic_prior = d; },
-            "Prior for the cubic coefficient of the trend")
-        // priors for the GP hyperparameters
-        .def_prop_rw("eta1_prior",
-            [](GPmodel &m) { return m.eta1_prior; },
-            [](GPmodel &m, distribution &d) { m.eta1_prior = d; },
-            "Prior for η1, the GP 'amplitude'")
-        .def_prop_rw("eta2_prior",
-            [](GPmodel &m) { return m.eta2_prior; },
-            [](GPmodel &m, distribution &d) { m.eta2_prior = d; },
-            "Prior for η2, the GP correlation timescale")
-        .def_prop_rw("eta3_prior",
-            [](GPmodel &m) { return m.eta3_prior; },
-            [](GPmodel &m, distribution &d) { m.eta3_prior = d; },
-            "Prior for η3, the GP period")
-        .def_prop_rw("eta4_prior",
-            [](GPmodel &m) { return m.eta4_prior; },
-            [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
-            "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
-        // conditional object
-        .def_prop_rw("conditional",
-                     [](GPmodel &m) { return m.get_conditional_prior(); },
-                     [](GPmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+NB_MODULE(RVFWHMmodel, m) {
+    nb::class_<RVFWHMmodel>(m, "RVFWHMmodel")
+        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a);
 }
