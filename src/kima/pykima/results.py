@@ -165,12 +165,10 @@ class KimaResults:
         if self._debug:
             print('finished reading data')
 
-        self.posterior_sample = np.atleast_2d(
-            read_big_file('posterior_sample.txt'))
+        self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
 
         try:
-            self.posterior_lnlike = np.atleast_2d(
-                read_big_file('posterior_sample_info.txt'))
+            self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
             self.lnlike_available = True
         except IOError:
             self.lnlike_available = False
@@ -494,17 +492,19 @@ class KimaResults:
         eta1_RV, eta1_FWHM, eta2_RV, eta2_FWHM, eta3_RV, eta3_FWHM, eta4_RV, eta4_FWHM
         """
         if self.model == 'RVFWHMmodel':
-            i = [0, 1]
-            _i = 2
-            num = self.n_hyperparameters - self._n_shared_hyperparameters
-            for j in range(2, num + 1):
-                eta = f'share_eta{j}'
-                if getattr(self, eta):
-                    i += [_i, _i]
-                    _i += 1
-                else:
-                    i += [_i, _i + 1]
-                    _i += 1
+            i = [0, 1]  # eta1_rv, eta1_fwhm
+            
+            i.append(2)
+            if self.share_eta2:
+                i.append(2)
+            
+            i.append(3)
+            if self.share_eta3:
+                i.append(3)
+            
+            i.append(4)
+            if self.share_eta3:
+                i.append(4)
         else:
             i = [0, 1, 2, 3]
 
@@ -542,7 +542,7 @@ class KimaResults:
 
             elif self.model == 'RVFWHMmodel':
                 _n_shared = 0
-                for i in range(2, 7):
+                for i in range(2, 5):
                     setattr(self, f'share_eta{i}',
                             self.setup['kima'][f'share_eta{i}'] == 'true')
                     if getattr(self, f'share_eta{i}'):
@@ -552,11 +552,11 @@ class KimaResults:
                 n_hyperparameters += 1 if self.share_eta2 else 2
                 n_hyperparameters += 1 if self.share_eta3 else 2
                 n_hyperparameters += 1 if self.share_eta4 else 2
-                if self.GPkernel == 'qpc':
-                    n_hyperparameters += 1 if self.share_eta5 else 2
-                if self.GPkernel == 'qp_plus_cos':
-                    n_hyperparameters += 1 if self.share_eta5 else 2
-                    n_hyperparameters += 1 if self.share_eta6 else 2
+                # if self.GPkernel == 'qpc':
+                #     n_hyperparameters += 1 if self.share_eta5 else 2
+                # if self.GPkernel == 'qp_plus_cos':
+                #     n_hyperparameters += 1 if self.share_eta5 else 2
+                #     n_hyperparameters += 1 if self.share_eta6 else 2
                 self.n_hyperparameters = n_hyperparameters
                 self._n_shared_hyperparameters = _n_shared
 
