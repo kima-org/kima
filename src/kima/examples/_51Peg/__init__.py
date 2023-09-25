@@ -1,12 +1,11 @@
 import os
 import kima
 from kima import RVData, RVmodel
-from kima import distributions
 from kima.pykima.utils import chdir
 
 __all__ = ['_51Peg']
 
-here = os.path.dirname(__file__)
+here = os.path.dirname(__file__) # cwd
 
 def _51Peg(run=False, **kwargs):
     """
@@ -18,10 +17,12 @@ def _51Peg(run=False, **kwargs):
         run (bool): whether to run the model
         **kwargs: keyword arguments passed directly to `kima.run`
     """
+    # load the right data file
     data = RVData(os.path.join(here, '51Peg.rv'))
-    model = RVmodel(fix=True, npmax=1, data=data)
+    # create the model
+    model = RVmodel(fix=False, npmax=1, data=data)
 
-    kwargs.setdefault('steps', 100)
+    kwargs.setdefault('steps', 5000)
     kwargs.setdefault('num_threads', 4)
     kwargs.setdefault('num_particles', 2)
     kwargs.setdefault('new_level_interval', 1000)
@@ -32,4 +33,3 @@ def _51Peg(run=False, **kwargs):
             kima.run(model, **kwargs)
 
     return model
-
