@@ -14,6 +14,9 @@ FILE(GLOB DNEST4_SRC
 
 add_library(dnest4 STATIC ${DNEST4_SRC})
 target_compile_features(dnest4 PRIVATE cxx_std_17)
+IF (WIN32)
+  target_compile_options(dnest4 PRIVATE /permissive-)
+ENDIF()
 
 # Eigen
 set(EIGEN_PATH src/vendor/eigen)
