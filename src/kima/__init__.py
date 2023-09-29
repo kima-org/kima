@@ -6,6 +6,7 @@ from .RVFWHMmodel import RVFWHMmodel
 from .Sampler import run
 
 from .kepler import keplerian
+from . import spleaf
 
 from . import distributions
 from .pykima.showresults import showresults as load_results

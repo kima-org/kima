@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19...3.26)
 
-project(kima LANGUAGES CXX)
+project(kima LANGUAGES CXX C)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -61,8 +61,7 @@ nanobind_add_module(kepler STABLE_ABI NB_STATIC
 target_compile_features(kepler PRIVATE cxx_std_17)
 
 
-
-set(INCLUDES src/vendor/cpp-loadtxt/src src/vendor/DNest4/code)
+set(INCLUDES src/vendor/cpp-loadtxt/src ${DNEST4_PATH})
 
 foreach(targ distributions Data ConditionalPrior RVmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
@@ -70,13 +69,26 @@ foreach(targ distributions Data ConditionalPrior RVmodel)
   target_link_libraries(${targ} PRIVATE dnest4)
 endforeach()
 
-set(INCLUDES_EIGEN src/vendor/cpp-loadtxt/src src/vendor/DNest4/code src/vendor/eigen)
+set(INCLUDES_EIGEN ${INCLUDES} src/vendor/eigen)
 
 foreach(targ GPmodel RVFWHMmodel Sampler)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES_EIGEN})
   target_link_libraries(${targ} PRIVATE dnest4)
 endforeach()
+
+
+# spleaf bindings and C++ wrapper
+set(SPLEAF_PATH src/vendor/spleaf/spleaf)
+add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
+
+nanobind_add_module(spleaf STABLE_ABI NB_STATIC
+                    src/kima/spleaf.cpp)
+
+target_compile_features(spleaf PRIVATE cxx_std_17)
+target_include_directories(spleaf PRIVATE ${SPLEAF_PATH})
+target_include_directories(spleaf PRIVATE ${INCLUDES_EIGEN})
+target_link_libraries(spleaf PRIVATE libspleaf)
 
 
 # install directive for scikit-build-core
@@ -90,3 +102,4 @@ install(TARGETS RVFWHMmodel LIBRARY DESTINATION kima)
 install(TARGETS Sampler LIBRARY DESTINATION kima)
 # 
 install(TARGETS kepler LIBRARY DESTINATION kima)
+install(TARGETS spleaf LIBRARY DESTINATION kima)
