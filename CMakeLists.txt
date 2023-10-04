@@ -4,19 +4,30 @@ project(kima LANGUAGES CXX C)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# add_compile_options(-Wall -Wextra -Wpedantic)
 
+# if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+#   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+#   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+# endif()
+
+# DNest4 library
 set(DNEST4_PATH src/vendor/DNest4/code)
 FILE(GLOB DNEST4_SRC 
      ${DNEST4_PATH}/*.cpp
      ${DNEST4_PATH}/Distributions/*.cpp
      ${DNEST4_PATH}/RJObject/ConditionalPriors/*.cpp
 )
-
 add_library(dnest4 STATIC ${DNEST4_SRC})
 target_compile_features(dnest4 PRIVATE cxx_std_17)
 
 # Eigen
 set(EIGEN_PATH src/vendor/eigen)
+
+# spleaf library
+set(SPLEAF_PATH src/vendor/spleaf/spleaf)
+add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
+
 
 # import Python components needed by nanobind
 find_package(Python 3.8
