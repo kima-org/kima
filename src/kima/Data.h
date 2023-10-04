@@ -54,6 +54,7 @@ class KIMA_API RVData {
   friend class RVmodel;
   friend class GPmodel;
   friend class RVFWHMmodel;
+  friend class SPLEAFmodel;
 
   private:
     vector<double> t, y, sig;

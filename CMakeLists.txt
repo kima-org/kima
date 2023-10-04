@@ -59,11 +59,16 @@ nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
+nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC
+                    src/kima/SPLEAFmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+
+
 nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/run.cpp
-                    src/kima/RVmodel.cpp src/kima/GPmodel.cpp src/kima/RVFWHMmodel.cpp
+                    src/kima/RVmodel.cpp src/kima/GPmodel.cpp src/kima/RVFWHMmodel.cpp src/kima/SPLEAFmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC 
@@ -82,7 +87,7 @@ endforeach()
 
 set(INCLUDES_EIGEN ${INCLUDES} src/vendor/eigen)
 
-foreach(targ GPmodel RVFWHMmodel Sampler)
+foreach(targ GPmodel RVFWHMmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES_EIGEN})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -90,9 +95,6 @@ endforeach()
 
 
 # spleaf bindings and C++ wrapper
-set(SPLEAF_PATH src/vendor/spleaf/spleaf)
-add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
-
 nanobind_add_module(spleaf STABLE_ABI NB_STATIC
                     src/kima/spleaf.cpp)
 
@@ -100,6 +102,21 @@ target_compile_features(spleaf PRIVATE cxx_std_17)
 target_include_directories(spleaf PRIVATE ${SPLEAF_PATH})
 target_include_directories(spleaf PRIVATE ${INCLUDES_EIGEN})
 target_link_libraries(spleaf PRIVATE libspleaf)
+target_link_libraries(spleaf PRIVATE dnest4)
+
+# SPLEAFmodel
+set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
+
+target_compile_features(SPLEAFmodel PRIVATE cxx_std_17)
+target_include_directories(SPLEAFmodel PRIVATE ${INCLUDES_SPLEAF})
+target_link_libraries(SPLEAFmodel PRIVATE dnest4)
+target_link_libraries(SPLEAFmodel PRIVATE libspleaf)
+
+
+target_compile_features(Sampler PRIVATE cxx_std_17)
+target_include_directories(Sampler PRIVATE ${INCLUDES_SPLEAF})
+target_link_libraries(Sampler PRIVATE dnest4)
+target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directive for scikit-build-core
@@ -110,6 +127,7 @@ install(TARGETS ConditionalPrior LIBRARY DESTINATION kima)
 install(TARGETS RVmodel LIBRARY DESTINATION kima)
 install(TARGETS GPmodel LIBRARY DESTINATION kima)
 install(TARGETS RVFWHMmodel LIBRARY DESTINATION kima)
+install(TARGETS SPLEAFmodel LIBRARY DESTINATION kima)
 install(TARGETS Sampler LIBRARY DESTINATION kima)
 # 
 install(TARGETS kepler LIBRARY DESTINATION kima)
