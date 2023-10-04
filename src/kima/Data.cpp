@@ -542,8 +542,8 @@ NB_MODULE(Data, m) {
         .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
              "Load RV data from a list of files, skipping lines in the header")
         // full constructors
-        .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
-             "Load RV data from a list of files, skipping lines in the header")
+        .def(nb::init<const string, const string, int, const string, const vector<string>&>())
+
         // properties
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")

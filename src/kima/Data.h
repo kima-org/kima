@@ -68,7 +68,12 @@ class KIMA_API RVData {
     // 
     RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
     RVData(const vector<string> filenames, int skip) { load_multi(filenames, "ms", skip); }
-
+    // 
+    RVData(const string filename, const string units, int skip, const string delimiter,
+           const vector<string> &indicators)
+    {
+      load(filename, units, skip, delimiter, indicators);
+    }
 
     friend ostream& operator<<(ostream& os, const RVData& d);
 
