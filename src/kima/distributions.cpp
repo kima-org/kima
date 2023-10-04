@@ -7,6 +7,9 @@ using namespace nb::literals;
 
 NB_MODULE(distributions, m)
 {
+    nb::class_<DNest4::RNG>(m, "RNG")
+        .def(nb::init<unsigned int>());
+    //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
     // 
     nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform", "docs")
