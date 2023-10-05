@@ -79,6 +79,9 @@ class data_holder:
     obs: np.ndarray = field(init=False)
     N: int = field(init=False)
 
+    def __repr__(self):
+        return f'data_holder(N={self.N}, t, y, e, obs)'
+
 
 @dataclass
 class posterior_holder:
@@ -97,6 +100,10 @@ class posterior_holder:
     ω: np.ndarray = field(init=False, repr=False)
     φ: np.ndarray = field(init=False, repr=False)
 
+    def __repr__(self):
+        fields = ', '.join(self.__dataclass_fields__.keys())
+        return f'posterior_holder({fields})'
+
 
 class KimaResults:
     r""" A class to hold, analyse, and display the results from kima
@@ -111,7 +118,7 @@ class KimaResults:
         evidence (float):
             The log-evidence ($\ln Z$) of the model
         information (float):
-            The Kulback-Leibler divergence between prior and posterior
+            The Kullback-Leibler divergence between prior and posterior
 
         data (data_holder): The data
         posteriors (posterior_holder): The marginal posterior samples
@@ -331,6 +338,7 @@ class KimaResults:
         self.data.t = data[:, 0].copy()
         self.data.y = data[:, 1].copy()
         self.data.e = data[:, 2].copy()
+        self.data.obs = obs.copy()
         self.data.N = self.data.t.size
 
         if self.model == 'RVFWHMmodel':
