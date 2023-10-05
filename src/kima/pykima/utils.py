@@ -642,7 +642,7 @@ def read_big_file(filename):
                            delim_whitespace=True,
                            comment='#',
                            names=names,
-                           dtype=np.float).values
+                           dtype=float).values
 
         # pandas.read_csv has problems with 1-line files
         if data.shape[0] == 0:
