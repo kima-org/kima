@@ -3,7 +3,11 @@
 #include <ctime>
 #include <sstream>
 #include <iostream>
-#include <unistd.h>	// for getopt
+#if defined(_WIN32)
+    #include "getopt_port.h"
+#else
+    #include <unistd.h>	// for getopt
+#endif
 #include <cstdlib>	// for exit
 
 namespace DNest4

@@ -27,9 +27,7 @@ Options::Options(unsigned int num_particles,
 ,sample_info_file("sample_info.txt")
 ,levels_file("levels.txt")
 {
-	assert(num_particles > 0 && new_level_interval > 0 &&
-		max_num_levels > 0 && lambda > 0. &&
-		beta >= 0.);
+	assert(num_particles > 0 && new_level_interval > 0 && max_num_levels >= 0 && lambda > 0. && beta >= 0.);
 }
 
 Options::Options(const char* filename)
@@ -71,9 +69,7 @@ void Options::load(const char* filename)
 
 	fin.close();
 
-	assert(num_particles > 0 && new_level_interval > 0 &&
-			thread_steps > 0 && max_num_levels > 0 && lambda > 0. &&
-			beta >= 0.);
+	assert(num_particles > 0 && new_level_interval > 0 && thread_steps > 0 && max_num_levels >= 0 && lambda > 0. && beta >= 0.);
 }
 
 void Options::print(std::ostream& out) const
