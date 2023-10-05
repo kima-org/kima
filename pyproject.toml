@@ -48,8 +48,10 @@ build-dir = "build/{wheel_tag}"
 # Build stable ABI wheels for CPython 3.12+
 wheel.py-api = "cp312"
 
-cmake.build-type = "Debug"
+# cmake.build-type = "Debug"
 # cmake.build-type = "RelWithDebInfo"
+cmake.build-type = "Release"
+
 
 [tool.cibuildwheel]
 # Necessary to see build output from the actual compilation

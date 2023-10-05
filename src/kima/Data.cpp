@@ -531,18 +531,13 @@ NB_MODULE(Data, m) {
     // 
     nb::class_<RVData>(m, "RVData")
         // constructors
-        // .def(nb::init<>(),
-        //      "Create an unitialized instance")
-        .def(nb::init<const string>(), "filename"_a, 
-             "Load RV data from a file")
-        .def(nb::init<const string, int>(), "filename"_a, "skip"_a, 
-             "Load RV data from a file, skipping lines in the header")
-        .def(nb::init<const vector<string>>(), "filenames"_a, 
+        .def(nb::init<const vector<string>, const string&, int, const string&, const vector<string>&>(),
+             "filenames"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
-        .def(nb::init<const vector<string>, int>(), "filenames"_a, "skip"_a, 
-             "Load RV data from a list of files, skipping lines in the header")
-        // full constructors
-        .def(nb::init<const string, const string, int, const string, const vector<string>&>())
+        //
+        .def(nb::init<const string, const string&, int, const string&, const vector<string>&>(),
+             "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+             "Load RV data from a file")
 
         // properties
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
@@ -554,6 +549,7 @@ NB_MODULE(Data, m) {
         .def("__getstate__", [](const RVData &d) { return d.datafile; })
         .def("__setstate__", [](RVData &d, const string datafile) { new (&d) RVData(datafile); })
         //
+        .def("get_timespan", &RVData::get_timespan)
         .def("topslope", &RVData::topslope)
         // ...
         .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "delimiter"_a, "indicators"_a,
