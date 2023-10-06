@@ -543,6 +543,7 @@ NB_MODULE(Data, m) {
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")
         .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); }, "The observed RV uncertainties")
+        .def_prop_ro("obsi", [](RVData &d) { return d.get_obsi(); }, "The instrument identifier")
         .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
         .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
         //
