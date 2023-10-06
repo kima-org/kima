@@ -716,6 +716,9 @@ NB_MODULE(RVmodel, m) {
         .def_prop_rw("degree",
                      [](RVmodel &m) { return m.get_degree(); },
                      [](RVmodel &m, double t) { m.set_degree(t); })
+        .def_prop_rw("studentt",
+                     [](RVmodel &m) { return m.get_studentt(); },
+                     [](RVmodel &m, double t) { m.set_studentt(t); })
         // priors
         .def_prop_rw("Cprior",
             [](RVmodel &m) { return m.Cprior; },

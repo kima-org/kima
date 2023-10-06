@@ -96,6 +96,10 @@ class KIMA_API RVmodel
         // getter and setter for degree
         double get_degree() const { return degree; };
         void set_degree(double d) { degree = d; };
+        // getter and setter for studentt
+        double get_studentt() const { return studentt; };
+        void set_studentt(bool st) { studentt = st; };
+        
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
