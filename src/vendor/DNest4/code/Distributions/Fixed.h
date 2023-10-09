@@ -1,8 +1,8 @@
 #pragma once
 
 // DNest4/code
-#include "Distributions/ContinuousDistribution.h"
-#include "RNG.h"
+#include "ContinuousDistribution.h"
+#include "../RNG.h"
 
 namespace DNest4
 {
