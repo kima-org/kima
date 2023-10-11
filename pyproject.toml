@@ -31,11 +31,22 @@ dependencies = [
     "tinygp",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "mkdocs",
+    "mkdocstrings[crystal,python]",
+    "mkdocs-autorefs",
+    "mkdocs-material",
+    "mkdocs-git-revision-date-localized-plugin"
+]
+
 
 [project.urls]
 Homepage = "https://github.com/kima-org/kima"
 
 
+[project.scripts]
+kima = "kima.pykima.cli:cli_run"
 
 
 [tool.scikit-build]
@@ -48,8 +59,7 @@ build-dir = "build/{wheel_tag}"
 # Build stable ABI wheels for CPython 3.12+
 wheel.py-api = "cp312"
 
-# cmake.build-type = "Debug"
-# cmake.build-type = "RelWithDebInfo"
+# "Debug" "RelWithDebInfo"
 cmake.build-type = "Release"
 
 
