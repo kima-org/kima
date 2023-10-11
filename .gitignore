@@ -1,0 +1,17 @@
+*.pyc
+*.so
+build/*
+*~
+*.pdf
+*.log
+*.aux
+*.out
+*.dvi
+*.bbl
+*.blg
+*.eps
+*.txt
+
+dist
+MANIFEST
+batman_package.egg-info
