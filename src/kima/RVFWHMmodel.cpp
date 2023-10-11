@@ -8,6 +8,12 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVFWHMmodel::initialize_from_data(RVData& data)
 {
+    if (data.actind.size() < 2) // need at least one activity indicator (the FWHM)
+    {
+        std::string msg = "kima: RVFWHMmodel: no data for activity indicators (FWHM)";
+        throw std::runtime_error(msg);
+    }
+
     offsets.resize(2 * data.number_instruments - 2);
     jitters.resize(2 * data.number_instruments);
     individual_offset_prior.resize(data.number_instruments - 1);
@@ -117,7 +123,6 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         eta4_prior = make_prior<Uniform>(0.2, 5);
     if (!eta4_fwhm_prior)
         eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
-
 }
 
 
@@ -136,23 +141,29 @@ void RVFWHMmodel::from_prior(RNG& rng)
     if(data.datamulti)
     {
         // draw instrument offsets for the RVs
-        for (size_t i = 0; i < offsets.size() / 2; i++)
+        for (size_t i = 0; i < offsets.size() / 2; i++) {
             offsets[i] = individual_offset_prior[i]->generate(rng);
+        }
         // draw instrument offsets for the FWHM
-        for (size_t i = offsets.size() / 2; i < offsets.size(); i++)
-            offsets[i] = individual_offset_fwhm_prior[i]->generate(rng);
+        size_t j = 0;
+        for (size_t i = offsets.size() / 2; i < offsets.size(); i++) {
+            offsets[i] = individual_offset_fwhm_prior[j]->generate(rng);
+            j++;
+        }
 
-        for (size_t i = 0; i < jitters.size() / 2; i++)
+        for (size_t i = 0; i < jitters.size() / 2; i++) {
             jitters[i] = Jprior->generate(rng);
-        for (size_t i = jitters.size() / 2; i < jitters.size(); i++)
+        }
+
+        for (size_t i = jitters.size() / 2; i < jitters.size(); i++) {
             jitters[i] = J2prior->generate(rng);
+        }
     }
     else
     {
         jitter = Jprior->generate(rng);
         jitter_fwhm = J2prior->generate(rng);
     }
-
 
     if(trend)
     {
@@ -194,7 +205,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
     eta4 = exp(eta4_prior->generate(rng));
     if (!share_eta4)
         eta4_fw = eta4_fwhm_prior->generate(rng);
-    
+
     calculate_mu();
     calculate_mu_fwhm();
 
@@ -538,29 +549,41 @@ double RVFWHMmodel::perturb(RNG& rng)
     }
     else
     {
-        for(size_t i=0; i<mu.size(); i++)
+        for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] -= bkg;
+
             if(trend) {
                 mu[i] -= slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
+                         quadr * pow(data.t[i] - tmid, 2) +
+                         cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
+
+            if (data.datamulti)
+            {
+                for (size_t j = 0; j < offsets.size() / 2; j++)
+                {
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
             }
-
         }
 
         // propose new vsys
         Cprior->perturb(bkg, rng);
+        C2prior->perturb(bkg_fwhm, rng);
 
         // propose new instrument offsets
-        if (data.datamulti){
-            for(unsigned j=0; j<offsets.size(); j++){
+        if (data.datamulti)
+        {
+            for (size_t j = 0; j < offsets.size() / 2; j++)
+            {
                 individual_offset_prior[j]->perturb(offsets[j], rng);
+            }
+            size_t k = 0;
+            for (size_t j = offsets.size() / 2; j < offsets.size(); j++)
+            {
+                individual_offset_fwhm_prior[k]->perturb(offsets[j], rng);
+                k++;
             }
         }
 
@@ -575,17 +598,24 @@ double RVFWHMmodel::perturb(RNG& rng)
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += bkg;
+
             if(trend) {
                 mu[i] += slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
+                         quadr * pow(data.t[i] - tmid, 2) +
+                         cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
+
+            if (data.datamulti)
+            {
+                for (size_t j = 0; j < offsets.size(); j++)
+                {
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
         }
+
+        calculate_mu_fwhm();
+
     }
 
 
@@ -893,7 +923,35 @@ void RVFWHMmodel::save_setup() {
 }
 
 
+using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+
+
 NB_MODULE(RVFWHMmodel, m) {
     nb::class_<RVFWHMmodel>(m, "RVFWHMmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a);
+        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        // priors
+        .def_prop_rw("Cprior",
+            [](RVFWHMmodel &m) { return m.Cprior; },
+            [](RVFWHMmodel &m, distribution &d) { m.Cprior = d; },
+            "Prior for the systemic velocity")
+        .def_prop_rw("Jprior",
+            [](RVFWHMmodel &m) { return m.Jprior; },
+            [](RVFWHMmodel &m, distribution &d) { m.Jprior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("slope_prior",
+            [](RVFWHMmodel &m) { return m.slope_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.slope_prior = d; },
+            "Prior for the slope")
+        .def_prop_rw("quadr_prior",
+            [](RVFWHMmodel &m) { return m.quadr_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.quadr_prior = d; },
+            "Prior for the quadratic coefficient of the trend")
+        .def_prop_rw("cubic_prior",
+            [](RVFWHMmodel &m) { return m.cubic_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.cubic_prior = d; },
+            "Prior for the cubic coefficient of the trend")
+        // conditional object
+        .def_prop_rw("conditional",
+                     [](RVFWHMmodel &m) { return m.get_conditional_prior(); },
+                     [](RVFWHMmodel &m, RVConditionalPrior& c) { /* does nothing */ });
 }
