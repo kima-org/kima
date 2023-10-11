@@ -550,13 +550,13 @@ def find_outliers(results, sample, threshold=10, verbose=False):
         pass
     elif J.shape[0] > 1:
         # one jitter per instrument
-        J = J[(res.obs - 1).astype(int)]
+        J = J[(res.data.obs - 1).astype(int)]
 
     nu = sample[res.indices['nu']]
 
     # probabilities within the Gaussian and Student-t likelihoods
-    Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
-    Td = T(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    Gd = norm(loc=0, scale=np.hypot(res.data.e, J)).pdf(resid)
+    Td = T(df=nu, loc=0, scale=np.hypot(res.data.e, J)).pdf(resid)
 
     # take care when probabilities are zero (very strong outliers)
     Gd = np.clip(Gd, 1e-15, None)
