@@ -88,17 +88,24 @@ class posterior_holder:
     """ A simple class to hold the posterior samples
 
     Attributes:
-        P (ndarray): The orbital period(s)
-        K (ndarray): The semi-amplitude(s)
-        e (ndarray): The orbital eccentricities(s)
-        ω (ndarray): The argument(s) of pericenter
-        φ (ndarray): The mean anomaly(ies) at the epoch
+        P (ndarray): Orbital period(s)
+        K (ndarray): Semi-amplitude(s)
+        e (ndarray): Orbital eccentricities(s)
+        ω (ndarray): Argument(s) of pericenter
+        φ (ndarray): Mean anomaly(ies) at the epoch
+        jitter (ndarray): Per-instrument jitter(s)
+        offset (ndarray): Between-instrument offset(s)
+        vsys (ndarray): Systemic velocity
+
     """
     P: np.ndarray = field(init=False, repr=False)
     K: np.ndarray = field(init=False, repr=False)
     e: np.ndarray = field(init=False, repr=False)
     ω: np.ndarray = field(init=False, repr=False)
     φ: np.ndarray = field(init=False, repr=False)
+    jitter: np.ndarray = field(init=False, repr=False)
+    offset: np.ndarray = field(init=False, repr=False)
+    vsys: np.ndarray = field(init=False, repr=False)
 
     def __repr__(self):
         fields = ', '.join(self.__dataclass_fields__.keys())
@@ -191,6 +198,9 @@ class KimaResults:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
                 self.parameters = [p for p in header.split(' ') if p != '']
+                self.parameters.pop(self.parameters.index('ndim'))
+                self.parameters.pop(self.parameters.index('maxNp'))
+                self.parameters.pop(self.parameters.index('staleness'))
 
             # different sizes can happen when running the model and sample_info
             # was updated while reading sample.txt
@@ -198,9 +208,11 @@ class KimaResults:
                 minimum = min(self.sample.shape[0], self.sample_info.shape[0])
                 self.sample = self.sample[:minimum]
                 self.sample_info = self.sample_info[:minimum]
+
         except IOError:
             self.sample = None
             self.sample_info = None
+            self.parameters = []
 
         if self._debug:
             print('finished reading sample file', end=' ')
@@ -245,6 +257,9 @@ class KimaResults:
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
+
+        if self.fix:
+            self.parameters.pop(self.parameters.index('Np'))
 
         # make the plots, if requested
         self.make_plots(options, self.save_plots)
@@ -722,7 +737,7 @@ class KimaResults:
                     i += 2
 
         if self.fix:
-            from utils import Fixed
+            from .utils import Fixed
             priors[self.indices['np']] = Fixed(self.npmax)
         else:
             try:
@@ -917,6 +932,14 @@ class KimaResults:
         """
 
         self.posteriors = posterior_holder()
+
+        # jitter(s)
+        self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
+        # instrument offsets
+        self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
+        # systemic velocity
+        self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+
         max_components = self.max_components
         index_component = self.index_component
 
@@ -1631,7 +1654,7 @@ class KimaResults:
             return np.zeros_like(t)
 
         if self.model == 'RVFWHMmodel':
-            D = np.vstack((self.y, self.y2))
+            D = np.vstack((self.data.y, self.data.y2))
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
 
@@ -1676,7 +1699,7 @@ class KimaResults:
                 return np.vstack([out0, out1])
 
         else:
-            r = self.y - self.eval_model(sample)
+            r = self.data.y - self.eval_model(sample)
             if self.model == 'GPmodel_systematics':
                 x = self._extra_data[:, 3]
                 X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
@@ -1782,9 +1805,9 @@ class KimaResults:
 
     def residuals(self, sample, full=False):
         if self.model == 'RVFWHMmodel':
-            D = np.vstack([self.y, self.y2])
+            D = np.vstack([self.data.y, self.data.y2])
         else:
-            D = self.y
+            D = self.data.y
 
         if full:
             return D - self.full_model(sample)
