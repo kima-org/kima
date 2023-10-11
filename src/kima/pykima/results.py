@@ -534,92 +534,84 @@ class KimaResults:
         return i
 
     def _read_GP(self):
-        try:
-            self.GPmodel = self.setup['kima']['GP'] == 'true'
-            if self.GPmodel:
-                if 'kernel' in self.setup['kima']:
-                    self.GPkernel = self.setup['kima']['kernel']
-                else:
-                    self.GPkernel = self.setup['kima']['GP_kernel']
-        except KeyError:
-            self.GPmodel = False
+        if self.model not in ('GPmodel', 'RVFWHMmodel', 'SPLEAFmodel'):
+            self.has_gp = False
+            self.n_hyperparameters = 0
+            return
+        
+        self.has_gp = True
 
-        if self.GPmodel:
-            if self.model in ('GPmodel', 'GPmodel_systematics'):
-                try:
-                    n_hyperparameters = {
-                        'standard': 4,
-                        'periodic': 3,
-                        'qpc': 5,
-                        'RBF': 2,
-                    }
-                    n_hyperparameters = n_hyperparameters[self.GPkernel]
-                except KeyError:
-                    raise ValueError(
-                        f'GP kernel = {self.GPkernel} not recognized')
-
-                if self.model == 'GPmodel_systematics':
-                    n_hyperparameters += 2
-
-                self.n_hyperparameters = n_hyperparameters
-
-            elif self.model == 'RVFWHMmodel':
-                _n_shared = 0
-                for i in range(2, 5):
-                    setattr(self, f'share_eta{i}',
-                            self.setup['kima'][f'share_eta{i}'] == 'true')
-                    if getattr(self, f'share_eta{i}'):
-                        _n_shared += 1
-
-                n_hyperparameters = 2  # at least 2 x eta1
-                n_hyperparameters += 1 if self.share_eta2 else 2
-                n_hyperparameters += 1 if self.share_eta3 else 2
-                n_hyperparameters += 1 if self.share_eta4 else 2
-                # if self.GPkernel == 'qpc':
-                #     n_hyperparameters += 1 if self.share_eta5 else 2
-                # if self.GPkernel == 'qp_plus_cos':
-                #     n_hyperparameters += 1 if self.share_eta5 else 2
-                #     n_hyperparameters += 1 if self.share_eta6 else 2
-                self.n_hyperparameters = n_hyperparameters
-                self._n_shared_hyperparameters = _n_shared
-
-            istart = self._current_column
-            iend = istart + n_hyperparameters
-            self.etas = self.posterior_sample[:, istart:iend]
-
-            # if self.model == 'RVmodel':
-            #     for i in range(n_hyperparameters):
-            #         name = 'eta' + str(i + 1)
-            #         ind = istart + i
-            #         setattr(self, name, self.posterior_sample[:, ind])
-
-            self._current_column += n_hyperparameters
-            self.indices['GPpars_start'] = istart
-            self.indices['GPpars_end'] = iend
-            self.indices['GPpars'] = slice(istart, iend)
-
-            t, e = self.data.t, self.data.e
-            kernels = {
-                'standard': QPkernel(1, 1, 1, 1),
-                'periodic': PERkernel(1, 1, 1),
-                'qpc': QPCkernel(1, 1, 1, 1, 1),
-                'RBF': RBFkernel(1, 1),
-                'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
-            }
-
-            if self.model == 'RVFWHMmodel':
-                self.GP1 = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
-                self.GP2 = GP(kernels[self.GPkernel], t, self.data.e2,
-                              white_noise=0.0)
-            elif self.model == 'GPmodel_systematics':
-                X = np.c_[self.data.t, self._extra_data[:, 3]]
-                self.GP = mixtureGP([], X, None, e)
+        if self.model == 'GPmodel':
+            if 'kernel' in self.setup['kima']:
+                self.GPkernel = self.setup['kima']['kernel']
             else:
-                self.GP = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
+                self.GPkernel = self.setup['kima']['GP_kernel']
+
+            try:
+                n_hyperparameters = {
+                    'standard': 4,
+                    'periodic': 3,
+                    'qpc': 5,
+                    'RBF': 2,
+                }
+                n_hyperparameters = n_hyperparameters[self.GPkernel]
+            except KeyError:
+                raise ValueError(
+                    f'GP kernel = {self.GPkernel} not recognized')
+
+            self.n_hyperparameters = n_hyperparameters
+
+        elif self.model == 'RVFWHMmodel':
+            _n_shared = 0
+            for i in range(2, 5):
+                setattr(self, f'share_eta{i}',
+                        self.setup['kima'][f'share_eta{i}'] == 'true')
+                if getattr(self, f'share_eta{i}'):
+                    _n_shared += 1
+
+            n_hyperparameters = 2  # at least 2 x eta1
+            n_hyperparameters += 1 if self.share_eta2 else 2
+            n_hyperparameters += 1 if self.share_eta3 else 2
+            n_hyperparameters += 1 if self.share_eta4 else 2
+            self.n_hyperparameters = n_hyperparameters
+            self._n_shared_hyperparameters = _n_shared
+
+        elif self.model == 'SPLEAFmodel':
+            self.multi_series = self.setup['kima']['multi_series'] == 'true'
+            self.nseries = int(self.setup['kima']['nseries'])
+            self.n_hyperparameters = 2
 
 
+        istart = self._current_column
+        iend = istart + self.n_hyperparameters
+        self.etas = self.posterior_sample[:, istart:iend]
+
+        self._current_column += self.n_hyperparameters
+        self.indices['GPpars_start'] = istart
+        self.indices['GPpars_end'] = iend
+        self.indices['GPpars'] = slice(istart, iend)
+
+        t, e = self.data.t, self.data.e
+        kernels = {
+            'standard': QPkernel(1, 1, 1, 1),
+            'periodic': PERkernel(1, 1, 1),
+            'qpc': QPCkernel(1, 1, 1, 1, 1),
+            'RBF': RBFkernel(1, 1),
+            'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
+        }
+
+        if self.model == 'RVFWHMmodel':
+            self.GP1 = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
+            self.GP2 = GP(kernels[self.GPkernel], t, self.data.e2,
+                            white_noise=0.0)
+        elif self.model == 'GPmodel_systematics':
+            X = np.c_[self.data.t, self._extra_data[:, 3]]
+            self.GP = mixtureGP([], X, None, e)
+        elif self.model == 'SPLEAFmodel':
+            pass
         else:
-            n_hyperparameters = 0
+            self.GP = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
+
 
     def _read_MA(self):
         # find MA in the compiled model
@@ -701,7 +693,7 @@ class KimaResults:
                 offset_priors = no * [prior1] + no * [prior2]
                 priors[self.indices['inst_offsets']] = np.array(offset_priors)
 
-        if self.GPmodel:
+        if self.has_gp:
             if self.model == 'RVmodel':
                 priors[self.indices['GPpars']] = [
                     self.priors[f'eta{i}_prior'] for i in range(5)
@@ -936,7 +928,8 @@ class KimaResults:
         # jitter(s)
         self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
         # instrument offsets
-        self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
+        if self.multi:
+            self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
         # systemic velocity
         self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
 
@@ -1277,7 +1270,7 @@ class KimaResults:
                 s = s.rjust(20 + len(s))
                 print(s)
 
-        if self.GPmodel:
+        if self.has_gp:
             print('GP parameters: ', end='')
             if self.model == 'RVmodel':
                 pars = ('η1', 'η2', 'η3', 'η4')
@@ -1650,7 +1643,7 @@ class KimaResults:
         if t is None or t is self.data.t:
             t = self.data.t.copy()
 
-        if not self.GPmodel:
+        if not self.has_gp:
             return np.zeros_like(t)
 
         if self.model == 'RVFWHMmodel':
@@ -1697,6 +1690,20 @@ class KimaResults:
                 )
             else:
                 return np.vstack([out0, out1])
+
+        elif self.model == 'SPLEAFmodel':
+            r = self.data.y - self.eval_model(sample)
+            if self.multi_series:
+                raise NotImplementedError()
+            else:
+                C = spleaf.cov.Cov(
+                    self.data.t,
+                    err=spleaf.term.Error(self.data.e),
+                    gp=spleaf.term.Matern52Kernel(1.0, 1.0)
+                )
+                GPpars = sample[self.indices['GPpars']]
+                C.set_param(GPpars, C.param)
+                return C.conditional(r, t)
 
         else:
             r = self.data.y - self.eval_model(sample)
@@ -2023,27 +2030,27 @@ class KimaResults:
 
     @property
     def eta1(self):
-        if self.GPmodel:
+        if self.has_gp:
             return self.posterior_sample[:, self.indices['GPpars']][:, 0]
         return None
 
     @property
     def eta2(self):
-        if self.GPmodel:
+        if self.has_gp:
             i = 2 if self.model == 'RVFWHMmodel' else 1
             return self.posterior_sample[:, self.indices['GPpars']][:, i]
         return None
 
     @property
     def eta3(self):
-        if self.GPmodel:
+        if self.has_gp:
             i = 3 if self.model == 'RVFWHMmodel' else 2
             return self.posterior_sample[:, self.indices['GPpars']][:, i]
         return None
 
     @property
     def eta4(self):
-        if self.GPmodel:
+        if self.has_gp:
             i = 4 if self.model == 'RVFWHMmodel' else 3
             return self.posterior_sample[:, self.indices['GPpars']][:, i]
         return None
