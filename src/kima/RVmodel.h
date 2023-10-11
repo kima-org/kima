@@ -22,6 +22,26 @@ using namespace nb::literals;
 
 class KIMA_API RVmodel
 {
+    protected:
+        /// whether the model includes a polynomial trend
+        bool trend {false};
+        /// degree of the polynomial trend
+        int degree {0};
+
+        /// use a Student-t distribution for the likelihood (instead of Gaussian)
+        bool studentt {false};
+    
+        /// include (better) known extra Keplerian curve(s)? (KO mode!)
+        bool known_object {false};
+        /// how many known objects
+        int n_known_object {0};
+
+        /// stellar mass (in units of Msun)
+        double star_mass = 1.0;
+
+        /// whether to enforce AMD-stability
+        bool enforce_stability = false;
+
     private:
         RVData data;// = RVData::get_instance();
 
@@ -36,17 +56,6 @@ class KIMA_API RVmodel
 
         double background;
 
-        /// whether the model includes a linear trend
-        bool trend {false};
-        /// and its degree
-        int degree {0};
-
-        /// use a Student-t distribution for the likelihood (instead of Gaussian)
-        bool studentt {false};
-
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        int n_known_object {0};
 
         std::vector<double> offsets; // between instruments
             //   std::vector<double>(0, data.number_instruments - 1);
@@ -75,9 +84,7 @@ class KIMA_API RVmodel
         void add_known_object();
         void remove_known_object();
 
-        double star_mass = 1.0;  // [Msun]
         int is_stable() const;
-        bool enforce_stability = false;
 
         unsigned int staleness;
 
@@ -89,17 +96,6 @@ class KIMA_API RVmodel
         };
 
         void initialize_from_data(RVData& data);
-
-        // getter and setter for trend
-        bool get_trend() const { return trend; };
-        void set_trend(bool t) { trend = t; };
-        // getter and setter for degree
-        double get_degree() const { return degree; };
-        void set_degree(double d) { degree = d; };
-        // getter and setter for studentt
-        double get_studentt() const { return studentt; };
-        void set_studentt(bool st) { studentt = st; };
-        
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -113,7 +109,7 @@ class KIMA_API RVmodel
         distribution quadr_prior;
         /// Prior for the cubic coefficient of the trend
         distribution cubic_prior;
-        /// (Common) prior for the between-instruments offsets.
+        /// (Common) prior for the between-instrument offsets.
         distribution offsets_prior;
         std::vector<distribution> individual_offset_prior;
         // { (size_t) data.number_instruments - 1 };

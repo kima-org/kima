@@ -704,21 +704,45 @@ Args:
     data (RVData): the RV data
 )D";
 
+class RVmodel_publicist : public RVmodel
+{
+    public:
+        using RVmodel::trend;
+        using RVmodel::degree;
+        using RVmodel::studentt;
+        using RVmodel::known_object;
+        using RVmodel::n_known_object;
+        using RVmodel::star_mass;
+        using RVmodel::enforce_stability;
+};
+
+
 NB_MODULE(RVmodel, m) {
     // bind RVConditionalPrior so it can be returned
     bind_RVConditionalPrior(m);
 
     nb::class_<RVmodel>(m, "RVmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
-        .def_prop_rw("trend",
-                     [](RVmodel &m) { return m.get_trend(); },
-                     [](RVmodel &m, bool t) { m.set_trend(t); })
-        .def_prop_rw("degree",
-                     [](RVmodel &m) { return m.get_degree(); },
-                     [](RVmodel &m, double t) { m.set_degree(t); })
-        .def_prop_rw("studentt",
-                     [](RVmodel &m) { return m.get_studentt(); },
-                     [](RVmodel &m, double t) { m.set_studentt(t); })
+        //
+        .def_rw("trend", &RVmodel_publicist::trend,
+                "whether the model includes a polynomial trend")
+        .def_rw("degree", &RVmodel_publicist::degree,
+                "degree of the polynomial trend")
+        //
+        .def_rw("studentt", &RVmodel_publicist::studentt,
+                "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        //
+        .def_rw("known_object", &RVmodel_publicist::known_object,
+                "whether to include (better) known extra Keplerian curve(s)")
+        .def_rw("n_known_object", &RVmodel_publicist::n_known_object,
+                "how many known objects")
+        //
+        .def_rw("star_mass", &RVmodel_publicist::star_mass,
+                "stellar mass [Msun]")
+        //
+        .def_rw("enforce_stability", &RVmodel_publicist::enforce_stability, 
+                "whether to enforce AMD-stability")
+
         // priors
         .def_prop_rw("Cprior",
             [](RVmodel &m) { return m.Cprior; },
@@ -740,6 +764,10 @@ NB_MODULE(RVmodel, m) {
             [](RVmodel &m) { return m.cubic_prior; },
             [](RVmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+        .def_prop_rw("offsets_prior",
+            [](RVmodel &m) { return m.offsets_prior; },
+            [](RVmodel &m, distribution &d) { m.offsets_prior = d; },
+            "Common prior for the between-instrument offsets")
         .def_prop_rw("nu_prior",
             [](RVmodel &m) { return m.nu_prior; },
             [](RVmodel &m, distribution &d) { m.nu_prior = d; },
