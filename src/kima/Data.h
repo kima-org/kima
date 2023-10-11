@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <exception>
 
 #include "loadtxt.hpp"
 
@@ -68,13 +69,13 @@ class KIMA_API RVData {
     // RVData(const string filename, int skip=0) { load(filename, "ms", skip); }
     // 
     // RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
-    RVData(const vector<string> filenames, const string& units="ms", int skip=0, 
+    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
       load_multi(filenames, units, skip, delimiter, indicators);
     }
     // 
-    RVData(const string filename, const string& units="ms", int skip=0, 
+    RVData(const string& filename, const string& units="ms", int skip=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
       load(filename, units, skip, delimiter, indicators);

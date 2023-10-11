@@ -53,8 +53,9 @@ RVData::RVData() {};
                       const string delimiter, const vector<string>& indicators)
     {
         if (filename.empty()) {
-            std::cerr << "kima: RVData: filename is empty\n";
-            exit(1);
+            std::string msg = "kima: RVData: no filename provided";
+            throw std::invalid_argument(msg);
+            // exit(1);
         }
 
         auto data = loadtxt(filename)
@@ -62,8 +63,8 @@ RVData::RVData() {};
                         .delimiter(delimiter)();
 
         if (data.size() < 3) {
-            printf("kima: RVData: data file (%s) contains less than 3 columns!\n", filename.c_str());
-            exit(1);
+            std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+            throw std::runtime_error(msg);
         }
         
 
@@ -285,8 +286,8 @@ RVData::RVData() {};
             auto data = loadtxt(filename).skiprows(skip)();
 
             if (data.size() < 3) {
-                printf("Data file (%s) contains less than 3 columns!\n", filename.c_str());
-                exit(1);
+                std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+                throw std::runtime_error(msg);
             }
 
             t.insert(t.end(), data[0].begin(), data[0].end());
@@ -529,13 +530,13 @@ NB_MODULE(Data, m) {
         .def("max_rows", &loadtxt::max_rows)
         .def("__call__", &loadtxt::operator());
     // 
-    nb::class_<RVData>(m, "RVData")
+    nb::class_<RVData>(m, "RVData", "docs")
         // constructors
-        .def(nb::init<const vector<string>, const string&, int, const string&, const vector<string>&>(),
+        .def(nb::init<const vector<string>&, const string&, int, const string&, const vector<string>&>(),
              "filenames"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string, const string&, int, const string&, const vector<string>&>(),
+        .def(nb::init<const string&, const string&, int, const string&, const vector<string>&>(),
              "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
 
