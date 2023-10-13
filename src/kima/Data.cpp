@@ -76,6 +76,12 @@ RVData::RVData() {};
         t = data[0];
         y = data[1];
         sig = data[2];
+        
+        if (sb2)
+        {
+            y2 = data[3];
+            sig2 = data[4];
+        }
 
         // check for indicator correlations and store stuff
         int nempty = count(indicators.begin(), indicators.end(), "");
@@ -114,6 +120,11 @@ RVData::RVData() {};
         for (size_t n = 0; n < t.size(); n++) {
             y[n] = y[n] * factor;
             sig[n] = sig[n] * factor;
+            if (sb2)
+            {
+                y2[n] = y2[n] * factor;
+                sig2[n] = sig2[n] * factor;
+            }
         }
 
         // epoch for the mean anomaly, by default the time of the first observation
@@ -167,6 +178,12 @@ RVData::RVData() {};
         t = data[0];
         y = data[1];
         sig = data[2];
+        
+        if (sb2)
+        {
+            y2 = data[3];
+            sig2 = data[4];
+        }
 
         // check for indicator correlations and store stuff
         int nempty = count(indicators.begin(), indicators.end(), "");
@@ -204,6 +221,11 @@ RVData::RVData() {};
         for (size_t n = 0; n < t.size(); n++) {
             y[n] = y[n] * factor;
             sig[n] = sig[n] * factor;
+            if (sb2)
+            {
+                y2[n] = y2[n] * factor;
+                sig2[n] = sig2[n] * factor;
+            }
         }
 
         // the 4th column of the file identifies the instrument; it can have "0"s
@@ -262,6 +284,8 @@ RVData::RVData() {};
         t.clear();
         y.clear();
         sig.clear();
+        y2.clear();
+        sig2.clear();
         obsi.clear();
 
         // check for indicator correlations and store stuff
@@ -292,6 +316,12 @@ RVData::RVData() {};
             t.insert(t.end(), data[0].begin(), data[0].end());
             y.insert(y.end(), data[1].begin(), data[1].end());
             sig.insert(sig.end(), data[2].begin(), data[2].end());
+            
+            if (sb2)
+            {
+                y2.insert(y2.end(), data[3].begin(), data[3].end());
+                sig2.insert(sig2.end(), data[4].begin(), data[4].end());
+            }
 
             // set the indicator vectors to the right columns
             if (indicator_correlations)
@@ -322,6 +352,12 @@ RVData::RVData() {};
         for (size_t n = 0; n < t.size(); n++) {
             y[n] = y[n] * factor;
             sig[n] = sig[n] * factor;
+            sig[n] = sig[n] * factor;
+            if (sb2)
+            {
+                y2[n] = y2[n] * factor;
+                sig2[n] = sig2[n] * factor;
+            }
         }
 
         datafile = "";
