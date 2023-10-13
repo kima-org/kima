@@ -56,6 +56,7 @@ class KIMA_API RVData {
   friend class GPmodel;
   friend class RVFWHMmodel;
   friend class SPLEAFmodel;
+  friend class OutlierRVmodel;
 
   private:
     vector<double> t, y, sig;
@@ -186,16 +187,6 @@ class KIMA_API RVData {
   //   static RVData& get_instance() { return instance; }
 };
 
-// template <class... Args>
-// void load(Args&&... args)
-// {
-//     RVData::get_instance().load(args...);
-// }
 
-// template <class... Args>
-// void load_multi(Args&&... args)
-// {
-//     RVData::get_instance().load_multi(args...);
-// }
 
 

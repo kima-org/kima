@@ -43,7 +43,7 @@ class KIMA_API RVmodel
         bool enforce_stability = false;
 
     private:
-        RVData data;// = RVData::get_instance();
+        RVData data;
 
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
@@ -78,7 +78,7 @@ class KIMA_API RVmodel
         std::vector<double> KO_w;
 
         // The signal
-        std::vector<double> mu; // = std::vector<double>(data.N());
+        std::vector<double> mu;
 
         void calculate_mu();
         void add_known_object();
@@ -91,7 +91,7 @@ class KIMA_API RVmodel
 
     public:
         RVmodel() {};
-        RVmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        RVmodel(bool fix, int npmax, RVData& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
@@ -130,9 +130,6 @@ class KIMA_API RVmodel
 
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;
-
-        // /// @brief an alias for RVData::get_instance()
-        // static RVData& get_data() { return RVData::get_instance(); }
 
         RVConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
