@@ -6,11 +6,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # add_compile_options(-Wall -Wextra -Wpedantic)
 
-# if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-#   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
-#   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-# endif()
-
 # DNest4 library
 set(DNEST4_PATH src/vendor/DNest4/code)
 FILE(GLOB DNEST4_SRC 
@@ -21,7 +16,7 @@ FILE(GLOB DNEST4_SRC
 add_library(dnest4 STATIC ${DNEST4_SRC})
 target_compile_features(dnest4 PRIVATE cxx_std_17)
 
-# Eigen
+# path to include Eigen
 set(EIGEN_PATH src/vendor/eigen)
 
 # spleaf library
@@ -38,17 +33,24 @@ find_package(Python 3.8
 find_package(nanobind CONFIG REQUIRED)
 
 # compile the extension modules
+# this will make them available as kima.module
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC 
                     src/kima/distributions.cpp)
 
+nanobind_add_module(Data STABLE_ABI NB_STATIC
+                    src/kima/Data.cpp)
 
-nanobind_add_module(Data STABLE_ABI NB_STATIC src/kima/Data.cpp)
+nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC 
+                    src/kima/ConditionalPrior.cpp)
 
-nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC src/kima/ConditionalPrior.cpp)
-
+# different models, with their corresponding dependencies
 nanobind_add_module(RVmodel STABLE_ABI NB_STATIC
                     src/kima/RVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+
+nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC
+                    src/kima/OutlierRVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 nanobind_add_module(GPmodel STABLE_ABI NB_STATIC
@@ -64,9 +66,14 @@ nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC
                     src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 
+# compile the Sampler module to create the kima.run function
 nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/run.cpp
-                    src/kima/RVmodel.cpp src/kima/GPmodel.cpp src/kima/RVFWHMmodel.cpp src/kima/SPLEAFmodel.cpp
+                    src/kima/RVmodel.cpp
+                    src/kima/OutlierRVmodel.cpp
+                    src/kima/GPmodel.cpp
+                    src/kima/RVFWHMmodel.cpp
+                    src/kima/SPLEAFmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
@@ -77,16 +84,21 @@ nanobind_add_module(kepler STABLE_ABI NB_STATIC
 target_compile_features(kepler PRIVATE cxx_std_17)
 
 
+
+# add loadtxt path to includes
 set(INCLUDES src/vendor/cpp-loadtxt/src ${DNEST4_PATH})
 
-foreach(targ distributions Data ConditionalPrior RVmodel)
+# compilation settings for each module
+foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
 endforeach()
 
+# add Eigen path to includes
 set(INCLUDES_EIGEN ${INCLUDES} src/vendor/eigen)
 
+# compilation settings for each module that requires Eigen
 foreach(targ GPmodel RVFWHMmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES_EIGEN})
@@ -113,22 +125,24 @@ target_link_libraries(SPLEAFmodel PRIVATE dnest4)
 target_link_libraries(SPLEAFmodel PRIVATE libspleaf)
 
 
+# compilation settings for Sampler
 target_compile_features(Sampler PRIVATE cxx_std_17)
 target_include_directories(Sampler PRIVATE ${INCLUDES_SPLEAF})
 target_link_libraries(Sampler PRIVATE dnest4)
 target_link_libraries(Sampler PRIVATE libspleaf)
 
 
-# install directive for scikit-build-core
-install(TARGETS distributions LIBRARY DESTINATION kima)
-# 
-install(TARGETS Data LIBRARY DESTINATION kima)
-install(TARGETS ConditionalPrior LIBRARY DESTINATION kima)
-install(TARGETS RVmodel LIBRARY DESTINATION kima)
-install(TARGETS GPmodel LIBRARY DESTINATION kima)
-install(TARGETS RVFWHMmodel LIBRARY DESTINATION kima)
-install(TARGETS SPLEAFmodel LIBRARY DESTINATION kima)
+# install directives for scikit-build-core
+foreach(module distributions kepler transits spleaf)
+  install(TARGETS ${module} LIBRARY DESTINATION kima)  
+endforeach()
+
+foreach(module Data ConditionalPrior)
+  install(TARGETS ${module} LIBRARY DESTINATION kima)  
+endforeach()
+
+foreach(module RVmodel OutlierRVmodel GPmodel RVFWHMmodel SPLEAFmodel)
+  install(TARGETS ${module} LIBRARY DESTINATION kima)  
+endforeach()
+
 install(TARGETS Sampler LIBRARY DESTINATION kima)
-# 
-install(TARGETS kepler LIBRARY DESTINATION kima)
-install(TARGETS spleaf LIBRARY DESTINATION kima)
