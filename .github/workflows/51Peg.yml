@@ -38,7 +38,7 @@ jobs:
 
     - name: Requirements for development
       run: |
-        pip intall pip -U
+        pip install pip -U
         pip install wheel nanobind "scikit-build-core[pyproject]" -U
 
     - name: Build and install
