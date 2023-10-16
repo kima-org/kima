@@ -4,7 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-#include <postkepler>
+#include "postkepler.h"
 
 #ifdef __APPLE__
     #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
