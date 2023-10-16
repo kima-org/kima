@@ -735,6 +735,48 @@ namespace brandt
 
       return rv;
     }
+    
+    
+    //
+    std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
+                                  const double &M0_epoch)
+    {
+        // allocate RVs
+        std::vector<double> rv(t.size());
+        
+        //Need to change P -> Panom, and have w move, maybe this slows the process down to much to be worth it?
+        
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
+
+        // ecentricity factor for g, once per orbit
+        double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        // std::cout << std::endl;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            double sinE, cosE;
+            double M = n * (t[i] - M0_epoch) - M0;
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            double g = g_e * ((1 - cosE) / sinE);
+            double g2 = g * g;
+            // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
+            // std::cout << '\t' << g << '\t' << g2 << std::endl;
+            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+      }
+
+      return rv;
+    }
 
     std::vector<double> keplerian2(const std::vector<double> &t, const double &P,
                                    const double &K, const double &ecc,

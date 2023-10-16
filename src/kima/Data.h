@@ -57,9 +57,11 @@ class KIMA_API RVData {
   friend class RVFWHMmodel;
   friend class SPLEAFmodel;
   friend class OutlierRVmodel;
+  friend class BINARIESmodel;
+
 
   private:
-    vector<double> t, y, sig;
+    vector<double> t, y, sig, y2, sig2;
     vector<int> obsi;
     vector<vector<double>> actind;
 
@@ -109,6 +111,8 @@ class KIMA_API RVData {
     int dataskip;
     bool datamulti;  // multiple instruments? not sure if needed
     int number_instruments;
+    
+    bool sb2;
 
     /// docs for M0_epoch
     double M0_epoch;
@@ -130,6 +134,10 @@ class KIMA_API RVData {
     const vector<double>& get_y() const { return y; }
     /// Get the array of errors
     const vector<double>& get_sig() const { return sig; }
+    /// Get the array of secondary RVs
+    const vector<double>& get_y2() const { return y2; }
+    /// Get the array of secondary errors
+    const vector<double>& get_sig2() const { return sig2; }
 
     /// Get the mininum (starting) time
     double get_t_min() const { return *min_element(t.begin(), t.end()); }
