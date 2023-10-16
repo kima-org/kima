@@ -1,4 +1,4 @@
-name: pip
+name: 51Peg
 
 on:
   workflow_dispatch:
