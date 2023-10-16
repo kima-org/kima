@@ -112,7 +112,7 @@ class KIMA_API RVData {
     bool datamulti;  // multiple instruments? not sure if needed
     int number_instruments;
     
-    bool sb2;
+    bool sb2 {false};
 
     /// docs for M0_epoch
     double M0_epoch;
