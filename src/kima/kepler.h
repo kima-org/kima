@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <postkepler>
 
 #ifdef __APPLE__
     #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
@@ -61,6 +62,10 @@ namespace brandt
     std::vector<double> keplerian(const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
+                                  const double &M0_epoch);
+    std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch);
 }
 
