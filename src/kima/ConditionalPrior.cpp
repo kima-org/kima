@@ -161,6 +161,77 @@ void RVConditionalPrior::print(std::ostream& out) const
         out<<center<<' '<<width<<' '<<muK<<' ';
 }
 
+/*****************************************************************************/
+
+TRANSITConditionalPrior::TRANSITConditionalPrior()
+{
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1.0, 1000.0);
+    if (!t0prior)
+        t0prior = make_shared<Gaussian>(0.0, 1.0);
+    if (!RPprior)
+        RPprior = make_shared<Uniform>(0.0, 1.0);
+    if (!aprior)
+        aprior = make_shared<Uniform>(1, 10);
+    if (!incprior)
+        incprior = make_shared<Uniform>(0, M_PI);
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!wprior)
+        wprior = make_shared<Uniform>(0, 2*M_PI);
+}
+
+void TRANSITConditionalPrior::set_default_priors(const PHOTdata &data)
+{
+    Pprior = make_shared<LogUniform>(0.1, max(0.2, data.get_timespan()));
+}
+
+
+void TRANSITConditionalPrior::from_prior(RNG& rng)
+{}
+
+double TRANSITConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    return 0.0;
+}
+
+double TRANSITConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+    return Pprior->log_pdf(vec[0]) + 
+           t0prior->log_pdf(vec[1]) + 
+           RPprior->log_pdf(vec[2]) + 
+           aprior->log_pdf(vec[3]) + 
+           incprior->log_pdf(vec[4]) + 
+           eprior->log_pdf(vec[5]) + 
+           wprior->log_pdf(vec[6]);
+}
+
+void TRANSITConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf_inverse(vec[0]);
+    vec[1] = t0prior->cdf_inverse(vec[1]);
+    vec[2] = RPprior->cdf_inverse(vec[2]);
+    vec[3] = aprior->cdf_inverse(vec[3]);
+    vec[4] = incprior->cdf_inverse(vec[4]);
+    vec[5] = eprior->cdf_inverse(vec[5]);
+    vec[6] = wprior->cdf_inverse(vec[6]);
+}
+
+void TRANSITConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf(vec[0]);
+    vec[1] = t0prior->cdf(vec[1]);
+    vec[2] = RPprior->cdf(vec[2]);
+    vec[3] = aprior->cdf(vec[3]);
+    vec[4] = incprior->cdf(vec[4]);
+    vec[5] = eprior->cdf(vec[5]);
+    vec[6] = wprior->cdf(vec[6]);
+}
+
+void TRANSITConditionalPrior::print(std::ostream& out) const
+{}
+
+
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
@@ -187,6 +258,37 @@ void bind_RVConditionalPrior(nb::module_ &m) {
             [](RVConditionalPrior &c) { return c.Pprior; },
             [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
             "Prior for the orbital period(s)");
+    
+    nb::class_<TRANSITConditionalPrior>(m, "TRANSITConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](TRANSITConditionalPrior &c) { return c.Pprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)")
+        .def_prop_rw("t0prior",
+            [](TRANSITConditionalPrior &c) { return c.t0prior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.t0prior = d; },
+            "Prior for the time(s) of inferior conjunction")
+        .def_prop_rw("RPprior",
+            [](TRANSITConditionalPrior &c) { return c.RPprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.RPprior = d; },
+            "Prior for the planet(s) radius")
+        .def_prop_rw("aprior",
+            [](TRANSITConditionalPrior &c) { return c.aprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.aprior = d; },
+            "Prior for the planet(s) semi-major axis")
+        .def_prop_rw("incprior",
+            [](TRANSITConditionalPrior &c) { return c.incprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.incprior = d; },
+            "Prior for the inclinations(s)")
+        .def_prop_rw("eprior",
+            [](TRANSITConditionalPrior &c) { return c.eprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricities(s)")
+        .def_prop_rw("wprior",
+            [](TRANSITConditionalPrior &c) { return c.wprior; },
+            [](TRANSITConditionalPrior &c, distribution &d) { c.wprior = d; },
+            "Prior for the argument(s) of periastron");
 }
 
 // NB_MODULE(ConditionalPrior, m) {

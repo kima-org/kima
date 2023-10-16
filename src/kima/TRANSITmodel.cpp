@@ -1,39 +1,29 @@
-#include "RVmodel.h"
+#include "TRANSITmodel.h"
 
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void RVmodel::initialize_from_data(RVData& data)
+void TRANSITmodel::initialize_from_data(PHOTdata& data)
 {
-    offsets.resize(data.number_instruments - 1);
-    jitters.resize(data.number_instruments);
-    betas.resize(data.number_indicators);
-    individual_offset_prior.resize(data.number_instruments - 1);
-
     // resize RV model vector
     mu.resize(data.N());
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
-    conditional->set_default_priors(data);
+    // conditional->set_default_priors(data);
 }
 
 
 /* set default priors if the user didn't change them */
-void RVmodel::setPriors()  // BUG: should be done by only one thread!
+void TRANSITmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    betaprior = make_prior<Gaussian>(0, 1);
-
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+        Cprior = make_prior<Gaussian>(0, 0.1);
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1*data.get_max_RV_span()), 
-            data.get_max_RV_span()
-        );
+        Jprior = make_prior<Uniform>(0, 2 * data.get_flux_std());
 
     if (trend){
         if (degree == 0)
@@ -46,17 +36,6 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
         if (degree == 3 && !cubic_prior)
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
-    }
-
-    // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
-
-    for (size_t j = 0; j < data.number_instruments - 1; j++)
-    {
-        // if individual_offset_prior is not (re)defined, assume a offsets_prior
-        if (!individual_offset_prior[j])
-            individual_offset_prior[j] = offsets_prior;
     }
 
     if (known_object) { // KO mode!
@@ -73,7 +52,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
 }
 
 
-void RVmodel::from_prior(RNG& rng)
+void TRANSITmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -83,19 +62,8 @@ void RVmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
 
     background = Cprior->generate(rng);
-
-    if(data.datamulti)
-    {
-        for(int i=0; i<offsets.size(); i++)
-            offsets[i] = individual_offset_prior[i]->generate(rng);
-        for(int i=0; i<jitters.size(); i++)
-            jitters[i] = Jprior->generate(rng);
-    }
-    else
-    {
-        extra_sigma = Jprior->generate(rng);
-    }
-
+    
+    extra_sigma = Jprior->generate(rng);
 
     if(trend)
     {
@@ -104,11 +72,6 @@ void RVmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-    if (data.indicator_correlations)
-    {
-        for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
-    }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -136,7 +99,7 @@ void RVmodel::from_prior(RNG& rng)
  * @brief Calculate the full RV model
  * 
 */
-void RVmodel::calculate_mu()
+void TRANSITmodel::calculate_mu()
 {
     size_t N = data.N();
 
@@ -167,26 +130,6 @@ void RVmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
-        {
-            for(size_t j=0; j<offsets.size(); j++)
-            {
-                for(size_t i=0; i<N; i++)
-                {
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-        }
-
-        if(data.indicator_correlations)
-        {
-            for(size_t i=0; i<N; i++)
-            {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * data.actind[j][i];
-            }   
-        }
-
         if (known_object) { // KO mode!
             add_known_object();
         }
@@ -199,26 +142,23 @@ void RVmodel::calculate_mu()
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
-    for(size_t j=0; j<components.size(); j++)
+    double P, t0, Rp, a, inc, ecc, omega;
+    double tmid = data.get_t_middle();
+    for (size_t j = 0; j < components.size(); j++)
     {
-        if(false) //hyperpriors
-            P = exp(components[j][0]);
-        else
-            P = components[j][0];
-
-        K = components[j][1];
-        phi = components[j][2];
-        ecc = components[j][3];
-        omega = components[j][4];
-
-        auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
-            mu[i] += v[i];
+        P = components[j][0];
+        t0 = components[j][1];
+        Rp = components[j][2];
+        a = components[j][3];
+        inc = components[j][4];
+        ecc = components[j][5];
+        omega = components[j][6];
+        // cout << t0 << " " << P << " " << a << " " << inc << " " << ecc << " " << omega << endl;
+        auto ds = rsky(data.t, tmid + t0, P, a, inc, ecc, omega);
+        auto f = quadratic_ld(ds, 0.5, 0.1, Rp);
+        for (size_t i = 0; i < N; i++)
+            mu[i] += f[i];
     }
-
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -228,7 +168,7 @@ void RVmodel::calculate_mu()
 }
 
 
-void RVmodel::remove_known_object()
+void TRANSITmodel::remove_known_object()
 {
     double f, v, ti, Tp;
     for (int j = 0; j < n_known_object; j++) {
@@ -239,7 +179,7 @@ void RVmodel::remove_known_object()
     }
 }
 
-void RVmodel::add_known_object()
+void TRANSITmodel::add_known_object()
 {
     for (int j = 0; j < n_known_object; j++) {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
@@ -249,7 +189,7 @@ void RVmodel::add_known_object()
     }
 }
 
-int RVmodel::is_stable() const
+int TRANSITmodel::is_stable() const
 {
     // Get the components
     const vector< vector<double> >& components = planets.get_components();
@@ -276,13 +216,12 @@ int RVmodel::is_stable() const
 }
 
 
-double RVmodel::perturb(RNG& rng)
+double TRANSITmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto actind = data.get_actind();
     double logH = 0.;
     double tmid = data.get_t_middle();
 
@@ -295,15 +234,7 @@ double RVmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
-        {
-            for(int i=0; i<jitters.size(); i++)
-                Jprior->perturb(jitters[i], rng);
-        }
-        else
-        {
-            Jprior->perturb(extra_sigma, rng);
-        }
+        Jprior->perturb(extra_sigma, rng);
 
         if (studentt)
             nu_prior->perturb(nu, rng);
@@ -335,28 +266,10 @@ double RVmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                }
-            }
-
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] -= betas[j] * actind[j][i];
-                }
-            }
         }
 
         // propose new vsys
         Cprior->perturb(background, rng);
-
-        // propose new instrument offsets
-        if (data.datamulti){
-            for(unsigned j=0; j<offsets.size(); j++){
-                individual_offset_prior[j]->perturb(offsets[j], rng);
-            }
-        }
 
         // propose new slope
         if(trend) {
@@ -365,12 +278,6 @@ double RVmodel::perturb(RNG& rng)
             if (degree == 3) cubic_prior->perturb(cubic, rng);
         }
 
-        // propose new indicator correlations
-        if(data.indicator_correlations){
-            for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
-            }
-        }
 
         for(size_t i=0; i<mu.size(); i++)
         {
@@ -379,17 +286,6 @@ double RVmodel::perturb(RNG& rng)
                 mu[i] += slope * (data.t[i] - tmid) +
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
-            }
-            if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] += betas[j]*actind[j][i];
-                }
             }
         }
     }
@@ -410,12 +306,11 @@ double RVmodel::perturb(RNG& rng)
  * 
  * @return double the log-likelihood
 */
-double RVmodel::log_likelihood() const
+double TRANSITmodel::log_likelihood() const
 {
     size_t N = data.N();
     const auto& y = data.get_y();
     const auto& sig = data.get_sig();
-    const auto& obsi = data.get_obsi();
 
     double logL = 0.;
 
@@ -436,13 +331,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-            }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
 
             logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                     - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -457,13 +346,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-            }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -483,19 +366,13 @@ double RVmodel::log_likelihood() const
 }
 
 
-void RVmodel::print(std::ostream& out) const
+void TRANSITmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
-    {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
-    }
-    else
-        out<<extra_sigma<<'\t';
+    out << extra_sigma << '\t';
 
     if(trend)
     {
@@ -506,18 +383,7 @@ void RVmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
-        for(int j=0; j<offsets.size(); j++){
-            out<<offsets[j]<<'\t';
-        }
-    }
 
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
-        }
-    }
-    
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
@@ -537,18 +403,12 @@ void RVmodel::print(std::ostream& out) const
 }
 
 
-string RVmodel::description() const
+string TRANSITmodel::description() const
 {
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
-    {
-        for(int j=0; j<jitters.size(); j++)
-           desc += "jitter" + std::to_string(j+1) + sep;
-    }
-    else
-        desc += "extra_sigma" + sep;
+    desc += "jitter" + sep;
 
     if(trend)
     {
@@ -558,17 +418,6 @@ string RVmodel::description() const
     }
 
 
-    if (data.datamulti){
-        for(unsigned j=0; j<offsets.size(); j++)
-            desc += "offset" + std::to_string(j+1) + sep;
-    }
-
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
-        }
-    }
-    
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
@@ -590,11 +439,20 @@ string RVmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "P" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "tc" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "Rp" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "a" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "inc" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "ecc" + std::to_string(i) + sep;
+        for (int i = 1; i <= maxpl; i++)
+            desc += "w" + std::to_string(i) + sep;
     }
 
     desc += "staleness" + sep;
@@ -610,7 +468,7 @@ string RVmodel::description() const
  * Save the options of the current model in a INI file.
  * 
 */
-void RVmodel::save_setup() {
+void TRANSITmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -620,14 +478,13 @@ void RVmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "RVmodel" << endl << endl;
+    fout << "model: " << "TRANSITmodel" << endl << endl;
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -639,7 +496,6 @@ void RVmodel::save_setup() {
     fout << "file: " << data.datafile << endl;
     fout << "units: " << data.dataunits << endl;
     fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
 
     fout << "files: ";
     for (auto f: data.datafiles)
@@ -660,8 +516,6 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
-        fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
@@ -670,9 +524,11 @@ void RVmodel::save_setup() {
 
         fout << endl << "[priors.planets]" << endl;
         fout << "Pprior: " << *conditional->Pprior << endl;
-        fout << "Kprior: " << *conditional->Kprior << endl;
+        fout << "t0prior: " << *conditional->t0prior << endl;
+        fout << "RPprior: " << *conditional->RPprior << endl;
+        fout << "aprior: " << *conditional->aprior << endl;
+        fout << "incprior: " << *conditional->incprior << endl;
         fout << "eprior: " << *conditional->eprior << endl;
-        fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
     }
 
@@ -694,86 +550,82 @@ void RVmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
-auto RVMODEL_DOC = R"D(
+auto TRANSITMODEL_DOC = R"D(
 Implements a sum-of-Keplerians model where the number of Keplerians can be free.
 This model assumes white, uncorrelated noise.
 
 Args:
     fix (bool, default=True): whether the number of Keplerians should be fixed
     npmax (int, default=0): maximum number of Keplerians
-    data (RVData): the RV data
+    data (PHOTdata): the photometric data
 )D";
 
-class RVmodel_publicist : public RVmodel
+class TRANSITmodel_publicist : public TRANSITmodel
 {
     public:
-        using RVmodel::trend;
-        using RVmodel::degree;
-        using RVmodel::studentt;
-        using RVmodel::known_object;
-        using RVmodel::n_known_object;
-        using RVmodel::star_mass;
-        using RVmodel::enforce_stability;
+        using TRANSITmodel::trend;
+        using TRANSITmodel::degree;
+        using TRANSITmodel::studentt;
+        using TRANSITmodel::known_object;
+        using TRANSITmodel::n_known_object;
+        using TRANSITmodel::star_mass;
+        using TRANSITmodel::enforce_stability;
 };
 
 
-NB_MODULE(RVmodel, m) {
+NB_MODULE(TRANSITmodel, m) {
     // bind RVConditionalPrior so it can be returned
     bind_RVConditionalPrior(m);
 
-    nb::class_<RVmodel>(m, "RVmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
+    nb::class_<TRANSITmodel>(m, "TRANSITmodel")
+        .def(nb::init<bool&, int&, PHOTdata&>(), "fix"_a, "npmax"_a, "data"_a, TRANSITMODEL_DOC)
         //
-        .def_rw("trend", &RVmodel_publicist::trend,
+        .def_rw("trend", &TRANSITmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
-        .def_rw("degree", &RVmodel_publicist::degree,
+        .def_rw("degree", &TRANSITmodel_publicist::degree,
                 "degree of the polynomial trend")
         //
-        .def_rw("studentt", &RVmodel_publicist::studentt,
+        .def_rw("studentt", &TRANSITmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
         //
-        .def_rw("known_object", &RVmodel_publicist::known_object,
+        .def_rw("known_object", &TRANSITmodel_publicist::known_object,
                 "whether to include (better) known extra Keplerian curve(s)")
-        .def_rw("n_known_object", &RVmodel_publicist::n_known_object,
+        .def_rw("n_known_object", &TRANSITmodel_publicist::n_known_object,
                 "how many known objects")
         //
-        .def_rw("star_mass", &RVmodel_publicist::star_mass,
+        .def_rw("star_mass", &TRANSITmodel_publicist::star_mass,
                 "stellar mass [Msun]")
         //
-        .def_rw("enforce_stability", &RVmodel_publicist::enforce_stability, 
+        .def_rw("enforce_stability", &TRANSITmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
 
         // priors
         .def_prop_rw("Cprior",
-            [](RVmodel &m) { return m.Cprior; },
-            [](RVmodel &m, distribution &d) { m.Cprior = d; },
+            [](TRANSITmodel &m) { return m.Cprior; },
+            [](TRANSITmodel &m, distribution &d) { m.Cprior = d; },
             "Prior for the systemic velocity")
         .def_prop_rw("Jprior",
-            [](RVmodel &m) { return m.Jprior; },
-            [](RVmodel &m, distribution &d) { m.Jprior = d; },
+            [](TRANSITmodel &m) { return m.Jprior; },
+            [](TRANSITmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
         .def_prop_rw("slope_prior",
-            [](RVmodel &m) { return m.slope_prior; },
-            [](RVmodel &m, distribution &d) { m.slope_prior = d; },
+            [](TRANSITmodel &m) { return m.slope_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.slope_prior = d; },
             "Prior for the slope")
         .def_prop_rw("quadr_prior",
-            [](RVmodel &m) { return m.quadr_prior; },
-            [](RVmodel &m, distribution &d) { m.quadr_prior = d; },
+            [](TRANSITmodel &m) { return m.quadr_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.quadr_prior = d; },
             "Prior for the quadratic coefficient of the trend")
         .def_prop_rw("cubic_prior",
-            [](RVmodel &m) { return m.cubic_prior; },
-            [](RVmodel &m, distribution &d) { m.cubic_prior = d; },
+            [](TRANSITmodel &m) { return m.cubic_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
-        .def_prop_rw("offsets_prior",
-            [](RVmodel &m) { return m.offsets_prior; },
-            [](RVmodel &m, distribution &d) { m.offsets_prior = d; },
-            "Common prior for the between-instrument offsets")
         .def_prop_rw("nu_prior",
-            [](RVmodel &m) { return m.nu_prior; },
-            [](RVmodel &m, distribution &d) { m.nu_prior = d; },
+            [](TRANSITmodel &m) { return m.nu_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
         // conditional object
         .def_prop_rw("conditional",
-                     [](RVmodel &m) { return m.get_conditional_prior(); },
-                     [](RVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](TRANSITmodel &m) { return m.get_conditional_prior(); },
+                     [](TRANSITmodel &m, TRANSITConditionalPrior& c) { /* does nothing */ });
 }

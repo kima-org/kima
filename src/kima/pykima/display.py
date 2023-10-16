@@ -1,4 +1,5 @@
 from string import ascii_lowercase
+from copy import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -140,6 +141,7 @@ def make_plot2(res,
                show_timespan=True,
                separate_colors=False,
                return_bins=False,
+               mark_periods=None,
                **kwargs):
     """
     Plot the histogram (or the kde) of the posterior for the orbital period(s).
@@ -238,7 +240,10 @@ def make_plot2(res,
 
             counts, bin_edges = np.histogram(T, bins=bins)
 
-            color = None
+            if separate_colors:
+                color = None
+            else:
+                color = 'C0'
 
             ax.bar(x=bin_edges[:-1],
                    height=counts / res.ESS,
@@ -295,6 +300,9 @@ def make_plot2(res,
 
     if plims is not None:
         ax.set_xlim(plims)
+    
+    if mark_periods is not None:
+        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'r^')
 
     if res.save_plots:
         filename = 'kima-showresults-fig2.png'
@@ -387,14 +395,14 @@ def make_plot3(res,
 
     else:
         if A.size > 1 and A.ptp() > 30:
-            ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
-                       yscale='log', cmap=plt.get_cmap('afmhot_r'))
+            ax1.hexbin(T[T != 0.0], A[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
+                       yscale='log', cmap=plt.get_cmap('coolwarm_r'))
         else:
-            ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
-                       yscale='linear', cmap=plt.get_cmap('afmhot_r'))
+            ax1.hexbin(T[T != 0.0], A[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
+                       yscale='linear', cmap=plt.get_cmap('coolwarm_r'))
 
-        ax2.hexbin(T, E, gridsize=gridsize, bins='log', xscale='log',
-                   cmap=plt.get_cmap('afmhot_r'))
+        ax2.hexbin(T[T != 0.0], E[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
+                   cmap=plt.get_cmap('coolwarm_r'))
 
     if res.removed_crossing:
         if points:
@@ -447,7 +455,7 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, fig=None,
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
     the samples with Np Keplerians.
     """
-    if not res.GPmodel:
+    if not res.has_gp:
         print('Model does not have GP! make_plot4() doing nothing...')
         return
 
@@ -522,7 +530,7 @@ def make_plot4_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
     the samples with Np Keplerians. 
     """
-    if not res.GPmodel:
+    if not res.has_gp:
         print('Model does not have GP! make_plot4() doing nothing...')
         return
 
@@ -616,7 +624,7 @@ def make_plot4_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
 def make_plot5(res, include_jitters=False, show=True, ranges=None):
     """ Corner plot for the GP hyperparameters """
 
-    if not res.GPmodel:
+    if not res.has_gp:
         print('Model does not have GP! make_plot5() doing nothing...')
         return
 
@@ -739,6 +747,43 @@ def make_plot5(res, include_jitters=False, show=True, ranges=None):
 
 
 def corner_all(res):
+
+
+    post = np.c_[
+        res.posteriors.jitter,
+        res.posteriors.P, res.posteriors.K, res.posteriors.φ, res.posteriors.e, res.posteriors.ω
+    ]
+    if res.multi:
+        post = np.c_[post, res.posteriors.offset]
+    
+    vsys = res.posteriors.vsys.copy()
+    mean_vsys = int(res.posteriors.vsys.mean())
+    subtracted_mean = False
+    if abs(mean_vsys) > 100:
+        vsys -= mean_vsys
+        subtracted_mean = True
+    post = np.c_[post, vsys]
+
+    names = copy(res.parameters)
+    if res.multi:
+        for i, inst in enumerate(res.instruments, start=1):
+            names[names.index(f'jitter{i}')] = f'jitter {inst}'
+
+    if subtracted_mean:
+        names[names.index('vsys')] = f'vsys - {mean_vsys}'
+
+
+    hkw = dict(density=True)
+    fig = plt.figure(figsize=(10, 10))#, constrained_layout=True)
+    corner(post, fig=fig, color='k', hist_kwargs=hkw, labels=names, show_titles=True,
+           plot_density=False, plot_contours=False, plot_datapoints=True)
+
+    axs = np.array(fig.axes)
+    for name, ax in zip(names, axs[::post.shape[1] + 1]): # diagonal axes
+        ax.set_title(ax.get_title().replace(name + ' = ', ''))
+
+    return fig
+
     n = max(10000, res.ESS)
 
     values = res.posterior_sample[:, res.indices['jitter']]
@@ -1669,7 +1714,7 @@ def phase_plot(res,
         max(7, 7 + 1.5 * (nplanets - 2)),
         max(4.8, 4.8 + 1 * (nplanets - 3))
     ]
-    if res.GPmodel:
+    if res.has_gp:
         fs[1] += 3
 
     fig = plt.figure(constrained_layout=True, figsize=fs)
@@ -1686,7 +1731,7 @@ def phase_plot(res,
         10: 4
     }[nplanets]
 
-    if res.GPmodel:
+    if res.has_gp:
         nrows += 1
 
     ncols = nplanets if nplanets <= 3 else 3
@@ -1844,7 +1889,7 @@ def phase_plot(res,
 
     ## GP panel
     ###########
-    if res.GPmodel:
+    if res.has_gp:
         axGP = fig.add_subplot(gs[1, :end])
         _, y_offset = plot_data(res, ax=axGP, ignore_y2=True, legend=False,
                                 time_offset=time_offset, **ekwargs)
@@ -1966,7 +2011,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         M0_epoch -= 24e5
 
     tt = res._get_tt(ntt, over)
-    if res.GPmodel:
+    if res.has_gp:
         ttGP = res._get_ttGP()
 
     if t.size > 100:
@@ -2046,7 +2091,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         ax.plot(tt, (stoc_model + model).T - y_offset, color=color,
                 alpha=alpha, zorder=-1)
 
-        if res.GPmodel:
+        if res.has_gp:
             ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc,
                     alpha=alpha)
 
@@ -2121,7 +2166,7 @@ def plot_random_samples_rvfwhm(res,
     tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(),
                      ntt + int(100 * over))
 
-    if res.GPmodel:
+    if res.has_gp:
         # let's be more reasonable for the number of GP prediction points
         #! OLD: linearly spaced points (lots of useless points within gaps)
         #! ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
@@ -2226,7 +2271,7 @@ def plot_random_samples_rvfwhm(res,
                 ax1.plot(tt, KOpl - y_offset + (iko + 1) * res.data.y.ptp(),
                          color='g', alpha=alpha)
 
-        if res.GPmodel:
+        if res.has_gp:
             kw = dict(color='plum', alpha=alpha, zorder=1)
             if overlap:
                 v = stoc_model[0] + offset_model[::2] - y_offset
@@ -2383,7 +2428,7 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
         M0_epoch -= 24e5
 
     tt = res._get_tt(ntt, over)
-    if res.GPmodel:
+    if res.has_gp:
         ttGP = res._get_ttGP()
 
     # if t.size > 100:
@@ -2449,7 +2494,7 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
         #         offset_model = res.burst_model(sample, tt, offset_model)
 
         ax.plot(tt, flux - y_offset, color=cc, alpha=alpha, zorder=10)
-        #     if res.GPmodel:
+        #     if res.has_gp:
         #         ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc,
         #                 alpha=alpha)
 

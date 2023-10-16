@@ -7,6 +7,7 @@
 #include "ConditionalPrior.h"
 #include "utils.h"
 #include "kepler.h"
+#include "transits.h"
 #include "AMDstability.h"
 
 using namespace std;
@@ -20,7 +21,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API RVmodel
+class KIMA_API TRANSITmodel
 {
     protected:
         /// whether the model includes a polynomial trend
@@ -43,7 +44,7 @@ class KIMA_API RVmodel
         bool enforce_stability = false;
 
     private:
-        RVData data;
+        PHOTdata data;
 
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
@@ -51,22 +52,12 @@ class KIMA_API RVmodel
         /// Maximum number of planets (by default 1)
         int npmax {1};
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<TRANSITConditionalPrior> planets =
+            DNest4::RJObject<TRANSITConditionalPrior>(7, npmax, fix, TRANSITConditionalPrior());
 
         double background;
-
-
-        std::vector<double> offsets; // between instruments
-            //   std::vector<double>(0, data.number_instruments - 1);
-        std::vector<double> jitters; // for each instrument
-            //   std::vector<double>(data.number_instruments);
-
-        std::vector<double> betas; // "slopes" for each indicator
-            //   std::vector<double>(data.number_indicators);
-
-        double slope, quadr=0.0, cubic=0.0;
         double extra_sigma;
+        double slope, quadr=0.0, cubic=0.0;
         double nu;
 
         // Parameters for the known object, if set
@@ -78,7 +69,7 @@ class KIMA_API RVmodel
         std::vector<double> KO_w;
 
         // The signal
-        std::vector<double> mu;
+        std::vector<double> mu; // = std::vector<double>(data.N());
 
         void calculate_mu();
         void add_known_object();
@@ -90,12 +81,12 @@ class KIMA_API RVmodel
 
 
     public:
-        RVmodel() {};
-        RVmodel(bool fix, int npmax, RVData& data) : data(data), fix(fix), npmax(npmax) {
+        TRANSITmodel() {};
+        TRANSITmodel(bool fix, int npmax, PHOTdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(PHOTdata& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -109,12 +100,6 @@ class KIMA_API RVmodel
         distribution quadr_prior;
         /// Prior for the cubic coefficient of the trend
         distribution cubic_prior;
-        /// (Common) prior for the between-instrument offsets.
-        distribution offsets_prior;
-        std::vector<distribution> individual_offset_prior;
-        // { (size_t) data.number_instruments - 1 };
-        /// no doc.
-        distribution betaprior;
 
         // priors for KO mode!
         /// Prior for the KO orbital period(s)
@@ -131,11 +116,14 @@ class KIMA_API RVmodel
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;
 
-        RVConditionalPrior* get_conditional_prior() {
+        // /// @brief an alias for RVData::get_instance()
+        // static RVData& get_data() { return RVData::get_instance(); }
+
+        TRANSITConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const RVConditionalPrior &conditional) {
-            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
+        void set_conditional_prior(const TRANSITConditionalPrior &conditional) {
+            planets = DNest4::RJObject<TRANSITConditionalPrior>(7, npmax, fix, conditional);
         }
 
         /// @brief Generate a point from the prior.

@@ -1,6 +1,10 @@
 #include "kepler.h"
 
 const double TWO_PI = M_PI * 2;
+const double PI_D_2 = M_PI / 2;
+
+const double ONE_D_24 = 1.0 / 24.0;
+const double ONE_D_240 = 1.0 / 240.0;
 
 // modulo 2pi
 double mod2pi(const double &angle) {
@@ -699,36 +703,87 @@ namespace brandt
                                   const double &w, const double &M0,
                                   const double &M0_epoch)
     {
-      // allocate RVs
-      std::vector<double> rv(t.size());
+        // allocate RVs
+        std::vector<double> rv(t.size());
 
-      // mean motion, once per orbit
-      double n = 2. * M_PI / P;
-      // sin and cos of argument of periastron, once per orbit
-      double sinw, cosw;
-      sincos(w, &sinw, &cosw);
-      // ecentricity factor for g, once per orbit
-      double g_e = sqrt((1 + ecc) / (1 - ecc));
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
 
-      // brandt solver calculations, once per orbit
-      double bounds[13];
-      double EA_tab[6 * 13];
-      get_bounds(bounds, EA_tab, ecc);
+        // ecentricity factor for g, once per orbit
+        double g_e = sqrt((1 + ecc) / (1 - ecc));
 
-      for (size_t i = 0; i < t.size(); i++) {
-        double sinE, cosE;
-        double M = n * (t[i] - M0_epoch) - M0;
-        solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-        double g = g_e * ((1 - cosE) / sinE);
-        double g2 = g * g;
-        rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) -
-                     sinw * ((2 * g) / (1 + g2)));
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        // std::cout << std::endl;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            double sinE, cosE;
+            double M = n * (t[i] - M0_epoch) - M0;
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            double g = g_e * ((1 - cosE) / sinE);
+            double g2 = g * g;
+            // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
+            // std::cout << '\t' << g << '\t' << g2 << std::endl;
+            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
       }
 
       return rv;
     }
 
+    std::vector<double> keplerian2(const std::vector<double> &t, const double &P,
+                                   const double &K, const double &ecc,
+                                   const double &w, const double &M0,
+                                   const double &M0_epoch)
+    {
+        // allocate RVs
+        std::vector<double> rv(t.size());
 
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
+
+        // ecentricity factors, once per orbit
+        double sqrt1pe = sqrt(1.0 + ecc);
+        double sqrt1me = sqrt(1.0 - ecc);
+        double ecc_cosw = ecc * cosw;
+        double g_e = sqrt1pe / sqrt1me;
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        // std::cout << std::endl;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            double sinE, cosE;
+            double tanEd2;
+            double M = n * (t[i] - M0_epoch) - M0;
+            double E = solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            // if (fabs(sinE) > 1.5e-2)
+            //     tanEd2 = (1 - cosE) / sinE;
+            if (sinE != 0.0)
+                tanEd2 = (1 - cosE) / sinE;
+            else if (fabs(E) < PI_D_2)
+                tanEd2 = E * (0.5 + E*E * (ONE_D_24 + ONE_D_240 * E*E));
+            else
+                tanEd2 = 1e100;
+            
+            double ratio = g_e * tanEd2;
+            double fac = 2.0 / (1.0 + ratio*ratio);
+            rv[i] = K * (cosw*(fac-1.0) - sinw*ratio*fac + ecc_cosw);
+        }
+
+        return rv;
+    }
 
 }
 
@@ -1003,7 +1058,41 @@ namespace nb = nanobind;
 using namespace nb::literals;
 
 NB_MODULE(kepler, m) {
-    m.def("keplerian", &brandt::keplerian);
+    m.def("murison_solver", 
+          [](double M, double ecc) { return murison::solver(M, ecc); },
+          "M"_a, "ecc"_a);
+    m.def("murison_solver",
+          [](nb::ndarray<double> M, double ecc) {
+            std::vector<double> _M(M.data(), M.data() + M.size());
+            return murison::solver(_M, ecc);
+          }, 
+          "M"_a, "ecc"_a);
+
+    m.def("nijenhuis_solver", 
+          [](double M, double ecc) { return nijenhuis::solver(M, ecc); },
+          "M"_a, "ecc"_a);
+    m.def("nijenhuis_solver",
+          [](nb::ndarray<double> M, double ecc) {
+            std::vector<double> _M(M.data(), M.data() + M.size());
+            return nijenhuis::solver(_M, ecc);
+          }, 
+          "M"_a, "ecc"_a);
+
+    m.def("brandt_solver", [](double M, double ecc) { double sinE, cosE; return brandt::solver(M, ecc, &sinE, &cosE); }, "M"_a, "ecc"_a);
+    m.def("brandt_solver",
+          [](nb::ndarray<double> M, double ecc) {
+            std::vector<double> _M(M.data(), M.data() + M.size());
+            return brandt::solver(_M, ecc);
+          }, 
+          "M"_a, "ecc"_a);
+
+    m.def("contour_solver", [](double M, double ecc) { return contour::solver(M, ecc); }, "M"_a, "ecc"_a);
+
+
+    m.def("keplerian", &brandt::keplerian,
+          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
+    m.def("keplerian2", &brandt::keplerian2,
+          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
         //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
         //      const double &P, const double &K, const double &ecc,
         //      const double &w, const double &M0, const double &M0_epoch) 

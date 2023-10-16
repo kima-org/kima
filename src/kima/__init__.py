@@ -1,9 +1,11 @@
 
-from .Data import RVData, glob
+from .Data import RVData, PHOTdata, glob
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 from .RVFWHMmodel import RVFWHMmodel
 from .SPLEAFmodel import SPLEAFmodel
+from .TRANSITmodel import TRANSITmodel
+from .OutlierRVmodel import OutlierRVmodel
 
 from .Sampler import run
 

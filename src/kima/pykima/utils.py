@@ -638,18 +638,21 @@ def read_big_file(filename):
     try:
         import pandas as pd
         names = open(filename).readline().strip().replace('#', '').split()
-        data = pd.read_csv(filename,
-                           delim_whitespace=True,
-                           comment='#',
-                           names=names,
-                           dtype=float).values
+        try:
+            data = pd.read_csv(filename,
+                            delim_whitespace=True,
+                            comment='#',
+                            names=names,
+                            dtype=float).values
+        except pd.errors.ParserError:
+            raise ValueError
 
         # pandas.read_csv has problems with 1-line files
         if data.shape[0] == 0:
             data = np.genfromtxt(filename)
         return data
 
-    except ImportError:  # no pandas, use np.genfromtxt
+    except (ImportError, ValueError):  # no pandas or some other issue, use np.genfromtxt
         return np.genfromtxt(filename)
 
 

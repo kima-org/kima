@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <memory>
+#include <exception>
+
 #include "DNest4.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
@@ -177,6 +179,11 @@ class KIMA_API RVFWHMmodel
         distribution alpha_fwhm_prior;
         /// Same as $\eta_5$ but for the FWHM
         distribution eta5_fwhm_prior;
+
+
+        RVConditionalPrior* get_conditional_prior() {
+            return planets.get_conditional_prior();
+        }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <exception>
 
 #include "loadtxt.hpp"
 
@@ -55,7 +56,9 @@ class KIMA_API RVData {
   friend class GPmodel;
   friend class RVFWHMmodel;
   friend class SPLEAFmodel;
+  friend class OutlierRVmodel;
   friend class BINARIESmodel;
+
 
   private:
     vector<double> t, y, sig, y2, sig2;
@@ -69,13 +72,13 @@ class KIMA_API RVData {
     // RVData(const string filename, int skip=0) { load(filename, "ms", skip); }
     // 
     // RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
-    RVData(const vector<string> filenames, const string& units="ms", int skip=0, 
+    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
       load_multi(filenames, units, skip, delimiter, indicators);
     }
     // 
-    RVData(const string filename, const string& units="ms", int skip=0, 
+    RVData(const string& filename, const string& units="ms", int skip=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
       load(filename, units, skip, delimiter, indicators);
@@ -192,16 +195,75 @@ class KIMA_API RVData {
   //   static RVData& get_instance() { return instance; }
 };
 
-// template <class... Args>
-// void load(Args&&... args)
-// {
-//     RVData::get_instance().load(args...);
-// }
-
-// template <class... Args>
-// void load_multi(Args&&... args)
-// {
-//     RVData::get_instance().load_multi(args...);
-// }
 
 
+
+class KIMA_API PHOTdata {
+
+  friend class TRANSITmodel;
+
+  private:
+    vector<double> t, y, sig;
+    // vector<int> obsi;
+    // vector<vector<double>> actind;
+
+  public:
+    PHOTdata();
+    PHOTdata(const string& filename, const string& units="ms", int skip=0, const string& delimiter=" ")
+    {
+      load(filename, units, skip, delimiter);
+    }
+
+    friend ostream& operator<<(ostream& os, const PHOTdata& d);
+
+    // to read data from one file, one instrument
+    void load(const string filename, const string units, int skip=0, 
+              const string delimiter=" ");
+
+    string datafile;
+    vector<string> datafiles;
+    string dataunits;
+    int dataskip;
+
+    /// docs for M0_epoch
+    double M0_epoch;
+
+    /// Get the total number of RV points
+    int N() const { return t.size(); }
+
+    /// Get the array of times
+    const vector<double>& get_t() const { return t; }
+    /// Get the array of RVs
+    const vector<double>& get_y() const { return y; }
+    /// Get the array of errors
+    const vector<double>& get_sig() const { return sig; }
+
+    /// Get the mininum (starting) time
+    double get_t_min() const { return *min_element(t.begin(), t.end()); }
+    /// Get the maximum (ending) time
+    double get_t_max() const { return *max_element(t.begin(), t.end()); }
+    /// Get the timespan
+    double get_timespan() const { return get_t_max() - get_t_min(); }
+    double get_t_span() const { return get_t_max() - get_t_min(); }
+    /// Get the middle time
+    double get_t_middle() const { return get_t_min() + 0.5 * get_timespan(); }
+
+    /// Get the mininum flux
+    double get_flux_min() const { return *min_element(y.begin(), y.end()); }
+    /// Get the maximum flux
+    double get_flux_max() const { return *max_element(y.begin(), y.end()); }
+    /// Get the flux span (peak-to-peak)
+    double get_flux_span() const { return get_flux_max() - get_flux_min(); };
+    /// Get the mean of the fluxs
+    double get_flux_mean() const;
+    /// Get the variance of the fluxs
+    double get_flux_var() const;
+    /// Get the standard deviation of the fluxs
+    double get_flux_std() const { return sqrt(get_flux_var()); }
+
+    /// Get the maximum slope allowed by the data
+    double topslope() const;
+    /// Order of magnitude of trend coefficient (of degree) given the data
+    int get_trend_magnitude(int degree) const;
+
+};
