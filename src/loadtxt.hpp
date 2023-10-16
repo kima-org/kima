@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 #include <map>
+#include <exception>
 
 using namespace std;
 
@@ -26,10 +27,16 @@ struct loadtxt {
 
     vector<vector<double>> operator()()
     {
+        if (_fname.empty()) {
+            string msg = "loadtxt: filename is empty";
+            throw invalid_argument(msg);
+        }
+
         ifstream infile( _fname );
+
         if (infile.fail()) {
-            cerr << "Could not read file (" << _fname << ")!\n";
-            exit(1);
+            string msg = "loadtxt: could not read file (" + _fname + ")!";
+            throw runtime_error(msg);
         }
         
         // ignore first `skiprows` lines
