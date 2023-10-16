@@ -68,8 +68,54 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 
 		void print(std::ostream& out) const;
 		static const int weight_parameter = 1;
-
 };
+
+
+
+class TRANSITConditionalPrior:public DNest4::ConditionalPrior
+{
+	private:
+		double perturb_hyperparameters(DNest4::RNG& rng);
+
+	public:
+		TRANSITConditionalPrior();
+
+		void set_default_priors(const PHOTdata &data);
+
+		// priors for all planet parameters
+		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+		
+		/// Prior for the orbital periods.
+		distribution Pprior;
+		/// Prior for the time of inferior conjunction
+		distribution t0prior;
+		/// Prior for the planet radius (in units of the stellar radius)
+		distribution RPprior;
+		/// Prior for the semi-major axis (in units of the stellar radius)
+		distribution aprior;
+		/// Prior for the inclination
+		distribution incprior;
+		/// Prior for the eccentricities.
+		distribution eprior;
+		/// Prior for the argument of periastron
+		distribution wprior;
+
+		/// Generate a point from the prior
+		void from_prior(DNest4::RNG& rng);
+		/// Get the log prob density at a position `vec`
+		double log_pdf(const std::vector<double>& vec) const;
+		/// Get parameter sample from a uniform sample (CDF)
+		void from_uniform(std::vector<double>& vec) const;
+		/// Get uniform sample from a parameter sample (inverse CDF)
+		void to_uniform(std::vector<double>& vec) const;
+
+		void print(std::ostream& out) const;
+		static const int weight_parameter = 1;
+};
+
+
+
+
 
 
 void bind_RVConditionalPrior(nb::module_ &m);

@@ -53,6 +53,10 @@ nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC
                     src/kima/OutlierRVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
+nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC
+                    src/kima/TRANSITmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/kepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
+
 nanobind_add_module(GPmodel STABLE_ABI NB_STATIC
                     src/kima/GPmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
@@ -71,25 +75,28 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/run.cpp
                     src/kima/RVmodel.cpp
                     src/kima/OutlierRVmodel.cpp
+                    src/kima/TRANSITmodel.cpp
                     src/kima/GPmodel.cpp
                     src/kima/RVFWHMmodel.cpp
                     src/kima/SPLEAFmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC 
                     src/kima/kepler.cpp)
-
 target_compile_features(kepler PRIVATE cxx_std_17)
 
+nanobind_add_module(transits STABLE_ABI NB_STATIC 
+                    src/kima/transits.cpp src/kima/kepler.cpp)
+target_compile_features(transits PRIVATE cxx_std_17)
 
 
 # add loadtxt path to includes
 set(INCLUDES src/vendor/cpp-loadtxt/src ${DNEST4_PATH})
 
 # compilation settings for each module
-foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel)
+foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -141,7 +148,7 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel GPmodel RVFWHMmodel SPLEAFmodel)
+foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel SPLEAFmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
