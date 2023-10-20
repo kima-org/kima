@@ -58,6 +58,11 @@ RVData::RVData() {};
             // exit(1);
         }
 
+        if (filename.size() == 1) {
+            std::string msg = "kima: RVData: filename with one character is probably an error";
+            throw std::runtime_error(msg);
+        }
+
         auto data = loadtxt(filename)
                         .skiprows(skip)
                         .delimiter(delimiter)();
