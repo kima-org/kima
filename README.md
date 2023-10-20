@@ -1,5 +1,5 @@
 <p align="center">
-<img src="http://www.kima.science/assets/img/logo.png" 
+<img src="docs/assets/logo_transparent.png" 
      width="200" alt="Logo created by Solène Ulmer-Moll">
 
 <p align="center">
