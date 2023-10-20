@@ -53,6 +53,5 @@ def test_RVFWHMmodel():
 
 def test_distributions():
     from kima import distributions
-    from kima.distributions import Gaussian, Uniform
-    u = Uniform()
-    # print(u)
+    from kima.distributions import Gaussian, Uniform, Fixed
+    u = Uniform(0, 1)
