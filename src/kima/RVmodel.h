@@ -31,11 +31,6 @@ class KIMA_API RVmodel
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
     
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        /// how many known objects
-        int n_known_object {0};
-
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
 
@@ -116,17 +111,29 @@ class KIMA_API RVmodel
         /// no doc.
         distribution betaprior;
 
-        // priors for KO mode!
+        /* KO mode! */
+
+        /// include (better) known extra Keplerian curve(s)?
+        bool known_object {false};
+        bool get_known_object() { return known_object; }
+
+        /// how many known objects
+        size_t n_known_object {0};
+        size_t get_n_known_object() { return n_known_object; }
+
+        void set_known_object(size_t known_object);
+
         /// Prior for the KO orbital period(s)
-        std::vector<distribution> KO_Pprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Pprior;
         /// Prior for the KO semi-amplitude(s)
-        std::vector<distribution> KO_Kprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Kprior;
         /// Prior for the KO eccentricity(ies)
-        std::vector<distribution> KO_eprior {(size_t) n_known_object};
+        std::vector<distribution> KO_eprior;
         /// Prior for the KO mean anomaly(ies)
-        std::vector<distribution> KO_phiprior {(size_t) n_known_object};
+        std::vector<distribution> KO_phiprior;
         /// Prior for the KO argument(s) of pericenter
-        std::vector<distribution> KO_wprior {(size_t) n_known_object};
+        std::vector<distribution> KO_wprior;
+
 
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;

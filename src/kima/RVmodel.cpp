@@ -21,6 +21,18 @@ void RVmodel::initialize_from_data(RVData& data)
 }
 
 
+void RVmodel::set_known_object(size_t n)
+{
+    known_object = true;
+    n_known_object = n;
+
+    KO_Pprior.resize(n);
+    KO_Kprior.resize(n);
+    KO_eprior.resize(n);
+    KO_phiprior.resize(n);
+    KO_wprior.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -60,15 +72,20 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     if (known_object) { // KO mode!
-        // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
-        for (int i = 0; i < n_known_object; i++){
+        for (size_t i = 0; i < n_known_object; i++)
+        {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior)");
+            {
+                std::string msg = "When known_object=true, must set priors for each of KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
+                throw std::logic_error(msg);
+            }
         }
     }
 
-    if (studentt)
-        nu_prior = make_prior<LogUniform>(2, 1000);
+    if (studentt) {
+        if (!nu_prior)
+            nu_prior = make_prior<LogUniform>(2, 1000);
+    }
 
 }
 
@@ -699,9 +716,12 @@ Implements a sum-of-Keplerians model where the number of Keplerians can be free.
 This model assumes white, uncorrelated noise.
 
 Args:
-    fix (bool, default=True): whether the number of Keplerians should be fixed
-    npmax (int, default=0): maximum number of Keplerians
-    data (RVData): the RV data
+    fix (bool, default=True):
+        whether the number of Keplerians should be fixed
+    npmax (int, default=0):
+        maximum number of Keplerians
+    data (RVData):
+        the RV data
 )D";
 
 class RVmodel_publicist : public RVmodel
@@ -710,8 +730,6 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::trend;
         using RVmodel::degree;
         using RVmodel::studentt;
-        using RVmodel::known_object;
-        using RVmodel::n_known_object;
         using RVmodel::star_mass;
         using RVmodel::enforce_stability;
 };
@@ -728,18 +746,20 @@ NB_MODULE(RVmodel, m) {
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &RVmodel_publicist::degree,
                 "degree of the polynomial trend")
-        //
+
         .def_rw("studentt", &RVmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
-        //
-        .def_rw("known_object", &RVmodel_publicist::known_object,
-                "whether to include (better) known extra Keplerian curve(s)")
-        .def_rw("n_known_object", &RVmodel_publicist::n_known_object,
-                "how many known objects")
+
+        // KO mode
+        .def("set_known_object", &RVmodel::set_known_object)
+        .def_prop_ro("known_object", [](RVmodel &m) { return m.get_known_object(); },
+                     "whether the model includes (better) known extra Keplerian curve(s)")
+        .def_prop_ro("n_known_object", [](RVmodel &m) { return m.get_n_known_object(); },
+                     "how many known objects")
+
         //
         .def_rw("star_mass", &RVmodel_publicist::star_mass,
                 "stellar mass [Msun]")
-        //
         .def_rw("enforce_stability", &RVmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
 
@@ -772,6 +792,25 @@ NB_MODULE(RVmodel, m) {
             [](RVmodel &m) { return m.nu_prior; },
             [](RVmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
+
+        // known object priors
+        // ? should these setters check if known_object is true?
+        .def_prop_rw("KO_Pprior",
+                     [](RVmodel &m) { return m.KO_Pprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; })
+        .def_prop_rw("KO_Kprior",
+                     [](RVmodel &m) { return m.KO_Kprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; })
+        .def_prop_rw("KO_eprior",
+                     [](RVmodel &m) { return m.KO_eprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; })
+        .def_prop_rw("KO_wprior",
+                     [](RVmodel &m) { return m.KO_wprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; })
+        .def_prop_rw("KO_phiprior",
+                     [](RVmodel &m) { return m.KO_phiprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; })
+
         // conditional object
         .def_prop_rw("conditional",
                      [](RVmodel &m) { return m.get_conditional_prior(); },
