@@ -84,6 +84,11 @@ struct loadtxt {
         infile.close();
 
         int nlines = _filedata.size();
+
+        // only read _max_rows of content
+        if (_max_rows != 0)
+            nlines = min(nlines, _max_rows);
+
         int ncols = _filedata[0].size();
 
         vector<int> cols;
@@ -129,7 +134,7 @@ struct loadtxt {
         string _delimiter = " ";
         int _skiprows = 0;
         vector<int> _usecols;
-        int _max_rows;
+        int _max_rows = 0;
         vector<vector<double>> _filedata;
 };
 
