@@ -695,12 +695,12 @@ NB_MODULE(Data, m) {
     // 
     nb::class_<RVData>(m, "RVData", "docs")
         // constructors
-        .def(nb::init<const vector<string>&, const string&, int, const string&, const vector<string>&>(),
-             "filenames"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const vector<string>&, const string&,  int,        int,            const string&,     const vector<string>&>(),
+                      "filenames"_a,         "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string&, const string&, int, const string&, const vector<string>&>(),
-             "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const string&, const string&,  int,        int,            const string&,     const vector<string>&>(),
+                      "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
 
         // properties
