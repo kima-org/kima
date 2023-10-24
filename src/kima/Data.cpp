@@ -49,7 +49,7 @@ RVData::RVData() {};
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      * @param indicators
      */
-    void RVData::load(const string filename, const string units, int skip,
+    void RVData::load(const string filename, const string units, int skip, int max_rows,
                       const string delimiter, const vector<string>& indicators)
     {
         if (filename.empty()) {
@@ -65,6 +65,7 @@ RVData::RVData() {};
 
         auto data = loadtxt(filename)
                         .skiprows(skip)
+                        .max_rows(max_rows)
                         .delimiter(delimiter)();
 
         if (data.size() < 3) {
@@ -160,12 +161,13 @@ RVData::RVData() {};
      * @param units      units of the RVs and errors, either "kms" or "ms"
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      */
-    void RVData::load_multi(const string filename, const string units, int skip,
+    void RVData::load_multi(const string filename, const string units, int skip, int max_rows,
                             const string delimiter, const vector<string> &indicators)
     {
 
         auto data = loadtxt(filename)
                         .skiprows(skip)
+                        .max_rows(max_rows)
                         .delimiter(delimiter)();
 
         if (data.size() < 4) {
@@ -284,7 +286,7 @@ RVData::RVData() {};
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      * @param indicators
      */
-    void RVData::load_multi(vector<string> filenames, const string units, int skip,
+    void RVData::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
                             const string delimiter, const vector<string>& indicators)
     {
         t.clear();
@@ -715,7 +717,7 @@ NB_MODULE(Data, m) {
         .def("get_timespan", &RVData::get_timespan)
         .def("topslope", &RVData::topslope)
         // ...
-        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "delimiter"_a, "indicators"_a,
+        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
              R"D(
 Load RV data from a tab/space separated file with columns
