@@ -51,9 +51,9 @@ class Term
 
     protected:
         bool _linked = false;
-        Cov* _cov;
 
     public:
+        Cov* _cov;
         size_t _b = 0;
         size_t _r = 0;
         size_t _offset = 0;
@@ -74,6 +74,10 @@ class Term
             _offset = offset;
         }
 
+        void _relink(Cov &cov) { _cov = &cov; }
+
+        // void _reset_cov();
+
         virtual bool is_linked() { return _linked; }
 
         virtual void _compute() {};
@@ -90,12 +94,14 @@ class Term
 class Noise : public Term {
 
     public:
+        Noise(): Term(0, 0) {};
         Noise(size_t b) : Term(b, 0) {};
 };
 
 class Kernel : public Term {
 
     public:
+        Kernel(): Term(0, 0) {};
         Kernel(size_t r) : Term(0, r) {};
 };
 
@@ -108,7 +114,7 @@ class Cov
     friend class Term;
     friend class Noise;
     friend class Kernel;
-    // friend class Error;
+    friend class Error;
     friend class Jitter;
     friend class ExponentialKernel;
     friend class QuasiperiodicKernel;
@@ -126,13 +132,10 @@ class Cov
         size_t n;
         size_t r;
         VectorXd dt;
-        VectorXl b, offsetrow;
+        VectorXl b, offsetrow;  // long
         VectorXd A, D;
-        // VectorXd _grad_A, _grad_B;
         MatrixXd U, V, W, phi;
         MatrixXd _dU, _dV;
-        // MatrixXd _grad_U, _grad_V, _grad_phi;
-        // MatrixXd _grad_dU, _grad_dV;
         VectorXd F, G;
         VectorXd _S, _Z;
         VectorXd _f_solveL;
@@ -143,14 +146,21 @@ class Cov
 
     public:
         Cov() {};
-        Cov(const VectorXd &t, const VectorXd &yerr, Term& gp);
+        Cov(const VectorXd &t, const VectorXd &yerr, size_t _b, size_t _r);
         // Cov(const VectorXd &t, Term& err, Term& jit, Term& gp);
         // template <class... Args> 
         // Cov(const VectorXd &t, Args... terms);
 
+        void link(Term& gp)
+        {
+            gp._link(*this, 0);
+            gp._compute();
+            compute_cholesky();
+            terms.push_back(&gp);
+        }
 
         void compute_cholesky() {
-            assert( (n == A.size()) && "A has the right dimensions");
+            assert( (n == A.size()) && "Cov:compute_cholesky - A has the right dimensions");
             spleaf_cholesky(n, r, offsetrow.data(), b.data(),
                             A.data(), U.data(), V.data(), phi.data(), F.data(),
                             D.data(), W.data(), G.data(), _S.data(), _Z.data());
@@ -172,24 +182,55 @@ class Cov
 
         double chi2(VectorXd &y)
         {
+            assert( (n == y.size()) && "Cov:chi2 - y has the right dimensions");
             VectorXd x = solveL(y);
             return (x.array().square() / D.array()).sum();
         }
 
         double loglike(VectorXd &y)
         {
+            assert( (n == y.size()) && "Cov:loglike - y has the right dimensions");
             return -0.5 * (chi2(y) + logdet() + n * log(2.0 * M_PI));
         }
 
+        void reset()
+        {
+            A.setConstant(0.0);
+            A.array() += yerr.array().square();
+            F.setConstant(0.0);
+            for (Term* term : terms)
+                term->_relink(*this);
+        }
+
         void generate(DNest4::RNG& rng) {
+            assert( (terms.size() >= 1) && "Cov.terms has size >= 1");
+            assert( (n == A.size()) && "Cov:generate - A has the right dimensions");
+
             for (Term* term : terms)
                 term->_generate(rng);
+            
+            reset();
+
+            // recompute
+            for (Term* term : terms)
+                term->_compute();
+
+            // redo cholesky
+            compute_cholesky();
         }
 
         void perturb(DNest4::RNG& rng) {
-            cout << "perturbing" << endl;
             for (Term* term : terms)
                 term->_perturb(rng);
+            
+            reset();
+
+            // recompute
+            for (Term* term : terms)
+                term->_compute();
+
+            // redo cholesky
+            compute_cholesky();
         }
 
         void print(std::ostream& out) const {
@@ -202,7 +243,13 @@ class Cov
                 term->_description(desc, sep);
         }
 
-        std::string to_string() const { return "Cov"; }
+        std::string to_string() const {
+            std::string out = "Cov(";
+            for (Term* term : terms)
+                out += term->to_string() + ", ";
+            out += ")";
+            return out;
+        }
 };
 
 
@@ -214,29 +261,33 @@ class FakeCov : public Cov
 };
 
 
-// class Error : public Noise
-// {
-//     const VectorXd _sig;
+class Error : public Noise
+{
+    const VectorXd _sig;
 
-//     public:
-//         Error(const VectorXd& sig) : Noise(0), _sig(sig) {}
+    public:
+        Error(const VectorXd& sig) : Noise(0), _sig(sig) {}
 
-//         void set_param(double sig) {}
+        void set_param(double sig) {}
 
-//         void _compute() override {
-//             _cov->A.array() += _sig.array().square();
-//         };
+        void _compute() override {
+            _cov->A.array() += _sig.array().square();
+        };
 
-//         bool _priors_defined() { return true; }
+        bool _priors_defined() { return true; }
 
-//         void _generate(DNest4::RNG& rng) override {
-//             cout << "called _generate of Error" << endl;
-//         }
+        // _generate does nothing, not overridden
 
-//         std::string to_string() const override {
-//             return "Error";
-//         }
-// };
+        // _perturb does nothing, not overridden
+
+        // _print does nothing, not overridden
+
+        // _description does nothing, not overridden
+
+        std::string to_string() const override {
+            return "Error";
+        }
+};
 
 class Jitter : public Noise
 {
@@ -275,6 +326,155 @@ class Jitter : public Noise
         }
 };
 
+class ExponentialKernel : public Kernel
+{
+    double _a, _la;
+
+    public:
+        distribution _a_prior, _la_prior;
+
+    public:
+        ExponentialKernel(double a, double la) : Kernel(1), _a(a), _la(la) {};
+
+        void set_param(double a, double la)
+        {
+            _a = a;
+            _la = la;
+        }
+
+        // _link not overridden
+
+        void _compute() override {
+            _cov->A.array() += _a;
+            _cov->U.col(_offset).setConstant(_a);
+            _cov->V.col(_offset).setConstant(1.0);
+            _cov->phi.col(_offset) = (-_la * _cov->dt.array()).exp();
+        }
+
+        void _deriv(bool calc_d2) override {
+            _cov->_dU.col(_offset).setConstant(- _la * _a);
+            if (calc_d2) {
+                _cov->_dV.col(_offset).setConstant(_la);
+            }
+        }
+
+        bool _priors_defined() {
+            if (_a_prior && _la_prior)
+                return true;
+            return false;
+        };
+
+        void _generate(DNest4::RNG& rng) override {
+            assert( (_a_prior) && "ExponentialKernel::a_prior has been assigned");
+            assert( (_la_prior) && "ExponentialKernel::la_prior has been assigned");
+            _a = _a_prior->generate(rng);
+            _la = _la_prior->generate(rng);
+        }
+
+        void _perturb(DNest4::RNG& rng) override {
+            _a_prior->perturb(_a, rng);
+            _la_prior->perturb(_la, rng);
+        }
+
+        void _print(std::ostream& out) const override {
+            out << _a << " " << _la << " ";
+        };
+
+        void _description(std::string& desc, std::string sep) const override {
+            desc += "a" + sep + "la" + sep;
+        };
+
+        std::string to_string() const override {
+            return "ExponentialKernel(a=" + std::to_string(_a) + ", la=" + std::to_string(_la) + ")";
+        }
+};
+
+class Matern32Kernel : public Kernel
+{
+    double _sig, _rho;
+    double _t0;
+    VectorXd _dt0;
+    // temps
+    double _a, _la, _la2;
+    VectorXd _x, _1mx;
+
+    public:
+        distribution _sig_prior, _rho_prior;
+
+    public:
+        Matern32Kernel(double sig, double rho) : Kernel(2), _sig(sig), _rho(rho) {};
+
+        void set_param(double sig, double rho)
+        {
+            _sig = sig;
+            _rho = rho;
+        }
+
+        void _link(Cov &cov, size_t offset) override
+        {
+            _cov = &cov;
+            _linked = true;
+            _offset = offset;
+            _t0 = 0.5 * (_cov->t[0] + _cov->t[_cov->n - 1]);
+            _dt0 = _cov->t.array() - _t0;
+        }
+
+        void _compute() override {
+            _a = _sig * _sig;
+            _la = sqrt(3.0) / _rho;
+            _la2 = _la * _la;
+            _x = _la * _dt0.array();
+            _1mx = 1.0 - _x.array();
+            
+            _cov->A.array() += _a;
+            _cov->U.col(_offset) = _a * _x.array();
+            _cov->U.col(_offset + 1).setConstant(_a);
+            _cov->V.col(_offset).setConstant(1.0);
+            _cov->V.col(_offset + 1) = _1mx;
+            _cov->phi.col(_offset) = (-_la * _cov->dt.array()).exp();
+            _cov->phi.col(_offset + 1) = (-_la * _cov->dt.array()).exp();
+        }
+
+        void _deriv(bool calc_d2) override {
+            _cov->_dU.col(_offset) = _la * _a * _1mx.array();
+            _cov->_dU.col(_offset + 1).setConstant(- _la * _a);
+            if (calc_d2) {
+                _cov->_dV.col(_offset).setConstant(_la);
+                _cov->_dV.col(_offset + 1) = - _la * _x.array();
+            }
+        }
+
+        bool _priors_defined() {
+            if (_sig_prior && _rho_prior)
+                return true;
+            return false;
+        };
+
+        void _generate(DNest4::RNG& rng) override {
+            assert( (_sig_prior) && "Matern32Kernel::sig_prior has been assigned");
+            assert( (_rho_prior) && "Matern32Kernel::rho_prior has been assigned");
+            _sig = _sig_prior->generate(rng);
+            _rho = _rho_prior->generate(rng);
+        }
+
+        void _perturb(DNest4::RNG& rng) override {
+            _sig_prior->perturb(_sig, rng);
+            _rho_prior->perturb(_rho, rng);
+        }
+
+        void _print(std::ostream& out) const override {
+            out << _sig << " " << _rho << " ";
+        };
+
+        void _description(std::string& desc, std::string sep) const override {
+            desc += "sig" + sep + "rho" + sep;
+        };
+
+        std::string to_string() const override {
+            return "Matern32Kernel(sig=" + std::to_string(_sig) + ", rho=" + std::to_string(_rho) + ")";
+        }
+};
+
 class Matern52Kernel : public Kernel
 {
     double _sig, _rho;
@@ -306,6 +506,13 @@ class Matern52Kernel : public Kernel
         }
 
         void _compute() override {
+            assert(_linked && "Matern52Kernel Term is linked");
+            assert( (_cov->A.size() == _cov->t.size()) && "A has correct dimensions");
+            assert( (_cov->U.rows() == _cov->t.size()) && "U has correct dimensions");
+            assert( (_cov->V.rows() == _cov->t.size()) && "V has correct dimensions");
+            assert( (_cov->U.cols() == _r) && "U has correct dimensions");
+            assert( (_cov->V.cols() == _r) && "V has correct dimensions");
+
             _a = _sig * _sig;
             _la = sqrt(5.0) / _rho;
             _la2 = _la * _la;
@@ -369,6 +576,303 @@ class Matern52Kernel : public Kernel
         }
 };
 
+class USHOKernel : public Kernel
+{
+    double _sig, _P0, _Q;
+    double _a, _b, _la, _nu;
+    double _eps = 1e-5;
+    double _sqQ;
+    VectorXd _nut, _cnut, _snut;
+
+    public:
+        distribution _sig_prior, _P0_prior, _Q_prior;
+
+    public:
+        USHOKernel(double sig, double P0, double Q) 
+            : Kernel(2), _sig(sig), _P0(P0), _Q(Q)
+        {
+            _sqQ = sqrt(max(4 * _Q*_Q - 1, _eps));
+            _set_coefs();
+        };
+
+        void _set_coefs()
+        {
+            _a = _sig * _sig;
+            _b = _a / _sqQ;
+            _la = M_PI / (_P0 * _Q);
+            _nu = _la * _sqQ;
+        }
+
+        void set_param(double sig, double P0, double Q)
+        {
+            _sig = sig;
+            _P0 = P0;
+            _Q = Q;
+            _set_coefs();
+        }
+
+        // _link not overridden
+
+        void _compute() override {
+            _cov->A.array() += _a;
+            _nut = _nu * _cov->t.array();
+            _cnut = _nut.array().cos();
+            _snut = _nut.array().sin();
+            _cov->U.col(_offset) = _a * _cnut.array() + _b * _snut.array();
+            _cov->U.col(_offset + 1) = _a * _snut.array() - _b * _cnut.array();
+            _cov->V.col(_offset) = _cnut;
+            _cov->V.col(_offset + 1) = _snut;
+            VectorXd _e = (-_la * _cov->dt.array()).exp();
+            _cov->phi.col(_offset) = _e;
+            _cov->phi.col(_offset + 1) = _e;
+        }
+
+        void _deriv(bool calc_d2) override {
+            double da = - _la * _a + _nu * _b;
+            double db = - _la * _b - _nu * _a;
+            _cov->_dU.col(_offset) = da * _cnut.array() + db * _snut.array();
+            _cov->_dU.col(_offset + 1) = da * _snut.array() - db * _cnut.array();
+            if (calc_d2) {
+                _cov->_dV.col(_offset) = _la * _cnut.array() - _nu * _snut.array();
+                _cov->_dV.col(_offset + 1) = _la * _snut.array() + _nu * _cnut.array();
+            }
+        }
+
+        bool _priors_defined() {
+            if (_sig_prior && _P0_prior && _Q_prior)
+                return true;
+            return false;
+        };
+
+        void _generate(DNest4::RNG& rng) override {
+            assert( (_sig_prior) && "USHOKernel::sig_prior has been assigned");
+            assert( (_P0_prior) && "USHOKernel::P0_prior has been assigned");
+            assert( (_Q_prior) && "USHOKernel::Q_prior has been assigned");
+            _sig = _sig_prior->generate(rng);
+            _P0 = _P0_prior->generate(rng);
+            _Q = _Q_prior->generate(rng);
+        }
+
+        void _perturb(DNest4::RNG& rng) override {
+            _sig_prior->perturb(_sig, rng);
+            _P0_prior->perturb(_P0, rng);
+            _Q_prior->perturb(_Q, rng);
+        }
+
+        void _print(std::ostream& out) const override {
+            out << _sig << " " << _P0 << " " << _Q << " ";
+        };
+
+        void _description(std::string& desc, std::string sep) const override {
+            desc += "sig" + sep + "P0" + sep + "Q" + sep;
+        };
+
+        std::string to_string() const override {
+            return "USHOKernel(sig=" + std::to_string(_sig) + ", P0=" + std::to_string(_P0) + ", Q=" + std::to_string(_Q) + ")";
+        }
+};
+
+class OSHOKernel : public Kernel
+{
+    double _sig, _P0, _Q;
+    double _sqQ;
+    double _a1, _la1, _a2, _la2;
+    double _eps = 1e-5;
+    ExponentialKernel* _k1;
+    ExponentialKernel* _k2;
+
+    public:
+        distribution _sig_prior, _P0_prior, _Q_prior;
+
+    public:
+        OSHOKernel(double sig, double P0, double Q) : Kernel(2), _sig(sig), _P0(P0), _Q(Q)
+        {
+            _set_coefs();
+            _k1 = new ExponentialKernel(_a1, _la1);
+            _k2 = new ExponentialKernel(_a2, _la2);
+        }
+
+        void _set_coefs()
+        {
+            _sqQ = sqrt(max(1 - 4 * _Q*_Q, _eps));
+            double _a = _sig * _sig;
+            double _la = M_PI / (_P0 * _Q);
+            _a1 = _a * (1 + 1 / _sqQ) / 2;
+            _la1 = _la * (1 - _sqQ);
+            _a2 = _a * (1 - 1 / _sqQ) / 2;
+            _la2 = _la * (1 + _sqQ);
+        }
+
+        void set_param(double sig, double P0, double Q)
+        {
+            _sig = sig;
+            _P0 = P0;
+            _Q = Q;
+            _set_coefs();
+            _k1->set_param(_a1, _la1);
+            _k2->set_param(_a2, _la2);
+        }
+
+        void _link(Cov &cov, size_t offset) override {
+            _cov = &cov;
+            _linked = true;
+            _offset = offset;
+            _k1->_link(cov, offset);
+            _k2->_link(cov, offset + _k1->_r);
+        }
+
+        void _compute() override {
+            _k1->_compute();
+            _k2->_compute();
+        }
+
+        void _deriv(bool calc_d2) override {
+            _k1->_deriv(calc_d2);
+            _k2->_deriv(calc_d2);
+        }
+
+        bool _priors_defined() {
+            if (_sig_prior && _P0_prior && _Q_prior)
+                return true;
+            return false;
+        };
+
+        void _generate(DNest4::RNG& rng) override {
+            assert( (_sig_prior) && "OSHOKernel::sig_prior has been assigned");
+            assert( (_P0_prior) && "OSHOKernel::P0_prior has been assigned");
+            assert( (_Q_prior) && "OSHOKernel::Q_prior has been assigned");
+            _sig = _sig_prior->generate(rng);
+            _P0 = _P0_prior->generate(rng);
+            _Q = _Q_prior->generate(rng);
+            _set_coefs();
+            _k1->set_param(_a1, _la1);
+            _k2->set_param(_a2, _la2);
+        }
+
+        void _perturb(DNest4::RNG& rng) override {
+            _sig_prior->perturb(_sig, rng);
+            _P0_prior->perturb(_P0, rng);
+            _Q_prior->perturb(_Q, rng);
+            _set_coefs();
+            _k1->set_param(_a1, _la1);
+            _k2->set_param(_a2, _la2);
+        }
+
+        void _print(std::ostream& out) const override {
+            out << _sig << " " << _P0 << " " << _Q << " ";
+        };
+
+        void _description(std::string& desc, std::string sep) const override {
+            desc += "sig" + sep + "P0" + sep + "Q" + sep;
+        };
+
+        std::string to_string() const override {
+            return "OSHOKernel(sig=" + std::to_string(_sig) + ", P0=" + std::to_string(_P0) + ", Q=" + std::to_string(_Q) + ")";
+        }
+};
+
+class SHOKernel : public Kernel
+{
+    double _sig, _P0, _Q;
+    double _sqQ;
+    double _a1, _la1, _a2, _la2;
+    double _eps = 1e-5;
+    USHOKernel* _usho;
+    OSHOKernel* _osho;
+
+    public:
+        distribution _sig_prior, _P0_prior, _Q_prior;
+
+    public:
+        SHOKernel(double sig, double P0, double Q) : Kernel(2), _sig(sig), _P0(P0), _Q(Q)
+        {
+            _usho = new USHOKernel(sig, P0, Q);
+            _osho = new OSHOKernel(sig, P0, Q);
+        }
+
+        void set_param(double sig, double P0, double Q)
+        {
+            _sig = sig;
+            _P0 = P0;
+            _Q = Q;
+            if (_Q > 0.5) {
+                _usho->set_param(sig, P0, Q);
+            } else {
+                _osho->set_param(sig, P0, Q);
+            }
+
+        }
+
+        void _link(Cov &cov, size_t offset) override {
+            _cov = &cov;
+            _linked = true;
+            _offset = offset;
+            _usho->_link(*_cov, offset);
+            _osho->_link(*_cov, offset);
+        }
+
+        void _compute() override {
+            if (_Q > 0.5) {
+                _usho->_compute();
+            } else {
+                _osho->_compute();
+            }
+        }
+
+        void _deriv(bool calc_d2) override {
+            if (_Q > 0.5) {
+                _usho->_deriv(calc_d2);
+            } else {
+                _osho->_deriv(calc_d2);
+            }
+        }
+
+        bool _priors_defined() {
+            if (_sig_prior && _P0_prior && _Q_prior)
+                return true;
+            return false;
+        };
+
+        void _generate(DNest4::RNG& rng) override {
+            assert( (_sig_prior) && "SHOKernel::sig_prior has been assigned");
+            assert( (_P0_prior) && "SHOKernel::P0_prior has been assigned");
+            assert( (_Q_prior) && "SHOKernel::Q_prior has been assigned");
+            _sig = _sig_prior->generate(rng);
+            _P0 = _P0_prior->generate(rng);
+            _Q = _Q_prior->generate(rng);
+            if (_Q > 0.5) {
+                _usho->set_param(_sig, _P0, _Q);
+            } else {
+                _osho->set_param(_sig, _P0, _Q);
+            }
+        }
+
+        void _perturb(DNest4::RNG& rng) override {
+            _sig_prior->perturb(_sig, rng);
+            _P0_prior->perturb(_P0, rng);
+            _Q_prior->perturb(_Q, rng);
+            if (_Q > 0.5) {
+                _usho->set_param(_sig, _P0, _Q);
+            } else {
+                _osho->set_param(_sig, _P0, _Q);
+            }
+        }
+
+        void _print(std::ostream& out) const override {
+            out << _sig << " " << _P0 << " " << _Q << " ";
+        };
+
+        void _description(std::string& desc, std::string sep) const override {
+            desc += "sig" + sep + "P0" + sep + "Q" + sep;
+        };
+
+        std::string to_string() const override {
+            return "SHOKernel(sig=" + std::to_string(_sig) + ", P0=" + std::to_string(_P0) + ", Q=" + std::to_string(_Q) + ")";
+        }
+};
+
+
+
 
 class MultiSeriesKernel : public Kernel
 {
@@ -379,6 +883,7 @@ class MultiSeriesKernel : public Kernel
     FakeCov fake_cov;
 
     public:
+        MultiSeriesKernel() : Kernel(0) {};
         MultiSeriesKernel(Term &kernel, const std::vector<Eigen::ArrayXi> &series_index, VectorXd &alpha, VectorXd &beta) : Kernel(kernel._r)
         {
             _kernel = &kernel;
@@ -426,7 +931,6 @@ class MultiSeriesKernel : public Kernel
         bool _priors_defined() { return _kernel->_priors_defined(); };
 
         void _generate(DNest4::RNG& rng) override {
-            // cout << "called _generate of MultiSeriesKernel" << endl; 
             _kernel->_generate(rng);
         }
 
@@ -437,6 +941,10 @@ class MultiSeriesKernel : public Kernel
         void _print(std::ostream& out) const override {
             _kernel->_print(out);
         }
+
+        void _description(std::string& desc, std::string sep) const override {
+            _kernel->_description(desc, sep);
+        };
 
         std::string to_string() const override {
             return "MultiSeriesKernel(" + _kernel->to_string() + ")";

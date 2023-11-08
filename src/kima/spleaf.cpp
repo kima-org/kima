@@ -1,7 +1,8 @@
 #include "spleaf.h"
 
 
-Cov::Cov(const VectorXd &t, const VectorXd &yerr, Term& gp) : t(t), yerr(yerr)
+Cov::Cov(const VectorXd &t, const VectorXd &yerr, size_t _b, size_t _r)
+    : t(t), yerr(yerr)
 {
     assert( (t.size() == yerr.size()) && "t and yerr have the same size");
 
@@ -13,24 +14,29 @@ Cov::Cov(const VectorXd &t, const VectorXd &yerr, Term& gp) : t(t), yerr(yerr)
     b = VectorXl::Zero(n);
     offsetrow = VectorXl(n);
 
-    if(instanceof<Noise>(&gp)) {
-        // cout << "gp is a Noise" << endl;
-        gp._link(*this);
-        b = b.array().max(gp._b);
-    } else if (instanceof<Kernel>(&gp)) {
-        // cout << "gp is a Kernel" << endl;
-        gp._link(*this, r);
-        r += gp._r;
-    } else {
-        cout << "something is wrong..." << endl;
-    }
+    b = b.array().max(_b);
+    r += _r;
 
+    // n and r are set, can do all allocations
     A = VectorXd::Zero(n);
-    A.array() += yerr.array();
-
     U = MatrixXd(n, r);
     V = MatrixXd(n, r);
     phi = MatrixXd(n - 1, r);
+
+    F = VectorXd(b.sum());
+
+    D = VectorXd(n);
+    W = MatrixXd(n, r);
+    G = VectorXd(b.sum());
+    _S = VectorXd(n * r * r);
+    _Z = VectorXd((F.size() + n) * r);
+    _f_solveL = VectorXd(n * r);
+    // Kernel derivative
+    _dU = MatrixXd(n, r);
+    _dV = MatrixXd(n, r);
+    _B = VectorXd(n);
+
+    // allocations done, compute stuff and link the terms
 
     long sum = 0;
     for (size_t i = 0; i < n; i++)
@@ -42,34 +48,8 @@ Cov::Cov(const VectorXd &t, const VectorXd &yerr, Term& gp) : t(t), yerr(yerr)
     //                 offsetrow.begin());
     // offsetrow.array() += 1;
 
-    F = VectorXd(b.sum());
-    gp._compute();
-
-    D = VectorXd(n);
-    W = MatrixXd(n, r);
-    G = VectorXd(b.sum());
-    _S = VectorXd(n * r * r);
-    _Z = VectorXd((F.size() + n) * r);
-
-    compute_cholesky();
-    _f_solveL = VectorXd(n * r);
-
-    // Kernel derivative
-    _dU = MatrixXd(n, r);
-    _dV = MatrixXd(n, r);
-
-    // _grad_A = VectorXd(n);
-    // _grad_U = MatrixXd(n, r);
-    // _grad_V = MatrixXd(n, r);
-    // _grad_phi = MatrixXd(n - 1, r);
-    // // _sum_grad_A = None
-
-    // _grad_dU = MatrixXd(n, r);
-    // _grad_dV = MatrixXd(n, r);
-    // _grad_B = VectorXd(n);
-    _B = VectorXd(n);
-
-    terms.push_back(&gp);
+    A.array() += yerr.array().square();
+    
 }
 
 // Cov::Cov(const VectorXd &t, Term& err, Term& gp) : t(t)
@@ -177,6 +157,10 @@ FakeCov::FakeCov(const VectorXd &_t, const VectorXd &_dt, size_t r)
 // };
 
 
+// void Term::_reset_cov() {
+//     _cov->A.setConstant(0.0);
+//     _cov->F.setConstant(0.0);
+// }
 
 
 
@@ -198,7 +182,7 @@ public:
 
 NB_MODULE(spleaf, m) {
     nb::class_<Cov>(m, "Cov")
-        .def(nb::init<const VectorXd&, const VectorXd&, Term&>())
+        .def(nb::init<const VectorXd&, const VectorXd&, size_t, size_t>())
         .def("__repr__", &Cov::to_string)
         // .def("__init__", [](Cov *c, const VectorXd& t, nb::kwargs kwargs){
         //     auto terms = kwargs.values();
@@ -232,36 +216,55 @@ NB_MODULE(spleaf, m) {
     nb::class_<Kernel, Term>(m, "Kernel", "Generic class for covariance kernel (Gaussian process) terms");
     
     // noises
-    // nb::class_<Error, Noise>(m, "Error")
-    //     .def(nb::init<VectorXd&>())
-    //     .def("__repr__", &Error::to_string);
+    nb::class_<Error, Noise>(m, "Error")
+        .def(nb::init<VectorXd&>())
+        .def("__repr__", &Error::to_string);
 
     nb::class_<Jitter, Noise>(m, "Jitter")
         .def(nb::init<double>())
         .def("__repr__", &Jitter::to_string)
+        .def("set_param", &Jitter::set_param)
         .def_prop_rw("sig_prior",
             [](Jitter &k) { return k._sig_prior; },
             [](Jitter &k, distribution &d) { k._sig_prior = d; },
             "Prior for the amplitude");
+
     // kernels
-    // nb::class_<ExponentialKernel, Kernel>(m, "ExponentialKernel")
-    //     .def(nb::init<double, double>())
-    //     .def("__repr__", &ExponentialKernel::to_string)
-    //     .def("set_param", &ExponentialKernel::set_param);
+    nb::class_<ExponentialKernel, Kernel>(m, "ExponentialKernel")
+        .def(nb::init<double, double>())
+        .def("__repr__", &ExponentialKernel::to_string)
+        .def("set_param", &ExponentialKernel::set_param)
+        .def_prop_rw("a_prior",
+            [](ExponentialKernel &k) { return k._a_prior; },
+            [](ExponentialKernel &k, distribution &d) { k._a_prior = d; },
+            "Prior for the amplitude")
+        .def_prop_rw("la_prior",
+            [](ExponentialKernel &k) { return k._la_prior; },
+            [](ExponentialKernel &k, distribution &d) { k._la_prior = d; },
+            "Prior for the scale");
 
     // nb::class_<QuasiperiodicKernel, Kernel>(m, "QuasiperiodicKernel")
     //     .def(nb::init<double, double, double, double>())
     //     .def("__repr__", &QuasiperiodicKernel::to_string)
     //     .def("set_param", &QuasiperiodicKernel::set_param);
 
-    // nb::class_<Matern32Kernel, Kernel>(m, "Matern32Kernel")
-    //     .def(nb::init<double, double>())
-    //     .def("__repr__", &Matern32Kernel::to_string)
-    //     .def("set_param", &Matern32Kernel::set_param);
+    nb::class_<Matern32Kernel, Kernel>(m, "Matern32Kernel")
+        .def(nb::init<double, double>())
+        .def("__repr__", &Matern32Kernel::to_string)
+        .def("set_param", &Matern32Kernel::set_param)
+        .def_prop_rw("sig_prior",
+            [](Matern32Kernel &k) { return k._sig_prior; },
+            [](Matern32Kernel &k, distribution &d) { k._sig_prior = d; },
+            "Prior for the amplitude")
+        .def_prop_rw("rho_prior",
+            [](Matern32Kernel &k) { return k._rho_prior; },
+            [](Matern32Kernel &k, distribution &d) { k._rho_prior = d; },
+            "Prior for the scale");;
 
     nb::class_<Matern52Kernel, Kernel>(m, "Matern52Kernel")
         .def(nb::init<double, double>())
         .def("__repr__", &Matern52Kernel::to_string)
+        .def("set_param", &Matern52Kernel::set_param)
         .def_prop_rw("sig_prior",
             [](Matern52Kernel &k) { return k._sig_prior; },
             [](Matern52Kernel &k, distribution &d) { k._sig_prior = d; },
@@ -269,20 +272,58 @@ NB_MODULE(spleaf, m) {
         .def_prop_rw("rho_prior",
             [](Matern52Kernel &k) { return k._rho_prior; },
             [](Matern52Kernel &k, distribution &d) { k._rho_prior = d; },
-            "Prior for the scale")
-        .def("set_param", &Matern52Kernel::set_param);
+            "Prior for the scale");
 
-    // nb::class_<USHOKernel, Kernel>(m, "USHOKernel")
-    //     .def(nb::init<double, double, double>())
-    //     .def("set_param", &USHOKernel::set_param);
+    nb::class_<USHOKernel, Kernel>(m, "USHOKernel")
+        .def(nb::init<double, double, double>())
+        .def("__repr__", &USHOKernel::to_string)
+        .def("set_param", &USHOKernel::set_param)
+        .def_prop_rw("sig_prior",
+            [](USHOKernel &k) { return k._sig_prior; },
+            [](USHOKernel &k, distribution &d) { k._sig_prior = d; },
+            "Prior for the amplitude")
+        .def_prop_rw("P0_prior",
+            [](USHOKernel &k) { return k._P0_prior; },
+            [](USHOKernel &k, distribution &d) { k._P0_prior = d; },
+            "Prior for period")
+        .def_prop_rw("Q_prior",
+            [](USHOKernel &k) { return k._Q_prior; },
+            [](USHOKernel &k, distribution &d) { k._Q_prior = d; },
+            "Prior for Q");
     
-    // nb::class_<OSHOKernel, Kernel>(m, "OSHOKernel")
-    //     .def(nb::init<double, double, double>())
-    //     .def("set_param", &OSHOKernel::set_param);
+    nb::class_<OSHOKernel, Kernel>(m, "OSHOKernel")
+        .def(nb::init<double, double, double>())
+        .def("__repr__", &OSHOKernel::to_string)
+        .def("set_param", &OSHOKernel::set_param)
+        .def_prop_rw("sig_prior",
+            [](OSHOKernel &k) { return k._sig_prior; },
+            [](OSHOKernel &k, distribution &d) { k._sig_prior = d; },
+            "Prior for the amplitude")
+        .def_prop_rw("P0_prior",
+            [](OSHOKernel &k) { return k._P0_prior; },
+            [](OSHOKernel &k, distribution &d) { k._P0_prior = d; },
+            "Prior for period")
+        .def_prop_rw("Q_prior",
+            [](OSHOKernel &k) { return k._Q_prior; },
+            [](OSHOKernel &k, distribution &d) { k._Q_prior = d; },
+            "Prior for Q");
 
-    // nb::class_<SHOKernel, Kernel>(m, "SHOKernel")
-    //     .def(nb::init<double, double, double>())
-    //     .def("set_param", &SHOKernel::set_param);
+    nb::class_<SHOKernel, Kernel>(m, "SHOKernel")
+        .def(nb::init<double, double, double>())
+        .def("__repr__", &SHOKernel::to_string)
+        .def("set_param", &SHOKernel::set_param)
+        .def_prop_rw("sig_prior",
+            [](SHOKernel &k) { return k._sig_prior; },
+            [](SHOKernel &k, distribution &d) { k._sig_prior = d; },
+            "Prior for the amplitude")
+        .def_prop_rw("P0_prior",
+            [](SHOKernel &k) { return k._P0_prior; },
+            [](SHOKernel &k, distribution &d) { k._P0_prior = d; },
+            "Prior for period")
+        .def_prop_rw("Q_prior",
+            [](SHOKernel &k) { return k._Q_prior; },
+            [](SHOKernel &k, distribution &d) { k._Q_prior = d; },
+            "Prior for Q");
 
     // special kernels
     nb::class_<MultiSeriesKernel, Kernel>(m, "MultiSeriesKernel")

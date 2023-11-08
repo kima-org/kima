@@ -100,7 +100,7 @@ void BINARIESmodel::from_prior(RNG& rng)
     bkg = Cprior->generate(rng);
     bkg2 = Cprior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         for(int i=0; i<offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -196,7 +196,7 @@ void BINARIESmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -304,7 +304,7 @@ void BINARIESmodel::calculate_mu_2()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets_2.size(); j++)
             {
@@ -515,7 +515,7 @@ double BINARIESmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti))
+        if(data._multi))
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -566,7 +566,7 @@ double BINARIESmodel::perturb(RNG& rng)
             if(trend) {
                 mu[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
-            if(data.datamulti)) {
+            if(data._multi)) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
@@ -584,7 +584,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 if(trend) {
                     mu_2[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data.datamulti)) {
+                if(data._multi)) {
                     for(size_t j=0; j<offsets_2.size(); j++){
                         if (obsi[i] == j+1) { mu_2[i] -= offsets_2[j]; }
                     }
@@ -603,7 +603,7 @@ double BINARIESmodel::perturb(RNG& rng)
         Cprior->perturb(bkg2, rng);
 
         // propose new instrument offsets
-        if (data.datamulti)){
+        if (data._multi)){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -634,7 +634,7 @@ double BINARIESmodel::perturb(RNG& rng)
             if(trend) {
                 mu[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
-            if(data.datamulti)) {
+            if(data._multi)) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
@@ -651,7 +651,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 if(trend) {
                     mu_2[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data.datamulti)) {
+                if(data._multi)) {
                     for(size_t j=0; j<offsets_2.size(); j++){
                         if (obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                     }
@@ -712,7 +712,7 @@ double BINARIESmodel::log_likelihood() const
         double var, var_2, jit, jit2;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
+            if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -745,7 +745,7 @@ double BINARIESmodel::log_likelihood() const
         double var, var_2, jit, jit2;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
+            if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -790,7 +790,7 @@ void BINARIESmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
@@ -962,7 +962,7 @@ void BINARIESmodel::save_setup() {
 
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -974,13 +974,13 @@ void BINARIESmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -998,7 +998,7 @@ void BINARIESmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;

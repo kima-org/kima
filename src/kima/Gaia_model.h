@@ -13,7 +13,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
-#include "celerite/celerite.h"
 
 
 /// include a (better) known extra Keplerian curve? (KO mode!)
@@ -93,33 +92,6 @@ class Gaia_model
         std::shared_ptr<DNest4::ContinuousDistribution> par_prior;
 
         std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
-
-        // change the name of std::make_shared :)
-        /**
-         * @brief Assign a prior distribution.
-         * 
-         * This function defines, initializes, and assigns a prior distribution.
-         * Possible distributions are ...
-         * 
-         * For example:
-         * 
-         * @code{.cpp}
-         *          Cprior = make_prior<Uniform>(0, 1);
-         * @endcode
-         * 
-         * @tparam T     ContinuousDistribution
-         * @tparam Args  
-         * @param args   Arguments for constructor of distribution
-         * @return std::shared_ptr<T> 
-        */
-        template <class T, class... Args>
-        std::shared_ptr<T> make_prior(Args&&... args)
-        {
-            return std::make_shared<T>(args...);
-        }
-
-        // create an alias for ETData::get_instance()
-        static GaiaData& get_data() { return GaiaData::get_instance(); }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

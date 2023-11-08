@@ -493,12 +493,12 @@ void TRANSITmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
