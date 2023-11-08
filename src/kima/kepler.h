@@ -1,11 +1,13 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <iostream>
 #include "postkepler.h"
 
+// sincos on apple
 #ifdef __APPLE__
     #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         #define sincos(x, s, c) __sincos(x, s, c)
@@ -14,6 +16,11 @@
         #define sincos(x,s,c) (*s = sin(x), *c = cos(x))
     #endif
 #endif
+// sincos on windows
+#if defined(_WIN32) || defined(WIN32)
+    #define sincos(x,s,c) (*s = sin(x), *c = cos(x))
+#endif
+
 
 double mod2pi(const double &angle);
 
