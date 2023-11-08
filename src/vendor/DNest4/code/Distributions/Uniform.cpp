@@ -28,14 +28,15 @@ double Uniform::cdf(double x) const
 
 double Uniform::cdf_inverse(double x) const
 {
-    if(x < 0.0 || x > 1.0)
+    if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     return lower + x*(upper-lower);
 }
 
 double Uniform::log_pdf(double x) const
 {
-    if (x<lower or x>upper) return -std::numeric_limits<double>::infinity();
+    if ( (x < lower) || (x > upper) )
+        return -std::numeric_limits<double>::infinity();
     return -log(upper-lower);
 }
 
