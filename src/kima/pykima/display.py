@@ -488,7 +488,6 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, fig=None,
 
         if show_prior:
             priors = [p for p in res.priors.keys() if 'eta' in p]
-            print(eta)
             # ax.hist(prior.rvs(res.ESS), bins=40, color='k', alpha=0.2)
 
         if Np is not None:
@@ -1985,18 +1984,11 @@ def phase_plot(res,
 
 
 def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
-                        pmin=None, pmax=None, show_vsys=False,
-                        isolate_known_object=True, full_plot=False,
-                        ignore_outliers=False, **kwargs):
-
-    # dispatch
-    if res.model == 'RVFWHMmodel':
-        args = locals().copy()
-        return plot_random_samples_rvfwhm(*args, **kwargs)
+                        show_vsys=False, isolate_known_object=True, 
+                        full_plot=False, show_outliers=False, **kwargs):
 
     if samples is None:
-        samples = res._apply_cuts_period(pmin, pmax)
-        # samples = res.posterior_sample
+        samples = res.posterior_sample.copy()
         samples_provided = False
     else:
         samples = np.atleast_2d(samples)
@@ -2133,15 +2125,9 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         return fig
 
 
-def plot_random_samples_rvfwhm(res,
-                               ncurves=50,
-                               samples=None,
-                               over=0.1,
-                               show_vsys=False,
-                               show_only_GP=False,
-                               Np=None,
-                               ntt=10000,
-                               **kwargs):
+def plot_random_samples_rvfwhm(res, ncurves=50, samples=None, over=0.1, ntt=10000, 
+                               show_vsys=False, just_rvs=False, full_plot=False, 
+                               highest_likelihood=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
     A total of `ncurves` random samples are chosen, and the Keplerian 
@@ -2154,9 +2140,9 @@ def plot_random_samples_rvfwhm(res,
 
     if samples is None:
         samples = res.posterior_sample
-        mask = np.ones(samples.shape[0], dtype=bool)
     else:
         samples = np.atleast_2d(samples)
+
     t = res.data.t.copy()
     M0_epoch = res.M0_epoch
     if t[0] > 24e5:
@@ -2199,16 +2185,25 @@ def plot_random_samples_rvfwhm(res,
     elif ncurves == samples.shape[0]:
         ii = np.arange(ncurves)
     else:
+        if highest_likelihood:
+            i = np.argsort(res.posterior_lnlike[:, 1])
+            ii = i[-ncurves:]
+        else:
+            ii = np.random.choice(np.arange(samples.shape[0]), ncurves)
+
         # select `ncurves` indices from the 70% highest likelihood samples
         lnlike = res.posterior_lnlike[:, 1]
         sorted_lnlike = np.sort(lnlike)[::-1]
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
-        ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
         # ii = np.random.choice(np.where(mask)[0], ncurves)
 
     if 'ax1' in kwargs and 'ax2' in kwargs:
         ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
         fig = ax1.figure
+    elif 'ax' in kwargs:
+        ax1 = kwargs.pop('ax')
+        fig = ax1.figure
+        just_rvs = True
     else:
         fig = plt.figure(constrained_layout=True, figsize=(10, 8))
         if full_plot:
@@ -2222,13 +2217,18 @@ def plot_random_samples_rvfwhm(res,
             ax2r = fig.add_subplot(gs[1, 2])
             # ax1r, ax2r = fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[3, 0])
         else:
-            gs = plt.GridSpec(2, 1, figure=fig)
-            ax1 = fig.add_subplot(gs[0])
-            ax2 = fig.add_subplot(gs[1], sharex=ax1)
+            if just_rvs:
+                ax1 = fig.add_subplot(1, 1, 1)
+            else:
+                gs = plt.GridSpec(2, 1, figure=fig)
+                ax1 = fig.add_subplot(gs[0])
+                ax2 = fig.add_subplot(gs[1], sharex=ax1)
             # ax1r, ax2r = fig.add_subplot(gs[1]), fig.add_subplot(gs[3])
 
-    _, _, y_offset, y2_offset = plot_data(res, ax=ax1, axf=ax2, ms=3,
-                                          legend=False)
+    if just_rvs:
+        _, y_offset = plot_data(res, ax=ax1, ms=3, legend=False, ignore_y2=True)
+    else:
+        _, _, y_offset, y2_offset = plot_data(res, ax=ax1, axf=ax2, ms=3, legend=False)
 
     ## plot the Keplerian curves
     alpha = 0.2 if ncurves > 1 else 1
@@ -2239,9 +2239,6 @@ def plot_random_samples_rvfwhm(res,
         overlap = False
 
     for icurve, i in enumerate(ii):
-        # print(icurve, i)
-        # print(res.log_posterior(samples[i], separate=True))
-
         # just the GP, centered around 0
         # for models without GP, stoc_model will be full of zeros
         stoc_model = res.stochastic_model(samples[i], tt)

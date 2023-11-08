@@ -3,6 +3,7 @@ This module defines the `KimaResults` class to hold results from a run.
 """
 
 import os
+import sys
 import pickle
 from typing import List, Union
 import zipfile
@@ -10,21 +11,25 @@ import time
 import tempfile
 from string import ascii_lowercase
 from dataclasses import dataclass, field
+from io import StringIO
+from contextlib import redirect_stdout
+
 
 from kima.kepler import keplerian as kepleriancpp
+from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  mixtureGP)
 
 from .analysis import get_planet_mass_and_semimajor_axis
 from .utils import (read_datafile, read_datafile_rvfwhm, read_model_setup,
                     get_star_name, mjup2mearth, get_prior, get_instrument_name,
-                    _show_kima_setup, read_big_file, wrms)
+                    _show_kima_setup, read_big_file, wrms, chdir)
 
 from .import display
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.stats import gaussian_kde, randint as discrete_uniform
+from scipy.stats import (norm, gaussian_kde, randint as discrete_uniform)
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -98,18 +103,45 @@ class posterior_holder:
         vsys (ndarray): Systemic velocity
 
     """
-    P: np.ndarray = field(init=False, repr=False)
-    K: np.ndarray = field(init=False, repr=False)
-    e: np.ndarray = field(init=False, repr=False)
-    ω: np.ndarray = field(init=False, repr=False)
-    φ: np.ndarray = field(init=False, repr=False)
-    jitter: np.ndarray = field(init=False, repr=False)
-    offset: np.ndarray = field(init=False, repr=False)
-    vsys: np.ndarray = field(init=False, repr=False)
+    Np: np.ndarray = field(init=False)
+    P: np.ndarray = field(init=False)
+    K: np.ndarray = field(init=False)
+    e: np.ndarray = field(init=False)
+    ω: np.ndarray = field(init=False)
+    φ: np.ndarray = field(init=False)
+    # 
+    jitter: np.ndarray = field(init=False)
+    offset: np.ndarray = field(init=False)
+    vsys: np.ndarray = field(init=False)
+    # 
+    outlier_mean: np.ndarray = field(init=False)
+    outlier_sigma: np.ndarray = field(init=False)
+    outlier_Q: np.ndarray = field(init=False)
 
     def __repr__(self):
-        fields = ', '.join(self.__dataclass_fields__.keys())
+        fields = list(self.__dataclass_fields__.keys())
+        fields = [f for f in fields if hasattr(self, f)]
+        fields = ', '.join(fields)
         return f'posterior_holder({fields})'
+
+
+def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True):
+    if isinstance(model_or_file, str) and os.path.exists(model_or_file):
+        res = KimaResults.load(model_or_file)
+    elif model_or_file is None:
+        hidden = StringIO()
+        stdout = sys.stdout if verbose else hidden
+
+        with redirect_stdout(stdout):
+            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
+        
+        res = KimaResults()
+        res.evidence = evidence
+        res.information = H
+        res.ESS = res.posterior_sample.shape[0]
+    else:
+        raise NotImplementedError
+    return res
 
 
 class KimaResults:
@@ -142,10 +174,8 @@ class KimaResults:
 
     _debug = False
 
-    def __init__(self, options, save_plots=False, return_figs=True,
-                 verbose=False):
+    def __init__(self, save_plots=False, return_figs=True, verbose=False):
 
-        self.options = options
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
@@ -261,8 +291,9 @@ class KimaResults:
         if self.fix:
             self.parameters.pop(self.parameters.index('Np'))
 
-        # make the plots, if requested
-        self.make_plots(options, self.save_plots)
+        self._set_plots()
+        # # make the plots, if requested
+        # self.make_plots(options, self.save_plots)
 
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
@@ -786,8 +817,6 @@ class KimaResults:
         Returns:
             res (KimaResults): An object holding the results
         """
-        from utils import chdir
-
         if filename is None:
             from showresults import showresults
             return showresults(force_return=True, **kwargs)
@@ -851,21 +880,21 @@ class KimaResults:
 
                         # from classic import postprocess
                         # postprocess()
-
-
-                return res
-
             else:
                 try:
                     with open(filename, 'rb') as f:
-                        return pickle.load(f)
+                        res = pickle.load(f)
                 except UnicodeDecodeError:
                     with open(filename, 'rb') as f:
-                        return pickle.load(f, encoding='latin1')
+                        res = pickle.load(f, encoding='latin1')
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
             raise
+
+        res._set_plots()
+        return res
+
 
     def show_kima_setup(self):
         return _show_kima_setup()
@@ -975,12 +1004,12 @@ class KimaResults:
         self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
         self.Tp = (self.T * self.phi) / (2. * np.pi) + self.M0_epoch
 
-        # times of inferior conjunction (transit, if the planet transits)
-        f = np.pi / 2 - self.Omega
-        ee = 2 * np.arctan(
-            np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
-        Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
-        self.posteriors.Tc = Tc
+        # # times of inferior conjunction (transit, if the planet transits)
+        # f = np.pi / 2 - self.Omega
+        # ee = 2 * np.arctan(
+        #     np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
+        # Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
+        # self.posteriors.Tc = Tc
 
         which = self.T != 0
         self.T = self.T[which].flatten()
@@ -1395,8 +1424,7 @@ class KimaResults:
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
             n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2,
-                                                                         n1)
+            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
         data_t = False
@@ -1440,7 +1468,7 @@ class KimaResults:
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
-
+            
             # how many planets in this sample?
             # nplanets = pars.size / self.n_dimensions
             nplanets = (pars[:self.max_components] != 0).sum()
@@ -2153,8 +2181,12 @@ class KimaResults:
 
 
     #
-    plot_random_samples = display.plot_random_samples
-    plot6 = display.plot_random_samples
+    def _set_plots(self):
+        from functools import partial
+        if self.model == 'RVFWHMmodel':
+            self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_rvfwhm, res=self)
+        else:
+            self.plot_random_samples = self.plot6 = partial(display.plot_random_samples, res=self)
 
     #
     hist_vsys = display.hist_vsys

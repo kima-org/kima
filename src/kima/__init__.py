@@ -13,7 +13,8 @@ from .kepler import keplerian
 from . import spleaf
 
 from . import distributions
-from .pykima.showresults import showresults as load_results
+# from .pykima.showresults import showresults as load_results
+from .pykima.results import load_results
 
 # examples
 from . import examples
