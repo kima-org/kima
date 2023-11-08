@@ -116,7 +116,6 @@ class KIMA_API OutlierRVmodel
         /// (Common) prior for the between-instrument offsets.
         distribution offsets_prior;
         std::vector<distribution> individual_offset_prior;
-        // { (size_t) data.number_instruments - 1 };
         /// no doc.
         distribution betaprior;
 
@@ -139,9 +138,6 @@ class KIMA_API OutlierRVmodel
         distribution outlier_mean_prior;
         distribution outlier_sigma_prior;
         distribution outlier_Q_prior;
-
-        // /// @brief an alias for RVData::get_instance()
-        // static RVData& get_data() { return RVData::get_instance(); }
 
         RVConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();

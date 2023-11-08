@@ -31,6 +31,17 @@ void RVFWHMmodel::initialize_from_data(RVData& data)
     conditional->set_default_priors(data);
 }
 
+void RVFWHMmodel::set_known_object(size_t n)
+{
+    known_object = true;
+    n_known_object = n;
+
+    KO_Pprior.resize(n);
+    KO_Kprior.resize(n);
+    KO_eprior.resize(n);
+    KO_phiprior.resize(n);
+    KO_wprior.resize(n);
+}
 
 /// set default priors if the user didn't change them
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
@@ -74,7 +85,7 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti)
+    if (data._multi)
     {
         if (!offsets_prior)
             offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
@@ -138,7 +149,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
     bkg = Cprior->generate(rng);
     bkg_fwhm = C2prior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         // draw instrument offsets for the RVs
         for (size_t i = 0; i < offsets.size() / 2; i++) {
@@ -245,7 +256,7 @@ void RVFWHMmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for (size_t j = 0; j < offsets.size() / 2; j++)
             {
@@ -305,7 +316,7 @@ void RVFWHMmodel::calculate_mu_fwhm()
 
     mu_fwhm.assign(mu_fwhm.size(), bkg_fwhm);
 
-    if (data.datamulti) {
+    if (data._multi) {
         auto obsi = data.get_obsi();
         for (size_t j = offsets.size() / 2; j < offsets.size(); j++) {
             for (size_t i = 0; i < N; i++) {
@@ -339,7 +350,7 @@ void RVFWHMmodel::calculate_C()
             if (i == j)
             {
                 double sig = data.sig[i];
-                if (data.datamulti)
+                if (data._multi)
                 {
                     double jit = jitters[data.obsi[i] - 1];
                     C(i, j) += sig * sig + jit * jit;
@@ -386,7 +397,7 @@ void RVFWHMmodel::calculate_C_fwhm()
 
             if (i == j)
             {
-                if (data.datamulti)
+                if (data._multi)
                 {
                     double jit = jitters[data.obsi[i] - 1];
                     C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
@@ -517,7 +528,7 @@ double RVFWHMmodel::perturb(RNG& rng)
 
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -559,7 +570,7 @@ double RVFWHMmodel::perturb(RNG& rng)
                          cubic * pow(data.t[i] - tmid, 3);
             }
 
-            if (data.datamulti)
+            if (data._multi)
             {
                 for (size_t j = 0; j < offsets.size() / 2; j++)
                 {
@@ -573,7 +584,7 @@ double RVFWHMmodel::perturb(RNG& rng)
         C2prior->perturb(bkg_fwhm, rng);
 
         // propose new instrument offsets
-        if (data.datamulti)
+        if (data._multi)
         {
             for (size_t j = 0; j < offsets.size() / 2; j++)
             {
@@ -605,7 +616,7 @@ double RVFWHMmodel::perturb(RNG& rng)
                          cubic * pow(data.t[i] - tmid, 3);
             }
 
-            if (data.datamulti)
+            if (data._multi)
             {
                 for (size_t j = 0; j < offsets.size(); j++)
                 {
@@ -694,7 +705,7 @@ void RVFWHMmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for (int j = 0; j < jitters.size(); j++)
             out << jitters[j] << '\t';
@@ -714,7 +725,7 @@ void RVFWHMmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
+    if (data._multi){
         for (int j = 0; j < offsets.size(); j++)
         {
             out << offsets[j] << '\t';
@@ -757,7 +768,7 @@ string RVFWHMmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
@@ -776,7 +787,7 @@ string RVFWHMmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
@@ -854,7 +865,7 @@ void RVFWHMmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << endl;
@@ -862,13 +873,13 @@ void RVFWHMmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -886,7 +897,7 @@ void RVFWHMmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
 
     if (planets.get_max_num_components()>0){
@@ -925,10 +936,37 @@ void RVFWHMmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
+class RVFWHMmodel_publicist : public RVFWHMmodel
+{
+    public:
+        using RVFWHMmodel::trend;
+        using RVFWHMmodel::degree;
+        using RVFWHMmodel::star_mass;
+        using RVFWHMmodel::enforce_stability;
+};
 
 NB_MODULE(RVFWHMmodel, m) {
     nb::class_<RVFWHMmodel>(m, "RVFWHMmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        //
+        .def_rw("trend", &RVFWHMmodel_publicist::trend,
+                "whether the model includes a polynomial trend")
+        .def_rw("degree", &RVFWHMmodel_publicist::degree,
+                "degree of the polynomial trend")
+
+        // KO mode
+        .def("set_known_object", &RVFWHMmodel::set_known_object)
+        .def_prop_ro("known_object", [](RVFWHMmodel &m) { return m.get_known_object(); },
+                     "whether the model includes (better) known extra Keplerian curve(s)")
+        .def_prop_ro("n_known_object", [](RVFWHMmodel &m) { return m.get_n_known_object(); },
+                     "how many known objects")
+
+        //
+        .def_rw("star_mass", &RVFWHMmodel_publicist::star_mass,
+                "stellar mass [Msun]")
+        .def_rw("enforce_stability", &RVFWHMmodel_publicist::enforce_stability, 
+                "whether to enforce AMD-stability")
+
         // priors
         .def_prop_rw("Cprior",
             [](RVFWHMmodel &m) { return m.Cprior; },
@@ -950,6 +988,67 @@ NB_MODULE(RVFWHMmodel, m) {
             [](RVFWHMmodel &m) { return m.cubic_prior; },
             [](RVFWHMmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+        
+        // priors for the GP hyperparameters
+        .def_prop_rw("eta1_prior",
+            [](RVFWHMmodel &m) { return m.eta1_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta1_prior = d; },
+            "Prior for the GP 'amplitude' on the RVs")
+        .def_prop_rw("eta1_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.eta1_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta1_fwhm_prior = d; },
+            "Prior for the GP 'amplitude' on the FWHM")
+
+        .def_prop_rw("eta2_prior",
+            [](RVFWHMmodel &m) { return m.eta2_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta2_prior = d; },
+            "Prior for η2, the GP correlation timescale, on the RVs")
+        .def_prop_rw("eta2_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.eta2_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta2_fwhm_prior = d; },
+            "Prior for η2, the GP correlation timescale, on the FWHM")
+
+        .def_prop_rw("eta3_prior",
+            [](RVFWHMmodel &m) { return m.eta3_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta3_prior = d; },
+            "Prior for η3, the GP period, on the RVs")
+        .def_prop_rw("eta3_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.eta3_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta3_fwhm_prior = d; },
+            "Prior for η3, the GP period, on the FWHM")
+
+        .def_prop_rw("eta4_prior",
+            [](RVFWHMmodel &m) { return m.eta4_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta4_prior = d; },
+            "Prior for η4, the recurrence timescale or (inverse) harmonic complexity, on the RVs")
+        .def_prop_rw("eta4_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.eta4_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.eta4_fwhm_prior = d; },
+            "Prior for η4, the recurrence timescale or (inverse) harmonic complexity, on the FWHM")
+
+        // known object priors
+        // ? should these setters check if known_object is true?
+        .def_prop_rw("KO_Pprior",
+                     [](RVFWHMmodel &m) { return m.KO_Pprior; },
+                     [](RVFWHMmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
+                     "Prior for KO orbital period")
+        .def_prop_rw("KO_Kprior",
+                     [](RVFWHMmodel &m) { return m.KO_Kprior; },
+                     [](RVFWHMmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+                     "Prior for KO semi-amplitude")
+        .def_prop_rw("KO_eprior",
+                     [](RVFWHMmodel &m) { return m.KO_eprior; },
+                     [](RVFWHMmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
+                     "Prior for KO eccentricity")
+        .def_prop_rw("KO_wprior",
+                     [](RVFWHMmodel &m) { return m.KO_wprior; },
+                     [](RVFWHMmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
+                     "Prior for KO argument of periastron")
+        .def_prop_rw("KO_phiprior",
+                     [](RVFWHMmodel &m) { return m.KO_phiprior; },
+                     [](RVFWHMmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
+                     "Prior for KO mean anomaly(ies)")
+
         // conditional object
         .def_prop_rw("conditional",
                      [](RVFWHMmodel &m) { return m.get_conditional_prior(); },

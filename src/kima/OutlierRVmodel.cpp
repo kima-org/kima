@@ -49,7 +49,7 @@ void OutlierRVmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -95,7 +95,7 @@ void OutlierRVmodel::from_prior(RNG& rng)
 
     background = Cprior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         for(int i=0; i<offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -183,7 +183,7 @@ void OutlierRVmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -311,7 +311,7 @@ double OutlierRVmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -356,7 +356,7 @@ double OutlierRVmodel::perturb(RNG& rng)
                             cubic * pow(data.t[i] - tmid, 3);
             }
 
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
@@ -373,7 +373,7 @@ double OutlierRVmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data.datamulti){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -403,7 +403,7 @@ double OutlierRVmodel::perturb(RNG& rng)
                             cubic * pow(data.t[i] - tmid, 3);
             }
 
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
@@ -464,7 +464,7 @@ double OutlierRVmodel::log_likelihood() const
         {
             double sig2 = sig[i] * sig[i];
 
-            if (data.datamulti)
+            if (data._multi)
             {
                 jit = jitters[obsi[i] - 1];
                 var = sig2 + jit * jit;
@@ -494,7 +494,7 @@ double OutlierRVmodel::log_likelihood() const
         {
             double sig2 = sig[i] * sig[i];
 
-            if (data.datamulti)
+            if (data._multi)
             {
                 jit = jitters[obsi[i] - 1];
                 var = sig2 + jit * jit;
@@ -532,7 +532,7 @@ void OutlierRVmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for (size_t j = 0; j < jitters.size(); j++)
             out << jitters[j] << '\t';
@@ -551,7 +551,7 @@ void OutlierRVmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti)
+    if (data._multi)
     {
         for (size_t j = 0; j < offsets.size(); j++)
         {
@@ -596,7 +596,7 @@ string OutlierRVmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
@@ -612,7 +612,7 @@ string OutlierRVmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
@@ -683,7 +683,7 @@ void OutlierRVmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -692,13 +692,13 @@ void OutlierRVmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -716,7 +716,7 @@ void OutlierRVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;

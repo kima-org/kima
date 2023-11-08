@@ -27,6 +27,18 @@ using namespace nb::literals;
 
 class KIMA_API RVFWHMmodel
 {
+    protected:
+        /// whether the model includes a polynomial trend
+        bool trend {false};
+        /// degree of the polynomial trend
+        int degree {0};
+
+        /// stellar mass (in units of Msun)
+        double star_mass = 1.0;
+
+        /// whether to enforce AMD-stability
+        bool enforce_stability = false;
+
     private:
         RVData data;
 
@@ -41,18 +53,8 @@ class KIMA_API RVFWHMmodel
 
         double bkg, bkg_fwhm;
 
-        /// whether the model includes a linear trend
-        bool trend {false};
-        int degree {0};
-
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        int n_known_object {0};
-
         std::vector<double> offsets; // between instruments
-            //   std::vector<double>(2 * data.number_instruments - 2);
         std::vector<double> jitters; // for each instrument
-            //   std::vector<double>(2 * data.number_instruments);
 
         double slope, quadr=0.0, cubic=0.0;
         double jitter, jitter_fwhm;
@@ -82,9 +84,7 @@ class KIMA_API RVFWHMmodel
         void add_known_object();
         void remove_known_object();
 
-        double star_mass = 1.0;  // [Msun]
         int is_stable() const;
-        bool enforce_stability = false;
 
         unsigned int staleness;
 
@@ -128,17 +128,28 @@ class KIMA_API RVFWHMmodel
         std::vector<distribution> individual_offset_prior; // {(size_t) data.number_instruments - 1};
         std::vector<distribution> individual_offset_fwhm_prior; // {(size_t) data.number_instruments - 1};
 
-        // priors for KO mode!
+        /* KO mode! */
+
+        /// include (better) known extra Keplerian curve(s)?
+        bool known_object {false};
+        bool get_known_object() { return known_object; }
+
+        /// how many known objects
+        size_t n_known_object {0};
+        size_t get_n_known_object() { return n_known_object; }
+
+        void set_known_object(size_t known_object);
+
         /// Prior for the KO orbital period(s)
-        std::vector<distribution> KO_Pprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Pprior;
         /// Prior for the KO semi-amplitude(s)
-        std::vector<distribution> KO_Kprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Kprior;
         /// Prior for the KO eccentricity(ies)
-        std::vector<distribution> KO_eprior {(size_t) n_known_object};
+        std::vector<distribution> KO_eprior;
         /// Prior for the KO mean anomaly(ies)
-        std::vector<distribution> KO_phiprior {(size_t) n_known_object};
+        std::vector<distribution> KO_phiprior;
         /// Prior for the KO argument(s) of pericenter
-        std::vector<distribution> KO_wprior {(size_t) n_known_object};
+        std::vector<distribution> KO_wprior;
 
 
         // share some of the hyperparameters?
