@@ -20,7 +20,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API RVmodel
+class  RVmodel
 {
     protected:
         /// whether the model includes a polynomial trend

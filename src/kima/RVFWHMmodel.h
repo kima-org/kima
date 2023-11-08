@@ -25,7 +25,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class KIMA_API RVFWHMmodel
+class  RVFWHMmodel
 {
     protected:
         /// whether the model includes a polynomial trend

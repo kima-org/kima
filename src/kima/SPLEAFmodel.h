@@ -24,7 +24,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class KIMA_API SPLEAFmodel
+class  SPLEAFmodel
 {
     private:
         RVData data;// = RVData::get_instance();
