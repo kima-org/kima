@@ -46,7 +46,7 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 }
 
 
-class KIMA_API RVData {
+class  RVData {
 
   friend class RVmodel;
   friend class GPmodel;
@@ -190,7 +190,7 @@ class KIMA_API RVData {
 
 
 
-class KIMA_API PHOTdata {
+class  PHOTdata {
 
   friend class TRANSITmodel;
 

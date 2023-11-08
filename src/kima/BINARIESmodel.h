@@ -20,7 +20,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API BINARIES_model
+class  BINARIES_model
 {
     protected:
         /// whether the model includes a polynomial trend

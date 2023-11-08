@@ -22,7 +22,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class KIMA_API GPmodel
+class  GPmodel
 {
     protected:
         /// whether the model includes a polynomial trend
