@@ -1,8 +1,5 @@
 #include "Data.h"
 
-
-RVData::RVData() {};
-
     /**
      * @brief Load RV data from a file.
      *

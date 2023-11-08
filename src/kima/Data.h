@@ -68,7 +68,7 @@ class KIMA_API RVData {
     bool _multi;
     vector<string> _indicator_names;
 
-    RVData();
+    RVData() {};
     // 
     // RVData(const string filename) { load(filename, "ms"); }
     // RVData(const string filename, int skip=0) { load(filename, "ms", skip); }

@@ -13,7 +13,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 
 
-class RVConditionalPrior:public DNest4::ConditionalPrior
+class RVConditionalPrior : public DNest4::ConditionalPrior
 {
 	private:
 		/// whether the model includes hyper-priors for the orbital period and
