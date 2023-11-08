@@ -9,7 +9,7 @@ namespace DNest4
 Kumaraswamy::Kumaraswamy(double a, double b)
 :a(a),b(b)
     {
-        if(a <= 0.0 or b <= 0.0)
+        if( (a <= 0.0) || (b <= 0.0) )
             throw std::domain_error("Kumaraswamy distribution must have positive a and b.");
     }
 
@@ -20,7 +20,7 @@ Kumaraswamy::Kumaraswamy(double a, double b)
 
     double Kumaraswamy::cdf_inverse(double p) const
     {
-        if(p < 0.0 || p > 1.0)
+        if( (p < 0.0) || (p > 1.0) )
             throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
         return pow(1 - pow(1-p, 1/b), 1/a);
     }
