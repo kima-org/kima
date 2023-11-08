@@ -42,10 +42,11 @@ RVData::RVData() {};
         }
         
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = false;
+        _datafile = filename;
+        _datafiles = {};
+        _units = units;
+        _skip = skip;
+        _multi = false;
         number_instruments = 1;
 
         t = data[0];
@@ -62,10 +63,12 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+
+        _indicator_names = indicators;
+        // _indicator_names.erase(
+        //     std::remove(_indicator_names.begin(), _indicator_names.end(), ""),
+        //     _indicator_names.end()
+        // );
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -146,10 +149,11 @@ RVData::RVData() {};
         auto Ncol = data.size();
         auto N = data[0].size();
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = true;
+        _datafile = filename;
+        _datafiles = {};
+        _units = units;
+        _skip = skip;
+        _multi = true;
 
         t = data[0];
         y = data[1];
@@ -165,10 +169,10 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+        _indicator_names = indicators;
+        // indicator_names.erase(
+        //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
+        //     indicator_names.end());
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -268,10 +272,10 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+        _indicator_names = indicators;
+        // indicator_names.erase(
+        //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
+        //     indicator_names.end());
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -336,11 +340,11 @@ RVData::RVData() {};
             }
         }
 
-        datafile = "";
-        datafiles = filenames;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = true;
+        _datafile = "";
+        _datafiles = filenames;
+        _units = units;
+        _skip = skip;
+        _multi = true;
 
         // How many points did we read?
         printf("# Loaded %zu data points from files\n", t.size());
@@ -421,7 +425,7 @@ RVData::RVData() {};
      */
     double RVData::topslope() const
     {
-        if (datamulti) {
+        if (_multi) {
             double slope = 0.0;
             for (size_t j = 0; j < number_instruments; j++) {
                 vector<double> obsy, obst;
@@ -456,7 +460,7 @@ RVData::RVData() {};
     {
         // for multiple instruments, calculate individual RV spans and return
         // the largest one
-        if (datamulti) {
+        if (_multi) {
             double span = 0.0;
             for (size_t j = 0; j < number_instruments; j++) {
                 vector<double> obsy;
@@ -522,7 +526,7 @@ RVData::RVData() {};
 
     ostream& operator<<(ostream& os, const RVData& d)
     {
-        os << "RV data from file " << d.datafile << " with " << d.N() << " points";
+        os << "RV data from file " << d._datafile << " with " << d.N() << " points";
         return os;
     }
 
@@ -564,9 +568,9 @@ PHOTdata::PHOTdata() {};
         }
         
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
+        _datafile = filename;
+        _units = units;
+        _skip = skip;
 
         t = data[0];
         y = data[1];
@@ -639,7 +643,7 @@ PHOTdata::PHOTdata() {};
 
     ostream& operator<<(ostream& os, const PHOTdata& d)
     {
-        os << "PHOT data from file " << d.datafile << " with " << d.N() << " points";
+        os << "PHOT data from file " << d._datafile << " with " << d.N() << " points";
         return os;
     }
 
@@ -647,9 +651,22 @@ PHOTdata::PHOTdata() {};
 
 /*****************************************************************************/
 
+// class RVData_publicist : public RVData
+// {
+//     public:
+//         using RVData::_datafile;
+//         using RVData::_datafiles;
+//         using RVData::_units;
+//         using RVData::_skip;
+//         using RVData::_multi;
+// };
+
+
+// the types of objects in the RVData state (for pickling)
+using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
+
 
 NB_MODULE(Data, m) {
-    m.def("add", [](int a, int b) { return a + b; }, "a"_a, "b"_a);
     // 
     nb::class_<loadtxt>(m, "loadtxt")
         .def(nb::init<std::string>())
@@ -659,6 +676,7 @@ NB_MODULE(Data, m) {
         .def("usecols", &loadtxt::usecols)
         .def("max_rows", &loadtxt::max_rows)
         .def("__call__", &loadtxt::operator());
+
     // 
     nb::class_<RVData>(m, "RVData", "docs")
         // constructors
@@ -678,8 +696,26 @@ NB_MODULE(Data, m) {
         .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
         .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
         //
-        .def("__getstate__", [](const RVData &d) { return d.datafile; })
-        .def("__setstate__", [](RVData &d, const string datafile) { new (&d) RVData(datafile); })
+        .def_ro("multi", &RVData::_multi, "data from multiple instruments")
+        .def_ro("skip", &RVData::_skip, "lines skipped when reading data")
+
+        // to un/pickle RVData
+
+        .def("__getstate__", [](const RVData &d)
+            {
+                return std::make_tuple(d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
+            })
+        .def("__setstate__", [](RVData &d, const _state_type &state)
+            {
+                bool _multi = std::get<5>(state);
+                if (_multi) {
+                    new (&d) RVData(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+                    //              filename,           units,              skip   
+                } else {
+                    new (&d) RVData(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+                    //              filenames,          units,              skip   
+                }
+            })
         //
         .def("get_timespan", &RVData::get_timespan)
         .def("topslope", &RVData::topslope)

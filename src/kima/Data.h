@@ -21,6 +21,7 @@ using namespace std;
 
 // for nanobind
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/tuple.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 namespace nb = nanobind;
@@ -54,13 +55,19 @@ class KIMA_API RVData {
   friend class OutlierRVmodel;
   friend class BINARIESmodel;
 
-
   private:
     vector<double> t, y, sig, y2, sig2;
     vector<int> obsi;
     vector<vector<double>> actind;
 
   public:
+    string _datafile;
+    vector<string> _datafiles;
+    string _units;
+    int _skip;
+    bool _multi;
+    vector<string> _indicator_names;
+
     RVData();
     // 
     // RVData(const string filename) { load(filename, "ms"); }
@@ -95,13 +102,6 @@ class KIMA_API RVData {
 
     bool indicator_correlations;
     int number_indicators;
-    vector<string> indicator_names;
-
-    string datafile;
-    vector<string> datafiles;
-    string dataunits;
-    int dataskip;
-    bool datamulti;  // multiple instruments? not sure if needed
     int number_instruments;
     
     bool sb2 {false};
@@ -194,12 +194,19 @@ class KIMA_API PHOTdata {
 
   friend class TRANSITmodel;
 
+
   private:
     vector<double> t, y, sig;
     // vector<int> obsi;
     // vector<vector<double>> actind;
 
   public:
+
+    string _datafile;
+    vector<string> _datafiles;
+    string _units;
+    int _skip;
+
     PHOTdata();
     PHOTdata(const string& filename, const string& units="ms", int skip=0, const string& delimiter=" ")
     {
@@ -211,11 +218,6 @@ class KIMA_API PHOTdata {
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, 
               const string delimiter=" ");
-
-    string datafile;
-    vector<string> datafiles;
-    string dataunits;
-    int dataskip;
 
     /// docs for M0_epoch
     double M0_epoch;
