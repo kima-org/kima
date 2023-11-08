@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glob.h>  // glob(), globfree()
 #include <algorithm>
 #include <cmath>
 #include <cstring>  // memset()
@@ -27,10 +26,6 @@ using namespace std;
 namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
-
-// from https://stackoverflow.com/a/8615450
-vector<string> glob(const string& pattern);
-
 
 
 template <typename T>
