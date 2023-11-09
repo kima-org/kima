@@ -7,6 +7,7 @@
 #include "ConditionalPrior.h"
 #include "utils.h"
 #include "kepler.h"
+#include "postkepler.h"
 #include "AMDstability.h"
 
 using namespace std;
@@ -20,7 +21,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API BINARIES_model
+class KIMA_API BINARIESmodel
 {
     protected:
         /// whether the model includes a polynomial trend
@@ -99,9 +100,9 @@ class KIMA_API BINARIES_model
         std::vector<double> KO_wdot;
 
         // The signal
-        std::vector<double> mu = // the RV model
+        std::vector<double> mu;// the RV model
                             //std::vector<long double>(RVData::get_instance().N());
-        std::vector<double> mu_2 = // the RV model for secondary
+        std::vector<double> mu_2;// the RV model for secondary
                             //std::vector<long double>(RVData::get_instance().N()); // changed to imitate RVFWHM get_data replaced by get_instance
         void calculate_mu();
         void calculate_mu_2();
@@ -139,7 +140,7 @@ class KIMA_API BINARIES_model
         distribution  cubic_prior;
         /// (Common) prior for the between-instruments offsets.
         distribution  offsets_prior;
-        std::vector<distribution>   individual_offset_prior 
+        std::vector<distribution>   individual_offset_prior ;
 
 
         // priors for KO mode!

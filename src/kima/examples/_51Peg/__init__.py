@@ -1,6 +1,6 @@
 import os
 import kima
-from kima import RVData, RVmodel
+from kima import RVData, RVmodel, BINARIESmodel
 from kima.pykima.utils import chdir
 
 __all__ = ['_51Peg']
@@ -19,22 +19,22 @@ def _51Peg(run=False, **kwargs):
     """
     # load the right data file
     data = RVData([os.path.join(here, '51Peg.rv')])
-    print(data)
     # create the model
     model = RVmodel(fix=False, npmax=1, data=data)
 
     kwargs.setdefault('steps', 5000)
     kwargs.setdefault('num_threads', 4)
     kwargs.setdefault('num_particles', 2)
-    kwargs.setdefault('new_level_interval', 1000)
-    kwargs.setdefault('save_interval', 200)
+    kwargs.setdefault('new_level_interval', 2000)
+    kwargs.setdefault('save_interval', 500)
 
     if run:
-        with chdir(here):
-            kima.run(model, **kwargs)
+        kima.run(model, **kwargs)
+        # with chdir(here):
+        #     kima.run(model, **kwargs)
 
     return model
 
 if __name__ == '__main__':
-    model = _51Peg(run=True, steps=10)
+    model = _51Peg(run=True, steps=80000)
     res = kima.load_results()

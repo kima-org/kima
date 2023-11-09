@@ -1,4 +1,6 @@
-#include postkepler.h
+#include "postkepler.h"
+
+const double TWO_PI = M_PI * 2;
 
 namespace postKep
 {

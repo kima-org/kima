@@ -6,6 +6,7 @@ from .RVFWHMmodel import RVFWHMmodel
 from .SPLEAFmodel import SPLEAFmodel
 from .TRANSITmodel import TRANSITmodel
 from .OutlierRVmodel import OutlierRVmodel
+from .BINARIESmodel import BINARIESmodel
 
 from .Sampler import run
 
