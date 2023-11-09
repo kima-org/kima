@@ -22,7 +22,7 @@ using namespace nb::literals;
 
 
 
-class  BINARIES_model
+class  BINARIESmodel
 {
     protected:
         /// whether the model includes a polynomial trend
