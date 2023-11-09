@@ -60,7 +60,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -813,7 +813,7 @@ void BINARIESmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
+    if (data._multi){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
@@ -857,7 +857,7 @@ string BINARIESmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
             desc += "jitter" + std::to_string(j+1) + sep;
@@ -881,7 +881,7 @@ string BINARIESmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
         if (double_lined){
