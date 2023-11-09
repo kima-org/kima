@@ -20,7 +20,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API RVmodel
+class  RVmodel
 {
     protected:
         /// whether the model includes a polynomial trend
@@ -92,8 +92,8 @@ class KIMA_API RVmodel
 
         void initialize_from_data(RVData& data);
 
-        // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+        // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
         distribution Cprior;
         /// Prior for the extra white noise (jitter).

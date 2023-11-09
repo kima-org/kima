@@ -31,12 +31,12 @@ NB_MODULE(Sampler, m)
     m.def(
         "run", [](RVmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<RVmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -52,19 +52,19 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
 
     m.def(
         "run", [](GPmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<GPmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -80,19 +80,19 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
     
     m.def(
         "run", [](RVFWHMmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<RVFWHMmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -108,19 +108,19 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
 
     m.def(
         "run", [](SPLEAFmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<SPLEAFmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -136,19 +136,19 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
 
     m.def(
         "run", [](TRANSITmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<TRANSITmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -164,19 +164,19 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
 
     m.def(
         "run", [](OutlierRVmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
                   int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
+                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
                   double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
         {
             // setup the sampler options
             auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda, beta, steps);
+                               thread_steps, max_num_levels, lambda_, beta, steps);
             // create the sampler
             Sampler<OutlierRVmodel> sampler(num_threads, compression, opt, true, false);
             // replace default particles with provided model
@@ -192,7 +192,7 @@ NB_MODULE(Sampler, m)
         },
         "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
         "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda"_a=10.0, "beta"_a=100.0,
+        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
     m.def(

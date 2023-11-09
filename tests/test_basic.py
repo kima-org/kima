@@ -20,8 +20,6 @@ def test_api():
     m = kima.RVmodel(True, 0, D)
     m.trend = True
     m.degree = 2
-    # print(m.trend)
-    # print(help(kima.run))
 
 def test_RVData():
     # one instrument
@@ -36,6 +34,9 @@ def test_RVData():
     # fail for one character file name
     with pytest.raises(RuntimeError):
         D = kima.RVData('i')
+    # max_rows
+    D = kima.RVData('tests/simulated2.txt', max_rows=20)
+    assert_equal(D.N, 20)
 
 def test_RVmodel():
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))

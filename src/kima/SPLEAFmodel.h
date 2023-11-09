@@ -24,7 +24,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class KIMA_API SPLEAFmodel
+class  SPLEAFmodel
 {
     private:
         RVData data;// = RVData::get_instance();
@@ -37,6 +37,9 @@ class KIMA_API SPLEAFmodel
 
         /// Whether the model is for multiple timeseries (or just RVs)
         bool multi_series {false};
+        
+        /// Number of time series
+        size_t nseries {0};
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
@@ -57,8 +60,8 @@ class KIMA_API SPLEAFmodel
         std::vector<double> jitters; // for each instrument
             //   std::vector<double>(data.number_instruments);
 
-        std::vector<double> betas; // "slopes" for each indicator
-            //   std::vector<double>(data.number_indicators);
+        // std::vector<double> betas; // "slopes" for each indicator
+        //     //   std::vector<double>(data.number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
         double extra_sigma;
@@ -74,7 +77,12 @@ class KIMA_API SPLEAFmodel
 
         // the RV Keplerian signal
         std::vector<double> mu; // = std::vector<double>(data.N());
+        // residuals
+        VectorXd residuals;
         // the SPLEAF covariance model
+        // Error* err;
+        Term* _kernel;
+        MultiSeriesKernel ms;
         Cov cov;
 
         void calculate_mu();
@@ -93,8 +101,8 @@ class KIMA_API SPLEAFmodel
         SPLEAFmodel(bool fix, int npmax, RVData& data, Term& kernel, bool multi_series)
             : data(data), fix(fix), npmax(npmax), multi_series(multi_series)
         {
-            initialize_from_data(data, kernel);
-            // _cov = Cov(cov);
+            _kernel = &kernel;
+            initialize_from_data(data, *_kernel);
         };
 
         void initialize_from_data(RVData& data, Term& kernel);
@@ -122,7 +130,7 @@ class KIMA_API SPLEAFmodel
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior;
         // { (size_t) data.number_instruments - 1 };
         /// no doc.
-        std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        // std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
 
         // priors for KO mode!
         /// Prior for the KO orbital period(s)

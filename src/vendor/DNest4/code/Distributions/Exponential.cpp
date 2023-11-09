@@ -29,7 +29,7 @@ double Exponential::cdf(double x) const
 
 double Exponential::cdf_inverse(double p) const
 {
-    if(p < 0.0 || p > 1.0)
+    if( (p < 0.0) || (p > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     return - scale * log(1.-p);
 }
@@ -70,7 +70,7 @@ double TruncatedExponential::cdf(double x) const
 
 double TruncatedExponential::cdf_inverse(double x) const
 {
-    if(x < 0.0 || x > 1.0)
+    if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     double xx = unE.cdf(lower) + x * c;
     return unE.cdf_inverse(xx);
@@ -78,7 +78,8 @@ double TruncatedExponential::cdf_inverse(double x) const
 
 double TruncatedExponential::log_pdf(double x) const
 {
-    if(x<lower or x>upper) return -std::numeric_limits<double>::infinity();
+    if( (x < lower) || (x > upper) )
+        return -std::numeric_limits<double>::infinity();
     return unE.log_pdf(x) - log(c);
 }
 

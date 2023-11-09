@@ -1,5 +1,5 @@
 
-from .Data import RVData, PHOTdata, glob
+from .Data import RVData, PHOTdata
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 from .RVFWHMmodel import RVFWHMmodel
@@ -14,7 +14,8 @@ from .kepler import keplerian
 from . import spleaf
 
 from . import distributions
-from .pykima.showresults import showresults as load_results
+# from .pykima.showresults import showresults as load_results
+from .pykima.results import load_results
 
 # examples
 from . import examples

@@ -1,37 +1,5 @@
 #include "Data.h"
 
-/**
- * @brief Find pathnames matching a pattern
- *
- * from https://stackoverflow.com/a/8615450
- */
-std::vector<std::string> glob(const std::string& pattern)
-{
-    // glob struct resides on the stack
-    glob_t glob_result;
-    memset(&glob_result, 0, sizeof(glob_result));
-
-    // do the glob operation
-    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-    if (return_value != 0) {
-        globfree(&glob_result);
-        std::stringstream ss;
-        ss << "glob() failed with return_value " << return_value << std::endl;
-        throw std::runtime_error(ss.str());
-    }
-
-    // collect all the filenames into a vector<string>
-    std::vector<std::string> filenames;
-    for (size_t i = 0; i < glob_result.gl_pathc; ++i) {
-        filenames.push_back(std::string(glob_result.gl_pathv[i]));
-    }
-
-    // cleanup
-    globfree(&glob_result);
-
-    return filenames;
-}
-
 
 RVData::RVData() {};
 
@@ -49,7 +17,7 @@ RVData::RVData() {};
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      * @param indicators
      */
-    void RVData::load(const string filename, const string units, int skip,
+    void RVData::load(const string filename, const string units, int skip, int max_rows,
                       const string delimiter, const vector<string>& indicators)
     {
         if (filename.empty()) {
@@ -65,6 +33,7 @@ RVData::RVData() {};
 
         auto data = loadtxt(filename)
                         .skiprows(skip)
+                        .max_rows(max_rows)
                         .delimiter(delimiter)();
 
         if (data.size() < 3) {
@@ -73,10 +42,11 @@ RVData::RVData() {};
         }
         
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = false;
+        _datafile = filename;
+        _datafiles = {};
+        _units = units;
+        _skip = skip;
+        _multi = false;
         number_instruments = 1;
 
         t = data[0];
@@ -93,10 +63,12 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+
+        _indicator_names = indicators;
+        // _indicator_names.erase(
+        //     std::remove(_indicator_names.begin(), _indicator_names.end(), ""),
+        //     _indicator_names.end()
+        // );
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -160,12 +132,13 @@ RVData::RVData() {};
      * @param units      units of the RVs and errors, either "kms" or "ms"
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      */
-    void RVData::load_multi(const string filename, const string units, int skip,
+    void RVData::load_multi(const string filename, const string units, int skip, int max_rows,
                             const string delimiter, const vector<string> &indicators)
     {
 
         auto data = loadtxt(filename)
                         .skiprows(skip)
+                        .max_rows(max_rows)
                         .delimiter(delimiter)();
 
         if (data.size() < 4) {
@@ -176,10 +149,11 @@ RVData::RVData() {};
         auto Ncol = data.size();
         auto N = data[0].size();
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = true;
+        _datafile = filename;
+        _datafiles = {};
+        _units = units;
+        _skip = skip;
+        _multi = true;
 
         t = data[0];
         y = data[1];
@@ -195,10 +169,10 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+        _indicator_names = indicators;
+        // indicator_names.erase(
+        //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
+        //     indicator_names.end());
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -284,7 +258,7 @@ RVData::RVData() {};
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      * @param indicators
      */
-    void RVData::load_multi(vector<string> filenames, const string units, int skip,
+    void RVData::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
                             const string delimiter, const vector<string>& indicators)
     {
         t.clear();
@@ -298,10 +272,10 @@ RVData::RVData() {};
         int nempty = count(indicators.begin(), indicators.end(), "");
         number_indicators = indicators.size() - nempty;
         indicator_correlations = number_indicators > 0;
-        indicator_names = indicators;
-        indicator_names.erase(
-            std::remove(indicator_names.begin(), indicator_names.end(), ""),
-            indicator_names.end());
+        _indicator_names = indicators;
+        // indicator_names.erase(
+        //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
+        //     indicator_names.end());
 
         // empty and resize the indicator vectors
         actind.clear();
@@ -366,11 +340,11 @@ RVData::RVData() {};
             }
         }
 
-        datafile = "";
-        datafiles = filenames;
-        dataunits = units;
-        dataskip = skip;
-        datamulti = true;
+        _datafile = "";
+        _datafiles = filenames;
+        _units = units;
+        _skip = skip;
+        _multi = true;
 
         // How many points did we read?
         printf("# Loaded %zu data points from files\n", t.size());
@@ -451,7 +425,7 @@ RVData::RVData() {};
      */
     double RVData::topslope() const
     {
-        if (datamulti) {
+        if (_multi) {
             double slope = 0.0;
             for (size_t j = 0; j < number_instruments; j++) {
                 vector<double> obsy, obst;
@@ -486,7 +460,7 @@ RVData::RVData() {};
     {
         // for multiple instruments, calculate individual RV spans and return
         // the largest one
-        if (datamulti) {
+        if (_multi) {
             double span = 0.0;
             for (size_t j = 0; j < number_instruments; j++) {
                 vector<double> obsy;
@@ -552,7 +526,7 @@ RVData::RVData() {};
 
     ostream& operator<<(ostream& os, const RVData& d)
     {
-        os << "RV data from file " << d.datafile << " with " << d.N() << " points";
+        os << "RV data from file " << d._datafile << " with " << d.N() << " points";
         return os;
     }
 
@@ -594,9 +568,9 @@ PHOTdata::PHOTdata() {};
         }
         
 
-        datafile = filename;
-        dataunits = units;
-        dataskip = skip;
+        _datafile = filename;
+        _units = units;
+        _skip = skip;
 
         t = data[0];
         y = data[1];
@@ -669,7 +643,7 @@ PHOTdata::PHOTdata() {};
 
     ostream& operator<<(ostream& os, const PHOTdata& d)
     {
-        os << "PHOT data from file " << d.datafile << " with " << d.N() << " points";
+        os << "PHOT data from file " << d._datafile << " with " << d.N() << " points";
         return os;
     }
 
@@ -677,10 +651,22 @@ PHOTdata::PHOTdata() {};
 
 /*****************************************************************************/
 
+// class RVData_publicist : public RVData
+// {
+//     public:
+//         using RVData::_datafile;
+//         using RVData::_datafiles;
+//         using RVData::_units;
+//         using RVData::_skip;
+//         using RVData::_multi;
+// };
+
+
+// the types of objects in the RVData state (for pickling)
+using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
+
 
 NB_MODULE(Data, m) {
-    m.def("add", [](int a, int b) { return a + b; }, "a"_a, "b"_a);
-    m.def("glob", [](const std::string& pattern) { return glob(pattern); });
     // 
     nb::class_<loadtxt>(m, "loadtxt")
         .def(nb::init<std::string>())
@@ -690,15 +676,16 @@ NB_MODULE(Data, m) {
         .def("usecols", &loadtxt::usecols)
         .def("max_rows", &loadtxt::max_rows)
         .def("__call__", &loadtxt::operator());
+
     // 
     nb::class_<RVData>(m, "RVData", "docs")
         // constructors
-        .def(nb::init<const vector<string>&, const string&, int, const string&, const vector<string>&>(),
-             "filenames"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const vector<string>&, const string&,  int,        int,            const string&,     const vector<string>&>(),
+                      "filenames"_a,         "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string&, const string&, int, const string&, const vector<string>&>(),
-             "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const string&, const string&,  int,        int,            const string&,     const vector<string>&>(),
+                      "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
 
         // properties
@@ -709,13 +696,31 @@ NB_MODULE(Data, m) {
         .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
         .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
         //
-        .def("__getstate__", [](const RVData &d) { return d.datafile; })
-        .def("__setstate__", [](RVData &d, const string datafile) { new (&d) RVData(datafile); })
+        .def_ro("multi", &RVData::_multi, "data from multiple instruments")
+        .def_ro("skip", &RVData::_skip, "lines skipped when reading data")
+
+        // to un/pickle RVData
+
+        .def("__getstate__", [](const RVData &d)
+            {
+                return std::make_tuple(d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
+            })
+        .def("__setstate__", [](RVData &d, const _state_type &state)
+            {
+                bool _multi = std::get<5>(state);
+                if (_multi) {
+                    new (&d) RVData(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+                    //              filename,           units,              skip   
+                } else {
+                    new (&d) RVData(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+                    //              filenames,          units,              skip   
+                }
+            })
         //
         .def("get_timespan", &RVData::get_timespan)
         .def("topslope", &RVData::topslope)
         // ...
-        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "delimiter"_a, "indicators"_a,
+        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
              R"D(
 Load RV data from a tab/space separated file with columns

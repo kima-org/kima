@@ -24,6 +24,18 @@ void GPmodel::initialize_from_data(RVData& data)
     conditional->set_default_priors(data);
 }
 
+void GPmodel::set_known_object(size_t n)
+{
+    known_object = true;
+    n_known_object = n;
+
+    KO_Pprior.resize(n);
+    KO_Kprior.resize(n);
+    KO_eprior.resize(n);
+    KO_phiprior.resize(n);
+    KO_wprior.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
@@ -53,7 +65,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -95,7 +107,7 @@ void GPmodel::from_prior(RNG& rng)
 
     background = Cprior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         for(int i=0; i<offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -182,7 +194,7 @@ void GPmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -263,7 +275,7 @@ void GPmodel::calculate_C()
             if(i==j)
             {
                 double sig = data.sig[i];
-                if (data.datamulti)
+                if (data._multi)
                 {
                     double jit = jitters[data.obsi[i]-1];
                     C(i, j) += sig*sig + jit*jit;
@@ -376,7 +388,7 @@ double GPmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -414,7 +426,7 @@ double GPmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
@@ -431,7 +443,7 @@ double GPmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data.datamulti){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -459,7 +471,7 @@ double GPmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
@@ -551,7 +563,7 @@ void GPmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
@@ -568,7 +580,7 @@ void GPmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
+    if (data._multi){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
@@ -604,7 +616,7 @@ string GPmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
@@ -620,7 +632,7 @@ string GPmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
@@ -690,7 +702,7 @@ void GPmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << endl;
@@ -698,13 +710,13 @@ void GPmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -722,7 +734,7 @@ void GPmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
 
     fout << endl << "[priors.GP]" << endl;
@@ -761,15 +773,37 @@ void GPmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
+class GPmodel_publicist : public GPmodel
+{
+    public:
+        using GPmodel::trend;
+        using GPmodel::degree;
+        using GPmodel::star_mass;
+        using GPmodel::enforce_stability;
+};
+
 NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel>(m, "GPmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
-        .def_prop_rw("trend",
-                     [](GPmodel &m) { return m.get_trend(); },
-                     [](GPmodel &m, bool t) { m.set_trend(t); })
-        .def_prop_rw("degree",
-                     [](GPmodel &m) { return m.get_degree(); },
-                     [](GPmodel &m, double t) { m.set_degree(t); })
+        //
+        .def_rw("trend", &GPmodel_publicist::trend,
+                "whether the model includes a polynomial trend")
+        .def_rw("degree", &GPmodel_publicist::degree,
+                "degree of the polynomial trend")
+        
+        // KO mode
+        .def("set_known_object", &GPmodel::set_known_object)
+        .def_prop_ro("known_object", [](GPmodel &m) { return m.get_known_object(); },
+                     "whether the model includes (better) known extra Keplerian curve(s)")
+        .def_prop_ro("n_known_object", [](GPmodel &m) { return m.get_n_known_object(); },
+                     "how many known objects")
+
+        //
+        .def_rw("star_mass", &GPmodel_publicist::star_mass,
+                "stellar mass [Msun]")
+        .def_rw("enforce_stability", &GPmodel_publicist::enforce_stability, 
+                "whether to enforce AMD-stability")
+
         // priors
         .def_prop_rw("Cprior",
             [](GPmodel &m) { return m.Cprior; },
@@ -791,6 +825,7 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.cubic_prior; },
             [](GPmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+
         // priors for the GP hyperparameters
         .def_prop_rw("eta1_prior",
             [](GPmodel &m) { return m.eta1_prior; },
@@ -808,6 +843,31 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.eta4_prior; },
             [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
+
+        // known object priors
+        // ? should these setters check if known_object is true?
+        .def_prop_rw("KO_Pprior",
+                     [](GPmodel &m) { return m.KO_Pprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
+                     "Prior for KO orbital period")
+        .def_prop_rw("KO_Kprior",
+                     [](GPmodel &m) { return m.KO_Kprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+                     "Prior for KO semi-amplitude")
+        .def_prop_rw("KO_eprior",
+                     [](GPmodel &m) { return m.KO_eprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
+                     "Prior for KO eccentricity")
+        .def_prop_rw("KO_wprior",
+                     [](GPmodel &m) { return m.KO_wprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
+                     "Prior for KO argument of periastron")
+        .def_prop_rw("KO_phiprior",
+                     [](GPmodel &m) { return m.KO_phiprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
+                     "Prior for KO mean anomaly(ies)")
+
+
         // conditional object
         .def_prop_rw("conditional",
                      [](GPmodel &m) { return m.get_conditional_prior(); },

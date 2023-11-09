@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glob.h>  // glob(), globfree()
 #include <algorithm>
 #include <cmath>
 #include <cstring>  // memset()
@@ -22,15 +21,12 @@ using namespace std;
 
 // for nanobind
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/tuple.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
-
-// from https://stackoverflow.com/a/8615450
-vector<string> glob(const string& pattern);
-
 
 
 template <typename T>
@@ -50,7 +46,7 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 }
 
 
-class KIMA_API RVData {
+class  RVData {
 
   friend class RVmodel;
   friend class GPmodel;
@@ -59,57 +55,53 @@ class KIMA_API RVData {
   friend class OutlierRVmodel;
   friend class BINARIESmodel;
 
-
   private:
     vector<double> t, y, sig, y2, sig2;
     vector<int> obsi;
     vector<vector<double>> actind;
 
   public:
+    string _datafile;
+    vector<string> _datafiles;
+    string _units;
+    int _skip;
+    bool _multi;
+    vector<string> _indicator_names;
+
     RVData();
     // 
     // RVData(const string filename) { load(filename, "ms"); }
     // RVData(const string filename, int skip=0) { load(filename, "ms", skip); }
     // 
     // RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
-    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, 
+    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
-      load_multi(filenames, units, skip, delimiter, indicators);
+      load_multi(filenames, units, skip, max_rows, delimiter, indicators);
     }
     // 
-    RVData(const string& filename, const string& units="ms", int skip=0, 
+    RVData(const string& filename, const string& units="ms", int skip=0, int max_rows=0, 
            const string& delimiter=" ", const vector<string>& indicators=vector<string>())
     {
-      load(filename, units, skip, delimiter, indicators);
+      load(filename, units, skip, max_rows, delimiter, indicators);
     }
 
     friend ostream& operator<<(ostream& os, const RVData& d);
 
     // to read data from one file, one instrument
-    void load(const string filename, const string units, int skip=0, 
-              const string delimiter=" ",
-              const vector<string> &indicators=vector<string>());
+    void load(const string filename, const string units, int skip=0, int max_rows=0,
+              const string delimiter=" ", const vector<string> &indicators=vector<string>());
 
     // to read data from one file, more than one instrument
-    void load_multi(const string filename, const string units, int skip=0,
-                    const string delimiter=" ",
-                    const vector<string> &indicators=vector<string>());
+    void load_multi(const string filename, const string units, int skip=0, int max_rows=0,
+                    const string delimiter=" ", const vector<string> &indicators=vector<string>());
 
     // to read data from more than one file, more than one instrument
-    void load_multi(vector<string> filenames, const string units, int skip=0,
-                    const string delimiter=" ",
-                    const vector<string>& indicators=vector<string>());
+    void load_multi(vector<string> filenames, const string units, int skip=0, int max_rows=0,
+                    const string delimiter=" ", const vector<string>& indicators=vector<string>());
 
     bool indicator_correlations;
     int number_indicators;
-    vector<string> indicator_names;
-
-    string datafile;
-    vector<string> datafiles;
-    string dataunits;
-    int dataskip;
-    bool datamulti;  // multiple instruments? not sure if needed
     int number_instruments;
     
     bool sb2 {false};
@@ -198,9 +190,10 @@ class KIMA_API RVData {
 
 
 
-class KIMA_API PHOTdata {
+class  PHOTdata {
 
   friend class TRANSITmodel;
+
 
   private:
     vector<double> t, y, sig;
@@ -208,6 +201,12 @@ class KIMA_API PHOTdata {
     // vector<vector<double>> actind;
 
   public:
+
+    string _datafile;
+    vector<string> _datafiles;
+    string _units;
+    int _skip;
+
     PHOTdata();
     PHOTdata(const string& filename, const string& units="ms", int skip=0, const string& delimiter=" ")
     {
@@ -219,11 +218,6 @@ class KIMA_API PHOTdata {
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, 
               const string delimiter=" ");
-
-    string datafile;
-    vector<string> datafiles;
-    string dataunits;
-    int dataskip;
 
     /// docs for M0_epoch
     double M0_epoch;

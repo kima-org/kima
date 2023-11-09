@@ -254,10 +254,10 @@ void bind_RVConditionalPrior(nb::module_ &m) {
             [](RVConditionalPrior &c) { return c.wprior; },
             [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
-        .def_prop_rw("Pprior",
-            [](RVConditionalPrior &c) { return c.Pprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
-            "Prior for the orbital period(s)");
+        .def_prop_rw("phiprior",
+            [](RVConditionalPrior &c) { return c.phiprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            "Prior for the mean anomaly(ies)");
     
     nb::class_<TRANSITConditionalPrior>(m, "TRANSITConditionalPrior")
         .def(nb::init<>())

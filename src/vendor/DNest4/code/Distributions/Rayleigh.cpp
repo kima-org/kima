@@ -21,7 +21,7 @@ double Rayleigh::cdf(double x) const
 
 double Rayleigh::cdf_inverse(double x) const
 {
-    if(x < 0.0 || x > 1.0)
+    if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     return scale * sqrt(-2.*log(1-x));
 }
@@ -58,7 +58,7 @@ double TruncatedRayleigh::cdf(double x) const
 
 double TruncatedRayleigh::cdf_inverse(double x) const
 {
-    if(x < 0.0 || x > 1.0)
+    if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     double u = lcdf + x*tp;
     return scale * sqrt(-2.*log(1-u));
@@ -66,7 +66,8 @@ double TruncatedRayleigh::cdf_inverse(double x) const
 
 double TruncatedRayleigh::log_pdf(double x) const
 {
-    if(x<lower or x>=upper) return -std::numeric_limits<double>::infinity();
+    if( (x < lower) || (x >= upper) )
+        return -std::numeric_limits<double>::infinity();
     double r = x/scale;
     return log(r) - 0.5 * r * r - logtp;
 }

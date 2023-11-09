@@ -494,8 +494,8 @@ void Gaia_model::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "skip: " << data.dataskip << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "skip: " << data._skip << endl;
 
     fout << "files: ";
     for (auto f: data.datafile)

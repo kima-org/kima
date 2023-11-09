@@ -21,7 +21,11 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
+<<<<<<< HEAD
 class KIMA_API BINARIESmodel
+=======
+class  BINARIES_model
+>>>>>>> 2dd28181bddab8061ac2cfe481e560d45e37a8f3
 {
     protected:
         /// whether the model includes a polynomial trend

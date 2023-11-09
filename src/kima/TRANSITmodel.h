@@ -21,7 +21,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API TRANSITmodel
+class  TRANSITmodel
 {
     protected:
         /// whether the model includes a polynomial trend

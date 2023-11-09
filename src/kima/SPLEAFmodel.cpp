@@ -9,7 +9,7 @@ void SPLEAFmodel::initialize_from_data(RVData& data, Term& kernel)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
-    betas.resize(data.number_indicators);
+    // betas.resize(data.number_indicators);
     individual_offset_prior.resize(data.number_instruments - 1);
 
     // resize RV model vector
@@ -22,7 +22,8 @@ void SPLEAFmodel::initialize_from_data(RVData& data, Term& kernel)
 
     if (multi_series) // multiple series, create a MultiSeriesKernel
     { 
-        size_t nseries = 1 + data.number_indicators / 2;
+        nseries = 1 + data.number_indicators / 2;
+        residuals.resize(N * nseries);
 
         VectorXd t_full(nseries * N);
         VectorXd yerr_full(nseries * N);
@@ -50,26 +51,35 @@ void SPLEAFmodel::initialize_from_data(RVData& data, Term& kernel)
         VectorXd alpha = VectorXd::Ones(nseries);
         VectorXd beta = VectorXd::Ones(nseries);
 
-        MultiSeriesKernel ms = MultiSeriesKernel(kernel, series_index, alpha, beta);
-        cov = Cov(t_full, yerr_full, ms);
-    } 
+        ms = MultiSeriesKernel(kernel, series_index, alpha, beta);
+        // err = new Error(yerr_full);
+        cov = Cov(t_full, yerr_full, 0, ms._r);
+        cov.link(ms);
+    }
     else // just RVs, use the kernel directly
     {
+        nseries = 1;
+        residuals.resize(N);
+
         VectorXd _t = Eigen::Map<VectorXd, Eigen::Unaligned> (data.t.data(), data.t.size());
         VectorXd _yerr = Eigen::Map<VectorXd, Eigen::Unaligned> (data.sig.data(), data.sig.size());
-        cov = Cov(_t, _yerr, kernel);
+        // err = new Error(_yerr);
+        
+        cov = Cov(_t, _yerr, 0, kernel._r);
+        cov.link(kernel);
     }
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
     conditional->set_default_priors(data);
+
 }
 
 /* set default priors if the user didn't change them */
 
 void SPLEAFmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    betaprior = make_prior<Gaussian>(0, 1);
+    // betaprior = make_prior<Gaussian>(0, 1);
 
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
@@ -94,7 +104,7 @@ void SPLEAFmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -136,7 +146,7 @@ void SPLEAFmodel::from_prior(RNG& rng)
 
     background = Cprior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         for (size_t i = 0; i < offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -156,11 +166,11 @@ void SPLEAFmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-    if (data.indicator_correlations)
-    {
-        for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
-    }
+    // if (data.indicator_correlations)
+    // {
+    //     for (unsigned i=0; i<data.number_indicators; i++)
+    //         betas[i] = betaprior->generate(rng);
+    // }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -219,7 +229,7 @@ void SPLEAFmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -230,14 +240,14 @@ void SPLEAFmodel::calculate_mu()
             }
         }
 
-        if(data.indicator_correlations)
-        {
-            for(size_t i=0; i<N; i++)
-            {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * data.actind[j][i];
-            }   
-        }
+        // if(data.indicator_correlations)
+        // {
+        //     for(size_t i=0; i<N; i++)
+        //     {
+        //         for(size_t j = 0; j < data.number_indicators; j++)
+        //            mu[i] += betas[j] * data.actind[j][i];
+        //     }   
+        // }
 
         if (known_object) { // KO mode!
             add_known_object();
@@ -338,8 +348,8 @@ double SPLEAFmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-
-    if(rng.rand() <= 0.5) // perturb planet parameters
+    int maxpl = planets.get_max_num_components();
+    if(maxpl > 0 && rng.rand() <= 0.5) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
@@ -351,7 +361,7 @@ double SPLEAFmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
+        if(data._multi)
         {
             for (size_t i = 0; i < jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -380,7 +390,7 @@ double SPLEAFmodel::perturb(RNG& rng)
     }
     else
     {
-        for(size_t i=0; i<mu.size(); i++)
+        for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] -= background;
             if(trend) {
@@ -388,24 +398,24 @@ double SPLEAFmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
             }
 
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] -= betas[j] * actind[j][i];
-                }
-            }
+            // if(data.indicator_correlations) {
+            //     for(size_t j = 0; j < data.number_indicators; j++){
+            //         mu[i] -= betas[j] * actind[j][i];
+            //     }
+            // }
         }
 
         // propose new vsys
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data.datamulti){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -418,12 +428,12 @@ double SPLEAFmodel::perturb(RNG& rng)
             if (degree == 3) cubic_prior->perturb(cubic, rng);
         }
 
-        // propose new indicator correlations
-        if(data.indicator_correlations){
-            for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
-            }
-        }
+        // // propose new indicator correlations
+        // if(data.indicator_correlations){
+        //     for(size_t j = 0; j < data.number_indicators; j++){
+        //         betaprior->perturb(betas[j], rng);
+        //     }
+        // }
 
         for(size_t i=0; i<mu.size(); i++)
         {
@@ -433,17 +443,17 @@ double SPLEAFmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
 
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] += betas[j]*actind[j][i];
-                }
-            }
+            // if(data.indicator_correlations) {
+            //     for(size_t j = 0; j < data.number_indicators; j++){
+            //         mu[i] += betas[j]*actind[j][i];
+            //     }
+            // }
         }
     }
 
@@ -467,10 +477,11 @@ double SPLEAFmodel::log_likelihood()
 {
     size_t N = data.N();
     const auto& y = data.get_y();
-    const auto& sig = data.get_sig();
-    const auto& obsi = data.get_obsi();
+    const auto& actind = data.get_actind();
+    // const auto& sig = data.get_sig();
+    // const auto& obsi = data.get_obsi();
 
-    double logL = 0.;
+    double logL;
 
     if (enforce_stability){
         int stable = is_stable();
@@ -482,13 +493,21 @@ double SPLEAFmodel::log_likelihood()
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    VectorXd r(N);
-    for (size_t i = 0; i < N; i++)
+    for (size_t j = 0; j < nseries; j++)
     {
-        r[i] = y[i] - mu[i];
+        for (size_t i = 0; i < N; i++)
+        {
+            if (j == 0)
+                residuals[i * nseries] = y[i] - mu[i];
+            else
+                residuals[i * nseries + j] = actind[2*j - 2][i] - 0.0;
+        }
     }
-    logL += cov.loglike(r);
 
+    logL = cov.loglike(residuals);
+    // cout << residuals.transpose() << endl << endl;
+    // cout << cov.to_string() << '\t' << cov.logdet() << '\t' << cov.chi2(residuals) << endl;
+    // cout << logL << endl;
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -509,7 +528,7 @@ void SPLEAFmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(size_t j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
@@ -526,19 +545,19 @@ void SPLEAFmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
+    if (data._multi){
         for (size_t j = 0; j < offsets.size(); j++)
         {
             out<<offsets[j]<<'\t';
         }
     }
 
-    if(data.indicator_correlations){
-        for (int j = 0; j < data.number_indicators; j++)
-        {
-            out<<betas[j]<<'\t';
-        }
-    }
+    // if(data.indicator_correlations){
+    //     for (int j = 0; j < data.number_indicators; j++)
+    //     {
+    //         out<<betas[j]<<'\t';
+    //     }
+    // }
 
     // write GP parameters
     cov.print(out);
@@ -565,7 +584,7 @@ string SPLEAFmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for (size_t j = 0; j < jitters.size(); j++)
             desc += "jitter" + std::to_string(j + 1) + sep;
@@ -581,16 +600,16 @@ string SPLEAFmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    if(data.indicator_correlations){
-        for(size_t j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
-        }
-    }
+    // if(data.indicator_correlations){
+    //     for(size_t j=0; j<data.number_indicators; j++){
+    //         desc += "beta" + std::to_string(j+1) + sep;
+    //     }
+    // }
 
     // GP parameters
     cov.description(desc, sep);
@@ -652,21 +671,23 @@ void SPLEAFmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
+    fout << "multi_series: " << multi_series << endl;
+    fout << "nseries: " << nseries << endl;
     fout << endl;
 
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -684,7 +705,7 @@ void SPLEAFmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
 
     // fout << endl << "[priors.GP]" << endl;

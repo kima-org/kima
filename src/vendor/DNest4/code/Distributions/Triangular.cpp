@@ -38,7 +38,7 @@ double Triangular::cdf(double x) const
 double Triangular::cdf_inverse(double x) const
 {
     const double centre_ccdf = (centre-lower)/(upper-lower);
-    if(x < 0. || x > 1.)
+    if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
     else if (x <= centre_ccdf)
         return lower + sqrt((upper-lower)*(centre-lower)*x);
@@ -48,9 +48,9 @@ double Triangular::cdf_inverse(double x) const
 
 double Triangular::log_pdf(double x) const
 {
-    if (x<lower or x>upper)
+    if ( (x < lower) || (x > upper) )
         return -std::numeric_limits<double>::infinity();
-    else if ((x>lower) && (x<=centre))
+    else if ( (x > lower) && ( x <= centre) )
         return log(2.0*(x-lower)) - log((upper-lower)*(centre-lower));
     else
         return log((upper-lower)) - log((upper-lower)*(upper-centre));

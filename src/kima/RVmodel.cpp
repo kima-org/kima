@@ -61,7 +61,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (data.datamulti && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -101,7 +101,7 @@ void RVmodel::from_prior(RNG& rng)
 
     background = Cprior->generate(rng);
 
-    if(data.datamulti)
+    if(data._multi)
     {
         for(int i=0; i<offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -184,7 +184,7 @@ void RVmodel::calculate_mu()
             }
         }
 
-        if(data.datamulti)
+        if(data._multi)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -312,7 +312,7 @@ double RVmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data.datamulti)
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -352,7 +352,7 @@ double RVmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
@@ -369,7 +369,7 @@ double RVmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data.datamulti){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -397,7 +397,7 @@ double RVmodel::perturb(RNG& rng)
                             quadr * pow(data.t[i] - tmid, 2) +
                             cubic * pow(data.t[i] - tmid, 3);
             }
-            if(data.datamulti) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
@@ -453,7 +453,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
+            if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -474,7 +474,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(data.datamulti)
+            if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -506,7 +506,7 @@ void RVmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
@@ -523,7 +523,7 @@ void RVmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (data.datamulti){
+    if (data._multi){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
@@ -559,7 +559,7 @@ string RVmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (data.datamulti)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
@@ -575,7 +575,7 @@ string RVmodel::description() const
     }
 
 
-    if (data.datamulti){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
@@ -644,7 +644,7 @@ void RVmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << data.datamulti << endl;
+    fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -653,13 +653,13 @@ void RVmodel::save_setup() {
     fout << endl;
 
     fout << "[data]" << endl;
-    fout << "file: " << data.datafile << endl;
-    fout << "units: " << data.dataunits << endl;
-    fout << "skip: " << data.dataskip << endl;
-    fout << "multi: " << data.datamulti << endl;
+    fout << "file: " << data._datafile << endl;
+    fout << "units: " << data._units << endl;
+    fout << "skip: " << data._skip << endl;
+    fout << "multi: " << data._multi << endl;
 
     fout << "files: ";
-    for (auto f: data.datafiles)
+    for (auto f: data._datafiles)
         fout << f << ",";
     fout << endl;
 
@@ -677,7 +677,7 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+    if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
@@ -797,19 +797,24 @@ NB_MODULE(RVmodel, m) {
         // ? should these setters check if known_object is true?
         .def_prop_rw("KO_Pprior",
                      [](RVmodel &m) { return m.KO_Pprior; },
-                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; })
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
+                     "Prior for KO orbital period")
         .def_prop_rw("KO_Kprior",
                      [](RVmodel &m) { return m.KO_Kprior; },
-                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; })
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+                     "Prior for KO semi-amplitude")
         .def_prop_rw("KO_eprior",
                      [](RVmodel &m) { return m.KO_eprior; },
-                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; })
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
+                     "Prior for KO eccentricity")
         .def_prop_rw("KO_wprior",
                      [](RVmodel &m) { return m.KO_wprior; },
-                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; })
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
+                     "Prior for KO argument of periastron")
         .def_prop_rw("KO_phiprior",
                      [](RVmodel &m) { return m.KO_phiprior; },
-                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; })
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
+                     "Prior for KO mean anomaly(ies)")
 
         // conditional object
         .def_prop_rw("conditional",

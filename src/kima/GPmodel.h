@@ -22,8 +22,20 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class KIMA_API GPmodel
+class  GPmodel
 {
+    protected:
+        /// whether the model includes a polynomial trend
+        bool trend {false};
+        /// degree of the polynomial trend
+        int degree {0};   
+
+        /// stellar mass (in units of Msun)
+        double star_mass = 1.0;
+
+        /// whether to enforce AMD-stability
+        bool enforce_stability = false;
+
     private:
         RVData data;// = RVData::get_instance();
 
@@ -37,15 +49,6 @@ class KIMA_API GPmodel
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
         double background;
-
-        /// whether the model includes a linear trend
-        bool trend {false};
-        /// and its degree
-        int degree {0};
-
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        int n_known_object {0};
 
         std::vector<double> offsets; // between instruments
             //   std::vector<double>(0, data.number_instruments - 1);
@@ -81,9 +84,7 @@ class KIMA_API GPmodel
         void add_known_object();
         void remove_known_object();
 
-        double star_mass = 1.0;  // [Msun]
         int is_stable() const;
-        bool enforce_stability = false;
 
         unsigned int staleness;
 
@@ -103,45 +104,57 @@ class KIMA_API GPmodel
         double get_degree() const { return degree; };
         void set_degree(double d) { degree = d; };
 
+        using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
-        std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
+        distribution Cprior;
         /// Prior for the extra white noise (jitter).
-        std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        distribution Jprior;
         /// Prior for the slope
-        std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
+        distribution slope_prior;
         /// Prior for the quadratic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> quadr_prior;
+        distribution quadr_prior;
         /// Prior for the cubic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
+        distribution cubic_prior;
         /// (Common) prior for the between-instruments offsets.
-        std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior;
+        distribution offsets_prior;
+        std::vector<distribution> individual_offset_prior;
         // { (size_t) data.number_instruments - 1 };
         /// no doc.
-        std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        distribution betaprior;
 
-        // priors for KO mode!
+        /* KO mode! */
+
+        /// include (better) known extra Keplerian curve(s)?
+        bool known_object {false};
+        bool get_known_object() { return known_object; }
+
+        /// how many known objects
+        size_t n_known_object {0};
+        size_t get_n_known_object() { return n_known_object; }
+
+        void set_known_object(size_t known_object);
+
         /// Prior for the KO orbital period(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Pprior;
         /// Prior for the KO semi-amplitude(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Kprior;
         /// Prior for the KO eccentricity(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
+        std::vector<distribution> KO_eprior;
         /// Prior for the KO mean anomaly(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
+        std::vector<distribution> KO_phiprior;
         /// Prior for the KO argument(s) of pericenter
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
+        std::vector<distribution> KO_wprior;
 
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"
-        std::shared_ptr<DNest4::ContinuousDistribution> eta1_prior;
+        distribution eta1_prior;
         /// Prior for $\eta_2$, the GP correlation timescale
-        std::shared_ptr<DNest4::ContinuousDistribution> eta2_prior;
+        distribution eta2_prior;
         /// Prior for $\eta_3$, the GP period
-        std::shared_ptr<DNest4::ContinuousDistribution> eta3_prior;
+        distribution eta3_prior;
         /// Prior for $\eta_4$, the recurrence timescale
-        std::shared_ptr<DNest4::ContinuousDistribution> eta4_prior;
+        distribution eta4_prior;
 
 
         // /// @brief an alias for RVData::get_instance()
