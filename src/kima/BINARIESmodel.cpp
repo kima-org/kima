@@ -512,7 +512,7 @@ double BINARIESmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data._multi))
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -563,7 +563,7 @@ double BINARIESmodel::perturb(RNG& rng)
             if(trend) {
                 mu[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
-            if(data._multi)) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
@@ -581,7 +581,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 if(trend) {
                     mu_2[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data._multi)) {
+                if(data._multi) {
                     for(size_t j=0; j<offsets_2.size(); j++){
                         if (data.obsi[i] == j+1) { mu_2[i] -= offsets_2[j]; }
                     }
@@ -600,7 +600,7 @@ double BINARIESmodel::perturb(RNG& rng)
         Cprior->perturb(bkg2, rng);
 
         // propose new instrument offsets
-        if (data._multi)){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -632,7 +632,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 mu[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
 
-            if(data._multi)) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
@@ -649,7 +649,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 if(trend) {
                     mu_2[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data._multi)) {
+                if(data._multi) {
                     for(size_t j=0; j<offsets_2.size(); j++){
                         if (data.obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                     }
