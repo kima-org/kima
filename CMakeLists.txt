@@ -4,6 +4,10 @@ project(kima LANGUAGES CXX C)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(WIN32)
+  add_compile_definitions(_USE_MATH_DEFINES)
+endif()
+
 # add_compile_options(-Wall -Wextra -Wpedantic)
 
 # DNest4 library
@@ -42,7 +46,7 @@ nanobind_add_module(Data STABLE_ABI NB_STATIC
                     src/kima/Data.cpp)
 
 nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC 
-                    src/kima/ConditionalPrior.cpp)
+                    src/kima/ConditionalPrior.cpp src/kima/Data.cpp)
 
 # different models, with their corresponding dependencies
 nanobind_add_module(RVmodel STABLE_ABI NB_STATIC
