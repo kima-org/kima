@@ -332,7 +332,6 @@ RVData::RVData() {};
         for (size_t n = 0; n < t.size(); n++) {
             y[n] = y[n] * factor;
             sig[n] = sig[n] * factor;
-            sig[n] = sig[n] * factor;
             if (sb2)
             {
                 y2[n] = y2[n] * factor;

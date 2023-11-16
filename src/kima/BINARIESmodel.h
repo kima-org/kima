@@ -22,7 +22,7 @@ using namespace nb::literals;
 
 
 
-class  BINARIESmodel
+class KIMA_API BINARIESmodel
 {
     protected:
         /// whether the model includes a polynomial trend

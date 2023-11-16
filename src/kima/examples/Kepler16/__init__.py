@@ -22,7 +22,7 @@ def Kepler16(run=False, **kwargs):
     # load the right data file
     data = RVData([os.path.join(here, 'Kepler16.rdb')],skip=2,units='kms')
     # create the model
-    model = BINARIESmodel(fix=False, npmax=3, data=data)
+    model = BINARIESmodel(fix=False, npmax=0, data=data)
     
     model.Cprior = Uniform(-44300,-23300)
     model.Jprior = ModifiedLogUniform(1.0,100)
@@ -50,7 +50,7 @@ def Kepler16(run=False, **kwargs):
     return model
 
 if __name__ == '__main__':
-    model = Kepler16(run=True, steps=20000)
+    model = Kepler16(run=True, steps=2000)
     res = kima.load_results()
 
 
