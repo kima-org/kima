@@ -619,7 +619,8 @@ def get_instrument_name(data_file):
             r'HET',
             r'LICK',
             r'HRS',
-            r'SOPHIE'
+            r'SOPHIE',
+            r'HAMILTON',
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 
