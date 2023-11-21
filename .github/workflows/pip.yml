@@ -36,9 +36,21 @@ jobs:
       run: |
         echo "MACOS_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
 
-    - name: Build and install
-      run: python -m pip install pytest
-           pip install --verbose .
+    - name: Dependencies
+      run: |
+        pip install pip -U
+        pip install pytest
+
+    - name: Check versions
+      run: |
+        python --version
+        pip --version
+        cmake --version
+
+    - name: Build and install kima
+      run: |
+        pip install --verbose .
 
     - name: Test
-      run: python -m pytest -s tests/
+      run: |
+        python -m pytest -s tests/
