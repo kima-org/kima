@@ -73,6 +73,10 @@ nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC
                     src/kima/SPLEAFmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
+nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC
+                    src/kima/BINARIESmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+
 
 # compile the Sampler module to create the kima.run function
 nanobind_add_module(Sampler STABLE_ABI NB_STATIC
@@ -83,8 +87,10 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/GPmodel.cpp
                     src/kima/RVFWHMmodel.cpp
                     src/kima/SPLEAFmodel.cpp
+                    src/kima/BINARIESmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
+                    src/kima/spleaf.cpp src/kima/kepler.cpp
+                    src/kima/postkepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC 
@@ -100,7 +106,7 @@ target_compile_features(transits PRIVATE cxx_std_17)
 set(INCLUDES src/vendor/cpp-loadtxt/src ${DNEST4_PATH})
 
 # compilation settings for each module
-foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel)
+foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -152,7 +158,7 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel SPLEAFmodel)
+foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel SPLEAFmodel BINARIESmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 

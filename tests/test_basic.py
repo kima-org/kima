@@ -10,6 +10,7 @@ def test_extensions_exist():
     kima.RVData
     kima.RVmodel
     kima.GPmodel
+    kima.BINARIESmodel
     kima.RVFWHMmodel
     kima.run
 

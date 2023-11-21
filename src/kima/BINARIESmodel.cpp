@@ -1,7 +1,7 @@
-#include "RV_binaries_model.h"
+#include "BINARIESmodel.h"
 
 using namespace std;
-using namespace Eigen;
+// using namespace Eigen;
 using namespace DNest4;
 using namespace nijenhuis;
 using namespace postKep;
@@ -23,7 +23,6 @@ void BINARIESmodel::initialize_from_data(RVData& data)
 
     // resize RV model vector
     mu.resize(data.N());
-    
     mu_2.resize(data.N());
 
     // set default conditional priors that depend on data
@@ -61,7 +60,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (multi_instrument && !offsets_prior)
+    if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -76,7 +75,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_wdotprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
+                throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
             if (double_lined && !KO_qprior[i])
                 throw std::logic_error("When double_lined=true, please set prior for KO_qprior");
         }
@@ -122,11 +121,11 @@ void BINARIESmodel::from_prior(RNG& rng)
     }
 
 
-    if (data.indicator_correlations)
-    {
-        for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
-    }
+//     if (data.indicator_correlations)
+//     {
+//         for (unsigned i=0; i<data.number_indicators; i++)
+//             betas[i] = betaprior->generate(rng);
+//     }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -238,29 +237,28 @@ void BINARIESmodel::calculate_mu()
         //else
             //P = components[j][0];
             
-        P = components[j][0]
+        P = components[j][0];
         K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
         omega = components[j][4];
-        omegadot = components[j][5];
         
         
-        auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
-            mu[i] += v[i];
-
+//         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
 //         for(size_t i=0; i<N; i++)
-//         {
-//             ti = t[i];
-//             P_anom = postKep::period_correction(P, omegadot);
-//             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-//             omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-//             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-//             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
-//             mu[i] += v;
-//         }
+//             mu[i] += v[i];
+
+        for(size_t i=0; i<N; i++)
+        {
+            ti = data.t[i];
+            P_anom = postKep::period_correction(P, 0);
+            Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
+            omega_t = postKep::change_omega(omega, 0, ti, Tp);
+            f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
+            // f = brandt::true_anomaly(ti, P, ecc, Tp);
+            v = K * (cos(f + omega_t) + ecc * cos(omega_t));
+            mu[i] += v;
+        }
     }
 
 
@@ -298,9 +296,9 @@ void BINARIESmodel::calculate_mu_2()
             double tmid = data.get_t_middle();
             for(size_t i=0; i<N; i++)
             {
-                mu_2[i] += slope*(t[i]-tmid) + 
-                            quadr*pow(t[i]-tmid, 2) + 
-                            cubic*pow(t[i]-tmid, 3);
+                mu_2[i] += slope*(data.t[i]-tmid) + 
+                            quadr*pow(data.t[i]-tmid, 2) + 
+                            cubic*pow(data.t[i]-tmid, 3);
             }
         }
 
@@ -310,7 +308,7 @@ void BINARIESmodel::calculate_mu_2()
             {
                 for(size_t i=0; i<N; i++)
                 {
-                    if (obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
+                    if (data.obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                 }
             }
         }
@@ -351,7 +349,6 @@ void BINARIESmodel::calculate_mu_2()
         phi = components[j][2];
         ecc = components[j][3];
         omega = components[j][4];
-        omegadot = components[j][5];
         
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
@@ -515,7 +512,7 @@ double BINARIESmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(data._multi))
+        if(data._multi)
         {
             for(int i=0; i<jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
@@ -566,17 +563,17 @@ double BINARIESmodel::perturb(RNG& rng)
             if(trend) {
                 mu[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
-            if(data._multi)) {
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
-                    if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
             }
 
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] -= betas[j] * actind[j][i];
-                }
-            }
+//             if(data.indicator_correlations) {
+//                 for(size_t j = 0; j < data.number_indicators; j++){
+//                     mu[i] -= betas[j] * actind[j][i];
+//                 }
+//             }
             
             if (double_lined)
             {
@@ -584,17 +581,17 @@ double BINARIESmodel::perturb(RNG& rng)
                 if(trend) {
                     mu_2[i] -= slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data._multi)) {
+                if(data._multi) {
                     for(size_t j=0; j<offsets_2.size(); j++){
-                        if (obsi[i] == j+1) { mu_2[i] -= offsets_2[j]; }
+                        if (data.obsi[i] == j+1) { mu_2[i] -= offsets_2[j]; }
                     }
                 }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu_2[i] -= betas[j] * actind[j][i];
-                    }
-                }
+//                 if(data.indicator_correlations) {
+//                     for(size_t j = 0; j < data.number_indicators; j++){
+//                         mu_2[i] -= betas[j] * actind[j][i];
+//                     }
+//                 }
             }
         }
 
@@ -603,7 +600,7 @@ double BINARIESmodel::perturb(RNG& rng)
         Cprior->perturb(bkg2, rng);
 
         // propose new instrument offsets
-        if (data._multi)){
+        if (data._multi){
             for(unsigned j=0; j<offsets.size(); j++){
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
@@ -622,11 +619,11 @@ double BINARIESmodel::perturb(RNG& rng)
         }
 
         // propose new indicator correlations
-        if(data.indicator_correlations){
-            for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
-            }
-        }
+//         if(data.indicator_correlations){
+//             for(size_t j = 0; j < data.number_indicators; j++){
+//                 betaprior->perturb(betas[j], rng);
+//             }
+//         }
 
         for(size_t i=0; i<mu.size(); i++)
         {
@@ -634,34 +631,35 @@ double BINARIESmodel::perturb(RNG& rng)
             if(trend) {
                 mu[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
-            if(data._multi)) {
+
+            if(data._multi) {
                 for(size_t j=0; j<offsets.size(); j++){
-                    if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
 
-            if(data.indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] += betas[j]*actind[j][i];
-                }
-            }
+//             if(data.indicator_correlations) {
+//                 for(size_t j = 0; j < data.number_indicators; j++){
+//                     mu[i] += betas[j]*actind[j][i];
+//                 }
+//             }
             if (double_lined)
             {
                 mu_2[i] += bkg2;
                 if(trend) {
                     mu_2[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
                 }
-                if(data._multi)) {
+                if(data._multi) {
                     for(size_t j=0; j<offsets_2.size(); j++){
-                        if (obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
+                        if (data.obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                     }
                 }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu_2[i] += betas[j]*actind[j][i];
-                    }
-                }
+//                 if(data.indicator_correlations) {
+//                     for(size_t j = 0; j < data.number_indicators; j++){
+//                         mu_2[i] += betas[j]*actind[j][i];
+//                     }
+//                 }
             }
         }
 
@@ -689,8 +687,8 @@ double BINARIESmodel::log_likelihood() const
     const auto& y = data.get_y();
     const auto& sig = data.get_sig();
     const auto& obsi = data.get_obsi();
-    const auto& y2 = data.get_y2();
-    const auto& sig2 = data.get_sig2();
+    const auto& y_2 = data.get_y2();
+    const auto& sig_2 = data.get_sig2();
 
 
     double logL = 0.;
@@ -815,7 +813,7 @@ void BINARIESmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (multi_instrument){
+    if (data._multi){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
@@ -826,11 +824,11 @@ void BINARIESmodel::print(std::ostream& out) const
         }
     }
 
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
-        }
-    }
+//     if(data.indicator_correlations){
+//         for(int j=0; j<data.number_indicators; j++){
+//             out<<betas[j]<<'\t';
+//         }
+//     }
 
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
@@ -859,7 +857,7 @@ string BINARIESmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (multi_instrument)
+    if (data._multi)
     {
         for(int j=0; j<jitters.size(); j++)
             desc += "jitter" + std::to_string(j+1) + sep;
@@ -883,7 +881,7 @@ string BINARIESmodel::description() const
     }
 
 
-    if (multi_instrument){
+    if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
         if (double_lined){
@@ -929,7 +927,6 @@ string BINARIESmodel::description() const
         for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "wdot" + std::to_string(i) + sep;
     }
 
     desc += "staleness" + sep;
@@ -1013,7 +1010,6 @@ void BINARIESmodel::save_setup() {
         fout << "eprior: " << *conditional->eprior << endl;
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
-        fout << "wdotprior: " << *conditional->wdotprior << endl;
     }
 
     if (known_object) {
@@ -1040,7 +1036,7 @@ auto BINARIESMODEL_DOC = R"D(
 Implements a sum-of-Keplerians model where the number of Keplerians can be free.
 This model assumes white, uncorrelated noise. This modules is tailored for the analysis
 of stellar binaries through the known object mode (without it this defaults to the RVmodel)
-The binary can have one set of RVs or two (one on each star) and the model adds apsidal 
+The binary can have one set of RVs or two (one on each star). This model adds apsidal 
 precession as a free parameter and accounts for GR and Tidal effects on the radial velocities.
 
 Args:
@@ -1049,22 +1045,22 @@ Args:
     data (RVData): the RV data
 )D";
 
-class RVmodel_publicist : public RVmodel
+class BINARIESmodel_publicist : public BINARIESmodel
 {
     public:
-        using RVmodel::trend;
-        using RVmodel::degree;
-        using RVmodel::studentt;
-        using RVmodel::known_object;
-        using RVmodel::n_known_object;
-        using RVmodel::star_mass;
-        using RVmodel::binary_mass;
-        using RVmodel::star_radius;
-        using RVmodel::binary_radius;
-        using RVmodel::enforce_stability;
-        using RVmodel::relativistic_correction;
-        using RVmodel::tidal_correction;
-        using RVmodel::double_lined;
+        using BINARIESmodel::trend;
+        using BINARIESmodel::degree;
+        using BINARIESmodel::studentt;
+        using BINARIESmodel::known_object;
+        using BINARIESmodel::n_known_object;
+        using BINARIESmodel::star_mass;
+        using BINARIESmodel::binary_mass;
+        using BINARIESmodel::star_radius;
+        using BINARIESmodel::binary_radius;
+        using BINARIESmodel::enforce_stability;
+        using BINARIESmodel::relativistic_correction;
+        using BINARIESmodel::tidal_correction;
+        using BINARIESmodel::double_lined;
 };
 
 
@@ -1103,7 +1099,7 @@ NB_MODULE(BINARIESmodel, m) {
         //
         .def_rw("relativistic_correction", &BINARIESmodel_publicist::relativistic_correction,
                 "whether to perform the GR correction")
-        .def_rw("tidal_correction", &BINARIESmodel_publicist::tidal_correection,
+        .def_rw("tidal_correction", &BINARIESmodel_publicist::tidal_correction,
                 "whether to perform the tidal correction")
                 
         //
@@ -1139,6 +1135,33 @@ NB_MODULE(BINARIESmodel, m) {
             [](BINARIESmodel &m) { return m.nu_prior; },
             [](BINARIESmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
+        
+        // known object priors
+        // ? should these setters check if known_object/sb2 is true?
+        .def_prop_rw("KO_Pprior",
+                     [](BINARIESmodel &m) { return m.KO_Pprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; })
+        .def_prop_rw("KO_Kprior",
+                     [](BINARIESmodel &m) { return m.KO_Kprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; })
+        .def_prop_rw("KO_eprior",
+                     [](BINARIESmodel &m) { return m.KO_eprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; })
+        .def_prop_rw("KO_wprior",
+                     [](BINARIESmodel &m) { return m.KO_wprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; })
+        .def_prop_rw("KO_phiprior",
+                     [](BINARIESmodel &m) { return m.KO_phiprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; })
+        .def_prop_rw("KO_wdotprior",
+                     [](BINARIESmodel &m) { return m.KO_wdotprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wdotprior = vd; })
+        .def_prop_rw("KO_qprior",
+                     [](BINARIESmodel &m) { return m.KO_qprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_qprior = vd; })
+                     
+            
+            
         // conditional object
         .def_prop_rw("conditional",
                      [](BINARIESmodel &m) { return m.get_conditional_prior(); },
