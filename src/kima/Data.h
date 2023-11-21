@@ -261,3 +261,76 @@ class  PHOTdata {
     int get_trend_magnitude(int degree) const;
 
 };
+
+class KIMA_API GAIAdata {
+
+  friend class GAIAmodel
+
+  private:
+    vector<double> t, w, wsig, psi, pf;
+
+
+  public:
+    string _datafile;
+    string _units;
+    int _skip;
+
+    GAIAdata() {};
+    
+    GAIAdata(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
+           const string& delimiter=" ")
+    {
+      load(filename, units, skip, max_rows, delimiter);
+    }
+
+    friend ostream& operator<<(ostream& os, const GAIAdata& d);
+
+    // to read data from one file, one instrument
+    void load(const string filename, const string units, int skip=0, int max_rows=0,
+              const string delimiter=" ");
+
+
+    /// docs for M0_epoch
+    double M0_epoch;
+
+    // to deprecate a function (C++14), put
+    // [[deprecated("Replaced by bar, which has an improved interface")]]
+    // before the definition
+
+
+    // /// Check if the data was read correctly and all vectors are the right size
+    // bool check_data(bool check_for_indicator_errors = true) const;
+
+    /// Get the total number of Gaia points
+    int N() const { return t.size(); }
+
+    /// Get the array of times
+    const vector<double>& get_t() const { return t; }
+    /// Get the array of RVs
+    const vector<double>& get_w() const { return w; }
+    /// Get the array of errors
+    const vector<double>& get_psi() const { return psi; }
+    /// Get the array of secondary RVs
+    const vector<double>& get_wsig() const { return wsig; }
+    /// Get the array of secondary errors
+    const vector<double>& get_pf() const { return pf; }
+
+    /// Get the mininum (starting) time
+    double get_t_min() const { return *min_element(t.begin(), t.end()); }
+    /// Get the maximum (ending) time
+    double get_t_max() const { return *max_element(t.begin(), t.end()); }
+    /// Get the timespan
+    double get_timespan() const { return get_t_max() - get_t_min(); }
+    double get_t_span() const { return get_t_max() - get_t_min(); }
+    /// Get the middle time
+    double get_t_middle() const { return get_t_min() + 0.5 * get_timespan(); }
+
+
+  //  private:
+  //   // Singleton
+  //   static RVData instance;
+
+  //  public:
+  //   static RVData& get_instance() { return instance; }
+};
+
