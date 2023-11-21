@@ -11,6 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         cmake-version: ["3.17", "3.19", "3.21", "3.23", "3.25", "3.27"]
 
