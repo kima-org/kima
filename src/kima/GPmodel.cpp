@@ -825,6 +825,10 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.cubic_prior; },
             [](GPmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+        .def_prop_rw("offsets_prior",
+            [](GPmodel &m) { return m.offsets_prior; },
+            [](GPmodel &m, distribution &d) { m.offsets_prior = d; },
+            "Common prior for the between-instrument offsets")
 
         // priors for the GP hyperparameters
         .def_prop_rw("eta1_prior",
