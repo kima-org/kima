@@ -837,14 +837,14 @@ namespace contour
 {
     // N_it specifies the number of grid-points.
     const int N_it = 10;
+    // Define sampling points (actually use one more than this)
+    const int N_points = N_it - 2;
 
     void precompute_fft(const double &ecc, double exp2R[], double exp2I[],
                         double exp4R[], double exp4I[], double coshI[],
                         double sinhI[], double ecosR[], double esinR[],
                         double *esinRadius, double *ecosRadius) {
       double freq;
-      // Define sampling points (actually use one more than this)
-      int N_points = N_it - 2;
       int N_fft = (N_it - 1) * 2;
 
       // Define contour radius
@@ -879,9 +879,6 @@ namespace contour
         double E;
         double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
-
-        // Define sampling points (actually use one more than this)
-        int N_points = N_it - 2;
 
         // Define contour radius
         double radius = ecc / 2;
@@ -969,8 +966,6 @@ namespace contour
         double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
 
-        // Define sampling points (actually use one more than this)
-        int N_points = N_it - 2;
         int N_fft = (N_it - 1) * 2;
 
         // Define contour radius
@@ -1077,8 +1072,6 @@ namespace contour
     std::vector<double> solver(const std::vector<double> &M, double ecc)
     {
         double esinRadius, ecosRadius;
-        // Define sampling points (actually use one more than this)
-        int N_points = N_it - 2;
         double exp2R[N_points], exp2I[N_points], exp4R[N_points], exp4I[N_points], coshI[N_points], sinhI[N_points], ecosR[N_points], esinR[N_points];
         precompute_fft(ecc, exp2R, exp2I, exp4R, exp4I, coshI, sinhI, ecosR, esinR, &esinRadius, &ecosRadius);
 
