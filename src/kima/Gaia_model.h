@@ -31,38 +31,44 @@ class KIMA_API GAIAmodel
         /// how many known objects
         int n_known_object {1};
         
+        ///Whether to use thiele-innes parametrisation
+        bool thiele-innes {false};
+        
     
     private:
+    
+        GAIAdata data;
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
         /// Maximum number of planets (by default 1)
         int npmax {1};
 
-        DNest4::RJObject<GaiaConditionalPrior> planets =
-            DNest4::RJObject<GaiaConditionalPrior>(7, npmax, fix, GaiaConditionalPrior());
+        DNest4::RJObject<GAIAConditionalPrior> planets =
+            DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, GAIAConditionalPrior());
 
         double da; 
         double dd;
         double mua;
         double mud;
-        double par;
+        double plx;
         
         double nu;
         double jitter;
 
-        // Parameters for the known object, if set
+        // Parameters for the known object, if set. Use geometric parameters rather than Thiele-Innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
         std::vector<double> KO_P;
         std::vector<double> KO_a;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
-        std::vector<double> KO_w;
+        std::vector<double> KO_omega;
         std::vector<double> KO_cosi;
-        std::vector<double> KO_Om;
+        std::vector<double> KO_Omega;
 
         // The signal
-        std::vector<double> mu = // the astrometric model
-                            std::vector<double>(GaiaData::get_instance().N());
+        std::vector<double> mu;// = the astrometric model
+                            //std::vector<double>(GaiaData::get_instance().N());
+                            
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
@@ -71,42 +77,58 @@ class KIMA_API GAIAmodel
 
         unsigned int staleness;
 
-        void setPriors();
-        void save_setup();
 
     public:
-        Gaia_model();
+        GAIAmodel();
+        GAIAmodel(bool fix, int npmax, GAIAData& data) : data(data), fix(fix), npmax(npmax) {
+            initialize_from_data(data);
+        };
 
-        void initialise() {};
+        void initialize_from_data(GAIAData& data);
 
         // priors for parameters *not* belonging to the planets
+        using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // Prior for the extra white noise (jitter).
-        std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        distribution Jprior;
+        /// prior for student-t degree of freedom
+        distribution nu_prior;
         
         // priors for KO mode!
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_aprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_cosiprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Omprior {(size_t) n_known_object};
+        distribution KO_Pprior {(size_t) n_known_object};
+        distribution KO_aprior {(size_t) n_known_object};
+        distribution KO_eprior {(size_t) n_known_object};
+        distribution KO_phiprior {(size_t) n_known_object};
+        distributionKO_wprior {(size_t) n_known_object};
+        distribution KO_cosiprior {(size_t) n_known_object};
+        distribution KO_Omprior {(size_t) n_known_object};
         
-        std::shared_ptr<DNest4::ContinuousDistribution> da_prior;
-        std::shared_ptr<DNest4::ContinuousDistribution> dd_prior;
-        std::shared_ptr<DNest4::ContinuousDistribution> mua_prior;
-        std::shared_ptr<DNest4::ContinuousDistribution> mud_prior;
-        std::shared_ptr<DNest4::ContinuousDistribution> par_prior;
+        //priors for astrometric solution
+        distribution da_prior;
+        distribution dd_prior;
+        distribution mua_prior;
+        distribution mud_prior;
+        distribution plx_prior;
 
-        std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
+        GAIAConditionalPrior* get_conditional_prior() {
+            return planets.get_conditional_prior();
+        }
+        void set_conditional_prior(const GAIAConditionalPrior &conditional) {
+            planets = DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, conditional);
+        }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
+        
+        /// @brief Set the default priors
+        void setPriors();
+        
+        /// @brief Save the setup of this model
+        void save_setup();
 
         /// @brief Do Metropolis-Hastings proposals.
         double perturb(DNest4::RNG& rng);
 
-        // Likelihood function
+        /// @brief log-likelihood function
         double log_likelihood() const;
 
         // Print parameters to stream

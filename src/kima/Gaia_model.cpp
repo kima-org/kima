@@ -1,4 +1,4 @@
-#include "Gaia_model.h"
+#include "GAIAmodel.h"
 
 using namespace std;
 using namespace Eigen;
@@ -9,9 +9,21 @@ using namespace DNest4;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
+void GAIAmodel::initialize_from_data(GAIAData& data)
+{
+    jitters.resize(data.number_instruments);
+    
+    // resize GAIA model vector
+    mu.resize(data.N());
+
+    // set default conditional priors that depend on data
+    auto conditional = planets.get_conditional_prior();
+    conditional->set_default_priors(data);
+}
+
 /* set default priors if the user didn't change them */
 
-void Gaia_model::setPriors()  // BUG: should be done by only one thread!
+void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
 {
     auto data = get_data();
     
@@ -26,8 +38,8 @@ void Gaia_model::setPriors()  // BUG: should be done by only one thread!
         mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
     if (!mud_prior)
         mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
-    if (!par_prior)
-        par_prior = make_prior<LogUniform>(0.01,1000.);
+    if (!plx_prior)
+        plx_prior = make_prior<LogUniform>(0.01,1000.);
         
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
@@ -43,7 +55,7 @@ void Gaia_model::setPriors()  // BUG: should be done by only one thread!
 }
 
 
-void Gaia_model::from_prior(RNG& rng)
+void GAIAmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -58,7 +70,7 @@ void Gaia_model::from_prior(RNG& rng)
     dd = dd_prior->generate(rng);
     mua = mua_prior->generate(rng);
     mud = mud_prior->generate(rng);
-    par = par_prior->generate(rng);
+    plx = plx_prior->generate(rng);
 
     auto data = get_data();
     
@@ -93,7 +105,7 @@ void Gaia_model::from_prior(RNG& rng)
  * @brief Calculate the full ET model
  * 
 */
-void Gaia_model::calculate_mu()
+void GAIAmodel::calculate_mu()
 {
     auto data = get_data();
     // Get the epochs from the data
@@ -121,7 +133,7 @@ void Gaia_model::calculate_mu()
         
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += (da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) + (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) + par*pf[i];
+            mu[i] += (da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) + (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) + plx*pf[i];
         }
 
         if (known_object) { // KO mode!
@@ -175,7 +187,7 @@ void Gaia_model::calculate_mu()
 }
 
 
-void Gaia_model::remove_known_object()
+void GAIAmodel::remove_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
@@ -205,7 +217,7 @@ void Gaia_model::remove_known_object()
 }
 
 
-void Gaia_model::add_known_object()
+void GAIAmodel::add_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
@@ -233,7 +245,7 @@ void Gaia_model::add_known_object()
     }
 }
 
-double Gaia_model::perturb(RNG& rng)
+double GAIAmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -284,19 +296,19 @@ double Gaia_model::perturb(RNG& rng)
         //subtract ephemeris
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += -(da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) - (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) - par*pf[i];
+            mu[i] += -(da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) - (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) - plx*pf[i];
         }
         // propose new parameters
         da_prior->perturb(da, rng);
         dd_prior->perturb(dd, rng);
         mua_prior->perturb(mua, rng);
         mud_prior->perturb(mud, rng);
-        par_prior->perturb(par, rng);
+        plx_prior->perturb(plx, rng);
 
         //add ephemeris back in
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += (da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) + (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) + par*pf[i];;
+            mu[i] += (da + mua * (t[i]-data.M0_epoch)) * sin(psi[i]) + (dd + mud * (t[i]-data.M0_epoch)) * cos(psi[i]) + plx*pf[i];;
         }
     }
 
@@ -316,7 +328,7 @@ double Gaia_model::perturb(RNG& rng)
  * 
  * @return double the log-likelihood
 */
-double Gaia_model::log_likelihood() const
+double GAIAmodel::log_likelihood() const
 {
     const auto data = get_data();
     int N = data.N();
@@ -373,7 +385,7 @@ double Gaia_model::log_likelihood() const
 }
 
 
-void Gaia_model::print(std::ostream& out) const
+void GAIAmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
@@ -388,7 +400,7 @@ void Gaia_model::print(std::ostream& out) const
     out << dd << '\t';
     out << mua << '\t';
     out << mud << '\t';
-    out << par << '\t';
+    out << plx << '\t';
     
     out.precision(8);
 
@@ -414,7 +426,7 @@ void Gaia_model::print(std::ostream& out) const
 }
 
 
-string Gaia_model::description() const
+string GAIAmodel::description() const
 {
     string desc;
     string sep = "   ";
@@ -471,7 +483,7 @@ string Gaia_model::description() const
  * Save the options of the current model in a INI file.
  * 
 */
-void Gaia_model::save_setup() {
+void GAIAmodel::save_setup() {
     auto data = get_data();
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
@@ -482,7 +494,7 @@ void Gaia_model::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "Gaia_model" << endl << endl;
+    fout << "model: " << "GAIAmodel" << endl << endl;
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
@@ -515,7 +527,7 @@ void Gaia_model::save_setup() {
     fout << "dd_prior: " << *dd_prior << endl;
     fout << "mua_prior: " << *mua_prior << endl;
     fout << "mud_prior: " << *mud_prior << endl;
-    fout << "parallax_prior: " << *par_prior << endl;
+    fout << "parallax_prior: " << *plx_prior << endl;
 
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
