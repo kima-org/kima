@@ -1373,12 +1373,12 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
         ax.legend(loc='best')
         # ax.legend(loc='upper left')
 
-    if res.multi:
-        kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
-        for ot in res._offset_times:
-            ax.axvline(ot - time_offset, **kw)
-            if fwhm_model:
-                axf.axvline(ot, **kw)
+    # if res.multi:
+    #     kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
+    #     for ot in res._offset_times:
+    #         ax.axvline(ot - time_offset, **kw)
+    #         if fwhm_model:
+    #             axf.axvline(ot, **kw)
 
     if res.arbitrary_units:
         lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
