@@ -382,7 +382,7 @@ void bind_RVConditionalPrior(nb::module_ &m) {
         .def_prop_rw("eprior",
             [](RVConditionalPrior &c) { return c.eprior; },
             [](RVConditionalPrior &c, distribution &d) { c.eprior = d; },
-            "Prior for the orbital eccentricities(s)")
+            "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("wprior",
             [](RVConditionalPrior &c) { return c.wprior; },
             [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
@@ -417,11 +417,58 @@ void bind_RVConditionalPrior(nb::module_ &m) {
         .def_prop_rw("eprior",
             [](TRANSITConditionalPrior &c) { return c.eprior; },
             [](TRANSITConditionalPrior &c, distribution &d) { c.eprior = d; },
-            "Prior for the orbital eccentricities(s)")
+            "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("wprior",
             [](TRANSITConditionalPrior &c) { return c.wprior; },
             [](TRANSITConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron");
+            
+    nb::class_<GAIAConditionalPrior>(m, "GAIAConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](GAIAConditionalPrior &c) { return c.Pprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)");
+        .def_prop_rw("eprior",
+            [](GAIAConditionalPrior &c) { return c.eprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricity(ies)");
+        .def_prop_rw("a0prior",
+            [](GAIAConditionalPrior &c) { return c.a0prior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            "Prior for the photocentre semi-major-axis(es) (mas)")
+        .def_prop_rw("omegaprior",
+            [](GAIAConditionalPrior &c) { return c.omegaprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.omegaprior = d; },
+            "Prior for the argument(s) of periastron");
+        .def_prop_rw("phiprior",
+            [](GAIAConditionalPrior &c) { return c.phiprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            "Prior for the mean anomaly(ies)");
+        .def_prop_rw("Omegaprior",
+            [](GAIAConditionalPrior &c) { return c.Omegaprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+            "Prior for the longitude(s) of ascending node");
+        .def_prop_rw("cosiprior",
+            [](GAIAConditionalPrior &c) { return c.cosiprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.cosiprior = d; },
+            "Prior for cosine(s) of the orbital inclination");
+        .def_prop_rw("Aprior",
+            [](GAIAConditionalPrior &c) { return c.Aprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Aprior = d; },
+            "Prior Thiele-Innes parameter(s) A");
+        .def_prop_rw("Bprior",
+            [](GAIAConditionalPrior &c) { return c.Bprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Bprior = d; },
+            "Prior Thiele-Innes parameter(s) B");
+        .def_prop_rw("Fprior",
+            [](GAIAConditionalPrior &c) { return c.Fprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Fprior = d; },
+            "Prior Thiele-Innes parameter(s) F");
+        .def_prop_rw("Gprior",
+            [](GAIAConditionalPrior &c) { return c.Gprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Gprior = d; },
+            "Prior Thiele-Innes parameter(s) G");
 }
 
 // NB_MODULE(ConditionalPrior, m) {
