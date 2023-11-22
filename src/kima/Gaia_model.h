@@ -2,29 +2,36 @@
 
 #include <vector>
 #include <memory>
-#include "ConditionalPrior.h"
-#include "RJObject/RJObject.h"
-#include "RNG.h"
 #include "DNest4.h"
 #include "Data.h"
+#include "ConditionalPrior.h"
+#include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/Cholesky>
+using namespace std;
+using namespace DNest4;
+
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+#include "nb_shared.h"
 
 
-/// include a (better) known extra Keplerian curve? (KO mode!)
-extern const bool known_object;
-extern const int n_known_object;
-
-/// use a Student-t distribution for the likelihood (instead of Gaussian)
-extern const bool studentt;
-
-
-class Gaia_model
+class KIMA_API GAIAmodel
 {
+    protected:
+        /// use a Student-t distribution for the likelihood (instead of Gaussian)
+        bool studentt {false};
+    
+        /// include (better) known extra Keplerian curve(s)? (KO mode!)
+        bool known_object {true};
+        /// how many known objects
+        int n_known_object {1};
+        
+    
     private:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};

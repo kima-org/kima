@@ -232,6 +232,139 @@ void TRANSITConditionalPrior::print(std::ostream& out) const
 {}
 
 
+/*****************************************************************************/
+
+
+GAIAConditionalPrior::GAIAConditionalPrior():thiele-innes(false)
+{
+    
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1., 1e5);
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!phiprior)
+        phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if(thiele-innes)
+    {
+        if (!Aprior)
+            Aprior = make_shared<Gaussian>(0, 0.5);
+        if (!Bprior)
+            Bprior = make_shared<Gaussian>(0, 0.5);
+        if (!Fprior)
+            Fprior = make_shared<Gaussian>(0, 0.5);
+        if (!Gprior)
+            Gprior = make_shared<Gaussian>(0, 0.5);
+    }
+    else
+    {
+        if (!a0prior)
+            a0prior = make_shared<Gaussian>(0, 0.5);
+        if (!omegaprior)
+            omegaprior = make_shared<Uniform>(0, 2*M_PI);
+        if (!cosiprior)
+            cosiprior = make_shared<Uniform>(-1, 1);
+        if (!Omegaprior)
+            Omegaprior = make_shared<Uniform>(0, 2*MPI);
+    }
+}
+
+
+void GAIAConditionalPrior::from_prior(RNG& rng)//needed?
+{
+    
+}
+
+double GAIAConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    
+}
+
+// vec[0] = period
+// vec[1] = amplitude
+// vec[2] = phase
+// vec[3] = ecc
+// vec[4] = viewing angle
+
+double GAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+    if(thiele-innes)
+    {
+        return Pprior->log_pdf(vec[0]) + 
+               phiprior->log_pdf(vec[1]) + 
+               eprior->log_pdf(vec[2]) + 
+               Aprior->log_pdf(vec[3]) + 
+               Bprior->log_pdf(vec[4]) +
+               Fprior->log_pdf(vec[5]) + 
+               Gprior->log_pdf(vec[6]);
+    }
+    else
+    {
+        return Pprior->log_pdf(vec[0]) + 
+               phiprior->log_pdf(vec[1]) + 
+               eprior->log_pdf(vec[2]) + 
+               a0prior->log_pdf(vec[3]) + 
+               omegaprior->log_pdf(vec[4]) +
+               cosiprior->log_pdf(vec[5]) + 
+               Omegaprior->log_pdf(vec[6]);
+    }
+}
+
+void GAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+    if(thiele-innes)
+    {
+        vec[0] = Pprior->cdf_inverse(vec[0]);
+        vec[1] = phiprior->cdf_inverse(vec[1]);
+        vec[2] = eprior->cdf_inverse(vec[2]);
+        vec[3] = Aprior->cdf_inverse(vec[3]);
+        vec[4] = Bprior->cdf_inverse(vec[4]);
+        vec[5] = Fprior->cdf_inverse(vec[5]);
+        vec[6] = Gprior->cdf_inverse(vec[6]);
+    }
+    else
+    {
+        vec[0] = Pprior->cdf_inverse(vec[0]);
+        vec[1] = phiprior->cdf_inverse(vec[1]);
+        vec[2] = eprior->cdf_inverse(vec[2]);
+        vec[3] = a0prior->cdf_inverse(vec[3]);
+        vec[4] = omegaprior->cdf_inverse(vec[4]);
+        vec[5] = cosiprior->cdf_inverse(vec[5]);
+        vec[6] = Omegaprior->cdf_inverse(vec[6]);
+    }
+}
+
+void GAIAConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+    if(thiele-innes)
+    {
+        vec[0] = Pprior->cdf(vec[0]);
+        vec[1] = phiprior->cdf(vec[1]);
+        vec[2] = eprior->cdf(vec[2]);
+        vec[3] = Aprior->cdf(vec[3]);
+        vec[4] = Bprior->cdf(vec[4]);
+        vec[5] = Fprior->cdf(vec[5]);
+        vec[6] = Gprior->cdf(vec[6]);
+    }
+    else
+    {
+        vec[0] = Pprior->cdf(vec[0]);
+        vec[1] = phiprior->cdf(vec[1]);
+        vec[2] = eprior->cdf(vec[2]);
+        vec[3] = a0prior->cdf(vec[3]);
+        vec[4] = omegaprior->cdf(vec[4]);
+        vec[5] = cosiprior->cdf(vec[5]);
+        vec[6] = Omegaprior->cdf(vec[6]);
+    }
+}
+
+void GAIAConditionalPrior::print(std::ostream& out) const //needed?
+{
+    
+}
+
+
+/*****************************************************************************/
+
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
