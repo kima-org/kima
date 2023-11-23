@@ -1,3 +1,10 @@
+# ignore /docs at the top level repo
+docs
+
+
+# Python
+__pycache__
+
 # Prerequisites
 *.d
 
