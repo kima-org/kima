@@ -121,7 +121,7 @@ void RVmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-    if (data.indicator_correlations)
+    if (indicator_correlations)
     {
         for (unsigned i=0; i<data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
@@ -195,7 +195,7 @@ void RVmodel::calculate_mu()
             }
         }
 
-        if(data.indicator_correlations)
+        if(indicator_correlations)
         {
             for(size_t i=0; i<N; i++)
             {
@@ -358,7 +358,7 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
 
-            if(data.indicator_correlations) {
+            if(indicator_correlations) {
                 for(size_t j = 0; j < data.number_indicators; j++){
                     mu[i] -= betas[j] * actind[j][i];
                 }
@@ -383,7 +383,7 @@ double RVmodel::perturb(RNG& rng)
         }
 
         // propose new indicator correlations
-        if(data.indicator_correlations){
+        if(indicator_correlations){
             for(size_t j = 0; j < data.number_indicators; j++){
                 betaprior->perturb(betas[j], rng);
             }
@@ -403,7 +403,7 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
 
-            if(data.indicator_correlations) {
+            if(indicator_correlations) {
                 for(size_t j = 0; j < data.number_indicators; j++){
                     mu[i] += betas[j]*actind[j][i];
                 }
@@ -529,7 +529,7 @@ void RVmodel::print(std::ostream& out) const
         }
     }
 
-    if(data.indicator_correlations){
+    if(indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             out<<betas[j]<<'\t';
         }
@@ -580,7 +580,7 @@ string RVmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    if(data.indicator_correlations){
+    if(indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             desc += "beta" + std::to_string(j+1) + sep;
         }
@@ -732,6 +732,7 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::studentt;
         using RVmodel::star_mass;
         using RVmodel::enforce_stability;
+        using RVmodel::indicator_correlations;
 };
 
 
@@ -762,6 +763,10 @@ NB_MODULE(RVmodel, m) {
                 "stellar mass [Msun]")
         .def_rw("enforce_stability", &RVmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
+        
+        //
+        .def_rw("indicator_correlations", &RVmodel_publicist::indicator_correlations, 
+                "include in the model linear correlations with indicators")
 
         // priors
         .def_prop_rw("Cprior",
