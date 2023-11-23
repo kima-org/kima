@@ -35,6 +35,8 @@ try:  # only available in scipy 1.1.0
 except ImportError:
     find_peaks = None
 
+from spleaf import cov, term
+
 pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
@@ -573,10 +575,11 @@ class KimaResults:
         self.has_gp = True
 
         if self.model == 'GPmodel':
-            if 'kernel' in self.setup['kima']:
-                self.GPkernel = self.setup['kima']['kernel']
-            else:
-                self.GPkernel = self.setup['kima']['GP_kernel']
+            self.GPkernel = 'standard'
+            # if 'kernel' in self.setup['kima']:
+            #     self.GPkernel = self.setup['kima']['kernel']
+            # else:
+            #     self.GPkernel = self.setup['kima']['GP_kernel']
 
             try:
                 n_hyperparameters = {
@@ -1206,8 +1209,7 @@ class KimaResults:
         if squeeze:
             if self.model == 'RVFWHMmodel':
                 inst = instruments + instruments
-                data = self.n_instruments * ['RV'
-                                             ] + self.n_instruments * ['FWHM']
+                data = self.n_instruments * ['RV'] + self.n_instruments * ['FWHM']
             else:
                 inst = instruments
                 data = self.n_instruments * ['']
@@ -1724,10 +1726,10 @@ class KimaResults:
             if self.multi_series:
                 raise NotImplementedError()
             else:
-                C = spleaf.cov.Cov(
+                C = cov.Cov(
                     self.data.t,
-                    err=spleaf.term.Error(self.data.e),
-                    gp=spleaf.term.Matern52Kernel(1.0, 1.0)
+                    err=term.Error(self.data.e),
+                    gp=term.Matern52Kernel(1.0, 1.0)
                 )
                 GPpars = sample[self.indices['GPpars']]
                 C.set_param(GPpars, C.param)
@@ -1855,7 +1857,7 @@ class KimaResults:
             r = r[0]
 
         vals = []
-        val = wrms(r, weights=1 / self.e**2)
+        val = wrms(r, weights=1 / self.data.e**2)
         if printit:
             print(f'full: {val:.3f} m/s')
         vals.append(val)
@@ -1863,7 +1865,7 @@ class KimaResults:
         if self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = wrms(r[self.data.obs == o],
-                           weights=1 / self.e[self.data.obs == o]**2)
+                           weights=1 / self.data.e[self.data.obs == o]**2)
                 if printit:
                     print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
