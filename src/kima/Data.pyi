@@ -1,0 +1,161 @@
+from typing import Any, Optional, overload, Typing, Sequence
+from enum import Enum
+import kima.Data
+
+class PHOTdata:
+    """
+    docs
+    """
+
+    @property
+    def N(self) -> int:
+        """
+        Total number of observations
+        """
+        ...
+    
+    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, delimiter: str = ' ') -> None:
+        """
+        Load photometric data from a file
+        """
+        ...
+    
+    @property
+    def sig(self) -> list[float]:
+        """
+        The observed flux uncertainties
+        """
+        ...
+    
+    @property
+    def t(self) -> list[float]:
+        """
+        The times of observations
+        """
+        ...
+    
+    @property
+    def y(self) -> list[float]:
+        """
+        The observed flux
+        """
+        ...
+    
+class RVData:
+    """
+    docs
+    """
+
+    @property
+    def N(self) -> int:
+        """
+        Total number of observations
+        """
+        ...
+    
+    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
+        """
+        Load RV data from a file
+        """
+        ...
+    
+    @overload
+    def __init__(self, filenames: list[str], units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
+        """
+        Load RV data from a list of files
+        """
+        ...
+    
+    @property
+    def actind(self) -> list[list[float]]:
+        """
+        Activity indicators
+        """
+        ...
+    
+    def get_timespan(self) -> float:
+        ...
+    
+    def load(self, filename: str, units: str, skip: int, max_rows: int, delimiter: str, indicators: list[str]) -> None:
+        """
+        Load RV data from a tab/space separated file with columns
+        ```
+        time  vrad  error  quant  error
+        ...   ...   ...    ...    ...
+        ```
+        Args:
+        filename (str): the name of the file
+        untis (str): units of the RVs and errors, either "kms" or "ms"
+        skip (int): number of lines to skip in the beginning of the file (default = 2)
+        indicators (list[str]): nodoc
+        """
+        ...
+    
+    @property
+    def multi(self) -> bool:
+        """
+        data from multiple instruments
+        """
+        ...
+    
+    @property
+    def obsi(self) -> list[int]:
+        """
+        The instrument identifier
+        """
+        ...
+    
+    @property
+    def sig(self) -> list[float]:
+        """
+        The observed RV uncertainties
+        """
+        ...
+    
+    @property
+    def skip(self) -> int:
+        """
+        lines skipped when reading data
+        """
+        ...
+    
+    @property
+    def t(self) -> list[float]:
+        """
+        The times of observations
+        """
+        ...
+    
+    def topslope(self) -> float:
+        ...
+    
+    @property
+    def y(self) -> list[float]:
+        """
+        The observed radial velocities
+        """
+        ...
+    
+class loadtxt:
+    """
+    None
+    """
+
+    def __init__(self, arg: str, /) -> None:
+        ...
+    
+    def comments(self, arg: str, /) -> kima.Data.loadtxt:
+        ...
+    
+    def delimiter(self, arg: str, /) -> kima.Data.loadtxt:
+        ...
+    
+    def max_rows(self, arg: int, /) -> kima.Data.loadtxt:
+        ...
+    
+    def skiprows(self, arg: int, /) -> kima.Data.loadtxt:
+        ...
+    
+    def usecols(self, arg: list[int], /) -> kima.Data.loadtxt:
+        ...
+    
