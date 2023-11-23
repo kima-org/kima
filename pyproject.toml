@@ -33,6 +33,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "nanobind",
+    "scikit-build-core[pyproject]",
     "mkdocs",
     "mkdocstrings[crystal,python]",
     "mkdocs-autorefs",
@@ -59,8 +61,11 @@ build-dir = "build/{wheel_tag}"
 # Build stable ABI wheels for CPython 3.12+
 wheel.py-api = "cp312"
 
-# "Debug" "RelWithDebInfo"
-cmake.build-type = "Release"
+# The minimum version of CMake to use. If CMake is not present on the system or
+# is older than this, it will be downloaded via PyPI if possible. An empty
+# string will disable this check.
+cmake.minimum-version = "3.17"
+
 
 
 [tool.cibuildwheel]
