@@ -19,6 +19,7 @@ dependencies = [
     "numpy",
     "scipy",
     "matplotlib",
+    "addcopyfighandler",
     "corner",
     "loguniform",
     "kumaraswamy",
