@@ -774,9 +774,6 @@ class OutlierRVmodel_publicist : public OutlierRVmodel
 
 
 NB_MODULE(OutlierRVmodel, m) {
-    // bind RVConditionalPrior so it can be returned
-    bind_RVConditionalPrior(m);
-
     nb::class_<OutlierRVmodel>(m, "OutlierRVmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, OutlierRVMODEL_DOC)
         //
