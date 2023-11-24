@@ -23,6 +23,12 @@ using namespace nb::literals;
 class  RVmodel
 {
     protected:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -40,14 +46,8 @@ class  RVmodel
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
 
-    private:
         RVData data;
-
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
+    private:
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
@@ -89,7 +89,7 @@ class  RVmodel
 
     public:
         RVmodel() {};
-        RVmodel(bool fix, int npmax, RVData& data) : data(data), fix(fix), npmax(npmax) {
+        RVmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
