@@ -1,5 +1,7 @@
 
 from .Data import RVData, PHOTdata
+
+# models
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 from .RVFWHMmodel import RVFWHMmodel
@@ -8,14 +10,15 @@ from .TRANSITmodel import TRANSITmodel
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
 
+# kima.run
 from .Sampler import run
-
-from .kepler import keplerian
-from . import spleaf
-
-from . import distributions
-# from .pykima.showresults import showresults as load_results
+# kima.load_results
 from .pykima.results import load_results
+
+# sub-packages
+from .kepler import keplerian
+#from . import spleaf
+from . import distributions
 
 # examples
 from . import examples
