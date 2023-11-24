@@ -10,6 +10,17 @@ from .TRANSITmodel import TRANSITmodel
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
 
+__models__ = (
+    RVmodel,
+    GPmodel,
+    RVFWHMmodel,
+    SPLEAFmodel,
+    TRANSITmodel,
+    OutlierRVmodel,
+    BINARIESmodel,
+)
+
+
 # kima.run
 from .Sampler import run
 # kima.load_results
