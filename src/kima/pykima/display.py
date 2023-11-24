@@ -303,7 +303,7 @@ def make_plot2(res,
         ax.set_xlim(plims)
     
     if mark_periods is not None:
-        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'r^')
+        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'rv')
 
     if res.save_plots:
         filename = 'kima-showresults-fig2.png'
@@ -1286,7 +1286,7 @@ def hist_nu(res, show_prior=False, **kwargs):
     """
     Plot the histogram of the posterior for the Student-t degrees of freedom
     """
-    if not res.studentT:
+    if not res.studentt:
         print('Model has Gaussian likelihood! hist_nu() doing nothing...')
         return
 
@@ -1372,7 +1372,7 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
                 axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, e2[m],
                              **kw)
     else:
-        kw.update(label=res.instruments)
+        kw.update(label=res.data.instrument)
 
         if outliers is None:
             ax.errorbar(t - time_offset, y - y_offset, e, **kw)
@@ -1403,7 +1403,7 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
         axf.set(xlabel='Time [days]', ylabel='FWHM [m/s]')
 
     if show_rms:
-        # if res.studentT:
+        # if res.studentt:
         #     outliers = find_outliers(res)
         #     rms1 = wrms(y, 1 / res.e**2)
         #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
@@ -1521,7 +1521,7 @@ def plot_transit_data(res, ax=None, y=None, extract_offset=False,
     ax.set(**lab)
 
     if show_rms:
-        # if res.studentT:
+        # if res.studentt:
         #     outliers = find_outliers(res)
         #     rms1 = wrms(y, 1 / res.e**2)
         #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
@@ -1600,7 +1600,7 @@ def phase_plot(res,
                sharey=False,
                highlight_points=None,
                sort_by_increasing_P=False,
-               sort_by_decreasing_K=False,
+               sort_by_decreasing_K=True,
                show_gls_residuals=False,
                **kwargs):
     """ Plot the phase curves given the solution in `sample` """
@@ -1932,7 +1932,7 @@ def phase_plot(res,
         residuals = residuals[0]
 
     outliers = None
-    if res.studentT:
+    if res.studentt:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     res.data.e[outliers], fmt='xk', ms=7, lw=3)
@@ -2054,7 +2054,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
     _, y_offset = plot_data(res, ax, **kwargs)
 
     if show_outliers:
-        if res.studentT:
+        if res.studentt:
             outliers = find_outliers(
                 res, res.maximum_likelihood_sample(printit=False))
             if outliers.any():
