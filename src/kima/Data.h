@@ -62,6 +62,7 @@ class  KIMA_API RVData {
 
   public:
     string _datafile;
+    string _instrument;
     vector<string> _datafiles;
     string _units;
     int _skip;
@@ -69,22 +70,15 @@ class  KIMA_API RVData {
     vector<string> _indicator_names;
 
     RVData() {};
-    // 
-    // RVData(const string filename) { load(filename, "ms"); }
-    // RVData(const string filename, int skip=0) { load(filename, "ms", skip); }
-    // 
-    // RVData(const vector<string> filenames) { load_multi(filenames, "ms"); }
+
     RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0, 
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>())
-    {
-      load_multi(filenames, units, skip, max_rows, delimiter, indicators);
-    }
-    // 
+           const string& delimiter=" ", const vector<string>& indicators=vector<string>());
+
     RVData(const string& filename, const string& units="ms", int skip=0, int max_rows=0, 
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>())
-    {
-      load(filename, units, skip, max_rows, delimiter, indicators);
-    }
+           const string& delimiter=" ", const vector<string>& indicators=vector<string>());
+
+    RVData(const vector<double> t, const vector<double> y, const vector<double> sig,
+           const string& units="ms", const string& instrument="");
 
     friend ostream& operator<<(ostream& os, const RVData& d);
 
