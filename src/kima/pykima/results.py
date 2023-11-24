@@ -2099,14 +2099,17 @@ class KimaResults:
     #
     make_plot2 = display.make_plot2
     plot2 = display.make_plot2
+    plot_posterior_periods = display.make_plot2
 
     #
     make_plot3 = display.make_plot3
     plot3 = display.make_plot3
+    plot_posterior_PKE = display.make_plot3
 
     #
     make_plot4 = display.make_plot4
     plot4 = display.make_plot4
+    plot_posterior_hyperpars = display.make_plot4
 
     #
     make_plot5 = display.make_plot5
