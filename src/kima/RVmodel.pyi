@@ -34,30 +34,6 @@ class RVConditionalPrior:
         ...
     
     def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
         ...
     
     @property
@@ -231,6 +207,13 @@ class RVmodel:
         ...
     
     @property
+    def data(self) -> kima.Data.RVData:
+        """
+        the data
+        """
+        ...
+    
+    @property
     def degree(self) -> int:
         """
         degree of the polynomial trend
@@ -253,6 +236,19 @@ class RVmodel:
     def enforce_stability(self, arg: bool, /) -> None:
         """
         whether to enforce AMD-stability
+        """
+        ...
+    
+    @property
+    def fix(self) -> bool:
+        """
+        whether the number of Keplerians is fixed
+        """
+        ...
+    @fix.setter
+    def fix(self, arg: bool, /) -> None:
+        """
+        whether the number of Keplerians is fixed
         """
         ...
     
@@ -280,6 +276,19 @@ class RVmodel:
     def n_known_object(self) -> int:
         """
         how many known objects
+        """
+        ...
+    
+    @property
+    def npmax(self) -> int:
+        """
+        maximum number of Keplerians
+        """
+        ...
+    @npmax.setter
+    def npmax(self, arg: int, /) -> None:
+        """
+        maximum number of Keplerians
         """
         ...
     
@@ -323,9 +332,6 @@ class RVmodel:
         ...
     
     def set_known_object(self, arg: int, /) -> None:
-        ...
-    
-    def set_np_prior() -> None:
         ...
     
     @property
@@ -412,30 +418,6 @@ class TRANSITConditionalPrior:
         ...
     
     def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
-        ...
-    
-    @overload
-    def __init__(self) -> None:
-        """
-        __init__(self) -> None
-        """
         ...
     
     @property

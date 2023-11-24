@@ -47,15 +47,22 @@ class RVData:
     """
 
     @property
+    def M0_epoch(self) -> float:
+        """
+        reference epoch for the mean anomaly
+        """
+        ...
+    
+    @property
     def N(self) -> int:
         """
         Total number of observations
         """
         ...
     
-    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
+    def __init__(self, t: list[float], y: list[float], sig: list[float], units: str = 'ms', instrument: str = '') -> None:
         """
-        Load RV data from a file
+        Load RV data from arrays
         """
         ...
     
@@ -63,6 +70,13 @@ class RVData:
     def __init__(self, filenames: list[str], units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
         """
         Load RV data from a list of files
+        """
+        ...
+    
+    @overload
+    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
+        """
+        Load RV data from a file
         """
         ...
     
@@ -74,6 +88,19 @@ class RVData:
         ...
     
     def get_timespan(self) -> float:
+        ...
+    
+    @property
+    def instrument(self) -> str:
+        """
+        instrument name
+        """
+        ...
+    @instrument.setter
+    def instrument(self, arg: str, /) -> None:
+        """
+        instrument name
+        """
         ...
     
     def load(self, filename: str, units: str, skip: int, max_rows: int, delimiter: str, indicators: list[str]) -> None:
@@ -94,7 +121,7 @@ class RVData:
     @property
     def multi(self) -> bool:
         """
-        data from multiple instruments
+        Data comes from multiple instruments
         """
         ...
     
@@ -115,7 +142,7 @@ class RVData:
     @property
     def skip(self) -> int:
         """
-        lines skipped when reading data
+        Lines skipped when reading data
         """
         ...
     
@@ -127,6 +154,13 @@ class RVData:
         ...
     
     def topslope(self) -> float:
+        ...
+    
+    @property
+    def units(self) -> str:
+        """
+        Units of the RVs and uncertainties
+        """
         ...
     
     @property
