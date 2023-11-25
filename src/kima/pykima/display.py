@@ -4,7 +4,6 @@ from copy import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-import addcopyfighandler
 from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
