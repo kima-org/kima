@@ -11,8 +11,8 @@ NB_MODULE(distributions, m)
         .def(nb::init<unsigned int>(), "seed"_a)
         #
         .def("rand", &DNest4::RNG::rand)
-        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N); })
-        .def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
+        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N); });
+        //.def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
     //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
 
