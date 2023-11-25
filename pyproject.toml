@@ -6,12 +6,15 @@ build-backend = "scikit_build_core.build"
 name = "kima"
 version = "6.0.1"
 description = "A data analysis framework for exoplanet detection"
-readme = "README.md"
-requires-python = ">=3.8"
 authors = [
-    { name = "João Faria", email = "joao.faria@unige.ch" },
+  {name = "João Faria", email = "joao.faria@unige.ch"}
 ]
+
+readme = "README.md"
+license = {text = "MIT License"}
+requires-python = ">=3.8"
 classifiers = [
+    "Programming Language :: Python",
     "License :: OSI Approved :: MIT License",
 ]
 
@@ -42,9 +45,11 @@ dev = [
     "mkdocs-git-revision-date-localized-plugin"
 ]
 
-
 [project.urls]
-Homepage = "https://github.com/kima-org/kima"
+Homepage = "http://www.kima.science"
+Documentation = "http://www.kima.science/docs/"
+Repository = "https://github.com/kima-org/kima"
+Issues = "https://github.com/kima-org/kima"
 
 
 [project.scripts]
