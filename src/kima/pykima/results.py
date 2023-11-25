@@ -1890,6 +1890,7 @@ class KimaResults:
             if self.multi_series:
                 raise NotImplementedError()
             else:
+                #TODO: move to beginning of file
                 from spleaf import cov, term
                 C = cov.Cov(
                     self.data.t,
