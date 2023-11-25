@@ -35,8 +35,6 @@ try:  # only available in scipy 1.1.0
 except ImportError:
     find_peaks = None
 
-from spleaf import cov, term
-
 pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
@@ -1892,6 +1890,7 @@ class KimaResults:
             if self.multi_series:
                 raise NotImplementedError()
             else:
+                from spleaf import cov, term
                 C = cov.Cov(
                     self.data.t,
                     err=term.Error(self.data.e),
