@@ -20,6 +20,20 @@ void GAIAmodel::initialize_from_data(GAIAdata& data)
     conditional->set_default_priors(data);
 }
 
+void GAIAmodel::set_known_object(size_t n)
+{
+    known_object = true;
+    n_known_object = n;
+
+    KO_Pprior.resize(n);
+    KO_a0prior.resize(n);
+    KO_eprior.resize(n);
+    KO_phiprior.resize(n);
+    KO_omegaprior.resize(n);
+    KO_cosiprior.resize(n);
+    KO_Omegaprior.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 
 void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
@@ -592,7 +606,7 @@ Args:
         whether the number of Keplerians should be fixed
     npmax (int, default=0):
         maximum number of Keplerians
-    data (GAIAData):
+    data (GAIAdata):
         the astrometric data
 )D";
 
@@ -602,8 +616,8 @@ class GAIAmodel_publicist : public GAIAmodel
         using GAIAmodel::studentt;
 //         using GAIAmodel::star_mass;
 //         using GAIAmodel::enforce_stability;
-        using GAIAmodel::known_object;
-        using GAIAmodel::n_known_object;
+//         using GAIAmodel::known_object;
+//         using GAIAmodel::n_known_object;
         using GAIAmodel::thiele_innes;
 };
 
@@ -619,11 +633,17 @@ NB_MODULE(GAIAmodel, m) {
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
 
-        //KO mode
-        .def_rw("known_object", &GAIAmodel_publicist::known_object,
-                "whether to include (better) known extra Keplerian curve(s)")
-        .def_rw("n_known_object", &GAIAmodel_publicist::n_known_object,
-                "how many known objects")
+//         //KO mode
+//         .def_rw("known_object", &GAIAmodel_publicist::known_object,
+//                 "whether to include (better) known extra Keplerian curve(s)")
+//         .def_rw("n_known_object", &GAIAmodel_publicist::n_known_object,
+//                 "how many known objects")
+        // KO mode
+        .def("set_known_object", &GAIAmodel::set_known_object)
+        .def_prop_ro("known_object", [](GAIAmodel &m) { return m.get_known_object(); },
+                     "whether the model includes (better) known extra Keplerian curve(s)")
+        .def_prop_ro("n_known_object", [](GAIAmodel &m) { return m.get_n_known_object(); },
+                     "how many known objects")
 
 
         // priors

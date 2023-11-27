@@ -27,9 +27,9 @@ class KIMA_API GAIAmodel
         bool studentt {false};
     
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
+        ///bool known_object {false};
         /// how many known objects
-        int n_known_object {0};
+        ///int n_known_object {0};
         
         ///Whether to use thiele_innes parametrisation
         bool thiele_innes {false};
@@ -93,21 +93,37 @@ class KIMA_API GAIAmodel
         /// prior for student-t degree of freedom
         distribution nu_prior;
         
-        // priors for KO mode!
-        distribution KO_Pprior {(size_t) n_known_object};
-        distribution KO_a0prior {(size_t) n_known_object};
-        distribution KO_eprior {(size_t) n_known_object};
-        distribution KO_phiprior {(size_t) n_known_object};
-        distribution KO_omegaprior {(size_t) n_known_object};
-        distribution KO_cosiprior {(size_t) n_known_object};
-        distribution KO_Omegaprior {(size_t) n_known_object};
-        
         //priors for astrometric solution
         distribution da_prior;
         distribution dd_prior;
         distribution mua_prior;
         distribution mud_prior;
         distribution plx_prior;
+        
+        bool known_object {false};
+        bool get_known_object() { return known_object; }
+
+        /// how many known objects
+        size_t n_known_object {0};
+        size_t get_n_known_object() { return n_known_object; }
+
+        void set_known_object(size_t known_object);
+        // priors for KO mode!
+        std::vector<distribution> KO_Pprior;
+        std::vector<distribution> KO_a0prior;
+        std::vector<distribution> KO_eprior;
+        std::vector<distribution> KO_phiprior;
+        std::vector<distribution> KO_omegaprior;
+        std::vector<distribution> KO_cosiprior;
+        std::vector<distribution> KO_Omegaprior;
+//         distribution KO_a0prior {(size_t) n_known_object};
+//         distribution KO_eprior {(size_t) n_known_object};
+//         distribution KO_phiprior {(size_t) n_known_object};
+//         distribution KO_omegaprior {(size_t) n_known_object};
+//         distribution KO_cosiprior {(size_t) n_known_object};
+//         distribution KO_Omegaprior {(size_t) n_known_object};
+        
+        
 
         GAIAConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();

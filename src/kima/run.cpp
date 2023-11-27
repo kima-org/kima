@@ -250,5 +250,4 @@ NB_MODULE(Sampler, m)
         "max_num_levels"_a=0, "lambda"_a=15.0, "beta"_a=100.0,
         "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
         RUN_DOC);
-
 }
