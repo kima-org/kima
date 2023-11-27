@@ -574,9 +574,6 @@ class TRANSITmodel_publicist : public TRANSITmodel
 
 
 NB_MODULE(TRANSITmodel, m) {
-    // bind RVConditionalPrior so it can be returned
-    bind_RVConditionalPrior(m);
-
     nb::class_<TRANSITmodel>(m, "TRANSITmodel")
         .def(nb::init<bool&, int&, PHOTdata&>(), "fix"_a, "npmax"_a, "data"_a, TRANSITMODEL_DOC)
         //

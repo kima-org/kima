@@ -1065,9 +1065,6 @@ class BINARIESmodel_publicist : public BINARIESmodel
 
 
 NB_MODULE(BINARIESmodel, m) {
-    // bind RVConditionalPrior so it can be returned
-    bind_RVConditionalPrior(m);
-
     nb::class_<BINARIESmodel>(m, "BINARIESmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, BINARIESMODEL_DOC)
         //

@@ -88,8 +88,8 @@ def np_posterior_threshold(results: KimaResults, threshold: float = 0.9):
 
 
 def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
-                    e: Union[float, np.ndarray],
-                    star_mass: Union[float, Tuple] = 1.0, full_output=False):
+                    e: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0,
+                    full_output=False):
     r"""
     Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
     semi-amplitude `K`, eccentricity `e`, and stellar mass. If `star_mass` is a
@@ -151,10 +151,10 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         assert isinstance(K, float) and isinstance(e, float)
         uncertainty_star_mass = False
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            Ms = np.random.normal(star_mass[0], star_mass[1], 20000)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
             uncertainty_star_mass = True
 
-        m_mj = C * Ms**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
         if uncertainty_star_mass:
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
@@ -166,9 +166,9 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         P = np.atleast_1d(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            Ms = np.random.normal(star_mass[0], star_mass[1], P.size)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
 
-        m_mj = C * Ms**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
@@ -177,10 +177,8 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
 
 
-def get_planet_semimajor_axis(P: Union[float, np.ndarray],
-                              K: Union[float, np.ndarray],
-                              star_mass: Union[float, tuple] = 1.0,
-                              full_output=False):
+def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
+                              star_mass: Union[float, tuple] = 1.0, full_output=False):
     r"""
     Calculate the semi-major axis of the planet's orbit given orbital period
     `P`, semi-amplitude `K`, and stellar mass.
@@ -232,10 +230,10 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray],
         assert isinstance(K, float)
         uncertainty_star_mass = False
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            Ms = np.random.normal(star_mass[0], star_mass[1], 20000)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
             uncertainty_star_mass = True
 
-        a = f * Ms**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
 
         if uncertainty_star_mass:
             return a.mean(), a.std()
@@ -244,8 +242,8 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray],
 
     else:
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            Ms = star_mass[0] + star_mass[1] * np.random.randn(P.size)
-        a = f * Ms**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
 
         if full_output:
             return a.mean(), a.std(), a
@@ -277,8 +275,8 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     if verbose:
         print('Using star mass = %s solar mass' % star_mass)
 
-    mass = get_planet_mass(P, K, e, star_mass, full_output, verbose=False)
-    a = get_planet_semimajor_axis(P, K, star_mass, full_output, verbose=False)
+    mass = get_planet_mass(P, K, e, star_mass, full_output)
+    a = get_planet_semimajor_axis(P, K, star_mass, full_output)
     return mass, a
 
 

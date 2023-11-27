@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from io import StringIO
 from contextlib import redirect_stdout
 
-
+from .. import __models__
 from kima.kepler import keplerian as kepleriancpp
 from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
@@ -43,7 +43,10 @@ def keplerian(*args, **kwargs):
     return np.array(kepleriancpp(*args, **kwargs))
 
 
-def _read_priors(setup):
+def _read_priors(setup=None):
+    if setup is None:
+        setup = read_model_setup()
+
     priors = list(setup['priors.general'].values())
     prior_names = list(setup['priors.general'].keys())
     try:
@@ -83,6 +86,7 @@ class data_holder:
     e: np.ndarray = field(init=False)
     obs: np.ndarray = field(init=False)
     N: int = field(init=False)
+    instrument: str = field(init=False)
 
     def __repr__(self):
         return f'data_holder(N={self.N}, t, y, e, obs)'
@@ -126,9 +130,17 @@ class posterior_holder:
 
 
 def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True):
+    # load from a pickle or zip file
     if isinstance(model_or_file, str) and os.path.exists(model_or_file):
         res = KimaResults.load(model_or_file)
+    
+    # load from current directory (latest results)
     elif model_or_file is None:
+        # cannot do it if there is no data information
+        setup = read_model_setup()
+        if setup['data']['file'] == '' and setup['data']['files'] == '':
+            raise ValueError('no data information saved; provide `data` argument')
+
         hidden = StringIO()
         stdout = sys.stdout if verbose else hidden
 
@@ -139,6 +151,10 @@ def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True):
         res.evidence = evidence
         res.information = H
         res.ESS = res.posterior_sample.shape[0]
+    
+    # load from a model object
+    elif isinstance(model_or_file, __models__):
+        return KimaResults.from_model(model_or_file, diagnostic, verbose)
     else:
         raise NotImplementedError
     return res
@@ -175,7 +191,6 @@ class KimaResults:
     _debug = False
 
     def __init__(self, save_plots=False, return_figs=True, verbose=False):
-
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
@@ -258,6 +273,8 @@ class KimaResults:
         if self.model == 'TRANSITmodel':
             self._read_limb_dark()
         # find trend in the compiled model and read it
+        self.trend = self.setup['kima']['trend'] == 'true'
+        self.trend_degree = int(self.setup['kima']['degree'])
         self._read_trend()
         # multiple instruments? read offsets
         self._read_multiple_instruments()
@@ -267,7 +284,14 @@ class KimaResults:
         self._read_GP()
         # find MA in the compiled model
         self._read_MA()
+
         # find KO in the compiled model
+        try:
+            self.KO = self.setup['kima']['known_object'] == 'true'
+            self.nKO = int(self.setup['kima']['n_known_object'])
+        except KeyError:
+            self.KO = False
+            self.nKO = 0
         self._read_KO()
 
         self._read_components()
@@ -275,6 +299,11 @@ class KimaResults:
         # staleness (ignored)
         self._current_column += 1
 
+        # student-t likelihood?
+        try:
+            self.studentt = self.setup['kima']['studentt'] == 'true'
+        except KeyError:
+            self.studentt = False
         self._read_studentt()
 
         if self.model == 'RVFWHMmodel':
@@ -294,6 +323,151 @@ class KimaResults:
         self._set_plots()
         # # make the plots, if requested
         # self.make_plots(options, self.save_plots)
+
+
+    @classmethod
+    def from_model(cls, model, diagnostic=False, verbose=True):
+
+        hidden = StringIO()
+        stdout = sys.stdout if verbose else hidden
+
+        with redirect_stdout(stdout):
+            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
+        
+        res = cls()
+
+        res.removed_crossing = False
+        res.removed_roche_crossing = False
+        res.save_plots = False
+        res.return_figs = True
+        res.verbose = verbose
+
+        res.model = model.__class__.__name__
+        res.fix = model.fix
+        res.npmax = model.npmax
+        res.evidence = evidence
+        res.information = H
+
+        res.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+        res.ESS = res.posterior_sample.shape[0]
+
+        #res.priors = {}
+        res.priors = _read_priors()
+
+        # arbitrary units?
+        if 'arb' in model.data.units:
+            res.arbitrary_units = True
+        else:
+            res.arbitrary_units = False
+
+        res.data = data_holder()
+        res.data.t = np.array(np.copy(model.data.t))
+        res.data.y = np.array(np.copy(model.data.y))
+        res.data.e = np.array(np.copy(model.data.sig))
+        res.data.obs = np.array(np.copy(model.data.obsi))
+        res.data.N = model.data.N
+        res.data.instrument = model.data.instrument
+
+        res.n_instruments = np.unique(model.data.obsi).size
+        res.multi = model.data.multi
+        res.M0_epoch = model.data.M0_epoch
+
+        try:
+            res.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
+            res.lnlike_available = True
+        except IOError:
+            res.lnlike_available = False
+            print('Could not find file "posterior_sample_info.txt", '
+                  'log-likelihoods will not be available.')
+
+        try:
+            t1 = time.time()
+            res.sample = np.atleast_2d(read_big_file('sample.txt'))
+            t2 = time.time()
+            res.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
+            with open('sample.txt', 'r') as fs:
+                header = fs.readline()
+                header = header.replace('#', '').replace('  ', ' ').strip()
+                res.parameters = [p for p in header.split(' ') if p != '']
+                res.parameters.pop(res.parameters.index('ndim'))
+                res.parameters.pop(res.parameters.index('maxNp'))
+                res.parameters.pop(res.parameters.index('staleness'))
+
+            # different sizes can happen when running the model and sample_info
+            # was updated while reading sample.txt
+            if res.sample.shape[0] != res.sample_info.shape[0]:
+                minimum = min(res.sample.shape[0], res.sample_info.shape[0])
+                res.sample = res.sample[:minimum]
+                res.sample_info = res.sample_info[:minimum]
+
+        except IOError:
+            res.sample = None
+            res.sample_info = None
+            res.parameters = []
+
+        res.indices = {}
+        res.total_parameters = 0
+
+        res._current_column = 0
+
+        # read jitters
+        res.n_jitters = res.n_instruments
+        if res.model == 'RVFWHMmodel':
+            res.n_jitters *= 2
+        res._read_jitters()
+
+        # read limb-darkening coefficients
+        if res.model == 'TRANSITmodel':
+            res._read_limb_dark()
+
+        # read trend
+        res.trend = model.trend
+        res.trend_degree = model.degree
+        res._read_trend()
+
+        # multiple instruments? read offsets
+        res._read_multiple_instruments()
+
+        # # activity indicator correlations?
+        # res._read_actind_correlations()
+
+        # find GP in the compiled model
+        res._read_GP()
+
+        # # find MA in the compiled model
+        # res._read_MA()
+
+        # find KO in the compiled model
+        res.KO = model.known_object
+        res.nKO = model.n_known_object
+        res._read_KO()
+
+        res._read_components()
+
+        # staleness (ignored)
+        res._current_column += 1
+
+        res.studentt = model.studentt
+        res._read_studentt()
+
+        if res.model == 'RVFWHMmodel':
+            res.C2 = res.posterior_sample[:, res._current_column]
+            res.indices['C2'] = res._current_column
+            res._current_column += 1
+
+        res.vsys = res.posterior_sample[:, -1]
+        res.indices['vsys'] = -1
+
+        # build the marginal posteriors for planet parameters
+        res.get_marginals()
+
+        if res.fix:
+            res.parameters.pop(res.parameters.index('Np'))
+
+        res._set_plots()
+
+        return res
+
 
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
@@ -324,6 +498,10 @@ class KimaResults:
 
         if self.verbose:
             print('Loading data file %s' % data_file)
+
+        if data_file == '':
+            raise ValueError('no data information in kima_model_setup.txt')
+
         self.data_file = data_file
 
         self.data_skip = int(setup[section]['skip'])
@@ -414,9 +592,6 @@ class KimaResults:
             print('finished reading limb darkening')
 
     def _read_trend(self):
-        self.trend = self.setup['kima']['trend'] == 'true'
-        self.trend_degree = int(self.setup['kima']['degree'])
-
         if self.trend:
             n_trend = self.trend_degree
             i1 = self._current_column
@@ -486,7 +661,8 @@ class KimaResults:
         self._current_column += 1
 
         # find hyperpriors in the compiled model
-        self.hyperpriors = self.setup['kima']['hyperpriors'] == 'true'
+        self.hyperpriors = False
+        #self.hyperpriors = self.setup['kima']['hyperpriors'] == 'true'
 
         # number of hyperparameters (muP, wP, muK)
         if self.hyperpriors:
@@ -527,13 +703,7 @@ class KimaResults:
             istart += self.max_components
 
     def _read_studentt(self):
-        # student-t likelihood?
-        try:
-            self.studentT = self.setup['kima']['studentt'] == 'true'
-        except KeyError:
-            self.studentT = False
-
-        if self.studentT:
+        if self.studentt:
             self.nu = self.posterior_sample[:, self._current_column]
             self.indices['nu'] = self._current_column
             self._current_column += 1
@@ -573,10 +743,11 @@ class KimaResults:
         self.has_gp = True
 
         if self.model == 'GPmodel':
-            if 'kernel' in self.setup['kima']:
-                self.GPkernel = self.setup['kima']['kernel']
-            else:
-                self.GPkernel = self.setup['kima']['GP_kernel']
+            self.GPkernel = 'standard'
+            # if 'kernel' in self.setup['kima']:
+            #     self.GPkernel = self.setup['kima']['kernel']
+            # else:
+            #     self.GPkernel = self.setup['kima']['GP_kernel']
 
             try:
                 n_hyperparameters = {
@@ -662,13 +833,6 @@ class KimaResults:
         self.total_parameters += n_MAparameters
 
     def _read_KO(self):
-        try:
-            self.KO = self.setup['kima']['known_object'] == 'true'
-            self.nKO = int(self.setup['kima']['n_known_object'])
-        except KeyError:
-            self.KO = False
-            self.nKO = 0
-
         if self.KO:
             if self.model == 'TRANSITmodel':
                 n_KOparameters = 6 * self.nKO
@@ -887,6 +1051,11 @@ class KimaResults:
                 except UnicodeDecodeError:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f, encoding='latin1')
+
+            if hasattr(res, 'studentT'):
+                res.studentt = res.studentT
+                del res.studentT
+
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
@@ -1206,8 +1375,7 @@ class KimaResults:
         if squeeze:
             if self.model == 'RVFWHMmodel':
                 inst = instruments + instruments
-                data = self.n_instruments * ['RV'
-                                             ] + self.n_instruments * ['FWHM']
+                data = self.n_instruments * ['RV'] + self.n_instruments * ['FWHM']
             else:
                 inst = instruments
                 data = self.n_instruments * ['']
@@ -1724,10 +1892,12 @@ class KimaResults:
             if self.multi_series:
                 raise NotImplementedError()
             else:
-                C = spleaf.cov.Cov(
+                #TODO: move to beginning of file
+                from spleaf import cov, term
+                C = cov.Cov(
                     self.data.t,
-                    err=spleaf.term.Error(self.data.e),
-                    gp=spleaf.term.Matern52Kernel(1.0, 1.0)
+                    err=term.Error(self.data.e),
+                    gp=term.Matern52Kernel(1.0, 1.0)
                 )
                 GPpars = sample[self.indices['GPpars']]
                 C.set_param(GPpars, C.param)
@@ -1855,7 +2025,7 @@ class KimaResults:
             r = r[0]
 
         vals = []
-        val = wrms(r, weights=1 / self.e**2)
+        val = wrms(r, weights=1 / self.data.e**2)
         if printit:
             print(f'full: {val:.3f} m/s')
         vals.append(val)
@@ -1863,7 +2033,7 @@ class KimaResults:
         if self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = wrms(r[self.data.obs == o],
-                           weights=1 / self.e[self.data.obs == o]**2)
+                           weights=1 / self.data.e[self.data.obs == o]**2)
                 if printit:
                     print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
@@ -1938,6 +2108,9 @@ class KimaResults:
 
     @property
     def instruments(self):
+        if not hasattr(self, 'data_file'):
+            return [''] if self.multi else ''
+
         if self.multi:
             if self.multi_onefile:
                 return ['inst %d' % i for i in np.unique(self.data.obs)]
@@ -2097,14 +2270,17 @@ class KimaResults:
     #
     make_plot2 = display.make_plot2
     plot2 = display.make_plot2
+    plot_posterior_periods = display.make_plot2
 
     #
     make_plot3 = display.make_plot3
     plot3 = display.make_plot3
+    plot_posterior_PKE = display.make_plot3
 
     #
     make_plot4 = display.make_plot4
     plot4 = display.make_plot4
+    plot_posterior_hyperpars = display.make_plot4
 
     #
     make_plot5 = display.make_plot5

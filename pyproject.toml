@@ -4,14 +4,17 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "kima"
-version = "6.0.1"
+version = "6.0.3"
 description = "A data analysis framework for exoplanet detection"
-readme = "README.md"
-requires-python = ">=3.8"
 authors = [
-    { name = "João Faria", email = "joao.faria@unige.ch" },
+  {name = "João Faria", email = "joao.faria@unige.ch"}
 ]
+
+readme = "README.md"
+license = {text = "MIT License"}
+requires-python = ">=3.8"
 classifiers = [
+    "Programming Language :: Python",
     "License :: OSI Approved :: MIT License",
 ]
 
@@ -33,6 +36,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "nanobind",
+    "scikit-build-core[pyproject]",
     "mkdocs",
     "mkdocstrings[crystal,python]",
     "mkdocs-autorefs",
@@ -40,9 +45,11 @@ dev = [
     "mkdocs-git-revision-date-localized-plugin"
 ]
 
-
 [project.urls]
-Homepage = "https://github.com/kima-org/kima"
+Homepage = "http://www.kima.science"
+Documentation = "http://www.kima.science/docs/"
+Repository = "https://github.com/kima-org/kima"
+Issues = "https://github.com/kima-org/kima"
 
 
 [project.scripts]
@@ -59,8 +66,11 @@ build-dir = "build/{wheel_tag}"
 # Build stable ABI wheels for CPython 3.12+
 wheel.py-api = "cp312"
 
-# "Debug" "RelWithDebInfo"
-cmake.build-type = "Release"
+# The minimum version of CMake to use. If CMake is not present on the system or
+# is older than this, it will be downloaded via PyPI if possible. An empty
+# string will disable this check.
+cmake.minimum-version = "3.17"
+
 
 
 [tool.cibuildwheel]

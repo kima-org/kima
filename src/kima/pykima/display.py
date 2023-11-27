@@ -302,7 +302,7 @@ def make_plot2(res,
         ax.set_xlim(plims)
     
     if mark_periods is not None:
-        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'r^')
+        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'rv')
 
     if res.save_plots:
         filename = 'kima-showresults-fig2.png'
@@ -371,7 +371,7 @@ def make_plot3(res,
         ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
         fig = ax1.figure
     else:
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True)
 
     # the y scale in loglog looks bad if the semi-amplitude doesn't have
     # high dynamic range; the threshold of 30 is arbitrary
@@ -380,8 +380,12 @@ def make_plot3(res,
     if points:
         kw = dict(markersize=2, zorder=2, alpha=0.1)
         kw = {**kwargs, **kw}
-        if colors_np:
-            kw['color'] = None
+
+        if not colors_np:
+            T = T.ravel()
+            A = A.ravel()
+            E = E.ravel()
+
         if A.size > 1 and A.ptp() > Khdr_threshold:
             ax1.loglog(T, A, '.', **kw)
         else:
@@ -435,10 +439,11 @@ def make_plot3(res,
             title='Joint posterior eccentricity $-$ orbital period',
             ylim=[0, 1], xlim=[0.1, 1e7])
 
-    try:
-        ax2.set(xlim=res.priors['Pprior'].support())
-    except (AttributeError, KeyError, ValueError):
-        pass
+    if not include_known_object:
+        try:
+            ax2.set(xlim=res.priors['Pprior'].support())
+        except (AttributeError, KeyError, ValueError):
+            pass
 
     if res.save_plots:
         filename = 'kima-showresults-fig3.png'
@@ -1280,7 +1285,7 @@ def hist_nu(res, show_prior=False, **kwargs):
     """
     Plot the histogram of the posterior for the Student-t degrees of freedom
     """
-    if not res.studentT:
+    if not res.studentt:
         print('Model has Gaussian likelihood! hist_nu() doing nothing...')
         return
 
@@ -1309,8 +1314,8 @@ def hist_nu(res, show_prior=False, **kwargs):
 
 
 def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
-              ignore_y2=False, time_offset=0.0, legend=True, show_rms=False,
-              outliers=None, **kwargs):
+              ignore_y2=False, time_offset=0.0, highlight=None,
+              legend=True, show_rms=False, outliers=None, **kwargs):
 
     fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
 
@@ -1349,6 +1354,13 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
             inst = res.instruments[j]
             m = res.data.obs == j + 1
             kw.update(label=inst)
+
+            if highlight is not None:
+                if highlight in inst:
+                    kw.update(alpha=1)
+                else:
+                    kw.update(alpha=0.1)
+
             if outliers is None:
                 ax.errorbar(t[m] - time_offset, y[m] - y_offset, e[m], **kw)
             else:
@@ -1359,7 +1371,7 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
                 axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, e2[m],
                              **kw)
     else:
-        kw.update(label=res.instruments)
+        kw.update(label=res.data.instrument)
 
         if outliers is None:
             ax.errorbar(t - time_offset, y - y_offset, e, **kw)
@@ -1390,7 +1402,7 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
         axf.set(xlabel='Time [days]', ylabel='FWHM [m/s]')
 
     if show_rms:
-        # if res.studentT:
+        # if res.studentt:
         #     outliers = find_outliers(res)
         #     rms1 = wrms(y, 1 / res.e**2)
         #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
@@ -1508,7 +1520,7 @@ def plot_transit_data(res, ax=None, y=None, extract_offset=False,
     ax.set(**lab)
 
     if show_rms:
-        # if res.studentT:
+        # if res.studentt:
         #     outliers = find_outliers(res)
         #     rms1 = wrms(y, 1 / res.e**2)
         #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
@@ -1587,7 +1599,7 @@ def phase_plot(res,
                sharey=False,
                highlight_points=None,
                sort_by_increasing_P=False,
-               sort_by_decreasing_K=False,
+               sort_by_decreasing_K=True,
                show_gls_residuals=False,
                **kwargs):
     """ Plot the phase curves given the solution in `sample` """
@@ -1651,6 +1663,11 @@ def phase_plot(res,
             planetis.append(i)
             KO_planet.append(True)
 
+
+    if nplanets == 0:
+        print('Sample has no planets! phase_plot() doing nothing...')
+        return
+
     if sort_by_decreasing_K:
         # sort by decreasing amplitude (arbitrary)
         ind = np.argsort(pars[1 * mc:2 * mc])[::-1]
@@ -1670,31 +1687,23 @@ def phase_plot(res,
 
     # extract periods, phases and calculate times of periastron
     P = pars[0 * mc:1 * mc][:nplanets]
-    K = pars[1 * mc:2 * mc][:nplanets]
-
-    phi = pars[2 * mc:3 * mc][:nplanets]
-    T0 = M0_epoch - (P * phi) / (2. * np.pi)
     # semi-amplitudes
-    # and eccentricities
+    K = pars[1 * mc:2 * mc][:nplanets]
+    # mean anomalies
+    phi = pars[2 * mc:3 * mc][:nplanets]
+    TP = M0_epoch - (P * phi) / (2. * np.pi)
+    # eccentricities
     ECC = pars[3 * mc:4 * mc][:nplanets]
-
-    if nplanets == 0:
-        print('Sample has no planets! phase_plot() doing nothing...')
-        return
+    # arguments of periastron
+    W = pars[4 * mc:5 * mc][:nplanets]
 
     KO_planet = KO_planet[:nplanets]
-
-    # print(nplanets)
-    # print(KO_planet)
-    # print(planetis)
-    # print(P)
-    # print(K)
-    # print(phi)
 
     # subtract stochastic model and vsys / offsets from data
     v = res.full_model(sample, include_planets=False)
     if res.model == 'RVFWHMmodel':
         v = v[0]
+
     y = y - v
 
     ekwargs = {
@@ -1766,7 +1775,7 @@ def phase_plot(res,
         ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
 
         p = P[i]
-        t0 = T0[i]
+        t0 = TP[i]
 
         # plot the keplerian curve in phase (3 times)
         phase = np.linspace(0, 1, 200)
@@ -1797,7 +1806,7 @@ def phase_plot(res,
             alpha = 0.2 if j in (-1, 1) else 1
             ax.plot(np.sort(phase) + j,
                     vv[np.argsort(phase)] - offset_model,
-                    color='k', alpha=alpha)
+                    color='k', alpha=alpha, zorder=100)
 
         # the other planets which are not the ith
         # other = copy(planetis)
@@ -1817,7 +1826,7 @@ def phase_plot(res,
                 ee = e[m].copy()
 
                 # one color for each instrument
-                color = ax._get_lines.prop_cycler.__next__()['color']
+                color = f'C{k-1}'
 
                 for j in (-1, 0, 1):
                     label = res.instruments[k - 1] if j == 0 else ''
@@ -1847,13 +1856,11 @@ def phase_plot(res,
             phase = ((t - t0) / p) % 1.0
             yy = y - vv
 
-            color = ax._get_lines.prop_cycler.__next__()['color']
-
             for j in (-1, 0, 1):
                 alpha = 0.3 if j in (-1, 1) else 1
                 ax.errorbar(
                     np.sort(phase) + j, yy[np.argsort(phase)],
-                    e[np.argsort(phase)], color=color, alpha=alpha, **ekwargs)
+                    e[np.argsort(phase)], color='C0', alpha=alpha, **ekwargs)
 
         ax.set(xlabel="phase", ylabel="RV [m/s]")
         ax.set_xlim(-0.1, 1.1)
@@ -1924,14 +1931,14 @@ def phase_plot(res,
         residuals = residuals[0]
 
     outliers = None
-    if res.studentT:
+    if res.studentt:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     res.data.e[outliers], fmt='xk', ms=7, lw=3)
 
     plot_data(res, ax=ax, y=residuals, ignore_y2=True, legend=True,
               show_rms=True, outliers=outliers, time_offset=time_offset,
-              **ekwargs)
+              highlight=highlight, **ekwargs)
 
     # legend in the residual plot?
     hand, lab = ax.get_legend_handles_labels()
@@ -2045,8 +2052,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
     _, y_offset = plot_data(res, ax, **kwargs)
 
-    if ignore_outliers:
-        if res.studentT:
+    if show_outliers:
+        if res.studentt:
             outliers = find_outliers(
                 res, res.maximum_likelihood_sample(printit=False))
             if outliers.any():
