@@ -647,20 +647,20 @@ PHOTdata::PHOTdata() {};
 
 GAIAdata::GAIAdata() {};
     /**
-     * @brief Load Gaia epoch astrometry data from a file.
-     *
-     * Read a tab/space separated file with columns
-     * ```
-     *   time  position  error  scan-angle  parallax-factor-along-scan
-     *   ...   ...   ...    ...    ...
-     * ```
-     *
-     * @param filename   the name of the file
-     * @param units      units of the positions and errors, either "mas" or "muas"(?)
-     * @param skip       number of lines to skip in the beginning of the file (default = 2)
-     */
+      * @brief Load Gaia epoch astrometry data from a file.
+      *
+      * Read a tab/space separated file with columns
+      * ```
+      *   time  position  error  scan-angle  parallax-factor-along-scan
+      *   ...   ...   ...    ...    ...
+      * ```
+      *
+      * @param filename   the name of the file
+      * @param units      units of the positions and errors, either "mas" or "muas"(?)
+      * @param skip       number of lines to skip in the beginning of the file (default = 2)
+      */
 
-    void GAIAdata::load(const string filename, const string units, int skip,
+    void GAIAdata::load(const string filename, const string units, int skip, int max_rows,
                         const string delimiter)
     {
         if (filename.empty()) {
@@ -811,9 +811,9 @@ Args:
 
     nb::class_<GAIAdata>(m, "GAIAdata", "docs")
         // constructor
-        .def(nb::init<const string&, const string&, int, const string&>(),
-             "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ",
-             "Load photometric data from a file")
+        .def(nb::init<const string&, const string&, int, int, const string&>(),
+              "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
+              "Load astrometric data from a file")
         // properties
         .def_prop_ro("t", [](GAIAdata &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("w", [](GAIAdata &d) { return d.get_w(); }, "The observed centroid positions")
@@ -821,5 +821,5 @@ Args:
         .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
         .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors");
         //
-        .def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
+        //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
 }

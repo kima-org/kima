@@ -235,7 +235,7 @@ void TRANSITConditionalPrior::print(std::ostream& out) const
 /*****************************************************************************/
 
 
-GAIAConditionalPrior::GAIAConditionalPrior():thiele-innes(false)
+GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 {
     
     if (!Pprior)
@@ -244,7 +244,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele-innes(false)
         eprior = make_shared<Uniform>(0, 1);
     if (!phiprior)
         phiprior = make_shared<Uniform>(0, 2*M_PI);
-    if(thiele-innes)
+    if(thiele_innes)
     {
         if (!Aprior)
             Aprior = make_shared<Gaussian>(0, 0.5);
@@ -264,7 +264,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele-innes(false)
         if (!cosiprior)
             cosiprior = make_shared<Uniform>(-1, 1);
         if (!Omegaprior)
-            Omegaprior = make_shared<Uniform>(0, 2*MPI);
+            Omegaprior = make_shared<Uniform>(0, 2*M_PI);
     }
 }
 
@@ -287,31 +287,31 @@ double GAIAConditionalPrior::perturb_hyperparameters(RNG& rng)
 
 double GAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
-    if(thiele-innes)
+    if(thiele_innes)
     {
         return Pprior->log_pdf(vec[0]) + 
-               phiprior->log_pdf(vec[1]) + 
-               eprior->log_pdf(vec[2]) + 
-               Aprior->log_pdf(vec[3]) + 
-               Bprior->log_pdf(vec[4]) +
-               Fprior->log_pdf(vec[5]) + 
-               Gprior->log_pdf(vec[6]);
+                phiprior->log_pdf(vec[1]) + 
+                eprior->log_pdf(vec[2]) + 
+                Aprior->log_pdf(vec[3]) + 
+                Bprior->log_pdf(vec[4]) +
+                Fprior->log_pdf(vec[5]) + 
+                Gprior->log_pdf(vec[6]);
     }
     else
     {
         return Pprior->log_pdf(vec[0]) + 
-               phiprior->log_pdf(vec[1]) + 
-               eprior->log_pdf(vec[2]) + 
-               a0prior->log_pdf(vec[3]) + 
-               omegaprior->log_pdf(vec[4]) +
-               cosiprior->log_pdf(vec[5]) + 
-               Omegaprior->log_pdf(vec[6]);
+                phiprior->log_pdf(vec[1]) + 
+                eprior->log_pdf(vec[2]) + 
+                a0prior->log_pdf(vec[3]) + 
+                omegaprior->log_pdf(vec[4]) +
+                cosiprior->log_pdf(vec[5]) + 
+                Omegaprior->log_pdf(vec[6]);
     }
 }
 
 void GAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
 {
-    if(thiele-innes)
+    if(thiele_innes)
     {
         vec[0] = Pprior->cdf_inverse(vec[0]);
         vec[1] = phiprior->cdf_inverse(vec[1]);
@@ -335,7 +335,7 @@ void GAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
 
 void GAIAConditionalPrior::to_uniform(std::vector<double>& vec) const
 {
-    if(thiele-innes)
+    if(thiele_innes)
     {
         vec[0] = Pprior->cdf(vec[0]);
         vec[1] = phiprior->cdf(vec[1]);
@@ -422,7 +422,9 @@ void bind_RVConditionalPrior(nb::module_ &m) {
             [](TRANSITConditionalPrior &c) { return c.wprior; },
             [](TRANSITConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron");
-            
+}
+           
+void bind_GAIAConditionalPrior(nb::module_ &m) {            
     nb::class_<GAIAConditionalPrior>(m, "GAIAConditionalPrior")
         .def(nb::init<>())
         .def_prop_rw("Pprior",
@@ -435,7 +437,7 @@ void bind_RVConditionalPrior(nb::module_ &m) {
             "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("a0prior",
             [](GAIAConditionalPrior &c) { return c.a0prior; },
-            [](GAIAConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.a0prior = d; },
             "Prior for the photocentre semi-major-axis(es) (mas)")
         .def_prop_rw("omegaprior",
             [](GAIAConditionalPrior &c) { return c.omegaprior; },
@@ -456,19 +458,19 @@ void bind_RVConditionalPrior(nb::module_ &m) {
         .def_prop_rw("Aprior",
             [](GAIAConditionalPrior &c) { return c.Aprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Aprior = d; },
-            "Prior Thiele-Innes parameter(s) A")
+            "Prior thiele_innes parameter(s) A")
         .def_prop_rw("Bprior",
             [](GAIAConditionalPrior &c) { return c.Bprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Bprior = d; },
-            "Prior Thiele-Innes parameter(s) B")
+            "Prior thiele_innes parameter(s) B")
         .def_prop_rw("Fprior",
             [](GAIAConditionalPrior &c) { return c.Fprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Fprior = d; },
-            "Prior Thiele-Innes parameter(s) F")
+            "Prior thiele_innes parameter(s) F")
         .def_prop_rw("Gprior",
             [](GAIAConditionalPrior &c) { return c.Gprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Gprior = d; },
-            "Prior Thiele-Innes parameter(s) G");
+            "Prior thiele_innes parameter(s) G");
 }
 
 // NB_MODULE(ConditionalPrior, m) {

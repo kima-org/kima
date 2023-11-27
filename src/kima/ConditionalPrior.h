@@ -75,8 +75,6 @@ class RVConditionalPrior : public DNest4::ConditionalPrior
 class TRANSITConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
-    	/// Use Thiele-innes parameters
-    	bool thiele-innes;
     	
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
@@ -119,13 +117,16 @@ class TRANSITConditionalPrior:public DNest4::ConditionalPrior
 
 class GAIAConditionalPrior:public DNest4::ConditionalPrior
 {
-	private:
+ 	private:
+        /// Use thiele_innes parameters
+     	bool thiele_innes;
+
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
-	public:
+ 	public:
 		GAIAConditionalPrior();
 
-		void set_default_priors(const GAIAData &data);
+		void set_default_priors(const GAIAdata &data);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -145,7 +146,7 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
 		/// Prior for the longitude of ascending node.
 		distribution Omegaprior;
 		
-		///Priors for the Thiele-Innes parameters
+		///Priors for the thiele_innes parameters
 		distribution Aprior;
 		/// 
 		distribution Bprior;
@@ -173,4 +174,5 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
 
 
 void bind_RVConditionalPrior(nb::module_ &m);
+void bind_GAIAConditionalPrior(nb::module_ &m);
 

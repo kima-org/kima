@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <tuple>
 #include "postkepler.h"
 
 // sincos on apple
@@ -47,6 +48,7 @@ namespace nijenhuis
     double solver(double M, double ecc);
     std::vector<double> solver(const std::vector<double> &M, double ecc);
     double true_anomaly(double t, double period, double ecc, double t_peri);
+    std::tuple <double,double> ellip_rectang(double t, double period, double ecc, double t_peri);
 }
 
 namespace brandt

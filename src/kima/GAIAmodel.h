@@ -27,12 +27,12 @@ class KIMA_API GAIAmodel
         bool studentt {false};
     
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {true};
+        bool known_object {false};
         /// how many known objects
-        int n_known_object {1};
+        int n_known_object {0};
         
-        ///Whether to use thiele-innes parametrisation
-        bool thiele-innes {false};
+        ///Whether to use thiele_innes parametrisation
+        bool thiele_innes {false};
         
     
     private:
@@ -55,10 +55,10 @@ class KIMA_API GAIAmodel
         double nu;
         double jitter;
 
-        // Parameters for the known object, if set. Use geometric parameters rather than Thiele-Innes
+        // Parameters for the known object, if set. Use geometric parameters rather than thiele_innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
         std::vector<double> KO_P;
-        std::vector<double> KO_a;
+        std::vector<double> KO_a0;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
         std::vector<double> KO_omega;
@@ -80,11 +80,11 @@ class KIMA_API GAIAmodel
 
     public:
         GAIAmodel();
-        GAIAmodel(bool fix, int npmax, GAIAData& data) : data(data), fix(fix), npmax(npmax) {
+        GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(GAIAData& data);
+        void initialize_from_data(GAIAdata& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -95,12 +95,12 @@ class KIMA_API GAIAmodel
         
         // priors for KO mode!
         distribution KO_Pprior {(size_t) n_known_object};
-        distribution KO_aprior {(size_t) n_known_object};
+        distribution KO_a0prior {(size_t) n_known_object};
         distribution KO_eprior {(size_t) n_known_object};
         distribution KO_phiprior {(size_t) n_known_object};
-        distributionKO_wprior {(size_t) n_known_object};
+        distribution KO_omegaprior {(size_t) n_known_object};
         distribution KO_cosiprior {(size_t) n_known_object};
-        distribution KO_Omprior {(size_t) n_known_object};
+        distribution KO_Omegaprior {(size_t) n_known_object};
         
         //priors for astrometric solution
         distribution da_prior;
