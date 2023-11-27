@@ -191,7 +191,6 @@ class KimaResults:
     _debug = False
 
     def __init__(self, save_plots=False, return_figs=True, verbose=False):
-
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
@@ -325,8 +324,6 @@ class KimaResults:
         # # make the plots, if requested
         # self.make_plots(options, self.save_plots)
 
-    def __init__(self):
-        pass
 
     @classmethod
     def from_model(cls, model, diagnostic=False, verbose=True):
@@ -1054,6 +1051,11 @@ class KimaResults:
                 except UnicodeDecodeError:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f, encoding='latin1')
+
+            if hasattr(res, 'studentT'):
+                res.studentt = res.studentT
+                del res.studentT
+
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
