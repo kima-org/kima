@@ -1,9 +1,6 @@
 # ignore /docs at the top level repo
 docs
 
-# txt files, by default
-*.txt
-
 
 # Python
 __pycache__
