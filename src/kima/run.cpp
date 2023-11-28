@@ -24,202 +24,47 @@ Args:
 )D";
 
 
+#define RUN_SIGNATURE(name) \
+    [](name &m, int steps=100, unsigned int num_threads=1, unsigned int num_particles=1,                              \
+                unsigned int new_level_interval=2000, unsigned int save_interval=100, unsigned int thread_steps=10,   \
+                unsigned int max_num_levels=0, double lambda_=10.0, double beta=100.0,                                \
+                double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
+
+#define RUN_BODY(name) \
+    const auto opt = Options(num_particles, new_level_interval, save_interval,          \
+                                thread_steps, max_num_levels, lambda_, beta, steps);    \
+    Sampler<name> sampler(num_threads, compression, opt, true, false);                  \
+    auto ns = static_cast<unsigned int>(sampler.size());                                \
+    for (unsigned int i = 0; i < ns; i++)                                               \
+    {                                                                                   \
+        name *p = sampler.particle(i);                                                  \
+        *p = m;                                                                         \
+    }                                                                                   \
+    if (seed == 0)                                                                      \
+        seed = static_cast<unsigned int>(time(NULL));                                   \
+    sampler.initialise(seed);                                                           \
+    sampler.run(print_thin);
+
+#define RUN_ARGS \
+    "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,               \
+    "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,    \
+    "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,                     \
+    "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50
 
 
 NB_MODULE(Sampler, m)
 {
-    m.def(
-        "run", [](RVmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda_, beta, steps);
-            // create the sampler
-            Sampler<RVmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                RVmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
+    m.def("run", RUN_SIGNATURE(RVmodel) { RUN_BODY(RVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def(
-        "run", [](GPmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda_, beta, steps);
-            // create the sampler
-            Sampler<GPmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                GPmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
-    
-    m.def(
-        "run", [](RVFWHMmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda_, beta, steps);
-            // create the sampler
-            Sampler<RVFWHMmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                RVFWHMmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
+    m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS, RUN_DOC);
 
+    m.def("run", RUN_SIGNATURE(RVFWHMmodel) { RUN_BODY(RVFWHMmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def(
-        "run", [](TRANSITmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda_, beta, steps);
-            // create the sampler
-            Sampler<TRANSITmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                TRANSITmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
+    m.def("run", RUN_SIGNATURE(TRANSITmodel) { RUN_BODY(TRANSITmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def(
-        "run", [](OutlierRVmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda_=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                               thread_steps, max_num_levels, lambda_, beta, steps);
-            // create the sampler
-            Sampler<OutlierRVmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                OutlierRVmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,
-        "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
-    m.def(
-        "run", [](BINARIESmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                                thread_steps, max_num_levels, lambda, beta, steps);
-            // create the sampler
-            Sampler<BINARIESmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                BINARIESmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=100,
-        "max_num_levels"_a=0, "lambda"_a=15.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
-    m.def(
-        "run", [](GAIAmodel &m, int steps=100, int num_threads=1, int num_particles=1, 
-                  int new_level_interval=2000, int save_interval=100, int thread_steps=10,
-                  int max_num_levels=0, double lambda=10.0, double beta=100.0,
-                  double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
-        {
-            // setup the sampler options
-            auto opt = Options(num_particles, new_level_interval, save_interval,
-                                thread_steps, max_num_levels, lambda, beta, steps);
-            // create the sampler
-            Sampler<GAIAmodel> sampler(num_threads, compression, opt, true, false);
-            // replace default particles with provided model
-            for (size_t i = 0; i < sampler.size(); i++)
-            {
-                GAIAmodel *p = sampler.particle(i);
-                *p = m;
-            }
-            if (seed == 0)
-                seed = static_cast<unsigned int>(time(NULL));
-            sampler.initialise(seed);
-            sampler.run(print_thin);
-        },
-        "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,
-        "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=100,
-        "max_num_levels"_a=0, "lambda"_a=15.0, "beta"_a=100.0,
-        "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,
-        RUN_DOC);
+    m.def("run", RUN_SIGNATURE(OutlierRVmodel) { RUN_BODY(OutlierRVmodel) }, RUN_ARGS, RUN_DOC);
+
+    m.def("run", RUN_SIGNATURE(BINARIESmodel) { RUN_BODY(BINARIESmodel) }, RUN_ARGS, RUN_DOC);
+
+    m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS, RUN_DOC);
 }
