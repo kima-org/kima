@@ -190,13 +190,16 @@ class KimaResults:
 
     _debug = False
 
-    def __init__(self, save_plots=False, return_figs=True, verbose=False):
+    def __init__(self, save_plots=False, return_figs=True, verbose=False, _dummy=False):
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
 
         self.removed_crossing = False
         self.removed_roche_crossing = False
+
+        if _dummy:
+            return
 
         self.setup = setup = read_model_setup()
         try:
@@ -333,8 +336,8 @@ class KimaResults:
 
         with redirect_stdout(stdout):
             evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
-        
-        res = cls()
+
+        res = cls(_dummy=True)
 
         res.removed_crossing = False
         res.removed_roche_crossing = False
