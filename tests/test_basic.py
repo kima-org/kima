@@ -68,6 +68,15 @@ def test_RVFWHMmodel():
                          kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
 
 
+def test_run():
+    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+    kima.run(m, steps=1)
+    m = kima.GPmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+    kima.run(m, steps=1)
+    m = kima.RVFWHMmodel(True, 0, kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
+    kima.run(m, steps=1)
+
+
 def test_distributions():
     from kima import distributions
     from kima.distributions import Gaussian, Uniform, Fixed
