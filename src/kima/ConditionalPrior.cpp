@@ -281,7 +281,7 @@ void GAIAConditionalPrior::from_prior(RNG& rng)//needed?
 
 double GAIAConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
-    
+    return 0.0;
 }
 
 // vec[0] = period
