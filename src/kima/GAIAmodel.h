@@ -79,7 +79,7 @@ class KIMA_API GAIAmodel
 
 
     public:
-        GAIAmodel();
+        GAIAmodel() {};
         GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
