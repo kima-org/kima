@@ -633,7 +633,7 @@ void Sampler<ModelType>::print(std::ostream& out) const
 	out<<num_threads<<' ';
 	out<<compression<<' ';
 
-	out<<options<<' ';
+	// out<<options<<' ';
 
 	for(const auto& p: particles)
 		p.print(out);
