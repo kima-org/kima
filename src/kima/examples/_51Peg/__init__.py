@@ -29,9 +29,8 @@ def _51Peg(run=False, **kwargs):
     kwargs.setdefault('save_interval', 500)
 
     if run:
-        kima.run(RVmodel, steps = 100, num_threads= 1, num_particles = 1, new_level_interval = 2000, save_interval = 100, thread_steps = 10, max_num_levels = 0, lambda_ = 10.0, beta = 100.0, compression = 2.718281828459045, seed = 0, print_thin = 50)
         # with chdir(here):
-        #     kima.run(model, **kwargs)
+        kima.run(model, **kwargs)
 
     return model
 
