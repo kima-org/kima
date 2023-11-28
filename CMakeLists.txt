@@ -23,10 +23,6 @@ target_compile_features(dnest4 PRIVATE cxx_std_17)
 # path to include Eigen
 set(EIGEN_PATH src/vendor/eigen)
 
-# spleaf library
-set(SPLEAF_PATH src/vendor/spleaf/spleaf)
-add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
-
 
 # import Python components needed by nanobind
 find_package(Python 3.8
@@ -69,10 +65,6 @@ nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC
-                    src/kima/SPLEAFmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/spleaf.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
-
 nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC
                     src/kima/BINARIESmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
@@ -90,11 +82,10 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/TRANSITmodel.cpp
                     src/kima/GPmodel.cpp
                     src/kima/RVFWHMmodel.cpp
-                    src/kima/SPLEAFmodel.cpp
                     src/kima/BINARIESmodel.cpp
                     src/kima/GAIAmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/spleaf.cpp src/kima/kepler.cpp
+                    src/kima/kepler.cpp
                     src/kima/postkepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
 
 
@@ -128,34 +119,14 @@ foreach(targ GPmodel RVFWHMmodel)
 endforeach()
 
 
-# spleaf bindings and C++ wrapper
-nanobind_add_module(spleaf STABLE_ABI NB_STATIC
-                    src/kima/spleaf.cpp)
-
-target_compile_features(spleaf PRIVATE cxx_std_17)
-target_include_directories(spleaf PRIVATE ${SPLEAF_PATH})
-target_include_directories(spleaf PRIVATE ${INCLUDES_EIGEN})
-target_link_libraries(spleaf PRIVATE libspleaf)
-target_link_libraries(spleaf PRIVATE dnest4)
-
-# SPLEAFmodel
-set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
-
-target_compile_features(SPLEAFmodel PRIVATE cxx_std_17)
-target_include_directories(SPLEAFmodel PRIVATE ${INCLUDES_SPLEAF})
-target_link_libraries(SPLEAFmodel PRIVATE dnest4)
-target_link_libraries(SPLEAFmodel PRIVATE libspleaf)
-
-
 # compilation settings for Sampler
 target_compile_features(Sampler PRIVATE cxx_std_17)
-target_include_directories(Sampler PRIVATE ${INCLUDES_SPLEAF})
+target_include_directories(Sampler PRIVATE ${INCLUDES_EIGEN})
 target_link_libraries(Sampler PRIVATE dnest4)
-target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module distributions kepler transits spleaf)
+foreach(module distributions kepler transits)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
@@ -163,7 +134,7 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel SPLEAFmodel BINARIESmodel GAIAmodel)
+foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel BINARIESmodel GAIAmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
