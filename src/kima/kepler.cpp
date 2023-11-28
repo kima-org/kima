@@ -318,6 +318,21 @@ namespace nijenhuis
 
         return f;
     }
+    
+    std::tuple <double,double> ellip_rectang(double t, double period, double ecc, double t_peri)
+    {
+        double n = 2. * M_PI / period; // mean motion
+        double M = n * (t - t_peri);   // mean anomaly
+
+        // Solve Kepler's equation
+        double E = solver(M, ecc);
+        
+        double X = cos(E) - ecc;
+        double Y = sqrt(1-ecc*ecc)*sin(E);
+        
+        return std::make_tuple(X,Y);
+    
+    }
 
 } // namespace nijenhuis
 

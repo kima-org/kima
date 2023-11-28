@@ -702,7 +702,69 @@ PHOTdata::PHOTdata() {};
         return os;
     }
 
+/*****************************************************************************/
 
+GAIAdata::GAIAdata() {};
+    /**
+      * @brief Load Gaia epoch astrometry data from a file.
+      *
+      * Read a tab/space separated file with columns
+      * ```
+      *   time  position  error  scan-angle  parallax-factor-along-scan
+      *   ...   ...   ...    ...    ...
+      * ```
+      *
+      * @param filename   the name of the file
+      * @param units      units of the positions and errors, either "mas" or "muas"(?)
+      * @param skip       number of lines to skip in the beginning of the file (default = 2)
+      */
+
+    void GAIAdata::load(const string filename, const string units, int skip, int max_rows,
+                        const string delimiter)
+    {
+        if (filename.empty()) {
+            std::string msg = "kima: GAIAdata: no filename provided";
+            throw std::invalid_argument(msg);
+            // exit(1);
+        }
+
+        if (filename.size() == 1) {
+            std::string msg = "kima: GAIAdata: filename with one character is probably an error";
+            throw std::runtime_error(msg);
+        }
+
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .max_rows(max_rows)
+                        .delimiter(delimiter)();
+
+        if (data.size() < 5) {
+            std::string msg = "kima: GAIAdata: file (" + filename + ") contains less than 5 columns! (is skip correct?)";
+            throw std::runtime_error(msg);
+        }
+        
+
+        _datafile = filename;
+        _units = units;
+        _skip = skip;
+
+        t = data[0];
+        w = data[1];
+        wsig = data[2];
+        psi = data[3];
+        pf = data[4];
+
+
+        // epoch for the mean anomaly, by default the time of the first observation
+        M0_epoch = t[0];
+
+        // How many points did we read?
+        if (VERBOSE)
+            printf("# Loaded %zu data points from file %s\n", t.size(),
+                filename.c_str());
+
+    }
+                    
 
 /*****************************************************************************/
 
@@ -812,4 +874,20 @@ Args:
         .def_prop_ro("y", [](PHOTdata &d) { return d.get_y(); }, "The observed flux")
         .def_prop_ro("sig", [](PHOTdata &d) { return d.get_sig(); }, "The observed flux uncertainties")
         .def_prop_ro("N", [](PHOTdata &d) { return d.N(); }, "Total number of observations");
+        
+    // 
+
+    nb::class_<GAIAdata>(m, "GAIAdata", "docs")
+        // constructor
+        .def(nb::init<const string&, const string&, int, int, const string&>(),
+              "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
+              "Load astrometric data from a file")
+        // properties
+        .def_prop_ro("t", [](GAIAdata &d) { return d.get_t(); }, "The times of observations")
+        .def_prop_ro("w", [](GAIAdata &d) { return d.get_w(); }, "The observed centroid positions")
+        .def_prop_ro("wsig", [](GAIAdata &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
+        .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
+        .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors");
+        //
+        //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
 }

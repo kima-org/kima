@@ -75,6 +75,7 @@ class RVConditionalPrior : public DNest4::ConditionalPrior
 class TRANSITConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
+    	
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
@@ -114,9 +115,64 @@ class TRANSITConditionalPrior:public DNest4::ConditionalPrior
 };
 
 
+class GAIAConditionalPrior:public DNest4::ConditionalPrior
+{
+ 	private:
+        /// Use thiele_innes parameters
+     	bool thiele_innes;
+
+		double perturb_hyperparameters(DNest4::RNG& rng);
+
+ 	public:
+		GAIAConditionalPrior();
+
+		void set_default_priors(const GAIAdata &data);
+		
+		// priors for all planet parameters
+		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+		
+		/// Prior for the orbital periods.
+		distribution Pprior;
+		/// Prior for the eccentricities.
+		distribution eprior;
+		/// Prior for the phases (maybe do T0s instead?).
+		distribution phiprior;
+		/// Prior for the photocentre semi major axes (in ...).
+		distribution a0prior;
+		/// Prior for the arguments of periastron.
+		distribution omegaprior;
+		/// Prior for cos of the inclination.
+		distribution cosiprior;
+		/// Prior for the longitude of ascending node.
+		distribution Omegaprior;
+		
+		///Priors for the thiele_innes parameters
+		distribution Aprior;
+		/// 
+		distribution Bprior;
+		/// 
+		distribution Fprior;
+		/// 
+		distribution Gprior;
+
+
+		/// Generate a point from the prior.
+		void from_prior(DNest4::RNG& rng);
+        /// Get the log prob density at a position `vec`
+		double log_pdf(const std::vector<double>& vec) const;
+		/// Get parameter sample from a uniform sample (CDF)
+		void from_uniform(std::vector<double>& vec) const;
+		/// Get uniform sample from a parameter sample (inverse CDF)
+		void to_uniform(std::vector<double>& vec) const;
+
+		void print(std::ostream& out) const;
+		static const int weight_parameter = 1;
+
+};
 
 
 
 
 void bind_RVConditionalPrior(nb::module_ &m);
+void bind_GAIAConditionalPrior(nb::module_ &m);
 
