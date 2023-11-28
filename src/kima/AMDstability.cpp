@@ -13,7 +13,7 @@ namespace AMD
         vector<size_t> indices(array.size());
         iota(indices.begin(), indices.end(), 0);
         sort(indices.begin(), indices.end(),
-                  [&array](int left, int right) -> bool {
+                  [&array](size_t left, size_t right) -> bool {
                       // sort indices according to corresponding array element
                       return array[left] < array[right];
                   });
@@ -28,7 +28,7 @@ namespace AMD
     
         vd periods(NP), masses(NP), sma(NP), eccentricities(NP), incs(NP);
 
-        for (size_t i=0; i<NP; i++)
+        for (size_t i = 0; i < NP; i++)
             periods[i] = components[i][0];
 
         auto indices = argsort(periods);
