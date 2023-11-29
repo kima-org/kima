@@ -530,8 +530,14 @@ double RVFWHMmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
-            for(int i=0; i<jitters.size(); i++)
+            for (int i = 0; i < jitters.size() / 2; i++)
+            {
                 Jprior->perturb(jitters[i], rng);
+            }
+            for (int i = jitters.size() / 2; i < jitters.size(); i++)
+            {
+                J2prior->perturb(jitters[i], rng);
+            }
         }
         else
         {
@@ -644,9 +650,8 @@ double RVFWHMmodel::perturb(RNG& rng)
 double RVFWHMmodel::log_likelihood() const
 {
     size_t N = data.N();
-    const auto& y = data.get_y();
-    const auto& sig = data.get_sig();
-    const auto& obsi = data.get_obsi();
+    const auto& y = data.y;
+    const auto& fwhm = data.actind[0];
 
     double logL = 0.;
 
@@ -661,29 +666,51 @@ double RVFWHMmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    /** The following code calculates the log likelihood of a GP model */
-    // residual vector (observed y minus model y)
-    VectorXd residual(y.size());
-    for (size_t i = 0; i < y.size(); i++)
-        residual(i) = y[i] - mu[i];
+    double logL_RV, logL_FWHM;
 
-    // perform the cholesky decomposition of C
-    Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-    // get the lower triangular matrix L
-    MatrixXd L = cholesky.matrixL();
+    { // RVs
+        VectorXd residual(y.size());
+        for (size_t i = 0; i < y.size(); i++)
+            residual(i) = y[i] - mu[i];
 
-    double logDeterminant = 0.;
-    for (size_t i = 0; i < y.size(); i++)
-        logDeterminant += 2. * log(L(i, i));
+        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+        MatrixXd L = cholesky.matrixL();
 
-    VectorXd solution = cholesky.solve(residual);
+        double logDeterminant = 0.;
+        for (size_t i = 0; i < y.size(); i++)
+            logDeterminant += 2. * log(L(i, i));
 
-    // y*solution
-    double exponent = 0.;
-    for (size_t i = 0; i < y.size(); i++)
-        exponent += residual(i) * solution(i);
+        VectorXd solution = cholesky.solve(residual);
 
-    logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+        double exponent = 0.;
+        for (size_t i = 0; i < y.size(); i++)
+            exponent += residual(i) * solution(i);
+
+        logL_RV = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+    }
+
+    { // FWHM
+        VectorXd residual(fwhm.size());
+        for (size_t i = 0; i < fwhm.size(); i++)
+            residual(i) = fwhm[i] - mu_fwhm[i];
+
+        Eigen::LLT<Eigen::MatrixXd> cholesky = C_fwhm.llt();
+        MatrixXd L = cholesky.matrixL();
+
+        double logDeterminant = 0.;
+        for (size_t i = 0; i < fwhm.size(); i++)
+            logDeterminant += 2. * log(L(i, i));
+
+        VectorXd solution = cholesky.solve(residual);
+
+        double exponent = 0.;
+        for (size_t i = 0; i < fwhm.size(); i++)
+            exponent += residual(i) * solution(i);
+
+        logL_FWHM = -0.5*fwhm.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+    }
+
+    logL = logL_RV + logL_FWHM;
 
 
     #if TIMING
