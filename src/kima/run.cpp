@@ -1,4 +1,6 @@
 #include <ctime>
+#include <iostream>
+#include <chrono>
 
 #include <nanobind/nanobind.h>
 // #include <nanobind/stl/string.h>
@@ -43,7 +45,11 @@ Args:
     if (seed == 0)                                                                      \
         seed = static_cast<unsigned int>(time(NULL));                                   \
     sampler.initialise(seed);                                                           \
-    sampler.run(print_thin);
+    auto start = std::chrono::high_resolution_clock::now();                             \
+    sampler.run(print_thin);                                                            \
+    auto stop = std::chrono::high_resolution_clock::now();                              \
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);  \
+    std::cout << "# Took " << duration.count() / 1000.0 << " seconds";
 
 #define RUN_ARGS \
     "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,               \
