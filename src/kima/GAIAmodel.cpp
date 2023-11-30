@@ -42,13 +42,13 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
         Jprior = make_prior<ModifiedLogUniform>(0.1,100.);
     
     if (!da_prior)
-        da_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        da_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!dd_prior)
-        dd_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        dd_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!plx_prior)
         plx_prior = make_prior<LogUniform>(0.01,1000.);
         
@@ -655,6 +655,26 @@ NB_MODULE(GAIAmodel, m) {
             [](GAIAmodel &m) { return m.nu_prior; },
             [](GAIAmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
+        .def_prop_rw("da_prior",
+            [](GAIAmodel &m) { return m.da_prior; },
+            [](GAIAmodel &m, distribution &d) { m.da_prior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("dd_prior",
+            [](GAIAmodel &m) { return m.dd_prior; },
+            [](GAIAmodel &m, distribution &d) { m.dd_prior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("mua_prior",
+            [](GAIAmodel &m) { return m.mua_prior; },
+            [](GAIAmodel &m, distribution &d) { m.mua_prior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("mud_prior",
+            [](GAIAmodel &m) { return m.mud_prior; },
+            [](GAIAmodel &m, distribution &d) { m.mud_prior = d; },
+            "Prior for the extra white noise (jitter)")
+        .def_prop_rw("parallax_prior",
+            [](GAIAmodel &m) { return m.plx_prior; },
+            [](GAIAmodel &m, distribution &d) { m.plx_prior = d; },
+            "Prior for the extra white noise (jitter)")
 
         // known object priors
         // ? should these setters check if known_object is true?

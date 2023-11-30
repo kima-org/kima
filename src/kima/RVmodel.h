@@ -20,7 +20,7 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class  RVmodel
+class KIMA_API RVmodel
 {
     protected:
         /// Fix the number of planets? (by default, yes)

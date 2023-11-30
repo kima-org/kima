@@ -258,7 +258,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
     else
     {
         if (!a0prior)
-            a0prior = make_shared<Gaussian>(0, 0.5);
+            a0prior = make_shared<ModifiedLogUniform>(0.01, 10);
         if (!omegaprior)
             omegaprior = make_shared<Uniform>(0, 2*M_PI);
         if (!cosiprior)

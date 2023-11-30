@@ -30,6 +30,7 @@ def _51Peg(run=False, **kwargs):
 
     if run:
         # with chdir(here):
+        print('model is:',model)
         kima.run(model, **kwargs)
 
     return model

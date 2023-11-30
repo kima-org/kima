@@ -39,8 +39,8 @@ def Kepler16(run=False, **kwargs):
     kwargs.setdefault('steps', 5000)
     kwargs.setdefault('num_threads', 4)
     kwargs.setdefault('num_particles', 2)
-    kwargs.setdefault('new_level_interval', 50000)
-    kwargs.setdefault('save_interval', 5000)
+    kwargs.setdefault('new_level_interval', 5000)
+    kwargs.setdefault('save_interval', 1000)
 
     if run:
         kima.run(model, **kwargs)
