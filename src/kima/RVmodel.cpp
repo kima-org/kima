@@ -677,8 +677,16 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data._multi)
+
+    if (data._multi) {
         fout << "offsets_prior: " << *offsets_prior << endl;
+        int i = 0;
+        for (auto &p : individual_offset_prior) {
+            fout << "individual_offset_prior[" << i << "]: " << *p << endl;
+            i++;
+        }
+    }
+
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
@@ -801,10 +809,16 @@ NB_MODULE(RVmodel, m) {
             [](RVmodel &m) { return m.cubic_prior; },
             [](RVmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+
         .def_prop_rw("offsets_prior",
             [](RVmodel &m) { return m.offsets_prior; },
             [](RVmodel &m, distribution &d) { m.offsets_prior = d; },
             "Common prior for the between-instrument offsets")
+        .def_prop_rw("individual_offset_prior",
+            [](RVmodel &m) { return m.individual_offset_prior; },
+            [](RVmodel &m, std::vector<distribution>& vd) { m.individual_offset_prior = vd; },
+            "Common prior for the between-instrument offsets")
+
         .def_prop_rw("nu_prior",
             [](RVmodel &m) { return m.nu_prior; },
             [](RVmodel &m, distribution &d) { m.nu_prior = d; },
