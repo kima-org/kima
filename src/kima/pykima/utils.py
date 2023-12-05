@@ -210,6 +210,28 @@ def clipped_std(arr, min, max):
     return np.std(arr[mask])
 
 
+def get_gaussian_prior_vsys(data):
+    from kima.distributions import Gaussian
+    obsi = np.array(data.obsi)
+    u_obsi = np.unique(obsi)
+    y = np.array(data.y)[obsi == u_obsi[-1]]
+    return Gaussian(np.median(y), np.ptp(y))
+
+
+def get_gaussian_priors_individual_offsets(data):
+    from kima.distributions import Gaussian
+    if not data.multi:
+        raise ValueError('data is not from multiple instruments')
+    loc_scale = []
+    obsi = np.array(data.obsi)
+    u_obsi = np.unique(obsi)
+    y_last = np.array(data.y)[obsi == u_obsi[-1]]
+    for i in u_obsi[::-1][1:]:
+        y = np.array(data.y)[obsi == i]
+        loc_scale.append((np.median(y) - np.median(y_last), np.ptp(y)))
+    return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
+                        
+
 
 # def get_planet_mass_latex(P, K, e, units='earth', **kwargs):
 #     """ A simple wrapper around `get_planet_mass` to provide LaTeX strings
@@ -612,7 +634,7 @@ def get_instrument_name(data_file):
             r'HARPS[^\W_]*[\d+]*',
             r'HIRES',
             r'APF',
-            r'CORALIE',
+            r'CORALIE[\d+]*',
             r'HJS',
             r'ELODIE',
             r'KECK',
@@ -621,6 +643,7 @@ def get_instrument_name(data_file):
             r'HRS',
             r'SOPHIE',
             r'HAMILTON',
+            r'NIRPS',
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 
