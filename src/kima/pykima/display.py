@@ -220,13 +220,13 @@ def make_plot2(res,
     else:
         if bins is None:
             if plims is None:
-                # get bin limits from prior support
+                # default to these
+                start, end = 1e-1, 1e7
+                # try to get bin limits from prior support
                 if 'Pprior' in res.priors:
                     prior_support = res.priors['Pprior'].support()
                     if not np.isinf(prior_support).any():
                         start, end = prior_support
-                else:  # or default to these
-                    start, end = 1e-1, 1e7
             else:
                 start, end = plims
 
@@ -1006,6 +1006,10 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                 axs[i].hist(a)
 
                 if show_prior:
+                    try:
+                        prior = res.priors[f'individual_offset_prior[{i}]']
+                    except KeyError:
+                        pass
                     d = kwargs.get('density', False)
                     kw = dict(density=d, alpha=0.15, color='k', zorder=-1)
                     axs[i].hist(prior.rvs(res.ESS), **kw)
@@ -1817,6 +1821,9 @@ def phase_plot(res,
         if res.model == 'RVFWHMmodel':
             vv = vv[0]
 
+        if res.studentt:
+            outliers = find_outliers(res, sample)
+
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = res.data.obs == k
@@ -1838,11 +1845,17 @@ def phase_plot(res,
                         if only not in res.data_file[k - 1]:
                             alpha = 0
 
-                    ax.errorbar(np.sort(phase) + j,
-                                yy[np.argsort(phase)],
-                                ee[np.argsort(phase)],
-                                label=label, color=color, alpha=alpha,
-                                **ekwargs)
+                    _phi = np.sort(phase) + j
+                    _y = yy[np.argsort(phase)]
+                    _e = ee[np.argsort(phase)]
+                    ax.errorbar(_phi, _y, _e,
+                                label=label, color=color, alpha=alpha, **ekwargs)
+                
+                    if res.studentt:
+                        _phi = np.sort(phase[outliers[m]]) + j
+                        _y = yy[outliers[m]][np.argsort(phase[outliers[m]])]
+                        _e = ee[outliers[m]][np.argsort(phase[outliers[m]])]
+                        ax.errorbar(_phi, _y, _e, fmt='xr', alpha=alpha, zorder=-10)
 
                     if highlight_points:
                         hlm = (m & hl)[m]
@@ -1930,14 +1943,15 @@ def phase_plot(res,
     if res.model == 'RVFWHMmodel':
         residuals = residuals[0]
 
-    outliers = None
     if res.studentt:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
-                    res.data.e[outliers], fmt='xk', ms=7, lw=3)
+                    res.data.e[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+    else:
+        outliers = None
 
     plot_data(res, ax=ax, y=residuals, ignore_y2=True, legend=True,
-              show_rms=True, outliers=outliers, time_offset=time_offset,
+              show_rms=True, time_offset=time_offset, outliers=outliers,
               highlight=highlight, **ekwargs)
 
     # legend in the residual plot?

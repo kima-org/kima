@@ -297,6 +297,9 @@ class KimaResults:
             self.nKO = 0
         self._read_KO()
 
+        if self.model == 'OutlierRVmodel':
+            self._read_outlier()
+
         self._read_components()
 
         # staleness (ignored)
@@ -445,6 +448,9 @@ class KimaResults:
         res.nKO = model.n_known_object
         res._read_KO()
 
+        if res.model == 'OutlierRVmodel':
+            res._read_outlier()
+
         res._read_components()
 
         # staleness (ignored)
@@ -536,16 +542,17 @@ class KimaResults:
             if self.model == 'RVFWHMmodel':
                 cols = range(5)
                 self.n_jitters = 2
+            elif self.model == 'RVFWHMRHKmodel':
+                cols = range(7)
+                self.n_jitters = 3
             else:
                 cols = range(3)
                 self.n_jitters = 1
             self.n_instruments = 1
 
-            data = np.loadtxt(self.data_file, skiprows=self.data_skip,
-                              usecols=cols)
+            data = np.loadtxt(self.data_file, skiprows=self.data_skip, usecols=cols)
             obs = np.ones_like(data[:, 0], dtype=int)
-            self._extra_data = np.loadtxt(self.data_file,
-                                          skiprows=self.data_skip)
+            self._extra_data = np.loadtxt(self.data_file, skiprows=self.data_skip)
 
         # to m/s
         if self.units == 'kms':
@@ -682,11 +689,6 @@ class KimaResults:
 
         # the column with the number of planets in each sample
         self.index_component = self._current_column
-        # # try to correct fix and npmax
-        uni = np.unique(self.posterior_sample[:, self.index_component])
-        if uni.size > 1:
-            self.fix = False
-        self.npmax = int(uni.max())
 
         if not self.fix:
             self.priors['np_prior'] = discrete_uniform(0, self.npmax + 1)
@@ -849,6 +851,15 @@ class KimaResults:
         else:
             n_KOparameters = 0
         self.total_parameters += n_KOparameters
+
+    def _read_outlier(self):
+        n_outlier_parameters = 3
+        start = self._current_column
+        outlier_inds = slice(start, start + n_outlier_parameters)
+        self.outlier_pars = self.posterior_sample[:, outlier_inds]
+        self._current_column += n_outlier_parameters
+        self.indices['outlier'] = outlier_inds
+        self.total_parameters += n_outlier_parameters
 
     @property
     def _mc(self):
@@ -1133,6 +1144,11 @@ class KimaResults:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
         # systemic velocity
         self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+
+        # parameters of the outlier model
+        if self.model == 'OutlierRVmodel':
+            self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = \
+                self.posterior_sample[:, self.indices['outlier']].T
 
         max_components = self.max_components
         index_component = self.index_component
@@ -2028,9 +2044,14 @@ class KimaResults:
             r = r[0]
 
         vals = []
-        val = wrms(r, weights=1 / self.data.e**2)
+        if weighted:
+            val = wrms(r, weights=1 / self.data.e**2)
+        else:
+            val = rms(r)
+
         if printit:
             print(f'full: {val:.3f} m/s')
+
         vals.append(val)
 
         if self.multi:
