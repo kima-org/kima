@@ -2,6 +2,52 @@ from typing import Any, Optional, overload, Typing, Sequence
 from enum import Enum
 import kima.Data
 
+class GAIAdata:
+    """
+    docs
+    """
+
+    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ') -> None:
+        """
+        Load astrometric data from a file
+        """
+        ...
+    
+    @property
+    def pf(self) -> list[float]:
+        """
+        the parallax factors
+        """
+        ...
+    
+    @property
+    def psi(self) -> list[float]:
+        """
+        The Gaia scan angles
+        """
+        ...
+    
+    @property
+    def t(self) -> list[float]:
+        """
+        The times of observations
+        """
+        ...
+    
+    @property
+    def w(self) -> list[float]:
+        """
+        The observed centroid positions
+        """
+        ...
+    
+    @property
+    def wsig(self) -> list[float]:
+        """
+        The observed centroid position uncertainties
+        """
+        ...
+    
 class PHOTdata:
     """
     docs
