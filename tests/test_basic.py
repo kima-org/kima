@@ -80,4 +80,6 @@ def test_run():
 def test_distributions():
     from kima import distributions
     from kima.distributions import Gaussian, Uniform, Fixed
-    u = Uniform(0, 1)
+    u = Uniform(0, 2)
+    assert str(u) == 'Uniform(0; 2)'
+    assert str(Gaussian(0, 1)) == 'Gaussian(0; 1)'
