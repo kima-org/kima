@@ -818,7 +818,7 @@ NB_MODULE(Data, m) {
         .def("__call__", &loadtxt::operator());
 
     // 
-    nb::class_<RVData>(m, "RVData", "docs")
+    nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
         .def(nb::init<const vector<string>&, const string&,  int,        int,            const string&,     const vector<string>&>(),
                       "filenames"_a,         "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
