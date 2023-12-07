@@ -21,7 +21,7 @@ __models__ = (
 # kima.run
 from .Sampler import run
 # kima.load_results
-from .pykima.results import load_results
+from .pykima.results import load_results, KimaResults
 
 # sub-packages
 from .kepler import keplerian
