@@ -7,6 +7,13 @@
 #include <tuple>
 #include "postkepler.h"
 
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/ndarray.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
+
 // sincos on apple
 #ifdef __APPLE__
     #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
