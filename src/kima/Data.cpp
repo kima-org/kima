@@ -48,6 +48,7 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
     number_indicators = 0;
     number_instruments = 1;
     _instrument = instrument;
+    _instruments = {};
 
     if (units == "kms")
     {
@@ -71,6 +72,106 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
 
 }
 
+/// @brief Load data from vectors directly, for multiple instruments
+RVData::RVData(const vector<vector<double>> _t, 
+               const vector<vector<double>> _y, 
+               const vector<vector<double>> _sig,
+               const string& units, const vector<string>& instruments)
+{
+    t.clear();
+    y.clear();
+    sig.clear();
+
+    y2.clear();
+    sig2.clear();
+
+    medians.clear();
+
+    if (_t.size() != _y.size()) 
+    {
+        string msg = "RVData: data arrays must have the same size size(t) != size(y)";
+        throw invalid_argument(msg);
+    }
+    if (_t.size() != _sig.size()) 
+    {
+        string msg = "RVData: data arrays must have the same size size(t) != size(sig)";
+        throw invalid_argument(msg);
+    }
+
+    for (size_t i = 0; i < _t.size(); i++)
+    {
+        t.insert(t.end(), _t[i].begin(), _t[i].end());
+        y.insert(y.end(), _y[i].begin(), _y[i].end());
+        sig.insert(sig.end(), _sig[i].begin(), _sig[i].end());
+
+        // store medians
+        medians.push_back(median(_y[i]));
+
+        for (size_t n = 0; n < _t[i].size(); n++)
+            obsi.push_back(i + 1);
+    }
+    actind.clear();
+
+    _datafile = "";
+    _datafiles = {};
+    _units = units;
+    _skip = 0;
+    _multi = true;
+    _indicator_names = {};
+    number_indicators = 0;
+    number_instruments = _t.size();
+    _instrument = "";
+    _instruments = instruments;
+
+    if (units == "kms")
+    {
+        for (size_t i = 0; i < N(); i++)
+        {
+            y[i] *= 1e3;
+            sig[i] *= 1e3;
+        }
+    }
+
+    // epoch for the mean anomaly, by default the time of the first observation
+    M0_epoch = t[0];
+
+    // How many points did we read?
+    if (VERBOSE)
+        printf("# Loaded %zu data points from arrays\n", t.size());
+
+    // What are the units?
+    if (units == "kms" && VERBOSE)
+        printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+
+    // We need to sort t because it comes from different instruments
+    if (number_instruments > 1) {
+        size_t N = t.size();
+        vector<double> tt(N), yy(N);
+        vector<double> sigsig(N), obsiobsi(N);
+        vector<int> order(N);
+
+        // order = argsort(t)
+        int x = 0;
+        std::iota(order.begin(), order.end(), x++);
+        sort(order.begin(), order.end(),
+            [&](int i, int j) { return t[i] < t[j]; });
+
+        for (size_t i = 0; i < N; i++) {
+            tt[i] = t[order[i]];
+            yy[i] = y[order[i]];
+            sigsig[i] = sig[order[i]];
+            obsiobsi[i] = obsi[order[i]];
+        }
+
+        for (size_t i = 0; i < N; i++) {
+            t[i] = tt[i];
+            y[i] = yy[i];
+            sig[i] = sigsig[i];
+            obsi[i] = obsiobsi[i];
+        }
+    }
+
+}
 
 
 
@@ -468,9 +569,6 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         }
     }
 
-    // store RV medians per instrument
-
-
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];
 }
@@ -820,17 +918,21 @@ NB_MODULE(Data, m) {
     // 
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
-        .def(nb::init<const vector<string>&, const string&,  int,        int,            const string&,     const vector<string>&>(),
-                      "filenames"_a,         "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&>(),
+                      "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string&, const string&,  int,        int,            const string&,     const vector<string>&>(),
+        .def(nb::init<const string&, const string&, int, int, const string&, const vector<string>&>(),
                       "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
-                      "t"_a,                "y"_a,                "sig"_a,              "units"_a="ms", "instrument"_a="",
+                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
                       "Load RV data from arrays")
+        //
+        .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const string&,  const vector<string>&>(),
+                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
+                      "Load RV data from arrays, for multiple instruments")
 
 
         // properties
@@ -867,6 +969,7 @@ NB_MODULE(Data, m) {
             })
         //
         .def("get_timespan", &RVData::get_timespan)
+        .def("get_RV_span", &RVData::get_RV_span)
         .def("topslope", &RVData::topslope)
         // ...
         .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,

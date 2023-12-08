@@ -65,6 +65,7 @@ class  KIMA_API RVData {
   public:
     string _datafile;
     string _instrument;
+    vector<string> _instruments;
     vector<string> _datafiles;
     string _units;
     int _skip;
@@ -81,6 +82,11 @@ class  KIMA_API RVData {
 
     RVData(const vector<double> t, const vector<double> y, const vector<double> sig,
            const string& units="ms", const string& instrument="");
+    
+    RVData(const vector<vector<double>> t, 
+           const vector<vector<double>> y, 
+           const vector<vector<double>> sig,
+           const string& units="ms", const vector<string>& instruments={});
 
     friend ostream& operator<<(ostream& os, const RVData& d);
 
