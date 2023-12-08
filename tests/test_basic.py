@@ -52,6 +52,13 @@ def test_RVData():
     assert_equal(len(D.t), len(D.sig))
     assert_equal(np.array(D.obsi), 1)
 
+    t2, y2, sig2 = np.random.rand(3, 20)
+    D = kima.RVData([t, t2], [y, y2], [sig, sig2], units='ms', instruments=['I1', 'I2'])
+    assert_equal(D.N, 70)
+    assert_equal(len(D.t), len(D.y))
+    assert_equal(len(D.t), len(D.sig))
+    assert_equal(np.unique(D.obsi), [1, 2])
+
 
 def test_RVmodel():
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
