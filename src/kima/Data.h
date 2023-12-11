@@ -45,6 +45,8 @@ vector<size_t> sort_indexes(const vector<T> &v) {
   return idx;
 }
 
+double median(vector<double> v);
+
 
 class  KIMA_API RVData {
 
@@ -102,6 +104,10 @@ class  KIMA_API RVData {
 
     /// docs for M0_epoch
     double M0_epoch;
+
+    /// store medians of each instrument's RVs
+    vector<double> medians;
+
 
     // to deprecate a function (C++14), put
     // [[deprecated("Replaced by bar, which has an improved interface")]]

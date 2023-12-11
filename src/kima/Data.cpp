@@ -1,6 +1,22 @@
 #include "Data.h"
 
 
+double median(vector<double> v)
+{
+  if(v.empty()) {
+    return 0.0;
+  }
+  auto n = v.size() / 2;
+  nth_element(v.begin(), v.begin()+n, v.end());
+  auto med = v[n];
+  if(!(v.size() & 1)) { //If the set size is even
+    auto max_it = max_element(v.begin(), v.begin()+n);
+    med = (*max_it + med) / 2.0;
+  }
+  return med;    
+}
+
+
 /// @brief Load data from a single filename
 RVData::RVData(const string& filename, const string& units, int skip, int max_rows, 
                const string& delimiter, const vector<string>& indicators)
@@ -323,6 +339,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     y2.clear();
     sig2.clear();
     obsi.clear();
+    medians.clear();
 
     // check for indicator correlations and store stuff
     int nempty = count(indicators.begin(), indicators.end(), "");
@@ -352,7 +369,10 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         t.insert(t.end(), data[0].begin(), data[0].end());
         y.insert(y.end(), data[1].begin(), data[1].end());
         sig.insert(sig.end(), data[2].begin(), data[2].end());
-        
+
+        // store medians
+        medians.push_back(median(data[1]));
+
         if (sb2)
         {
             y2.insert(y2.end(), data[3].begin(), data[3].end());
@@ -447,6 +467,9 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
             obsi[i] = obsiobsi[i];
         }
     }
+
+    // store RV medians per instrument
+
 
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];

@@ -1,4 +1,6 @@
 #include <ctime>
+#include <iostream>
+#include <chrono>
 
 #include <nanobind/nanobind.h>
 // #include <nanobind/stl/string.h>
@@ -19,8 +21,32 @@ auto RUN_DOC = R"D(
 Run the DNest4 sampler with the given model
 
 Args:
-    m (model): the model
-    steps (int, default=100): how many steps to run for
+    m (RVmodel, GPmodel, ...):
+        The model
+    steps (int, optional):
+        How many steps to run. Default is 100.
+    num_threads (int, optional):
+        How many threads to use for parallel processing. Default is 1.
+    num_particles (int, optional):
+        Number of MCMC particles. Default is 1.
+    new_level_interval (int, optional):
+        Number of steps required to create a new level. Default is 2000.
+    save_interval (int, optional):
+        Number of steps between saves. Default is 100.
+    thread_steps (int, optional):
+        Number of independent steps on each thread. Default is 10.
+    max_num_levels (int, optional):
+        Maximum number of levels, or 0 if it should be determined automatically. Default is 0.
+    lambda_ (int, optional):
+        DOC. Default is 10.0
+    beta (int, optional):
+        DOC. Default is 100.0,
+    compression (int, optional):
+        DOC. Default is exp(1.0)
+    seed (int, optional):
+        Random number seed value, or 0 to use current time. Default is 0.
+    print_thin (int, optional):
+        Thinning steps for terminal output. Default is 50.
 )D";
 
 
@@ -43,7 +69,11 @@ Args:
     if (seed == 0)                                                                      \
         seed = static_cast<unsigned int>(time(NULL));                                   \
     sampler.initialise(seed);                                                           \
-    sampler.run(print_thin);
+    auto start = std::chrono::high_resolution_clock::now();                             \
+    sampler.run(print_thin);                                                            \
+    auto stop = std::chrono::high_resolution_clock::now();                              \
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);  \
+    std::cout << "# Took " << duration.count() / 1000.0 << " seconds" << std::endl;
 
 #define RUN_ARGS \
     "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,               \
@@ -54,7 +84,7 @@ Args:
 
 NB_MODULE(Sampler, m)
 {
-    m.def("run", RUN_SIGNATURE(RVmodel) { RUN_BODY(RVmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(RVmodel) { RUN_BODY(RVmodel) }, RUN_ARGS, nb::raw_doc(RUN_DOC));
 
     m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS, RUN_DOC);
 
