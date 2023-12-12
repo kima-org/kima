@@ -4,6 +4,7 @@ using namespace std;
 // using namespace Eigen;
 using namespace DNest4;
 using namespace nijenhuis;
+using namespace brandt;
 
 #define TIMING false
 
@@ -181,26 +182,35 @@ void GAIAmodel::calculate_mu()
             omega = components[j][4];
             cosi = components[j][5];
             Omega = components[j][6];
+            
+            A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
+            B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
+            F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
+            G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
         }
-
+        
+        auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, ecc, P, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
-        {
-            ti = data.t[i];
-            
-            if(!thiele_innes)
-            {
-                A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
-                B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
-                F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
-                G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
-            }
-            
-            Tp = data.M0_epoch - (P * phi) / (2. * M_PI);
-            tie(X,Y) = nijenhuis::ellip_rectang(ti, P, ecc, Tp);
-            
-            wk = (B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-            mu[i] += wk;
-        }
+            mu[i] += wk[i];
+
+//         for(size_t i=0; i<N; i++)
+//         {
+//             ti = data.t[i];
+//             
+//             if(!thiele_innes)
+//             {
+//                 A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
+//                 B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
+//                 F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
+//                 G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
+//             }
+//             
+//             Tp = data.M0_epoch - (P * phi) / (2. * M_PI);
+//             tie(X,Y) = nijenhuis::ellip_rectang(ti, P, ecc, Tp);
+//             
+//             wk = (B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
+//             mu[i] += wk;
+//         }
     }
 
     #if TIMING
@@ -218,6 +228,10 @@ void GAIAmodel::remove_known_object()
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
+        
+        
+        
+        
         for(size_t i=0; i<data.N(); i++)
         {
             ti = data.t[i];

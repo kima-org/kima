@@ -75,6 +75,10 @@ namespace brandt
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch);
+    std::vector<double> keplerian_gaia(const std::vector<double> &t, const std::vector<double> &psi, const double &A,
+                                  const double &B, const double &F, const double &G,
+                                  const double &ecc, const double P, const double &M0,
+                                  const double &M0_epoch);
 }
 
 
