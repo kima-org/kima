@@ -387,6 +387,7 @@ void BINARIESmodel::remove_known_object()
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] -= v[i];
+//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         }
 //         for(size_t i=0; i<data.t.size(); i++)
 //         {

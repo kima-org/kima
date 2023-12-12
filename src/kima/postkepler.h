@@ -13,8 +13,8 @@ namespace postKep
     inline double get_K2_v1(double K1, double M, double P, double ecc);
     inline double get_K2_v2(double K1, double M, double P, double ecc);
     inline double light_travel_time(double K1, double f, double w, double ecc);
-    inline double transverse_doppler(double K1, double f, double ecc);
-    inline double gravitational_redshift(double K1, double K2, double f, double ecc);
+    inline double transverse_doppler(double K1, double f, double ecc, double cosi);
+    inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi);
     inline double v_tide(double R1, double M1, double M2, double P, double f, double w);
     double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2, double R1, bool GR, bool Tid);
 }

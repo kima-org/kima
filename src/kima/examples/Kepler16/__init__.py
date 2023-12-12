@@ -50,7 +50,7 @@ def Kepler16(run=False, **kwargs):
     return model
 
 if __name__ == '__main__':
-    model = Kepler16(run=True, steps=5000)
+    model = Kepler16(run=True, steps=100000)
     res = kima.load_results()
 
 

@@ -740,7 +740,7 @@ namespace brandt
         for (size_t i = 0; i < t.size(); i++)
         {
             double sinE, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
+            double M = n * (t[i] - M0_epoch) + M0;
             solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
             double g = g_e * ((1 - cosE) / sinE);
             double g2 = g * g;
@@ -785,13 +785,17 @@ namespace brandt
             sincos(w_t, &sinw, &cosw);
             
             double sinE, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
+            double M = n * (t[i] - M0_epoch) + M0;
             solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
             double g = g_e * ((1 - cosE) / sinE);
             double g2 = g * g;
             // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
             // std::cout << '\t' << g << '\t' << g2 << std::endl;
             rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+            
+//             double f ;
+            
+//             double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, double M1, double M2, double R1, bool GR, bool Tid);
       }
 
       return rv;
