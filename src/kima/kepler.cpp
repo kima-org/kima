@@ -1,4 +1,5 @@
 #include "kepler.h"
+using namespace postKep;
 
 const double TWO_PI = M_PI * 2;
 const double PI_D_2 = M_PI / 2;
@@ -739,7 +740,7 @@ namespace brandt
         for (size_t i = 0; i < t.size(); i++)
         {
             double sinE, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
+            double M = n * (t[i] - M0_epoch) + M0;
             solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
             double g = g_e * ((1 - cosE) / sinE);
             double g2 = g * g;
@@ -761,13 +762,10 @@ namespace brandt
         // allocate RVs
         std::vector<double> rv(t.size());
         
-        //Need to change P -> Panom, and have w move, maybe this slows the process down to much to be worth it?
         
         // mean motion, once per orbit
         double n = 2. * M_PI / P;
-        // sin and cos of argument of periastron, once per orbit
-        double sinw, cosw;
-        sincos(w, &sinw, &cosw);
+        
 
         // ecentricity factor for g, once per orbit
         double g_e = sqrt((1 + ecc) / (1 - ecc));
@@ -780,17 +778,65 @@ namespace brandt
         // std::cout << std::endl;
         for (size_t i = 0; i < t.size(); i++)
         {
+            double Tp = M0_epoch-(P*M0)/(TWO_PI);
+            double w_t = postKep::change_omega(w, wdot, t[i], Tp);
+            // sin and cos of argument of periastron
+            double sinw, cosw;
+            sincos(w_t, &sinw, &cosw);
+            
             double sinE, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
+            double M = n * (t[i] - M0_epoch) + M0;
             solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
             double g = g_e * ((1 - cosE) / sinE);
             double g2 = g * g;
             // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
             // std::cout << '\t' << g << '\t' << g2 << std::endl;
             rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+            
+//             double f ;
+            
+//             double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, double M1, double M2, double R1, bool GR, bool Tid);
       }
 
       return rv;
+    }
+    
+    std::vector<double> keplerian_gaia(const std::vector<double> &t, const std::vector<double> &psi, const double &A,
+                                  const double &B, const double &F, const double &G,
+                                  const double &ecc, const double P, const double &M0,
+                                  const double &M0_epoch)
+    {
+        // allocate wks
+        std::vector<double> wk(t.size());
+        
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+        
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            
+            double sinE, cosE;
+            double M = n * (t[i] - M0_epoch) + M0;
+            
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            
+            double X = cosE - ecc;
+            double Y = sinE * sqrt(1-ecc*ecc);
+            
+            double sinpsi, cospsi;
+            sincos(psi[i], &sinpsi, &cospsi);
+            // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
+            // std::cout << '\t' << g << '\t' << g2 << std::endl;
+            wk[i] = (B*X + G*Y)*sinpsi + (A*X + F*Y)*cospsi;
+      }
+
+      return wk;
+    
     }
 
     std::vector<double> keplerian2(const std::vector<double> &t, const double &P,

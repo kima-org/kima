@@ -5,13 +5,14 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
-
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
+    environment:
+      name: deploy-to-pypi
+      url: https://pypi.org/p/kima
+    permissions:
+      id-token: write
 
     steps:
     - uses: actions/checkout@v3
@@ -31,7 +32,3 @@ jobs:
 
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
-        user: __token__
-        password: ${{ secrets.PYPIT_API_TOKEN }}

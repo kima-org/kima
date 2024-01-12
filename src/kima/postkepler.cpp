@@ -96,19 +96,19 @@ namespace postKep
         return delta_LT;
     }
     
-    inline double transverse_doppler(double K1, double f, double ecc)
+    inline double transverse_doppler(double K1, double f, double ecc, double cosi=0)
     {
         //here assume inclination of 90 (eclipsing) so sin(i) = 1
-        double sini = 1.0;
+        double sini = 1.0 - cosi*cosi;
         double delta_TD = pow(K1,2.0)*(1 + ecc*cos(f) - (1-pow(ecc,2.0))/2)/(c_light*pow(sini,2.0));
     
         return delta_TD;
     }
     
-    inline double gravitational_redshift(double K1, double K2, double f, double ecc)
+    inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi=0)
     {
         //again assume inclination of 90 (eclipsing) so sin(i) = 1
-        double sini = 1.0;
+        double sini = 1.0 - cosi*cosi;
         double delta_GR = K1*(K1+K2)*(1+ecc*cos(f))/(c_light*pow(sini,2.0));
     
         return delta_GR;
