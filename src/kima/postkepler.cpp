@@ -1,5 +1,7 @@
 #include "postkepler.h"
 
+using namespace brandt;
+
 const double TWO_PI = M_PI * 2;
 
 namespace postKep
@@ -159,5 +161,52 @@ namespace postKep
         
     
         return v;
+    }
+    
+    //
+    std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
+                                  const double &M0_epoch)
+    {
+        // allocate RVs
+        std::vector<double> rv(t.size());
+        
+        
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        
+
+        // ecentricity factor for g, once per orbit
+        double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        brandt::get_bounds(bounds, EA_tab, ecc);
+
+        // std::cout << std::endl;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            double Tp = M0_epoch-(P*M0)/(TWO_PI);
+            double w_t = change_omega(w, wdot, t[i], Tp);
+            // sin and cos of argument of periastron
+            double sinw, cosw;
+            sincos(w_t, &sinw, &cosw);
+            
+            double sinE, cosE;
+            double M = n * (t[i] - M0_epoch) + M0;
+            brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            double g = g_e * ((1 - cosE) / sinE);
+            double g2 = g * g;
+            
+            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+            
+//             double f ;
+            
+//             double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, double M1, double M2, double R1, bool GR, bool Tid);
+      }
+
+      return rv;
     }
 }

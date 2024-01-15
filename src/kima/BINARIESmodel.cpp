@@ -4,6 +4,7 @@ using namespace std;
 // using namespace Eigen;
 using namespace DNest4;
 using namespace nijenhuis;
+using namespace brandt;
 using namespace postKep;
 
 #define TIMING false
@@ -383,7 +384,7 @@ void BINARIESmodel::remove_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = brandt::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] -= v[i];
@@ -414,7 +415,7 @@ void BINARIESmodel::remove_known_object_secondary()
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         K2 = KO_K[j]/KO_q[j];
         w = KO_w[j] - M_PI;
-        auto v = brandt::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu_2[i] -= v[i];
@@ -442,7 +443,7 @@ void BINARIESmodel::add_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = brandt::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
@@ -471,7 +472,7 @@ void BINARIESmodel::add_known_object_secondary()
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         K2 = KO_K[j]/KO_q[j];
         w = KO_w[j] - M_PI;
-        auto v = brandt::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu_2[i] += v[i];

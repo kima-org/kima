@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
-#include "postkepler.h"
 
 // sincos on apple
 #ifdef __APPLE__
@@ -70,10 +69,6 @@ namespace brandt
     std::vector<double> keplerian(const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
-                                  const double &M0_epoch);
-    std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
-                                  const double &K, const double &ecc,
-                                  const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch);
     std::vector<double> keplerian_gaia(const std::vector<double> &t, const std::vector<double> &psi, const double &A,
                                   const double &B, const double &F, const double &G,
