@@ -39,7 +39,7 @@ dev = [
     "nanobind",
     "scikit-build-core[pyproject]",
     "mkdocs",
-    "mkdocstrings[crystal,python]",
+    "mkdocstrings[python]",
     "mkdocs-autorefs",
     "mkdocs-material",
     "mkdocs-git-revision-date-localized-plugin"

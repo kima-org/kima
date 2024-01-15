@@ -89,7 +89,7 @@ class PHOTdata:
     
 class RVData:
     """
-    docs
+    Load and store RV data
     """
 
     @property
@@ -106,9 +106,9 @@ class RVData:
         """
         ...
     
-    def __init__(self, t: list[float], y: list[float], sig: list[float], units: str = 'ms', instrument: str = '') -> None:
+    def __init__(self, t: list[list[float]], y: list[list[float]], sig: list[list[float]], units: str = 'ms', instruments: list[str] = []) -> None:
         """
-        Load RV data from arrays
+        Load RV data from arrays, for multiple instruments
         """
         ...
     
@@ -126,11 +126,21 @@ class RVData:
         """
         ...
     
+    @overload
+    def __init__(self, t: list[float], y: list[float], sig: list[float], units: str = 'ms', instrument: str = '') -> None:
+        """
+        Load RV data from arrays
+        """
+        ...
+    
     @property
     def actind(self) -> list[list[float]]:
         """
         Activity indicators
         """
+        ...
+    
+    def get_RV_span(self) -> float:
         ...
     
     def get_timespan(self) -> float:

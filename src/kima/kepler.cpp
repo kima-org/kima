@@ -1097,12 +1097,30 @@ namespace contour
 }
 
 
+auto KEPLERIAN_DOC = R"D(
+Calculate the Keplerian curve at times `t`
 
-#include <nanobind/nanobind.h>
-#include <nanobind/stl/vector.h>
-#include <nanobind/ndarray.h>
-namespace nb = nanobind;
-using namespace nb::literals;
+Args:
+    t (array):
+        Times at which to calculate the Keplerian function
+    P (float):
+        Orbital period [days]
+    K (float):
+        Semi-amplitude
+    ecc (float):
+        Orbital eccentricity
+    w (float):
+        Argument of periastron [rad]
+    M0 (float):
+        Mean anomaly at the epoch [rad]
+    M0_epoch (float):
+        Reference epoch for the mean anomaly (M=0 at this time) [days]
+
+Returns:
+    v (array):
+        Keplerian function evaluated at input times `t`
+)D";
+
 
 NB_MODULE(kepler, m) {
     m.def("murison_solver", 
@@ -1137,7 +1155,8 @@ NB_MODULE(kepler, m) {
 
 
     m.def("keplerian", &brandt::keplerian,
-          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
+          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a,
+          KEPLERIAN_DOC);
     m.def("keplerian2", &brandt::keplerian2,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
         //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
