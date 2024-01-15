@@ -39,13 +39,13 @@ class RVConditionalPrior:
     @property
     def eprior(self) -> kima.distributions.Distribution:
         """
-        Prior for the orbital eccentricities(s)
+        Prior for the orbital eccentricity(ies)
         """
         ...
     @eprior.setter
     def eprior(self, arg: kima.distributions.Distribution, /) -> None:
         """
-        Prior for the orbital eccentricities(s)
+        Prior for the orbital eccentricity(ies)
         """
         ...
     
@@ -76,9 +76,6 @@ class RVConditionalPrior:
         ...
     
 class RVmodel:
-    """
-    None
-    """
 
     @property
     def Cprior(self) -> kima.distributions.Distribution:
@@ -171,15 +168,79 @@ class RVmodel:
         """
         ...
     
+    @property
+    def TR_Kprior(self) -> list[kima.distributions.Distribution]:
+        """
+        Prior for TR semi-amplitude
+        """
+        ...
+    @TR_Kprior.setter
+    def TR_Kprior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Prior for TR semi-amplitude
+        """
+        ...
+    
+    @property
+    def TR_Pprior(self) -> list[kima.distributions.Distribution]:
+        """
+        Prior for TR orbital period
+        """
+        ...
+    @TR_Pprior.setter
+    def TR_Pprior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Prior for TR orbital period
+        """
+        ...
+    
+    @property
+    def TR_Tcprior(self) -> list[kima.distributions.Distribution]:
+        """
+        Prior for TR mean anomaly(ies)
+        """
+        ...
+    @TR_Tcprior.setter
+    def TR_Tcprior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Prior for TR mean anomaly(ies)
+        """
+        ...
+    
+    @property
+    def TR_eprior(self) -> list[kima.distributions.Distribution]:
+        """
+        Prior for TR eccentricity
+        """
+        ...
+    @TR_eprior.setter
+    def TR_eprior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Prior for TR eccentricity
+        """
+        ...
+    
+    @property
+    def TR_wprior(self) -> list[kima.distributions.Distribution]:
+        """
+        Prior for TR argument of periastron
+        """
+        ...
+    @TR_wprior.setter
+    def TR_wprior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Prior for TR argument of periastron
+        """
+        ...
+    
     def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData) -> None:
         """
         Implements a sum-of-Keplerians model where the number of Keplerians can be free.
-        This model assumes white, uncorrelated noise.
         
         Args:
-        fix (bool, default=True):
+        fix (bool):
         whether the number of Keplerians should be fixed
-        npmax (int, default=0):
+        npmax (int):
         maximum number of Keplerians
         data (RVData):
         the RV data
@@ -266,6 +327,19 @@ class RVmodel:
         ...
     
     @property
+    def individual_offset_prior(self) -> list[kima.distributions.Distribution]:
+        """
+        Common prior for the between-instrument offsets
+        """
+        ...
+    @individual_offset_prior.setter
+    def individual_offset_prior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Common prior for the between-instrument offsets
+        """
+        ...
+    
+    @property
     def known_object(self) -> bool:
         """
         whether the model includes (better) known extra Keplerian curve(s)
@@ -276,6 +350,13 @@ class RVmodel:
     def n_known_object(self) -> int:
         """
         how many known objects
+        """
+        ...
+    
+    @property
+    def n_transiting_planet(self) -> int:
+        """
+        how many transiting planets
         """
         ...
     
@@ -334,6 +415,9 @@ class RVmodel:
     def set_known_object(self, arg: int, /) -> None:
         ...
     
+    def set_transiting_planet(self, arg: int, /) -> None:
+        ...
+    
     @property
     def slope_prior(self) -> kima.distributions.Distribution:
         """
@@ -370,6 +454,13 @@ class RVmodel:
     def studentt(self, arg: bool, /) -> None:
         """
         use a Student-t distribution for the likelihood (instead of Gaussian)
+        """
+        ...
+    
+    @property
+    def transiting_planet(self) -> bool:
+        """
+        whether the model includes transiting planet(s)
         """
         ...
     
@@ -436,13 +527,13 @@ class TRANSITConditionalPrior:
     @property
     def eprior(self) -> kima.distributions.Distribution:
         """
-        Prior for the orbital eccentricities(s)
+        Prior for the orbital eccentricity(ies)
         """
         ...
     @eprior.setter
     def eprior(self, arg: kima.distributions.Distribution, /) -> None:
         """
-        Prior for the orbital eccentricities(s)
+        Prior for the orbital eccentricity(ies)
         """
         ...
     

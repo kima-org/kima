@@ -282,6 +282,45 @@ class RVFWHMmodel:
         ...
     
     @property
+    def share_eta2(self) -> bool:
+        """
+        whether the η2 parameter is shared between RVs and FWHM
+        """
+        ...
+    @share_eta2.setter
+    def share_eta2(self, arg: bool, /) -> None:
+        """
+        whether the η2 parameter is shared between RVs and FWHM
+        """
+        ...
+    
+    @property
+    def share_eta3(self) -> bool:
+        """
+        whether the η3 parameter is shared between RVs and FWHM
+        """
+        ...
+    @share_eta3.setter
+    def share_eta3(self, arg: bool, /) -> None:
+        """
+        whether the η3 parameter is shared between RVs and FWHM
+        """
+        ...
+    
+    @property
+    def share_eta4(self) -> bool:
+        """
+        whether the η4 parameter is shared between RVs and FWHM
+        """
+        ...
+    @share_eta4.setter
+    def share_eta4(self, arg: bool, /) -> None:
+        """
+        whether the η4 parameter is shared between RVs and FWHM
+        """
+        ...
+    
+    @property
     def slope_prior(self) -> kima.distributions.Distribution:
         """
         Prior for the slope
