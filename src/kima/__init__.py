@@ -1,5 +1,5 @@
 
-from .Data import RVData, PHOTdata, GAIAdata
+from .Data import RVData, PHOTdata, GAIAData
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 from .RVFWHMmodel import RVFWHMmodel
