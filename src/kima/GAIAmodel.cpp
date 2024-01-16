@@ -43,15 +43,15 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
         Jprior = make_prior<ModifiedLogUniform>(0.1,100.);
     
     if (!da_prior)
-        da_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        da_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!dd_prior)
-        dd_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
     if (!plx_prior)
-        plx_prior = make_prior<LogUniform>(0.01,1000.);
+        plx_prior = make_prior<LogUniform>(1.,100.);
         
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
@@ -286,13 +286,13 @@ double GAIAmodel::perturb(RNG& rng)
 
     double logH = 0.;
 
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(rng.rand() <= 0.75 && npmax > 0) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.75) // perturb jitter(s) + known_object
     {
         
         Jprior->perturb(jitter, rng);
@@ -672,23 +672,23 @@ NB_MODULE(GAIAmodel, m) {
         .def_prop_rw("da_prior",
             [](GAIAmodel &m) { return m.da_prior; },
             [](GAIAmodel &m, distribution &d) { m.da_prior = d; },
-            "Prior for the extra white noise (jitter)")
+            "Prior for the offset in right-ascension (mas)")
         .def_prop_rw("dd_prior",
             [](GAIAmodel &m) { return m.dd_prior; },
             [](GAIAmodel &m, distribution &d) { m.dd_prior = d; },
-            "Prior for the extra white noise (jitter)")
+            "Prior for the the offset in declination (mas)")
         .def_prop_rw("mua_prior",
             [](GAIAmodel &m) { return m.mua_prior; },
             [](GAIAmodel &m, distribution &d) { m.mua_prior = d; },
-            "Prior for the extra white noise (jitter)")
+            "Prior for the proper-motion in right-ascension")
         .def_prop_rw("mud_prior",
             [](GAIAmodel &m) { return m.mud_prior; },
             [](GAIAmodel &m, distribution &d) { m.mud_prior = d; },
-            "Prior for the extra white noise (jitter)")
+            "Prior for the proper-motion in declination")
         .def_prop_rw("parallax_prior",
             [](GAIAmodel &m) { return m.plx_prior; },
             [](GAIAmodel &m, distribution &d) { m.plx_prior = d; },
-            "Prior for the extra white noise (jitter)")
+            "Prior for the parallax")
 
         // known object priors
         // ? should these setters check if known_object is true?

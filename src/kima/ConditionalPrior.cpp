@@ -371,6 +371,95 @@ void GAIAConditionalPrior::print(std::ostream& out) const //needed?
 /*****************************************************************************/
 
 
+RVGAIAConditionalPrior::RVGAIAConditionalPrior()
+{
+    
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1., 1e5);
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!phiprior)
+        phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!Mprior)
+        Mprior = make_shared<ModifiedLogUniform>(0.01, 10);
+    if (!omegaprior)
+        omegaprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!cosiprior)
+        cosiprior = make_shared<Uniform>(-1, 1);
+    if (!Omegaprior)
+        Omegaprior = make_shared<Uniform>(0, M_PI);
+    
+}
+
+
+void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIAdata, RVData &RVdata)
+{
+    double tmin1, tmin2, tmax1, tmax2;
+    tmin1 = RVdata.get_t_min();
+    tmax1 = RVdata.get_t_max();
+    tmin2 = GAIAdata.get_t_min();
+    tmax2 = GAIAdata.get_t_max();
+    double tspan = max(tmax1,tmax2) - min(tmin1,tmin2);
+    Pprior = make_shared<LogUniform>(1.0, max(1.1, tspan));
+}
+
+void RVGAIAConditionalPrior::from_prior(RNG& rng)//needed?
+{
+    
+}
+
+double RVGAIAConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    return 0.0;
+}
+
+double RVGAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+    
+    return Pprior->log_pdf(vec[0]) + 
+            phiprior->log_pdf(vec[1]) + 
+            eprior->log_pdf(vec[2]) + 
+            Mprior->log_pdf(vec[3]) + 
+            omegaprior->log_pdf(vec[4]) +
+            cosiprior->log_pdf(vec[5]) + 
+            Omegaprior->log_pdf(vec[6]);
+
+}
+
+void RVGAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+    
+    vec[0] = Pprior->cdf_inverse(vec[0]);
+    vec[1] = phiprior->cdf_inverse(vec[1]);
+    vec[2] = eprior->cdf_inverse(vec[2]);
+    vec[3] = Mprior->cdf_inverse(vec[3]);
+    vec[4] = omegaprior->cdf_inverse(vec[4]);
+    vec[5] = cosiprior->cdf_inverse(vec[5]);
+    vec[6] = Omegaprior->cdf_inverse(vec[6]);
+    
+}
+
+void RVGAIAConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf(vec[0]);
+    vec[1] = phiprior->cdf(vec[1]);
+    vec[2] = eprior->cdf(vec[2]);
+    vec[3] = Mprior->cdf(vec[3]);
+    vec[4] = omegaprior->cdf(vec[4]);
+    vec[5] = cosiprior->cdf(vec[5]);
+    vec[6] = Omegaprior->cdf(vec[6]);
+}
+
+void RVGAIAConditionalPrior::print(std::ostream& out) const //needed?
+{
+    
+}
+
+
+/*****************************************************************************/
+
+
+
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 void bind_RVConditionalPrior(nb::module_ &m) {

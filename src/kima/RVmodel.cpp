@@ -113,7 +113,6 @@ void RVmodel::from_prior(RNG& rng)
         extra_sigma = Jprior->generate(rng);
     }
 
-
     if(trend)
     {
         if (degree >= 1) slope = slope_prior->generate(rng);

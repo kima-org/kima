@@ -7,6 +7,7 @@ from .TRANSITmodel import TRANSITmodel
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
 from .GAIAmodel import GAIAmodel
+from .RVGAIAmodel import RVGAIAmodel
 
 __models__ = (
     RVmodel,
@@ -15,6 +16,8 @@ __models__ = (
     TRANSITmodel,
     OutlierRVmodel,
     BINARIESmodel,
+    GAIAmodel,
+    RVGAIAmodel,
 )
 
 

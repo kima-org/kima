@@ -3,10 +3,12 @@
 using namespace brandt;
 
 const double TWO_PI = M_PI * 2;
+const double c_light = 299792458;//m/s
+const double G = 6.6743 * pow(10.0,-11.0);
+const double Msun = 1.988409870698051 * pow(10.0,30.0);
 
 namespace postKep
 {
-    double c_light = 299792458; //m/s
     double period_correction(double p_obs, double wdot)
     {
         //convert observational period (in days) to anomalistic period (in days) using wdot (in arcsec per year)
@@ -210,3 +212,24 @@ namespace postKep
       return rv;
     }
 }
+
+namespace MassConv
+{
+    double SemiAmp(double P, double ecc, double M0, double M1, double cosi)
+    {
+        double sini = pow((1.0-pow(cosi,2.0)),0.5);
+        double K = pow(TWO_PI*G/(P*24*3600),1.0/3) * M1 * Msun * sini * pow((M0+M1)*Msun,-2.0/3) * pow((1-pow(ecc,2.0)),-0.5);
+        return K;
+    }
+    double SemiPhotPl(double P, double M0, double M1, double plx)
+    {
+        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1)/Msun,1.0/3) * (M1/(M0+M1));
+        return a0;
+    }
+    double SemiPhotSt(double P, double M0, double M1, double plx, double eps)
+    {
+        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1)/Msun,1.0/3) * (M1/(M0+M1) - eps/(1+eps));
+        return a0;
+    }
+}
+

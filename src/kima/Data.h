@@ -56,6 +56,7 @@ class  KIMA_API RVData {
   friend class SPLEAFmodel;
   friend class OutlierRVmodel;
   friend class BINARIESmodel;
+  friend class RVGAIAmodel;
 
   private:
     vector<double> t, y, sig, y2, sig2;
@@ -271,6 +272,7 @@ class  PHOTdata {
 class KIMA_API GAIAdata {
 
   friend class GAIAmodel;
+  friend class RVGAIAmodel;
 
   private:
     vector<double> t, w, wsig, psi, pf;

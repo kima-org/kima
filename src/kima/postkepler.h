@@ -24,3 +24,10 @@ namespace postKep
                                   const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch);
 }
+
+namespace MassConv
+{
+    double SemiAmp(double P, double ecc, double M0, double M1, double cosi);
+    double SemiPhotPl(double P, double M0, double M1, double plx);
+    double SemiPhotSt(double P, double M0, double M1, double plx, double eps);
+}

@@ -7,6 +7,7 @@
 #include "ConditionalPrior.h"
 #include "utils.h"
 #include "kepler.h"
+#include "postkepler.h"
 #include "AMDstability.h"
 
 using namespace std;
@@ -20,19 +21,21 @@ using namespace nb::literals;
 #include "nb_shared.h"
 
 
-class KIMA_API GAIAmodel
+class KIMA_API RVGAIAmodel
 {
     protected:
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
     
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        ///bool known_object {false};
-        /// how many known objects
-        ///int n_known_object {0};
+        // include (better) known extra Keplerian curve(s)? (KO mode!)
+        bool known_object {false};
+        // how many known objects
+        int n_known_object {0};
         
-        ///Whether to use thiele_innes parametrisation
-        bool thiele_innes {false};
+        /// whether the model includes a polynomial trend
+        bool trend {false};
+        /// degree of the polynomial trend
+        int degree {0};
         
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
@@ -40,28 +43,42 @@ class KIMA_API GAIAmodel
     
     private:
     
-        GAIAdata data;
+        GAIAData GAIAdata;
+        RVData RVdata;
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
         /// Maximum number of planets (by default 1)
         int npmax {1};
 
-        DNest4::RJObject<GAIAConditionalPrior> planets =
-            DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, GAIAConditionalPrior());
+        DNest4::RJObject<RVGAIAConditionalPrior> planets =
+            DNest4::RJObject<RVGAIAConditionalPrior>(7, npmax, fix, RVGAIAConditionalPrior());
+        
+        std::vector<double> offsets; // between instruments
+            //   std::vector<double>(0, data.number_instruments - 1);
+        std::vector<double> jitters; // for each instrument
+            //   std::vector<double>(data.number_instruments);
 
+        std::vector<double> betas; // "slopes" for each indicator
+            //   std::vector<double>(data.number_indicators);
+
+        double background;
+        double slope, quadr=0.0, cubic=0.0;
+        double nu_RV;
+        double jitter_RV;
+        
         double da; 
         double dd;
         double mua;
         double mud;
         double plx;
         
-        double nu;
-        double jitter;
+        double nu_GAIA;
+        double jitter_GAIA;
 
         // Parameters for the known object, if set. Use geometric parameters rather than thiele_innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
         std::vector<double> KO_P;
-        std::vector<double> KO_a0;
+        std::vector<double> KO_M;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
         std::vector<double> KO_omega;
@@ -69,31 +86,53 @@ class KIMA_API GAIAmodel
         std::vector<double> KO_Omega;
 
         // The signal
-        std::vector<double> mu;// = the astrometric model
+        std::vector<double> mu_GAIA;// = the astrometric model
+                            //std::vector<double>(GaiaData::get_instance().N());
+        
+        std::vector<double> mu_RV;// = the astrometric model
                             //std::vector<double>(GaiaData::get_instance().N());
                             
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
-        
 
         unsigned int staleness;
 
 
     public:
-        GAIAmodel() {};
-        GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
+        RVGAIAmodel() {};
+        RVGAIAmodel(bool fix, int npmax, GAIAData& GAIAdata, RVData& RVdata) : GAIAData(GAIAdata), RVData(RVdata), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(GAIAdata& data);
-
+        void initialize_from_data(GAIAdata& GAIAdata, RVData& RVdata);
+        
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
-        // Prior for the extra white noise (jitter).
-        distribution Jprior;
-        /// prior for student-t degree of freedom
-        distribution nu_prior;
+        // Prior for the extra white noise (jitter) for GAIA data.
+        distribution J_GAIA_prior;
+        /// prior for student-t degree of freedom for GAIA data
+        distribution nu_GAIA_prior;
+        // Prior for the extra white noise (jitter) for RV data.
+        distribution J_RV_prior;
+        /// prior for student-t degree of freedom for RV data
+        distribution nu_RV_prior;
+        
+        // priors for RV solution
+        /// Prior for the systemic velocity.
+        distribution Cprior;
+        /// Prior for the slope
+        distribution slope_prior;
+        /// Prior for the quadratic coefficient of the trend
+        distribution quadr_prior;
+        /// Prior for the cubic coefficient of the trend
+        distribution cubic_prior;
+        /// (Common) prior for the between-instrument offsets.
+        distribution offsets_prior;
+        std::vector<distribution> individual_offset_prior;
+        // { (size_t) data.number_instruments - 1 };
+        /// no doc.
+        distribution betaprior;
         
         //priors for astrometric solution
         distribution da_prior;
@@ -112,7 +151,7 @@ class KIMA_API GAIAmodel
         void set_known_object(size_t known_object);
         // priors for KO mode!
         std::vector<distribution> KO_Pprior;
-        std::vector<distribution> KO_a0prior;
+        std::vector<distribution> KO_Mprior;
         std::vector<distribution> KO_eprior;
         std::vector<distribution> KO_phiprior;
         std::vector<distribution> KO_omegaprior;
@@ -127,11 +166,11 @@ class KIMA_API GAIAmodel
         
         
 
-        GAIAConditionalPrior* get_conditional_prior() {
+        RVGAIAConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const GAIAConditionalPrior &conditional) {
-            planets = DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, conditional);
+        void set_conditional_prior(const RVGAIAConditionalPrior &conditional) {
+            planets = DNest4::RJObject<RVGAIAConditionalPrior>(7, npmax, fix, conditional);
         }
 
         /// @brief Generate a point from the prior.
