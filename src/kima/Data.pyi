@@ -98,6 +98,12 @@ class RVData:
         reference epoch for the mean anomaly
         """
         ...
+    @M0_epoch.setter
+    def M0_epoch(self, arg: float, /) -> None:
+        """
+        reference epoch for the mean anomaly
+        """
+        ...
     
     @property
     def N(self) -> int:
@@ -247,5 +253,62 @@ class loadtxt:
         ...
     
     def usecols(self, arg: list[int], /) -> kima.Data.loadtxt:
+        ...
+    
+class multiRVData:
+    """
+    docs
+    """
+
+    @property
+    def N(self) -> int:
+        """
+        Total number of observations
+        """
+        ...
+    
+    def __init__(self, filenames: list[list[str]], units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ') -> None:
+        ...
+    
+    @property
+    def full_sig(self) -> list[float]:
+        """
+        The observed RV uncertainties
+        """
+        ...
+    
+    @property
+    def full_t(self) -> list[float]:
+        """
+        The times of observations
+        """
+        ...
+    
+    @property
+    def full_y(self) -> list[float]:
+        """
+        The observed radial velocities
+        """
+        ...
+    
+    @property
+    def sig(self) -> list[list[float]]:
+        """
+        The observed RV uncertainties
+        """
+        ...
+    
+    @property
+    def t(self) -> list[list[float]]:
+        """
+        The times of observations
+        """
+        ...
+    
+    @property
+    def y(self) -> list[list[float]]:
+        """
+        The observed radial velocities
+        """
         ...
     

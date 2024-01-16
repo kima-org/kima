@@ -232,17 +232,7 @@ class RNG:
     def rand(self) -> float:
         ...
     
-    def rand_int(self, arg0: int, arg1: int, /) -> int:
-        """
-        rand_int(self, arg0: int, arg1: int, /) -> int
-        """
-        ...
-    
-    @overload
     def rand_int(self, arg: int, /) -> int:
-        """
-        rand_int(self, arg: int, /) -> int
-        """
         ...
     
 class Rayleigh:
