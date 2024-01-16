@@ -544,11 +544,12 @@ void GAIAmodel::save_setup() {
     fout << "[data]" << endl;
     fout << "file: " << data._datafile << endl;
     fout << "skip: " << data._skip << endl;
+    fout << "units: " << data._units << endl;
 
-    fout << "files: ";
-    for (auto f: data._datafile)
-        fout << f << ",";
-    fout << endl;
+    // fout << "files: ";
+    // for (auto f: data._datafile)
+    //     fout << f << ",";
+    // fout << endl;
 
     fout.precision(15);
     fout << "M0_epoch: " << data.M0_epoch << endl;
