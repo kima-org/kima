@@ -269,7 +269,7 @@ class  PHOTdata {
 
 };
 
-class KIMA_API GAIAdata {
+class KIMA_API GAIAData {
 
   friend class GAIAmodel;
   friend class RVGAIAmodel;
@@ -283,14 +283,14 @@ class KIMA_API GAIAdata {
     string _units;
     int _skip;
 
-    GAIAdata();
-    GAIAdata(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
+    GAIAData();
+    GAIAData(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
             const string& delimiter=" ")
     {
       load(filename, units, skip, max_rows, delimiter);
     }
 
-    friend ostream& operator<<(ostream& os, const GAIAdata& d);
+    friend ostream& operator<<(ostream& os, const GAIAData& d);
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,

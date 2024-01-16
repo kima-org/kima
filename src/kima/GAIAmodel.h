@@ -25,6 +25,11 @@ class KIMA_API GAIAmodel
     protected:
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
+        
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
     
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
         ///bool known_object {false};
@@ -40,11 +45,8 @@ class KIMA_API GAIAmodel
     
     private:
     
-        GAIAdata data;
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
+        GAIAData data;
+        
 
         DNest4::RJObject<GAIAConditionalPrior> planets =
             DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, GAIAConditionalPrior());
@@ -82,11 +84,11 @@ class KIMA_API GAIAmodel
 
     public:
         GAIAmodel() {};
-        GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
+        GAIAmodel(bool fix, int npmax, GAIAData& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(GAIAdata& data);
+        void initialize_from_data(GAIAData& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;

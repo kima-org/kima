@@ -269,7 +269,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 }
 
 
-void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
+void GAIAConditionalPrior::set_default_priors(const GAIAData &data)
 {
     Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
 }
@@ -392,7 +392,7 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
 }
 
 
-void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIAdata, RVData &RVdata)
+void RVGAIAConditionalPrior::set_default_priors(const GAIAData &GAIAdata, RVData &RVdata)
 {
     double tmin1, tmin2, tmax1, tmax2;
     tmin1 = RVdata.get_t_min();
@@ -565,6 +565,39 @@ void bind_GAIAConditionalPrior(nb::module_ &m) {
             [](GAIAConditionalPrior &c) { return c.Gprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Gprior = d; },
             "Prior thiele_innes parameter(s) G");
+}
+
+void bind_RVGAIAConditionalPrior(nb::module_ &m) {            
+    nb::class_<RVGAIAConditionalPrior>(m, "RVGAIAConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](RVGAIAConditionalPrior &c) { return c.Pprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)")
+        .def_prop_rw("eprior",
+            [](RVGAIAConditionalPrior &c) { return c.eprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricity(ies)")
+        .def_prop_rw("Mprior",
+            [](RVGAIAConditionalPrior &c) { return c.Mprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.Mprior = d; },
+            "Prior for the mass(es) (Solar mass)")
+        .def_prop_rw("omegaprior",
+            [](RVGAIAConditionalPrior &c) { return c.omegaprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.omegaprior = d; },
+            "Prior for the argument(s) of periastron")
+        .def_prop_rw("phiprior",
+            [](RVGAIAConditionalPrior &c) { return c.phiprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            "Prior for the mean anomaly(ies)")
+        .def_prop_rw("Omegaprior",
+            [](RVGAIAConditionalPrior &c) { return c.Omegaprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+            "Prior for the longitude(s) of ascending node")
+        .def_prop_rw("cosiprior",
+            [](RVGAIAConditionalPrior &c) { return c.cosiprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.cosiprior = d; },
+            "Prior for cosine(s) of the orbital inclination");
 }
 
 // NB_MODULE(ConditionalPrior, m) {

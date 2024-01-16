@@ -126,7 +126,7 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
  	public:
 		GAIAConditionalPrior();
 
-		void set_default_priors(const GAIAdata &data);
+		void set_default_priors(const GAIAData &data);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -179,7 +179,7 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
  	public:
 		RVGAIAConditionalPrior();
 
-		void set_default_priors(const GAIAdata &GAIAdata, RVData &RVdata);
+		void set_default_priors(const GAIAData &GAIAdata, RVData &RVdata);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -219,4 +219,5 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
 
 void bind_RVConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
+void bind_RVGAIAConditionalPrior(nb::module_ &m);
 

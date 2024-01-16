@@ -11,7 +11,7 @@ using namespace brandt;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void GAIAmodel::initialize_from_data(GAIAdata& data)
+void GAIAmodel::initialize_from_data(GAIAData& data)
 {   
     // resize GAIA model vector
     mu.resize(data.N());
@@ -641,7 +641,7 @@ NB_MODULE(GAIAmodel, m) {
     bind_GAIAConditionalPrior(m);
 
     nb::class_<GAIAmodel>(m, "GAIAmodel")
-        .def(nb::init<bool&, int&, GAIAdata&>(), "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, GAIAData&>(), "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
         //
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,

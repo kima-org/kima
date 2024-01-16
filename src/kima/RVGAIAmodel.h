@@ -24,13 +24,19 @@ using namespace nb::literals;
 class KIMA_API RVGAIAmodel
 {
     protected:
+    
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+        
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
     
         // include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
+//         bool known_object {false};
         // how many known objects
-        int n_known_object {0};
+//         int n_known_object {0};
         
         /// whether the model includes a polynomial trend
         bool trend {false};
@@ -39,17 +45,14 @@ class KIMA_API RVGAIAmodel
         
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
+        /// include in the model linear correlations with indicators
+        bool indicator_correlations = false;
         
+        GAIAData GAIAdata;
+        RVData RVdata;
     
     private:
     
-        GAIAData GAIAdata;
-        RVData RVdata;
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
-
         DNest4::RJObject<RVGAIAConditionalPrior> planets =
             DNest4::RJObject<RVGAIAConditionalPrior>(7, npmax, fix, RVGAIAConditionalPrior());
         
@@ -101,11 +104,11 @@ class KIMA_API RVGAIAmodel
 
     public:
         RVGAIAmodel() {};
-        RVGAIAmodel(bool fix, int npmax, GAIAData& GAIAdata, RVData& RVdata) : GAIAData(GAIAdata), RVData(RVdata), fix(fix), npmax(npmax) {
-            initialize_from_data(data);
+        RVGAIAmodel(bool fix, int npmax, GAIAData& GAIAdata, RVData& RVdata) : GAIAdata(GAIAdata), RVdata(RVdata), fix(fix), npmax(npmax) {
+            initialize_from_data(GAIAdata, RVdata);
         };
 
-        void initialize_from_data(GAIAdata& GAIAdata, RVData& RVdata);
+        void initialize_from_data(GAIAData& GAIAdata, RVData& RVdata);
         
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
