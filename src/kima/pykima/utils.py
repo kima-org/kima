@@ -210,15 +210,20 @@ def clipped_std(arr, min, max):
     return np.std(arr[mask])
 
 
-def get_gaussian_prior_vsys(data):
+def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
     from kima.distributions import Gaussian
     obsi = np.array(data.obsi)
     u_obsi = np.unique(obsi)
     y = np.array(data.y)[obsi == u_obsi[-1]]
-    return Gaussian(np.median(y), np.ptp(y))
+    if use_ptp and not use_std:
+        return Gaussian(np.median(y), np.ptp(y))
+    elif use_std:
+        return Gaussian(np.median(y), np.std(y))
+    else:
+        raise ValueError('either `use_ptp` or `use_std` should be True')
 
 
-def get_gaussian_priors_individual_offsets(data):
+def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
     from kima.distributions import Gaussian
     if not data.multi:
         raise ValueError('data is not from multiple instruments')
@@ -228,7 +233,10 @@ def get_gaussian_priors_individual_offsets(data):
     y_last = np.array(data.y)[obsi == u_obsi[-1]]
     for i in u_obsi[::-1][1:]:
         y = np.array(data.y)[obsi == i]
-        loc_scale.append((np.median(y) - np.median(y_last), np.ptp(y)))
+        if use_ptp and not use_std:
+            loc_scale.append((np.median(y) - np.median(y_last), np.ptp(y)))
+        elif use_std:
+            loc_scale.append((np.median(y) - np.median(y_last), np.std(y)))
     return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
                         
 
@@ -644,6 +652,8 @@ def get_instrument_name(data_file):
             r'SOPHIE',
             r'HAMILTON',
             r'NIRPS',
+            r'PFS',
+            r'UCLES'
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 
