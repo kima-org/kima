@@ -72,7 +72,7 @@ def _read_priors(setup=None):
 
 @dataclass
 class data_holder:
-    """ A simple class to hold the datasets used in kima
+    """ A simple class to hold the RV datasets used in kima
 
     Attributes:
         t (ndarray): The observation times
@@ -90,6 +90,30 @@ class data_holder:
 
     def __repr__(self):
         return f'data_holder(N={self.N}, t, y, e, obs)'
+
+
+@dataclass
+class astrometric_data_holder:
+    """ A simple class to hold the astrometric datasets used in kima
+
+    Attributes:
+        t (ndarray): The observation times
+        w (ndarray): 
+        sigw (ndarray): 
+        psi (ndarray): 
+        pf (ndarray): 
+        N (int): Total number of observations
+    """
+    t: np.ndarray = field(init=False)
+    w: np.ndarray = field(init=False)
+    sigw: np.ndarray = field(init=False)
+    psi: np.ndarray = field(init=False)
+    pf: np.ndarray = field(init=False)
+    N: int = field(init=False)
+    instrument: str = 'GAIA'
+
+    def __repr__(self):
+        return f'data_holder(N={self.N}, t, w, sigw, psi, pf)'
 
 
 @dataclass
@@ -124,14 +148,17 @@ class posterior_holder:
 
     def __repr__(self):
         fields = list(self.__dataclass_fields__.keys())
-        fields = [f for f in fields if hasattr(self, f)]
+        fields = [f for f in fields if hasattr(self, f) and getattr(self, f).size > 0]
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
 
 
-def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True):
+def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True,
+                 moreSamples=1):
     # load from a pickle or zip file
-    if isinstance(model_or_file, str) and os.path.exists(model_or_file):
+    if isinstance(model_or_file, str):
+        if not os.path.exists(model_or_file):
+            raise FileNotFoundError(model_or_file)
         res = KimaResults.load(model_or_file)
     
     # load from current directory (latest results)
@@ -145,7 +172,8 @@ def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True):
         stdout = sys.stdout if verbose else hidden
 
         with redirect_stdout(stdout):
-            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
+            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1,
+                                                    moreSamples=moreSamples)
         
         res = KimaResults()
         res.evidence = evidence
@@ -195,13 +223,11 @@ class KimaResults:
         self.return_figs = return_figs
         self.verbose = verbose
 
-        self.removed_crossing = False
-        self.removed_roche_crossing = False
-
         if _dummy:
             return
 
         self.setup = setup = read_model_setup()
+
         try:
             self.model = setup['kima']['model']
         except KeyError:
@@ -227,16 +253,19 @@ class KimaResults:
         if self._debug:
             print('finished reading data')
 
+        # read the posterior samples
         self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
 
+        # try reading posterior sample info to get log-likelihoods
         try:
             self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
-            self.lnlike_available = True
+            self._lnlike_available = True
         except IOError:
-            self.lnlike_available = False
+            self._lnlike_available = False
             print('Could not find file "posterior_sample_info.txt", '
                   'log-likelihoods will not be available.')
 
+        # read original samples
         try:
             t1 = time.time()
             self.sample = np.atleast_2d(read_big_file('sample.txt'))
@@ -270,15 +299,25 @@ class KimaResults:
         self.total_parameters = 0
 
         self._current_column = 0
+        
         # read jitters
         self._read_jitters()
+
+        # read astrometric solution
+        if self.model == 'GAIAmodel':
+            self._read_astrometric_solution()
+
         # read limb-darkening coefficients
         if self.model == 'TRANSITmodel':
             self._read_limb_dark()
+        
         # find trend in the compiled model and read it
-        self.trend = self.setup['kima']['trend'] == 'true'
-        self.trend_degree = int(self.setup['kima']['degree'])
-        self._read_trend()
+        try:
+            self.trend = self.setup['kima']['trend'] == 'true'
+            self.trend_degree = int(self.setup['kima']['degree'])
+            self._read_trend()
+        except KeyError:
+            self.trend, self.trend_degree = False, 0
         # multiple instruments? read offsets
         self._read_multiple_instruments()
         # activity indicator correlations?
@@ -297,6 +336,16 @@ class KimaResults:
             self.nKO = 0
         self._read_KO()
 
+        # find transiting planet in the compiled model
+        try:
+            self.TR = self.setup['kima']['transiting_planet'] == 'true'
+            self.nTR = int(self.setup['kima']['n_transiting_planet'])
+        except KeyError:
+            self.TR = False
+            self.nTR = 0
+        self._read_TR()
+
+
         if self.model == 'OutlierRVmodel':
             self._read_outlier()
 
@@ -312,13 +361,19 @@ class KimaResults:
             self.studentt = False
         self._read_studentt()
 
-        if self.model == 'RVFWHMmodel':
+        if self.model == 'RVFWHMRHKmodel':
+            self.C3 = self.posterior_sample[:, self._current_column]
+            self.indices['C3'] = self._current_column
+            self._current_column += 1
+
+        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             self.C2 = self.posterior_sample[:, self._current_column]
             self.indices['C2'] = self._current_column
             self._current_column += 1
 
-        self.vsys = self.posterior_sample[:, -1]
-        self.indices['vsys'] = -1
+        if self.model != 'GAIAmodel':
+            self.vsys = self.posterior_sample[:, -1]
+            self.indices['vsys'] = -1
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -342,9 +397,6 @@ class KimaResults:
 
         res = cls(_dummy=True)
 
-        res.removed_crossing = False
-        res.removed_roche_crossing = False
-        res.save_plots = False
         res.return_figs = True
         res.verbose = verbose
 
@@ -380,9 +432,9 @@ class KimaResults:
 
         try:
             res.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
-            res.lnlike_available = True
+            res._lnlike_available = True
         except IOError:
-            res.lnlike_available = False
+            res._lnlike_available = False
             print('Could not find file "posterior_sample_info.txt", '
                   'log-likelihoods will not be available.')
 
@@ -579,6 +631,17 @@ class KimaResults:
             self.data.y2 = data[:, 3].copy()
             self.data.e2 = data[:, 4].copy()
 
+        if self.model == 'GAIAmodel':
+            self.astrometric_data = astrometric_data_holder()
+            data = np.genfromtxt(self.data_file, names=True, comments='--')
+            self.astrometric_data.t = data['mjd']
+            self.astrometric_data.w = data['w']
+            self.astrometric_data.sigw = data['sigw']
+            self.astrometric_data.psi = data['psi']
+            self.astrometric_data.pf = data['pf']
+            self.astrometric_data.N = data['mjd'].size
+            
+
         self.tmiddle = self.data.t.min() + 0.5 * self.data.t.ptp()
 
     def _read_jitters(self):
@@ -590,6 +653,17 @@ class KimaResults:
         self.indices['jitter'] = slice(i1, i2)
         if self._debug:
             print('finished reading jitters')
+
+    def _read_astrometric_solution(self):
+        self.n_astrometric_solution = 5
+        i1, i2 = self._current_column, self._current_column + self.n_astrometric_solution
+        self.astrometric_solution = self.posterior_sample[:, i1:i2]
+        self._current_column += self.n_astrometric_solution
+        self.indices['astrometric_solution_start'] = i1
+        self.indices['astrometric_solution_end'] = i2
+        self.indices['astrometric_solution'] = slice(i1, i2)
+        if self._debug:
+            print('finished reading astrometric solution')
 
     def _read_limb_dark(self):
         i1, i2 = self._current_column, self._current_column + 2
@@ -702,10 +776,17 @@ class KimaResults:
         iend = istart + n_planet_pars
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
-        for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω')):
-            iend = istart + self.max_components
-            self.indices[f'planets.{p}'] = slice(istart, iend)
-            istart += self.max_components
+        
+        if self.model == 'GAIAmodel':
+            for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'ω', 'cosi', 'W')):
+                iend = istart + self.max_components
+                self.indices[f'planets.{p}'] = slice(istart, iend)
+                istart += self.max_components
+        else:
+            for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω')):
+                iend = istart + self.max_components
+                self.indices[f'planets.{p}'] = slice(istart, iend)
+                istart += self.max_components
 
     def _read_studentt(self):
         if self.studentt:
@@ -851,6 +932,21 @@ class KimaResults:
         else:
             n_KOparameters = 0
         self.total_parameters += n_KOparameters
+
+    def _read_TR(self):
+        if self.TR:
+            if self.model == 'TRANSITmodel':
+                n_TRparameters = 6 * self.nTR
+            else:
+                n_TRparameters = 5 * self.nTR
+            start = self._current_column
+            TRinds = slice(start, start + n_TRparameters)
+            self.TRpars = self.posterior_sample[:, TRinds]
+            self._current_column += n_TRparameters
+            self.indices['TRpars'] = TRinds
+        else:
+            n_TRparameters = 0
+        self.total_parameters += n_TRparameters
 
     def _read_outlier(self):
         n_outlier_parameters = 3
@@ -1139,11 +1235,24 @@ class KimaResults:
 
         # jitter(s)
         self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
+        if self.n_jitters == 1:
+            self.posteriors.jitter = self.posteriors.jitter.ravel()
+
+        if self.model == 'GAIAmodel':
+            da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
+            self.posteriors.da = da
+            self.posteriors.dd = dd
+            self.posteriors.mua = mua
+            self.posteriors.mud = mud
+            self.posteriors.plx = plx
+
         # instrument offsets
         if self.multi:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
-        # systemic velocity
-        self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+        
+        if self.model != 'GAIAmodel':
+            # systemic velocity
+            self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
 
         # parameters of the outlier model
         if self.model == 'OutlierRVmodel':
@@ -1301,7 +1410,7 @@ class KimaResults:
         different calls to "showresults". If `Np` is given, select only samples
         with that number of planets.
         """
-        if self.sample_info is None and not self.lnlike_available:
+        if self.sample_info is None and not self._lnlike_available:
             print('log-likelihoods are not available! '
                   'maximum_likelihood_sample() doing nothing...')
             return
@@ -1415,7 +1524,11 @@ class KimaResults:
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            pars = ['P', 'K', 'M0', 'e', 'ω']
+            if self.model == 'GAIAmodel':
+                pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
+            else:
+                pars = ['P', 'K', 'M0', 'e', 'ω']
+
             n = self.n_dimensions
 
             if squeeze:
@@ -1446,11 +1559,10 @@ class KimaResults:
                 for i in range(0, npl):
                     formatter = {'all': lambda v: f'{v:11.5f}'}
                     with np.printoptions(formatter=formatter, linewidth=1000):
-                        planet_pars = p[
-                            self.indices['planets']][i::self.max_components]
-                        P, K, M0, ecc, ω = planet_pars
+                        planet_pars = p[self.indices['planets']][i::self.max_components]
 
                         if show_a or show_m:
+                            P, K, M0, ecc, ω = planet_pars
                             (m, _), a = get_planet_mass_and_semimajor_axis(
                                 P, K, ecc, star_mass)
 
@@ -1539,7 +1651,9 @@ class KimaResults:
             s += (ni * ' {:<20.3f} ').format(*p[i])
             print(s)
 
-        print('vsys: ', p[-1])
+        if self.model != 'GAIAmodel':
+            print('vsys: ', p[-1])
+
 
     def _sort_planets_by_amplitude(self, sample, decreasing=True):
         new_sample = sample.copy()
@@ -1652,6 +1766,28 @@ class KimaResults:
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+            
+            # transiting planet ?
+            if hasattr(self, 'TR') and self.TR:
+                pars = sample[self.indices['TRpars']].copy()
+                for j in range(self.nTR):
+                    if single_planet is not None:
+                        if j + 1 != -single_planet:
+                            continue
+                    if except_planet is not None:
+                        if j + 1 in except_planet:
+                            continue
+
+                    P = pars[j + 0 * self.nTR]
+                    K = pars[j + 1 * self.nTR]
+                    Tc = pars[j + 2 * self.nTR]
+                    ecc = pars[j + 3 * self.nTR]
+                    w = pars[j + 4 * self.nTR]
+                    
+                    f = np.pi/2 - w # true anomaly at conjunction
+                    E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
+                    M = E - ecc * np.sin(E) # mean anomaly at conjunction
+                    v += keplerian(t, P, K, ecc, w, -M, Tc)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
