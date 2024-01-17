@@ -88,15 +88,15 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     }
     
     if (!da_prior)
-        da_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        da_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!dd_prior)
-        dd_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!mua_prior)
         mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mud_prior)
         mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!plx_prior)
-        plx_prior = make_prior<LogUniform>(0.01,1000.);
+        plx_prior = make_prior<LogUniform>(0.1,500.);
         
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
@@ -107,8 +107,10 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     if (studentt)
+    {
         nu_GAIA_prior = make_prior<LogUniform>(2, 1000);
         nu_RV_prior = make_prior<LogUniform>(2, 1000);
+    }
 
 }
 
@@ -179,8 +181,10 @@ void RVGAIAmodel::from_prior(RNG& rng)
     }
 
     if (studentt)
+    {
         nu_GAIA = nu_GAIA_prior->generate(rng);
         nu_RV = nu_RV_prior->generate(rng);
+    }
 
     calculate_mu();
 
@@ -428,8 +432,10 @@ double RVGAIAmodel::perturb(RNG& rng)
         }
         
         if (studentt)
+        {
             nu_GAIA_prior->perturb(nu_GAIA, rng);
             nu_RV_prior->perturb(nu_RV, rng);
+        }
 
 
         if (known_object)
@@ -711,8 +717,10 @@ void RVGAIAmodel::print(std::ostream& out) const
     out << ' ' << staleness << ' ';
 
     if (studentt)
+    {
         out << '\t' << nu_GAIA << '\t';
         out << '\t' << nu_RV << '\t';
+    }
         
     out << background;
 
@@ -795,8 +803,10 @@ string RVGAIAmodel::description() const
 
     desc += "staleness" + sep;
     if (studentt)
+    {
         desc += "nu_GAIA" + sep;
         desc += "nu_RV" + sep;
+    }
         
     desc += "vsys";
     
@@ -820,7 +830,10 @@ void RVGAIAmodel::save_setup() {
     fout << "model: " << "RVGAIAmodel" << endl << endl;
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
-
+    
+    fout << "trend: " << trend << endl;
+    fout << "degree: " << degree << endl;
+    fout << "multi_instrument: " << RVdata._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -831,13 +844,9 @@ void RVGAIAmodel::save_setup() {
     fout << "[GAIAdata]" << endl;
     fout << "file: " << GAIAdata._datafile << endl;
     fout << "skip: " << GAIAdata._skip << endl;
+
     
-    fout << "files: ";
-    for (auto f: GAIAdata._datafile)
-        fout << f << ",";
-    fout << endl;
-    
-    fout << "[RVdata]" << endl;
+    fout << "[data]" << endl;
     fout << "file: " << RVdata._datafile << endl;
     fout << "units: " << RVdata._units << endl;
     fout << "skip: " << RVdata._skip << endl;
@@ -881,8 +890,10 @@ void RVGAIAmodel::save_setup() {
     fout << "parallax_prior: " << *plx_prior << endl;
 
     if (studentt)
+    {
         fout << "nu_GAIA_prior: " << *nu_GAIA_prior << endl;
         fout << "nu_RV_prior: " << *nu_RV_prior << endl;
+    }
 
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
