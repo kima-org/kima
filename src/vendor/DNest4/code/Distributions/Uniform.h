@@ -31,6 +31,28 @@ class Uniform:public ContinuousDistribution
 
 
 
+/*
+* UniformAngle distribution
+*/
+class UniformAngle:public ContinuousDistribution
+{
+    private:
+        double TWOPI = 2 * M_PI;
+    public:
+        UniformAngle();
+
+        double cdf(double x) const override;
+        double cdf_inverse(double p) const override;
+        double log_pdf(double x) const override;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "UniformAngle(0, 2*PI)";
+            return out;
+        }
+};
+
+
 } // namespace DNest4
 
 #endif
