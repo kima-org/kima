@@ -92,11 +92,11 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (!dd_prior)
         dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
     if (!plx_prior)
-        plx_prior = make_prior<LogUniform>(0.1,500.);
+        plx_prior = make_prior<LogUniform>(1.,100.);
         
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
