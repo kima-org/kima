@@ -391,3 +391,29 @@ class Uniform:
         """
         ...
     
+class UniformAngle:
+    """
+    Uniform distribuion in [0, 2*PI]
+    """
+
+    def __init__(self) -> None:
+        ...
+    
+    def cdf(self, x: float) -> float:
+        """
+        Cumulative distribution function evaluated at `x`
+        """
+        ...
+    
+    def logpdf(self, x: float) -> float:
+        """
+        Log of the probability density function evaluated at `x`
+        """
+        ...
+    
+    def ppf(self, q: float) -> float:
+        """
+        Percent point function (inverse of cdf) evaluated at `q`
+        """
+        ...
+    
