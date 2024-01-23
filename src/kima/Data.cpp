@@ -927,20 +927,20 @@ NB_MODULE(Data, m) {
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
         .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&>(),
-                      "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
         .def(nb::init<const string&, const string&, int, int, const string&, const vector<string>&>(),
-                      "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
-                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
-                      "Load RV data from arrays")
+             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
+             "Load RV data from arrays")
         //
         .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const string&,  const vector<string>&>(),
-                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
-                      "Load RV data from arrays, for multiple instruments")
+             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
+             "Load RV data from arrays, for multiple instruments")
 
 
         // properties
@@ -956,7 +956,7 @@ NB_MODULE(Data, m) {
         .def_ro("skip", &RVData::_skip, "Lines skipped when reading data")
         .def_rw("instrument", &RVData::_instrument, "instrument name")
         //
-        .def_ro("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
+        .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
 
         // to un/pickle RVData
 
