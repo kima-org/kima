@@ -39,6 +39,14 @@ class  RVFWHMmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
+        // share some of the hyperparameters?
+        /// Whether $\eta_2$ is shared between RVs and FWHM
+        bool share_eta2 {true};
+        /// Whether $\eta_3$ is shared between RVs and FWHM
+        bool share_eta3 {true};
+        /// Whether $\eta_4$ is shared between RVs and FWHM
+        bool share_eta4 {true};
+
     private:
         RVData data;
 
@@ -152,17 +160,6 @@ class  RVFWHMmodel
         std::vector<distribution> KO_wprior;
 
 
-        // share some of the hyperparameters?
-        /// Whether $\eta_2$ is shared between RVs and FWHM
-        bool share_eta2 {true};
-        /// Whether $\eta_3$ is shared between RVs and FWHM
-        bool share_eta3 {true};
-        /// Whether $\eta_4$ is shared between RVs and FWHM
-        bool share_eta4 {true};
-        /// Whether $\eta_5$ is shared between RVs and FWHM
-        bool share_eta5 {false};
-        bool share_eta6 {false};
-
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"
         distribution eta1_prior;
@@ -172,10 +169,6 @@ class  RVFWHMmodel
         distribution eta3_prior;
         /// Prior for $\eta_4$, the recurrence timescale
         distribution eta4_prior;
-        /// Prior for the Rational Quadratic shape parameter
-        distribution alpha_prior;
-        /// Prior for the "amplitude" of the cosine term of the QPC kernel
-        distribution eta5_prior;
 
         // same for the FWHM
         /// Same as $\eta_1$ but for the FWHM
@@ -186,10 +179,6 @@ class  RVFWHMmodel
         distribution eta3_fwhm_prior;
         /// Same as $\eta_4$ but for the FWHM
         distribution eta4_fwhm_prior;
-        /// Same as $\alpha$, but for the FWHM
-        distribution alpha_fwhm_prior;
-        /// Same as $\eta_5$ but for the FWHM
-        distribution eta5_fwhm_prior;
 
 
         RVConditionalPrior* get_conditional_prior() {
