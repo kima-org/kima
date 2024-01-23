@@ -42,7 +42,8 @@ dev = [
     "mkdocstrings[python]",
     "mkdocs-autorefs",
     "mkdocs-material",
-    "mkdocs-git-revision-date-localized-plugin"
+    "mkdocs-jupyter",
+    "mkdocs-git-revision-date-localized-plugin",
 ]
 
 [project.urls]
