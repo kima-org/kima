@@ -6,8 +6,8 @@ from .loading import my_loadtxt, loadtxt_rows
 try:
     from tqdm import trange
 except ImportError:
-    def trange(x):
-        return range(x)
+    def trange(*args):
+        return range(*args)
 
 
 def logsumexp(values):
