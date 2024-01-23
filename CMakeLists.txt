@@ -90,8 +90,8 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/GAIAmodel.cpp
                     src/kima/RVGAIAmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp
-                    src/kima/postkepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
+                    src/kima/kepler.cpp src/kima/postkepler.cpp 
+                    src/kima/transits.cpp src/kima/AMDstability.cpp)
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC 
@@ -99,8 +99,8 @@ nanobind_add_module(kepler STABLE_ABI NB_STATIC
 target_compile_features(kepler PRIVATE cxx_std_17)
 
 nanobind_add_module(postkepler STABLE_ABI NB_STATIC 
-                    src/kima/postkepler.cpp)
-target_compile_features(kepler PRIVATE cxx_std_17)
+                    src/kima/postkepler.cpp src/kima/kepler.cpp)
+target_compile_features(postkepler PRIVATE cxx_std_17)
 
 nanobind_add_module(transits STABLE_ABI NB_STATIC 
                     src/kima/transits.cpp src/kima/kepler.cpp)
