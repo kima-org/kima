@@ -206,7 +206,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
     w = P_samples
     w = w / np.max(w)
     rows = np.empty(N, dtype="int64")
-    for i in range(0, N):
+    for i in trange(0, N):
         while True:
             which = np.random.randint(sample_info.shape[0])
             if np.random.rand() <= w[which]:
