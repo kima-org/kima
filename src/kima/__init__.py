@@ -20,11 +20,17 @@ __models__ = (
     RVGAIAmodel,
 )
 
+# add plot method to data classes
+from .pykima.display import plot_RVData
+RVData.plot = plot_RVData
+
 
 # kima.run
 from .Sampler import run
 # kima.load_results
 from .pykima.results import load_results, KimaResults
+# kima.cleanup
+from .pykima.cli import cli_clean as cleanup
 
 # sub-packages
 from .kepler import keplerian

@@ -35,11 +35,11 @@ def make_plots(res, options, save_plots=False):
         #       if a str, it is exec'd in globals(), locals()
         #   second item in the list is a dictionary
         #       each entry is an argument with which the callable is called
-        '1': [res.make_plot1, {}],
-        '2': [res.make_plot2, {'show_prior': True}],
-        '3': [res.make_plot3, {}],
-        '4': [res.make_plot4, {}],
-        '5': [res.make_plot5, {}],
+        '1': [res.plot_posterior_np, {}],
+        '2': [res.plot_posterior_period, {'show_prior': True}],
+        '3': [res.plot_PKE, {}],
+        '4': [res.plot_gp, {}],
+        '5': [res.plot_gp_corner, {}],
         '6': [res.plot_random_samples, {'show_vsys': True}],
         '6p': [
             'res.plot_random_samples(show_vsys=True);'\
@@ -67,8 +67,22 @@ def make_plots(res, options, save_plots=False):
                 methods(**kwargs)
 
 
-def make_plot1(res, ax=None, errors=False, show_ESS=True):
-    """ Plot the histogram of the posterior for Np """
+def plot_posterior_np(res, ax=None, errors=False, show_ESS=True):
+    """ Plot the histogram of the posterior for Np
+
+    Args:
+        res (kima.KimaResults):
+            The `KimaResults` instance
+        ax (matplotlib.axes._axes.Axes, optional):
+            An existing matplotlib axes where to draw the plot
+        errors (bool, optional):
+            Whether to estimate and display errors on the Np posterior.
+        show_ESS (bool, optional):
+            Display the effective sample size on the plot.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The matplotlib figure with the plot
+    """    
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     else:
@@ -94,15 +108,8 @@ def make_plot1(res, ax=None, errors=False, show_ESS=True):
                     capsize=3,
                     color='k')
 
-    if res.removed_crossing:
-        ic = res.index_component
-        nn = (~np.isnan(res.posterior_sample[:, ic + 1:ic + 11])).sum(axis=1)
-        nn, _ = np.histogram(nn, bins=bins)
-        ax.bar(bins[:-1], nn, color='r', alpha=0.2, zorder=2)
-        ax.legend(['all posterior samples', 'crossing orbits removed'])
-    else:
-        pt_Np = np_bayes_factor_threshold(res)
-        ax.bar(pt_Np, n[pt_Np] / res.ESS, color='C1', zorder=2)
+    pt_Np = np_bayes_factor_threshold(res)
+    ax.bar(pt_Np, n[pt_Np] / res.ESS, color='C1', zorder=2)
 
     xlim = (-0.5, res.max_components + 0.5)
     xticks = np.arange(res.max_components + 1)
@@ -128,29 +135,59 @@ def make_plot1(res, ax=None, errors=False, show_ESS=True):
         return ax.figure
 
 
-def make_plot2(res,
-               nbins=100,
-               bins=None,
-               plims=None,
-               logx=True,
-               kde=False,
-               kde_bw=None,
-               show_peaks=False,
-               show_prior=False,
-               show_year=True,
-               show_timespan=True,
-               separate_colors=False,
-               return_bins=False,
-               mark_periods=None,
-               **kwargs):
-    """
-    Plot the histogram (or the kde) of the posterior for the orbital period(s).
-    Optionally provide the number of histogram bins, the bins themselves, the
-    limits in orbital period, or the kde bandwidth. If both `kde` and
-    `show_peaks` are true, the routine attempts to plot the most prominent
-    peaks in the posterior.
-    """
+def plot_posterior_period(res,
+                          nbins=100,
+                          bins=None,
+                          plims=None,
+                          logx=True,
+                          kde=False,
+                          kde_bw=None,
+                          show_peaks=False,
+                          show_prior=False,
+                          show_year=True,
+                          show_timespan=True,
+                          separate_colors=False,
+                          return_bins=False,
+                          mark_periods=None,
+                          mark_periods_text=False,
+                          **kwargs):
+    """Plot the histogram (or the kde) of the posterior for the orbital period(s)
 
+    Args:
+        res (kima.KimaResults):
+            The `KimaResults` instance
+        nbins (int, optional):
+            Number of bins in the histogram
+        bins (array, optional):
+            Histogram bins
+        plims (tuple, optional):
+            Period limits, as (pmin, pmax)
+        logx (bool, optional):
+            Plot the x axis in lograithmic scale
+        kde (bool, optional):
+            Show a kernel density estimation (KDE) instead of the histogram
+        kde_bw (float, optional):
+            Bandwith for the KDE
+        show_peaks (bool, optional):
+            Try to identify prominent peaks in the posterior
+        show_prior (bool, optional):
+            Plot the prior together with the posterior
+        show_year (bool, optional):
+            Show a vertical line at 1 year
+        show_timespan (bool, optional):
+            Show a vertical line at the timespan of the data
+        separate_colors (bool, optional):
+            Show different Keplerians as different colors
+        return_bins (bool, optional):
+            Return the bins used for the histogram
+        mark_periods (list, tuple, array, optional):
+            Mark specific periods in the plot
+        mark_periods_text (bool, optional):
+            Write the period values next to the marker
+
+    Returns:
+        fig (matplotlib.figure.Figure): The matplotlib figure with the plot
+    """    
     if res.max_components == 0:
         print('Model has no planets! make_plot2() doing nothing...')
         return
@@ -167,13 +204,6 @@ def make_plot2(res,
         fig, ax = plt.subplots(1, 1)
 
     kwline = {'ls': '--', 'lw': 1.5, 'alpha': 0.3, 'zorder': -1}
-
-    if show_year:  # mark 1 year
-        year = 365.25
-        ax.axvline(x=year, color='r', label='1 year', **kwline)
-
-    if show_timespan:  # mark the timespan of the data
-        ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
 
     if kde:
         T = res.T
@@ -251,7 +281,8 @@ def make_plot2(res,
                    bottom=bottoms[:-1],
                    align='edge',
                    alpha=0.8,
-                   color=color)
+                   color=color,
+                   )
 
             bottoms += np.append(counts / res.ESS, 0)
 
@@ -268,7 +299,7 @@ def make_plot2(res,
             if res.hyperpriors:
                 P = hyperprior_samples(T.size)
             else:
-                P = res.priors['Pprior'].rvs(T.size)
+                P = res.priors['Pprior'].rvs(res.ESS)
 
             counts, bin_edges = np.histogram(P, bins=bins)
             ax.bar(x=bin_edges[:-1],
@@ -276,6 +307,14 @@ def make_plot2(res,
                    width=np.ediff1d(bin_edges),
                    align='edge',
                    **kwprior)
+
+    if show_year:  # mark 1 year
+        year = 365.25
+        ax.axvline(x=year, color='r', label='1 year', **kwline)
+
+    if show_timespan:  # mark the timespan of the data
+        ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
+
 
     if kwargs.get('legend', True):
         ax.legend()
@@ -303,6 +342,9 @@ def make_plot2(res,
     
     if mark_periods is not None:
         ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'rv')
+        if mark_periods_text:
+            for p in mark_periods:
+                ax.text(1.1 * p, 1.1, f'{p:.2f} days')
 
     if res.save_plots:
         filename = 'kima-showresults-fig2.png'
@@ -316,13 +358,8 @@ def make_plot2(res,
             return fig
 
 
-def make_plot3(res,
-               mask=None,
-               include_known_object=False,
-               points=True,
-               colors_np=True,
-               gridsize=50,
-               **kwargs):
+def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
+             points=True, colors_np=True, gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
     period and eccentricity and orbital period. If `points` is True, plot
@@ -331,12 +368,12 @@ def make_plot3(res,
 
     if not res.KO or not include_known_object:
         if res.max_components == 0:
-            print('Model has no planets! make_plot3() doing nothing...')
+            print('Model has no planets! plot_PKE() doing nothing...')
             return
 
         if res.posteriors.P.size == 0:
             print('None of the posterior samples have planets!', end=' ')
-            print('make_plot3() doing nothing...')
+            print('plot_PKE() doing nothing...')
             return
 
     if mask is None:
@@ -381,6 +418,11 @@ def make_plot3(res,
         kw = dict(markersize=2, zorder=2, alpha=0.1)
         kw = {**kwargs, **kw}
 
+        # plot known_object first so it always has the same color
+        if include_known_object:
+            ax1.semilogx(T_KO, A_KO, '.', markersize=2, zorder=2)
+            ax2.semilogx(T_KO, E_KO, '.', markersize=2, zorder=2)
+
         if not colors_np:
             T = T.ravel()
             A = A.ravel()
@@ -393,9 +435,6 @@ def make_plot3(res,
 
         ax2.semilogx(T, E, '.', **kw)
 
-        if include_known_object:
-            ax1.semilogx(T_KO, A_KO, '.', markersize=2, zorder=2)
-            ax2.semilogx(T_KO, E_KO, '.', markersize=2, zorder=2)
 
     else:
         if A.size > 1 and A.ptp() > 30:
@@ -454,14 +493,14 @@ def make_plot3(res,
         return fig
 
 
-def make_plot4(res, Np=None, ranges=None, show_prior=False, fig=None,
+def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
                **hist_kwargs):
     """
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
     the samples with Np Keplerians.
     """
     if not res.has_gp:
-        print('Model does not have GP! make_plot4() doing nothing...')
+        print('Model does not have GP! plot_gp() doing nothing...')
         return
 
     # dispatch if RVFWHMmodel
@@ -528,14 +567,14 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, fig=None,
         return fig
 
 
-def make_plot4_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
-                      **hist_kwargs):
+def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
+                   **hist_kwargs):
     """
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
     the samples with Np Keplerians. 
     """
     if not res.has_gp:
-        print('Model does not have GP! make_plot4() doing nothing...')
+        print('Model does not have GP! plot_gp() doing nothing...')
         return
 
     # n = res.etas.shape[1]
@@ -625,7 +664,7 @@ def make_plot4_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     return fig
 
 
-def make_plot5(res, include_jitters=False, show=True, ranges=None):
+def plot_gp_corner(res, include_jitters=False, show=True, ranges=None):
     """ Corner plot for the GP hyperparameters """
 
     if not res.has_gp:
@@ -751,15 +790,23 @@ def make_plot5(res, include_jitters=False, show=True, ranges=None):
 
 
 def corner_all(res):
+    post = np.c_[res.posteriors.jitter]
 
-
-    post = np.c_[
-        res.posteriors.jitter,
-        res.posteriors.P, res.posteriors.K, res.posteriors.φ, res.posteriors.e, res.posteriors.ω
-    ]
     if res.multi:
         post = np.c_[post, res.posteriors.offset]
     
+    if res.KO:
+        post = np.c_[post, res.KOpars]
+    if hasattr(res, 'TR') and res.TR:
+        post = np.c_[post, res.TRpars]
+
+    post = np.c_[
+        post, res.posteriors.P, res.posteriors.K, res.posteriors.φ, res.posteriors.e, res.posteriors.ω
+    ]
+
+    if res.studentt:
+        post = np.c_[post, res.nu]
+
     vsys = res.posteriors.vsys.copy()
     mean_vsys = int(res.posteriors.vsys.mean())
     subtracted_mean = False
@@ -769,6 +816,13 @@ def corner_all(res):
     post = np.c_[post, vsys]
 
     names = copy(res.parameters)
+
+    # remove trailing zeroes if there's just one planet
+    if res.npmax == 1:
+        for _p in ('P', 'K', 'phi', 'ecc', 'w'):
+            names[names.index(f'{_p}0')] = _p
+
+
     if res.multi:
         for i, inst in enumerate(res.instruments, start=1):
             names[names.index(f'jitter{i}')] = f'jitter {inst}'
@@ -776,6 +830,10 @@ def corner_all(res):
     if subtracted_mean:
         names[names.index('vsys')] = f'vsys - {mean_vsys}'
 
+    # remove parameters with no range (fixed)
+    ind = post.ptp(axis=0) == 0
+    post = post[:, ~ind]
+    names = np.array(names)[~ind]
 
     hkw = dict(density=True)
     fig = plt.figure(figsize=(10, 10))#, constrained_layout=True)
@@ -817,91 +875,66 @@ def corner_all(res):
         ax.set_xlim(xlim)
 
 
-def corner_planet_parameters(res, fig=None, pmin=None, pmax=None):
+def corner_planet_parameters(res, fig=None, true_values=None,
+                             include_known_object=False, include_transiting_planet=False):
     """ Corner plot of the posterior samples for the planet parameters """
+    import pygtc
 
-    labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
+    if res.model == 'GAIAmodel':
+        _labels = ['$P$', r'$\phi$', 'e', 'a', r'$\omega$', r'$\cos i$', 'W']
+    else:
+        _labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
 
     samples = res.posterior_sample[:, res.indices['planets']]
-    mc = res.max_components
+    nk = res.max_components
+    labels = nk * _labels
 
-    # # wrap around phi and omega
-    # samples[:, 2] = np.pi + (samples[:, 2] - np.pi) % (2 * np.pi)
-    # samples[:, 4] = np.pi + (samples[:, 4] - np.pi) % (2 * np.pi)
-
-    # # separate bins for each parameter
-    # bins = []
-    # for planetp in data:
-    #     if hist_tools_available:
-    #         bw = hist_tools.freedman_bin_width
-    #         # bw = hist_tools.knuth_bin_width
-    #         this_planet_bins = []
-    #         for sample in planetp.T:
-    #             this_planet_bins.append(
-    #                 bw(sample, return_bins=True)[1].size)
-    #         bins.append(this_planet_bins)
-    #     else:
-    #         bins.append(None)
-
-    # set the parameter ranges to include everythinh
+    if include_known_object:
+        samples = np.c_[samples, res.KOpars]
+        labels = labels + res.nKO * _labels
+    if include_transiting_planet:
+        samples = np.c_[samples, res.TRpars]
+        __labels = copy(_labels)
+        __labels[__labels.index(r'$\phi$')] = r'$T_c$'
+        labels = labels + res.nTR * __labels
+    
+    # set the parameter ranges to include everything
     def r(x, over=0.2):
         return x.min() - over * x.ptp(), x.max() + over * x.ptp()
 
-    # ranges = []
-    # for i in range(res.n_dimensions):
-    #     i1, i2 = res.max_components * i, res.max_components * (i + 1)
-    #     ranges.append(r(samples[:, i1:i2]))
+    if true_values is not None:
+        assert len(true_values) == samples.shape[1], \
+            f'len(true_values) should be {samples.shape[1]}, got {len(true_values)}'
 
-    #
-    c = corner.corner
-    colors = plt.rcParams["axes.prop_cycle"]
+    fig = pygtc.plotGTC(
+        chains=samples,
+        # smoothingKernel=0,
+        paramNames=labels,
+        truths=true_values,
+        plotDensity=False,
+        labelRotation=(True, True),
+        filledPlots=False,
+        colorsOrder=['blues_old'],
+        figureSize='AandA_page',  # AandA_column
+    )
+    axs = fig.axes
+    for ax in axs:
+        ax.autoscale()
+        ax.yaxis.set_label_coords(-0.3, 0.5, transform=None)
+        ax.xaxis.set_label_coords(0.5, -0.4, transform=None)
 
-    # # for i, (datum, colorcycle) in enumerate(zip(data, colors)):
-    # fig = c(
-    #     samples,
-    #     fig=fig,
-    #     # labels=labels,
-    #     show_titles=len(samples) == 1,
-    #     plot_contours=False,
-    #     plot_datapoints=True,
-    #     plot_density=False,
-    #     # bins=bins[i],
-    #     # range=ranges,
-    #     # color=colorcycle['color'],
-    #     # fill_contours=True, smooth=True,
-    #     # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-    #     #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-    #     hist_kwargs={'density': True},
-    #     # range=[1., 1., (0, 2*np.pi), (0., 1.), (0, 2*np.pi)],
-    #     data_kwargs={
-    #         'alpha': 1,
-    #         'ms': 1,
-    #         # 'color': colorcycle['color']
-    #     },
-    # )
+    fs = axs[-1].xaxis.label.get_fontsize()
+    start = len(labels)
+    for i in range(-start, 0):
+        val = percentile68_ranges_latex(samples.T[i])
+        axs[i].set_title(f'{labels[i]} = {val}', fontsize=fs - 1)
 
-    for i in range(mc):
-        fig = c(
-            samples[:, i::mc],
-            labels=labels,
-            show_titles=len(samples) == 1,
-            plot_contours=False,
-            plot_datapoints=True,
-            plot_density=False,
-            # bins=bins[i],
-            # range=ranges,
-            # color=colorcycle['color'],
-            # fill_contours=True, smooth=True,
-            # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-            #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-            hist_kwargs={'density': True},
-            data_kwargs={
-                'alpha': 1,
-                'ms': 1,
-            },
-        )
+    if res.model == 'GAIAmodel':
+        fig.set_size_inches(8, 6)
 
-    plt.show()
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0.25, hspace=0.15)
+    return fig
 
 
 def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
@@ -1071,7 +1104,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
         return figures
 
 
-def hist_jitter(res, show_prior=False, show_stats=False, **kwargs):
+def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwargs):
     """
     Plot the histogram of the posterior for the additional white noise
     """
@@ -1088,15 +1121,14 @@ def hist_jitter(res, show_prior=False, show_stats=False, **kwargs):
         axs = np.array(axs).reshape(-1, res.n_instruments)
         overplot = True
     else:
-        kw = dict(figsize=(min(10, 5 + res.n_instruments * 2), 4),
-                  constrained_layout=True)
+        kw = dict(constrained_layout=True, sharey=True)
         if RVFWHM:
             fig, axs = plt.subplots(2, res.n_instruments, **kw)
         else:
             fig, axs = plt.subplots(1, res.n_instruments, **kw)
         overplot = False
 
-    if kwargs.pop('show_title', True):
+    if show_title:
         fig.suptitle('Posterior distribution for extra white noise')
 
     if isinstance(axs, np.ndarray) and res.multi:
@@ -1119,7 +1151,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, **kwargs):
                 prior = res.priors['J2prior'].rvs(res.ESS)
             else:
                 prior = res.priors['Jprior'].rvs(res.ESS)
-            ax.hist(prior, density=True, color='k', alpha=0.2, zorder=-1)
+            ax.hist(prior, density=True, color='k', alpha=0.15, zorder=-1)
 
         if show_stats:
             from matplotlib import transforms
@@ -1234,9 +1266,7 @@ def hist_trend(res, per_year=True, show_prior=False, ax=None):
         if show_prior:
             prior = res.priors[names[i] + '_prior']
             f = 365.25**(i + 1) if per_year else 1.0
-            ax[i].hist(
-                prior.rvs(res.ESS) * f, alpha=0.15, color='k', zorder=-1,
-                label='prior')
+            ax[i].hist(prior.rvs(res.ESS) * f, alpha=0.15, color='k', zorder=-1, label='prior')
 
         ax[i].set(xlabel=f'{names[i]} ({units[i]})')
 
@@ -1316,9 +1346,40 @@ def hist_nu(res, show_prior=False, **kwargs):
         except Exception as e:
             print(str(e))
 
+def plot_RVData(data, **kwargs):
+    """ Simple plot of RV data """
+    t = np.array(data.t).copy()
+    y = np.array(data.y).copy()
+    e = np.array(data.sig).copy()
+    obs = np.array(data.obsi).copy()
 
-def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
-              ignore_y2=False, time_offset=0.0, highlight=None,
+    time_offset = False
+    if t[0] > 24e5:
+        time_offset = True
+        t -= 24e5
+
+    fig, ax = plt.subplots(1, 1)
+
+    kw = dict(fmt='o', ms=3)
+    kw.update(**kwargs)
+
+    if data.multi:
+        uobs = np.unique(obs)
+        for i in uobs:
+            mask = obs == i
+            ax.errorbar(t[mask], y[mask], e[mask], **kw)    
+    else:
+        ax.errorbar(t, y, e, **kw)
+
+    if time_offset:
+        ax.set(xlabel='BJD - 2400000 [days]', ylabel='RV [m/s]')
+    else:
+        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
+    return fig, ax
+
+
+def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extract_offset=True,
+              ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
               legend=True, show_rms=False, outliers=None, **kwargs):
 
     fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
@@ -1553,11 +1614,10 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
     import pygtc
 
     labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', r'$\omega$']
-    for i in range(1):
+    for i in range(res.nKO):
         data = res.KOpars[:, i::res.nKO]
         fig = pygtc.plotGTC(
             chains=data,
-            holdRC=True,
             # smoothingKernel=0,
             paramNames=labels,
             plotDensity=False,
@@ -1611,6 +1671,10 @@ def phase_plot(res,
 
     if res.max_components == 0 and not res.KO:
         print('Model has no planets! phase_plot() doing nothing...')
+        return
+
+    if res.model == 'GAIAmodel':
+        astrometry_phase_plot(res, sample)
         return
 
     # make copies to not change attributes
@@ -1724,7 +1788,7 @@ def phase_plot(res,
     # very complicated logic just to make the figure the right size
     fs = [
         max(7, 7 + 1.5 * (nplanets - 2)),
-        max(4.8, 4.8 + 1 * (nplanets - 3))
+        max(6, 6 + 1 * (nplanets - 3))
     ]
     if res.has_gp:
         fs[1] += 3
@@ -2004,9 +2068,109 @@ def phase_plot(res,
     return residuals
 
 
+def astrometry_phase_plot(res, sample):
+    twopi = 2 * np.pi
+    pi = np.pi
+    from ..kepler import brandt_solver
+
+    def ellip_rectang(t, P, e, Tper):
+        M = twopi * (t - Tper) / P
+        E = brandt_solver(M, e)
+        X = np.cos(E) - e
+        Y = np.sqrt(1-e**2) * np.sin(E)
+        return X, Y
+
+    def Thiele_Innes(a0, w, W, cosi):
+        A = a0*(np.cos(w)*np.cos(W) - np.sin(w)*np.sin(W)*cosi)
+        B = a0*(np.cos(w)*np.sin(W) + np.sin(w)*np.cos(W)*cosi)
+        F = -a0*(np.sin(w)*np.cos(W) + np.cos(w)*np.sin(W)*cosi)
+        G = -a0*(np.sin(w)*np.sin(W) - np.cos(w)*np.cos(W)*cosi)
+        return A, B, F, G
+
+    def ra_dec_orb(P,Tper,e,cosi,W,w,a0,t):
+        A, B, F, G = Thiele_Innes(a0, w, W, cosi)
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return B*X + G*Y, A*X + F*Y
+
+    def wss(da,dd,par,mua,mud,t,psi,pf,tref):
+        T = t - tref
+        return (da + mua*T)*np.sin(psi) + (dd +mud*T)*np.cos(psi) +par*pf
+
+    def wk_orb(P,Tper,e,cosi,W,w,a0,t,psi):
+        A, B, F, G = Thiele_Innes(a0, w, W, cosi)
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return (B*X + G*Y)*np.sin(psi) + (A*X + F*Y)*np.cos(psi)
+
+    t = np.array(res.astrometric_data.t)
+    tt = np.linspace(t.min(), t.max(), 1000)
+    wobs = np.array(res.astrometric_data.w)
+    psi = np.array(res.astrometric_data.psi)
+    pf = np.array(res.astrometric_data.pf)
+
+    da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
+    P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
+    Tper = 57388.5 - P * phi / 2 / np.pi
+
+    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, 57388.5)
+    wmodel += wk_orb(P, Tper, e, cosi, W, w, a0, t, psi)
+    wws = wobs - wmodel
+    ra, dec = ra_dec_orb(P, Tper, e, cosi, W, w, a0, t)
+    ra2, dec2 = ra_dec_orb(P, Tper, e, cosi, W, w, a0, tt)
+    alphas, decs = wws * np.sin(psi), wws * np.cos(psi)
+
+    uniq_t = np.unique(t.astype(int))
+    day_mask = np.digitize(t, uniq_t)
+
+    fig, ax = plt.subplots()
+    ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
+    ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
+    ax.scatter(ra + alphas, dec + decs, marker='.', c=t, cmap='plasma', alpha=0.5)
+    for day in day_mask:
+        mask = t.astype(int) == uniq_t[day-1]
+        print(day, t.astype(int))
+        ax.plot((ra + alphas)[mask], (dec + decs)[mask], 'k-')
+    ax.set(xlabel='RA', ylabel='Dec')
+
+
+def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
+    if res.model != 'GAIAmodel':
+        print('Model is not GAIAmodel! '
+              'corner_astrometric_solution() doing nothing...')
+        return
+
+    import pygtc
+
+    labels = ['$d_a$', '$d_d$', r'$\mu_a$', r'$\mu_d$', r'$\pi$']
+    data = res.posterior_sample[:, res.indices['astrometric_solution']]
+
+    fig = pygtc.plotGTC(
+        chains=data,
+        # smoothingKernel=0,
+        paramNames=labels,
+        plotDensity=False,
+        labelRotation=(True, True),
+        filledPlots=False,
+        colorsOrder=['blues_old'],
+        figureSize='AandA_page',  # AandA_column
+    )
+    axs = fig.axes
+    for ax in axs:
+        ax.yaxis.set_label_coords(-0.3, 0.5, transform=None)
+        ax.xaxis.set_label_coords(0.5, -0.4, transform=None)
+
+    fs = axs[-1].xaxis.label.get_fontsize()
+    start = len(labels)
+    for i in range(-start, 0):
+        val = percentile68_ranges_latex(data.T[i])
+        axs[i].set_title(f'{labels[i]} = {val}', fontsize=fs - 1)
+
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0.25, hspace=0.15)
+    return fig
+
 def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
-                        show_vsys=False, isolate_known_object=True, 
-                        full_plot=False, show_outliers=False, **kwargs):
+                        show_vsys=False, isolate_known_object=True, isolate_transiting_planet=True,
+                        include_jitters=True, full_plot=False, show_outliers=False, **kwargs):
 
     if samples is None:
         samples = res.posterior_sample.copy()
@@ -2064,6 +2228,9 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         else:
             fig, ax = plt.subplots(1, 1)
 
+    cc = kwargs.pop('curve_color', 'k')
+    gpc = kwargs.pop('gp_color', 'plum')
+
     _, y_offset = plot_data(res, ax, **kwargs)
 
     if show_outliers:
@@ -2083,9 +2250,6 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
     # plot the Keplerian curves
     alpha = 0.1 if ncurves > 1 else 0.8
 
-    # cc = kwargs.get('curve_color', 'k')
-    gpc = kwargs.get('gp_color', 'plum')
-
     for icurve, i in enumerate(ii):
         sample = samples[i]
         stoc_model = np.atleast_2d(res.stochastic_model(sample, tt))
@@ -2098,15 +2262,15 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
         ax.set_prop_cycle(None)
         if model.shape[0] == 1:
-            color = 'k'
+            color = cc
         else:
             color = None
-        ax.plot(tt, (stoc_model + model).T - y_offset, color=color,
+
+        ax.plot(tt, (stoc_model + model).T - y_offset, color=color, 
                 alpha=alpha, zorder=-1)
 
         if res.has_gp:
-            ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc,
-                    alpha=alpha)
+            ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc, alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
@@ -2122,9 +2286,12 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
         if res.KO and isolate_known_object:
             for k in range(1, res.nKO + 1):
-                kepKO = res.eval_model(res.posterior_sample[i], tt,
-                                       single_planet=-k)
-                ax.plot(tt, kepKO - y_offset, 'g-', alpha=alpha)
+                kepKO = res.eval_model(res.posterior_sample[i], tt, single_planet=-k)
+                ax.plot(tt, kepKO - y_offset, 'k-', alpha=alpha)
+        if hasattr(res, 'TR') and res.TR and isolate_transiting_planet:
+            for k in range(1, res.nTR + 1):
+                kepTR = res.eval_model(res.posterior_sample[i], tt, single_planet=-k)
+                ax.plot(tt, kepTR - y_offset, 'k-', alpha=alpha)
 
     if full_plot:
         r = res.residuals(sample, full=True)
@@ -2146,9 +2313,9 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         return fig
 
 
-def plot_random_samples_rvfwhm(res, ncurves=50, samples=None, over=0.1, ntt=10000, 
-                               show_vsys=False, just_rvs=False, full_plot=False, 
-                               highest_likelihood=False, **kwargs):
+def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt=10000, 
+                                    show_vsys=False, include_jitters=True, just_rvs=False, 
+                                    full_plot=False, highest_likelihood=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
     A total of `ncurves` random samples are chosen, and the Keplerian 
@@ -2170,8 +2337,7 @@ def plot_random_samples_rvfwhm(res, ncurves=50, samples=None, over=0.1, ntt=1000
         t -= 24e5
         M0_epoch -= 24e5
 
-    tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(),
-                     ntt + int(100 * over))
+    tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(), ntt + int(100 * over))
 
     if res.has_gp:
         # let's be more reasonable for the number of GP prediction points
