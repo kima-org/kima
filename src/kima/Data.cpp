@@ -283,8 +283,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 
     // How many points did we read?
     if (VERBOSE)
-        printf("# Loaded %zu data points from file %s\n", t.size(),
-            filename.c_str());
+        printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
     // What are the units?
     if (units == "kms" && VERBOSE)
@@ -434,6 +433,11 @@ void RVData::load_multi(const string filename, const string units, int skip, int
 void RVData::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
                         const string delimiter, const vector<string>& indicators)
 {
+    if (filenames.empty()) {
+        std::string msg = "kima: RVData: no filenames provided";
+        throw std::invalid_argument(msg);
+    }
+
     t.clear();
     y.clear();
     sig.clear();
@@ -523,22 +527,26 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     _multi = true;
 
     // How many points did we read?
-    printf("# Loaded %zu data points from files\n", t.size());
-    cout << "#   ";
-    for (auto f : filenames) {
-        cout << f.c_str();
-        (f != filenames.back()) ? cout << " | " : cout << " ";
+    if (VERBOSE) {
+        printf("# Loaded %zu data points from files\n", t.size());
+        cout << "#   ";
+        for (auto f : filenames) {
+            cout << f.c_str();
+            (f != filenames.back()) ? cout << " | " : cout << " ";
+        }
+        cout << endl;
     }
-    cout << endl;
 
     // Of how many instruments?
     set<int> s(obsi.begin(), obsi.end());
     // set<int>::iterator iter;
     // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
-    printf("# RVs come from %zu different instruments.\n", s.size());
+    if (VERBOSE)
+        printf("# RVs come from %zu different instruments.\n", s.size());
+
     number_instruments = s.size();
 
-    if (units == "kms")
+    if (VERBOSE && units == "kms")
         cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
     if (number_instruments > 1) {
