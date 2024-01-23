@@ -500,6 +500,11 @@ class KimaResults:
         res.nKO = model.n_known_object
         res._read_KO()
 
+        # find transiting planet in the compiled model
+        res.TR = model.transiting_planet
+        res.nTR = model.n_transiting_planet
+        res._read_TR()
+
         if res.model == 'OutlierRVmodel':
             res._read_outlier()
 
@@ -1787,7 +1792,7 @@ class KimaResults:
                     f = np.pi/2 - w # true anomaly at conjunction
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
-                    v += keplerian(t, P, K, ecc, w, -M, Tc)
+                    v += keplerian(t, P, K, ecc, w, M, Tc)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -2423,28 +2428,26 @@ class KimaResults:
     phase_plot = display.phase_plot
 
     #
-    make_plot1 = display.make_plot1
-    plot1 = display.make_plot1
-    plot_posterior_np = display.make_plot1
+    plot1 = display.plot_posterior_np
+    plot_posterior_np = display.plot_posterior_np
 
     #
-    make_plot2 = display.make_plot2
-    plot2 = display.make_plot2
-    plot_posterior_periods = display.make_plot2
+    plot2 = display.plot_posterior_period
+    plot_posterior_periods = display.plot_posterior_period
 
     #
-    make_plot3 = display.make_plot3
-    plot3 = display.make_plot3
-    plot_posterior_PKE = display.make_plot3
+    plot3 = display.plot_PKE
+    plot_posterior_PKE = display.plot_PKE
 
     #
-    make_plot4 = display.make_plot4
-    plot4 = display.make_plot4
-    plot_posterior_hyperpars = display.make_plot4
+    plot4 = display.plot_gp
+    plot_gp = display.plot_gp
+    plot_posterior_hyperpars = display.plot_gp
 
     #
-    make_plot5 = display.make_plot5
-    plot5 = display.make_plot5
+    plot5 = display.plot_gp_corner
+    plot_gp_corner = display.plot_gp_corner
+    
 
     def get_sorted_planet_samples(self, full=True):
         # all posterior samples for the planet parameters
