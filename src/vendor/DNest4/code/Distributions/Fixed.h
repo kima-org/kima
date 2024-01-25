@@ -12,10 +12,9 @@ namespace DNest4
 */
 class Fixed:public ContinuousDistribution
 {
-    private:
+    public:
         double val;
 
-    public:
         Fixed(double val=0.0);
 
         double cdf(double x) const;

@@ -12,10 +12,9 @@ namespace DNest4
 */
 class Uniform:public ContinuousDistribution
 {
-    private:
+    public:
         double lower, upper;
 
-    public:
         Uniform(double lower=0.0, double upper=1.0);
 
         double cdf(double x) const override;
@@ -38,6 +37,7 @@ class UniformAngle:public ContinuousDistribution
 {
     private:
         double TWOPI = 2 * M_PI;
+
     public:
         UniformAngle();
 

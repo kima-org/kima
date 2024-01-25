@@ -12,10 +12,9 @@ namespace DNest4
 */
 class Rayleigh:public ContinuousDistribution
 {
-    private:
+    public:
         double scale;
 
-    public:
         Rayleigh(double scale=1.0);
 
         double cdf(double x) const override;
@@ -32,12 +31,13 @@ class Rayleigh:public ContinuousDistribution
 class TruncatedRayleigh:public ContinuousDistribution
 {
     private:
-        double scale;  // scale parameter
-        double lower, upper;  // lower and upper truncation boundaries
         double lcdf, ucdf;
         double tp, logtp;
 
     public:
+        double scale;  // scale parameter
+        double lower, upper;  // lower and upper truncation boundaries
+
         TruncatedRayleigh(double scale=1.0, double lower=0.0, double upper=1.0);
 
         double cdf(double x) const override;

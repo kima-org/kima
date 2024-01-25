@@ -13,11 +13,10 @@ namespace DNest4
 */
 class Cauchy:public ContinuousDistribution
 {
-    private:
+    public:
         // Location and scale parameter
         double center, width;
 
-    public:
         Cauchy(double center=0.0, double width=1.0);
 
         double cdf(double x) const override;
@@ -34,12 +33,13 @@ class Cauchy:public ContinuousDistribution
 class TruncatedCauchy:public ContinuousDistribution
 {
     private:
-        double center, width; // Location and scale parameter
-        double lower, upper; // truncation bounds
         Cauchy unC; // the original, untruncated, Cauchy distribution
         double c;
 
     public:
+        double center, width; // Location and scale parameter
+        double lower, upper; // truncation bounds
+
         TruncatedCauchy(double center=0.0, double width=1.0,
                         double lower=-std::numeric_limits<double>::infinity(),
                         double upper=std::numeric_limits<double>::infinity());
