@@ -13,11 +13,12 @@ namespace DNest4
 class LogUniform:public ContinuousDistribution
 {
     private:
-        // Support is defined between lower and upper
-        double lower, upper;
         double d;
 
     public:
+        // Support is defined between lower and upper
+        double lower, upper;
+
         LogUniform(double _lower=1.0, double _upper=100.0);
 
         double cdf(double x) const override;
@@ -35,12 +36,13 @@ class LogUniform:public ContinuousDistribution
 class ModifiedLogUniform:public ContinuousDistribution
 {
     private:
-        // Support is defined between 0 and upper
-        // pdf is uniform for x<<knee and reciprocal for x>>knee
-        double knee, upper;
         double d;
 
     public:
+        // Support is defined between 0 and upper
+        // pdf is uniform for x<<knee and reciprocal for x>>knee
+        double knee, upper;
+
         ModifiedLogUniform(double _knee=1.0, double _upper=100.0);
 
         double cdf(double x) const override;
