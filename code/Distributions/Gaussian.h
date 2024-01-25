@@ -11,11 +11,12 @@ namespace DNest4
 class Gaussian:public ContinuousDistribution
 {
     private:
-        // Location and scale parameter
-        double center, width;
         double _norm_pdf_logC = log(sqrt(2*M_PI));
 
     public:
+        // Location and scale parameter
+        double center, width;
+
         Gaussian(double center=0.0, double width=1.0);
 
         double cdf(double x) const override;

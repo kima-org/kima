@@ -12,10 +12,9 @@ namespace DNest4
 */
 class Triangular:public ContinuousDistribution
 {
-    private:
+    public:
         double lower, centre, upper;
 
-    public:
         Triangular(double lower=0.0, double centre=0.0, double upper=1.0);
 
         double cdf(double x) const override;

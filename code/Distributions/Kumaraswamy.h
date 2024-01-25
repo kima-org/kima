@@ -13,10 +13,9 @@ namespace DNest4
 */
 class Kumaraswamy:public ContinuousDistribution
 {
-    private:
+    public:
         double a, b;
 
-    public:
         Kumaraswamy(double a=1.0, double b=1.0);
 
         double cdf(double x) const override;

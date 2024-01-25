@@ -13,10 +13,9 @@ namespace DNest4
 */
 class Exponential:public ContinuousDistribution
 {
-    private:
+    public:
         double scale; // scale parameter
 
-    public:
         Exponential(double scale=1.0);
         void setpars(double scale); // setter
 
@@ -37,12 +36,13 @@ class Exponential:public ContinuousDistribution
 class TruncatedExponential:public ContinuousDistribution
 {
     private:
-        double scale; // scale parameter
-        double lower, upper; // truncation bounds
         Exponential unE; // the original, untruncated, Exponential distribution
         double c;
 
     public:
+        double scale; // scale parameter
+        double lower, upper; // truncation bounds
+
         TruncatedExponential(double scale=1.0, double lower=0., double upper=1./0.);
         void setpars(double scale); // setter
 

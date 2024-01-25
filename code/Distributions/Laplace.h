@@ -14,10 +14,11 @@ namespace DNest4
 class Laplace:public ContinuousDistribution
 {
     private:
+
+    public:
         // Location and scale parameter
         double center, width;
 
-    public:
         Laplace(double center=0.0, double width=1.0);
         // setter
         void setpars(double center, double width);
