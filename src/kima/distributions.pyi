@@ -16,6 +16,13 @@ class Cauchy:
         """
         ...
     
+    @property
+    def loc(self) -> float:
+        ...
+    @loc.setter
+    def loc(self, arg: float, /) -> None:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
@@ -26,6 +33,13 @@ class Cauchy:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    @scale.setter
+    def scale(self, arg: float, /) -> None:
         ...
     
 class Distribution:
@@ -91,6 +105,13 @@ class Fixed:
         """
         ...
     
+    @property
+    def val(self) -> float:
+        ...
+    @val.setter
+    def val(self, arg: float, /) -> None:
+        ...
+    
 class Gaussian:
     """
     Gaussian distribution
@@ -105,6 +126,13 @@ class Gaussian:
         """
         ...
     
+    @property
+    def loc(self) -> float:
+        ...
+    @loc.setter
+    def loc(self, arg: float, /) -> None:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
@@ -117,12 +145,33 @@ class Gaussian:
         """
         ...
     
+    @property
+    def scale(self) -> float:
+        ...
+    @scale.setter
+    def scale(self, arg: float, /) -> None:
+        ...
+    
 class Kumaraswamy:
     """
     Kumaraswamy distribution (similar to a Beta distribution)
     """
 
     def __init__(self, a: float, b: float) -> None:
+        ...
+    
+    @property
+    def a(self) -> float:
+        ...
+    @a.setter
+    def a(self, arg: float, /) -> None:
+        ...
+    
+    @property
+    def b(self) -> float:
+        ...
+    @b.setter
+    def b(self, arg: float, /) -> None:
         ...
     
     def cdf(self, x: float) -> float:
@@ -157,6 +206,13 @@ class Laplace:
         """
         ...
     
+    @property
+    def loc(self) -> float:
+        ...
+    @loc.setter
+    def loc(self, arg: float, /) -> None:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
@@ -167,6 +223,13 @@ class Laplace:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    @scale.setter
+    def scale(self, arg: float, /) -> None:
         ...
     
 class LogUniform:
@@ -189,10 +252,18 @@ class LogUniform:
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def upper(self) -> float:
         ...
     
 class ModifiedLogUniform:
@@ -209,6 +280,10 @@ class ModifiedLogUniform:
         """
         ...
     
+    @property
+    def knee(self) -> float:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
@@ -219,6 +294,10 @@ class ModifiedLogUniform:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def upper(self) -> float:
         ...
     
 class RNG:
@@ -261,6 +340,13 @@ class Rayleigh:
         """
         ...
     
+    @property
+    def scale(self) -> float:
+        ...
+    @scale.setter
+    def scale(self, arg: float, /) -> None:
+        ...
+    
 class Triangular:
     """
     Triangular distribution
@@ -275,16 +361,37 @@ class Triangular:
         """
         ...
     
+    @property
+    def center(self) -> float:
+        ...
+    @center.setter
+    def center(self, arg: float, /) -> None:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    @lower.setter
+    def lower(self, arg: float, /) -> None:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def upper(self) -> float:
+        ...
+    @upper.setter
+    def upper(self, arg: float, /) -> None:
         ...
     
 class TruncatedCauchy:
@@ -301,16 +408,32 @@ class TruncatedCauchy:
         """
         ...
     
+    @property
+    def loc(self) -> float:
+        ...
+    
     def logpdf(self, x: float) -> float:
         """
         Log of the probability density function evaluated at `x`
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    
+    @property
+    def upper(self) -> float:
         ...
     
 class TruncatedExponential:
@@ -333,10 +456,22 @@ class TruncatedExponential:
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    
+    @property
+    def upper(self) -> float:
         ...
     
 class TruncatedRayleigh:
@@ -359,10 +494,22 @@ class TruncatedRayleigh:
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    
+    @property
+    def upper(self) -> float:
         ...
     
 class Uniform:
@@ -385,10 +532,24 @@ class Uniform:
         """
         ...
     
+    @property
+    def lower(self) -> float:
+        ...
+    @lower.setter
+    def lower(self, arg: float, /) -> None:
+        ...
+    
     def ppf(self, q: float) -> float:
         """
         Percent point function (inverse of cdf) evaluated at `q`
         """
+        ...
+    
+    @property
+    def upper(self) -> float:
+        ...
+    @upper.setter
+    def upper(self, arg: float, /) -> None:
         ...
     
 class UniformAngle:
