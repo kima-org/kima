@@ -145,7 +145,7 @@ void RVmodel::from_prior(RNG& rng)
     }
     else
     {
-        extra_sigma = Jprior->generate(rng);
+        jitter = Jprior->generate(rng);
     }
 
     if(trend)
@@ -318,7 +318,7 @@ void RVmodel::remove_transiting_planet()
         double f = M_PI/2 - TR_w[j];  // true anomaly at conjunction
         double E = 2.0 * atan(tan(f/2) * sqrt((1-ecc)/(1+ecc)));  // eccentric anomaly at conjunction
         double M = E - ecc * sin(E);  // mean anomaly at conjunction
-        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], -M, TR_Tc[j]);
+        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], M, TR_Tc[j]);
         for (size_t i = 0; i < data.N(); i++)
         {
             mu[i] -= v[i];
@@ -333,7 +333,7 @@ void RVmodel::add_transiting_planet()
         double f = M_PI/2 - TR_w[j];  // true anomaly at conjunction
         double E = 2.0 * atan(tan(f/2) * sqrt((1-ecc)/(1+ecc)));  // eccentric anomaly at conjunction
         double M = E - ecc * sin(E);  // mean anomaly at conjunction
-        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], -M, TR_Tc[j]);
+        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], M, TR_Tc[j]);
         for (size_t i = 0; i < data.N(); i++)
         {
             mu[i] += v[i];
@@ -399,12 +399,12 @@ double RVmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
-            for(int i=0; i<jitters.size(); i++)
+            for (int i = 0; i < jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
         }
         else
         {
-            Jprior->perturb(extra_sigma, rng);
+            Jprior->perturb(jitter, rng);
         }
 
         if (studentt)
@@ -561,7 +561,7 @@ double RVmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jit*jit;
             }
             else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                var = sig[i]*sig[i] + jitter*jitter;
 
             logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                     - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -582,7 +582,7 @@ double RVmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jit*jit;
             }
             else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                var = sig[i]*sig[i] + jitter*jitter;
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -610,11 +610,11 @@ void RVmodel::print(std::ostream& out) const
 
     if (data._multi)
     {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
+        for (int j = 0; j < jitters.size(); j++)
+            out << jitters[j] << '\t';
     }
     else
-        out<<extra_sigma<<'\t';
+        out << jitter << '\t';
 
     if(trend)
     {
@@ -675,7 +675,7 @@ string RVmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma" + sep;
+        desc += "jitter" + sep;
 
     if(trend)
     {

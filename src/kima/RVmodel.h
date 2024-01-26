@@ -64,7 +64,7 @@ class KIMA_API RVmodel
             //   std::vector<double>(data.number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
-        double extra_sigma;
+        double jitter;
         double nu;
 
         // Parameters for the known object, if set
