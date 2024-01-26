@@ -15,9 +15,11 @@ void GAIAmodel::initialize_from_data(GAIAData& data)
 {   
     // resize GAIA model vector
     mu.resize(data.N());
-
+    
+    
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
+    
     conditional->set_default_priors(data);
 }
 
@@ -39,8 +41,14 @@ void GAIAmodel::set_known_object(size_t n)
 
 void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
 {   
-     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(0.1,100.);
+    if (thiele_innes)
+    {
+        auto conditional = planets.get_conditional_prior();
+        conditional->use_thiele_innes();
+    }
+     
+    if (!Jprior)
+        Jprior = make_prior<ModifiedLogUniform>(0.01,10.);
     
     if (!da_prior)
         da_prior = make_prior<Gaussian>(0.0,pow(10,0));
@@ -184,8 +192,8 @@ void GAIAmodel::calculate_mu()
             Omega = components[j][6];
             
             A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
-            B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
-            F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
+            B = a0*(cos(omega) * sin(Omega) + sin(omega) * cos(Omega) * cosi);
+            F = -a0*(sin(omega) * cos(Omega) + cos(omega) * sin(Omega) * cosi);
             G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
         }
         
@@ -292,7 +300,7 @@ double GAIAmodel::perturb(RNG& rng)
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.75) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.4) // perturb jitter(s) + known_object
     {
         
         Jprior->perturb(jitter, rng);
@@ -582,6 +590,7 @@ void GAIAmodel::save_setup() {
             fout << "Bprior: " << *conditional->Bprior << endl;
             fout << "Fprior: " << *conditional->Fprior << endl;
             fout << "Gprior: " << *conditional->Gprior << endl;
+//             fout << "Gprior: " << *conditional->Gprior << endl;
         }
         else
         {
@@ -647,6 +656,8 @@ NB_MODULE(GAIAmodel, m) {
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        .def_rw("thiele_innes", &GAIAmodel_publicist::thiele_innes, 
+                "use the thiele-innes coefficients rather than geometric")
 
 //         //KO mode
 //         .def_rw("known_object", &GAIAmodel_publicist::known_object,
@@ -721,6 +732,7 @@ NB_MODULE(GAIAmodel, m) {
                      [](GAIAmodel &m) { return m.KO_Omegaprior; },
                      [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_Omegaprior = vd; },
                      "Prior for KO longitude(s) of ascending node")
+
 
         // conditional object
         .def_prop_rw("conditional",

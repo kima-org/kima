@@ -118,13 +118,16 @@ class TRANSITConditionalPrior:public DNest4::ConditionalPrior
 class GAIAConditionalPrior:public DNest4::ConditionalPrior
 {
  	private:
-        /// Use thiele_innes parameters
-     	bool thiele_innes;
+        
+        
 
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
  	public:
 		GAIAConditionalPrior();
+		
+		/// Use thiele_innes parameters
+     	bool thiele_innes;
 
 		void set_default_priors(const GAIAData &data);
 		
@@ -154,6 +157,11 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
 		distribution Fprior;
 		/// 
 		distribution Gprior;
+		
+		distribution Xprior;
+		
+		// turn on hyperpriors
+		void use_thiele_innes();
 
 
 		/// Generate a point from the prior.
@@ -198,6 +206,7 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
 		distribution cosiprior;
 		/// Prior for the longitude of ascending node.
 		distribution Omegaprior;
+		
 
 
 		/// Generate a point from the prior.

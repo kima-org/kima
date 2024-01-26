@@ -289,8 +289,8 @@ void RVGAIAmodel::calculate_mu()
         a0 = MassConv::SemiPhotPl(P,star_mass,M,plx);
         
         A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
-        B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
-        F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
+        B = a0*(cos(omega) * sin(Omega) + sin(omega) * cos(Omega) * cosi);
+        F = -a0*(sin(omega) * cos(Omega) + cos(omega) * sin(Omega) * cosi);
         G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
         
         auto wk = brandt::keplerian_gaia(GAIAdata.t,GAIAdata.psi, A, B, F, G, ecc, P, phi, GAIAdata.M0_epoch);
@@ -417,7 +417,7 @@ double RVGAIAmodel::perturb(RNG& rng)
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.25) // perturb jitter(s) + known_object
     {
         
         J_GAIA_prior->perturb(jitter_GAIA, rng);
