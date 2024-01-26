@@ -28,6 +28,10 @@ def test_RVData():
     assert_equal(len(D.t), 40)
     assert_equal(np.array(D.obsi), 1)
 
+    assert_allclose(D.M0_epoch, 0.16166)
+    D.M0_epoch = 0.0
+    assert_allclose(D.M0_epoch, 0.0)
+
     # two instruments
     D = kima.RVData(['tests/simulated1.txt', 'tests/simulated2.txt'])
     assert_equal(D.N, 80)
@@ -90,3 +94,5 @@ def test_distributions():
     u = Uniform(0, 2)
     assert str(u) == 'Uniform(0; 2)'
     assert str(Gaussian(0, 1)) == 'Gaussian(0; 1)'
+    from kima.distributions import UniformAngle
+    assert_equal(UniformAngle().logpdf(1.0), Uniform(0.0, 2*np.pi).logpdf(1.0))

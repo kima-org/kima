@@ -29,9 +29,8 @@ def _51Peg(run=False, **kwargs):
     kwargs.setdefault('save_interval', 500)
 
     if run:
-        # with chdir(here):
-        print('model is:',model)
-        kima.run(model, **kwargs)
+        with chdir(here):
+            kima.run(model, **kwargs)
 
     return model
 

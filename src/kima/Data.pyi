@@ -194,6 +194,12 @@ class RVData:
         """
         ...
     
+    def plot(*args, **kwargs):
+        """
+        Simple plot of RV data
+        """
+        ...
+    
     @property
     def sig(self) -> list[float]:
         """

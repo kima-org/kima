@@ -970,6 +970,10 @@ class RVFWHMmodel_publicist : public RVFWHMmodel
         using RVFWHMmodel::degree;
         using RVFWHMmodel::star_mass;
         using RVFWHMmodel::enforce_stability;
+
+        using RVFWHMmodel::share_eta2;
+        using RVFWHMmodel::share_eta3;
+        using RVFWHMmodel::share_eta4;
 };
 
 NB_MODULE(RVFWHMmodel, m) {
@@ -993,6 +997,13 @@ NB_MODULE(RVFWHMmodel, m) {
                 "stellar mass [Msun]")
         .def_rw("enforce_stability", &RVFWHMmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
+
+        .def_rw("share_eta2", &RVFWHMmodel_publicist::share_eta2,
+                "whether the η2 parameter is shared between RVs and FWHM")
+        .def_rw("share_eta3", &RVFWHMmodel_publicist::share_eta3,
+                "whether the η3 parameter is shared between RVs and FWHM")
+        .def_rw("share_eta4", &RVFWHMmodel_publicist::share_eta4,
+                "whether the η4 parameter is shared between RVs and FWHM")
 
         // priors
         .def_prop_rw("Cprior",

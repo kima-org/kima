@@ -40,5 +40,38 @@ double Uniform::log_pdf(double x) const
     return -log(upper-lower);
 }
 
+
+////////
+
+
+UniformAngle::UniformAngle() {}
+
+double UniformAngle::cdf(double x) const
+{
+    if (x < 0.0)
+        return 0.;
+    else if (x >= TWOPI)
+        return 1.;
+    else
+        return x/TWOPI;
+}
+
+double UniformAngle::cdf_inverse(double x) const
+{
+    if( (x < 0.0) || (x > 1.0) )
+        throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    return x * TWOPI;
+}
+
+double UniformAngle::log_pdf(double x) const
+{
+    if ( (x < 0.0) || (x > TWOPI) )
+        return -std::numeric_limits<double>::infinity();
+    return -log(TWOPI);
+}
+
+
+
+
 } // namespace DNest4
 

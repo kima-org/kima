@@ -283,8 +283,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 
     // How many points did we read?
     if (VERBOSE)
-        printf("# Loaded %zu data points from file %s\n", t.size(),
-            filename.c_str());
+        printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
     // What are the units?
     if (units == "kms" && VERBOSE)
@@ -434,6 +433,11 @@ void RVData::load_multi(const string filename, const string units, int skip, int
 void RVData::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
                         const string delimiter, const vector<string>& indicators)
 {
+    if (filenames.empty()) {
+        std::string msg = "kima: RVData: no filenames provided";
+        throw std::invalid_argument(msg);
+    }
+
     t.clear();
     y.clear();
     sig.clear();
@@ -523,22 +527,26 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     _multi = true;
 
     // How many points did we read?
-    printf("# Loaded %zu data points from files\n", t.size());
-    cout << "#   ";
-    for (auto f : filenames) {
-        cout << f.c_str();
-        (f != filenames.back()) ? cout << " | " : cout << " ";
+    if (VERBOSE) {
+        printf("# Loaded %zu data points from files\n", t.size());
+        cout << "#   ";
+        for (auto f : filenames) {
+            cout << f.c_str();
+            (f != filenames.back()) ? cout << " | " : cout << " ";
+        }
+        cout << endl;
     }
-    cout << endl;
 
     // Of how many instruments?
     set<int> s(obsi.begin(), obsi.end());
     // set<int>::iterator iter;
     // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
-    printf("# RVs come from %zu different instruments.\n", s.size());
+    if (VERBOSE)
+        printf("# RVs come from %zu different instruments.\n", s.size());
+
     number_instruments = s.size();
 
-    if (units == "kms")
+    if (VERBOSE && units == "kms")
         cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
     if (number_instruments > 1) {
@@ -919,20 +927,20 @@ NB_MODULE(Data, m) {
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
         .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&>(),
-                      "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
         .def(nb::init<const string&, const string&, int, int, const string&, const vector<string>&>(),
-                      "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
-                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
-                      "Load RV data from arrays")
+             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
+             "Load RV data from arrays")
         //
         .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const string&,  const vector<string>&>(),
-                      "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
-                      "Load RV data from arrays, for multiple instruments")
+             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
+             "Load RV data from arrays, for multiple instruments")
 
 
         // properties
@@ -948,7 +956,7 @@ NB_MODULE(Data, m) {
         .def_ro("skip", &RVData::_skip, "Lines skipped when reading data")
         .def_rw("instrument", &RVData::_instrument, "instrument name")
         //
-        .def_ro("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
+        .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
 
         // to un/pickle RVData
 

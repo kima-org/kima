@@ -125,5 +125,13 @@ NB_MODULE(distributions, m)
         .def("cdf", &DNest4::Uniform::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
         .def("ppf", &DNest4::Uniform::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
         .def("logpdf", &DNest4::Uniform::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
+    
+    nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle", "Uniform distribuion in [0, 2*PI]")
+        .def(nb::init<>())
+        .def("__repr__", [](const DNest4::UniformAngle &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::UniformAngle::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::UniformAngle::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::UniformAngle::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
+
     //
 }
