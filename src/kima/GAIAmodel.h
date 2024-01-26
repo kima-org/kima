@@ -50,6 +50,7 @@ class KIMA_API GAIAmodel
 
         DNest4::RJObject<GAIAConditionalPrior> planets =
             DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, GAIAConditionalPrior());
+            
 
         double da; 
         double dd;

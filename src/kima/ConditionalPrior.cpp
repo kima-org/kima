@@ -264,14 +264,30 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
         if (!cosiprior)
             cosiprior = make_shared<Uniform>(-1, 1);
         if (!Omegaprior)
-            Omegaprior = make_shared<Uniform>(0, M_PI);
+            Omegaprior = make_shared<Uniform>(0, 2*M_PI);
     }
+    
+    
 }
 
 
 void GAIAConditionalPrior::set_default_priors(const GAIAData &data)
 {
     Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
+}
+
+void GAIAConditionalPrior::use_thiele_innes()
+{
+    thiele_innes = true;
+    if (!Aprior)
+        Aprior = make_shared<Gaussian>(0, 0.5);
+    if (!Bprior)
+        Bprior = make_shared<Gaussian>(0, 0.5);
+    if (!Fprior)
+        Fprior = make_shared<Gaussian>(0, 0.5);
+    if (!Gprior)
+        Gprior = make_shared<Gaussian>(0, 0.5);
+    Xprior = Aprior;
 }
 
 void GAIAConditionalPrior::from_prior(RNG& rng)//needed?
@@ -521,6 +537,9 @@ void bind_RVConditionalPrior(nb::module_ &m) {
 void bind_GAIAConditionalPrior(nb::module_ &m) {            
     nb::class_<GAIAConditionalPrior>(m, "GAIAConditionalPrior")
         .def(nb::init<>())
+//         .def("use_thiele_innes", []() { return GAIAConditionalPrior::use_thiele_innes(); });
+        .def_rw("thiele_innes", &GAIAConditionalPrior::thiele_innes,
+                "use a Student-t distribution for the likelihood (instead of Gaussian)")
         .def_prop_rw("Pprior",
             [](GAIAConditionalPrior &c) { return c.Pprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Pprior = d; },

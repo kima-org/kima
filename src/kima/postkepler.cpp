@@ -223,12 +223,12 @@ namespace MassConv
     }
     double SemiPhotPl(double P, double M0, double M1, double plx)
     {
-        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1)/Msun,1.0/3) * (M1/(M0+M1));
+        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1),1.0/3) * (M1/(M0+M1));
         return a0;
     }
     double SemiPhotSt(double P, double M0, double M1, double plx, double eps)
     {
-        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1)/Msun,1.0/3) * (M1/(M0+M1) - eps/(1+eps));
+        double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1),1.0/3) * (M1/(M0+M1) - eps/(1+eps));
         return a0;
     }
 }
