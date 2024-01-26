@@ -805,7 +805,8 @@ void RVmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
     fout << "Jprior: " << *Jprior << endl;
-    fout << "stellar_jitter_prior: " << *stellar_jitter_prior << endl;
+    if (data._multi)
+        fout << "stellar_jitter_prior: " << *stellar_jitter_prior << endl;
 
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
