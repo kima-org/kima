@@ -64,7 +64,7 @@ class KIMA_API RVmodel
             //   std::vector<double>(data.number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
-        double jitter;
+        double jitter, stellar_jitter;
         double nu;
 
         // Parameters for the known object, if set
@@ -110,6 +110,8 @@ class KIMA_API RVmodel
         distribution Cprior;
         /// Prior for the extra white noise (jitter).
         distribution Jprior;
+        /// Prior for the stellar jitter (common to all instruments)
+        distribution stellar_jitter_prior;
         /// Prior for the slope
         distribution slope_prior;
         /// Prior for the quadratic coefficient of the trend

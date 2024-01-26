@@ -127,6 +127,7 @@ class posterior_holder:
         ω (ndarray): Argument(s) of pericenter
         φ (ndarray): Mean anomaly(ies) at the epoch
         jitter (ndarray): Per-instrument jitter(s)
+        stellar_jitter (ndarray): Global jitter
         offset (ndarray): Between-instrument offset(s)
         vsys (ndarray): Systemic velocity
 
@@ -469,9 +470,14 @@ class KimaResults:
         res._current_column = 0
 
         # read jitters
-        res.n_jitters = res.n_instruments
+        if res.multi:
+            res.n_jitters = res.n_instruments + 1
+        else:
+            res.n_jitters = res.n_instruments
         if res.model == 'RVFWHMmodel':
             res.n_jitters *= 2
+        if res.model == 'RVFWHMRHKmodel':
+            res.n_jitters *= 3
         res._read_jitters()
 
         # read limb-darkening coefficients
@@ -594,6 +600,10 @@ class KimaResults:
                 self.n_jitters = 1
             else:
                 self.n_jitters = self.n_instruments
+
+            if self.model == 'RVmodel':
+                # for stellar jitter
+                self.n_jitters += 1
 
         else:
             if self.model == 'RVFWHMmodel':

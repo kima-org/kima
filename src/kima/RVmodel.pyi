@@ -445,6 +445,19 @@ class RVmodel:
         ...
     
     @property
+    def stellar_jitter_prior(self) -> kima.distributions.Distribution:
+        """
+        Prior for the stellar jitter (common to all instruments)
+        """
+        ...
+    @stellar_jitter_prior.setter
+    def stellar_jitter_prior(self, arg: kima.distributions.Distribution, /) -> None:
+        """
+        Prior for the stellar jitter (common to all instruments)
+        """
+        ...
+    
+    @property
     def studentt(self) -> bool:
         """
         use a Student-t distribution for the likelihood (instead of Gaussian)

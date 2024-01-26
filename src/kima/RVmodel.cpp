@@ -71,6 +71,10 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             data.get_max_RV_span()
         );
 
+    // stellar jitter is zero by default
+    if (data._multi && !stellar_jitter_prior)
+        stellar_jitter_prior = make_prior<Fixed>(0.0);
+
     if (trend){
         if (degree == 0)
             throw std::logic_error("trend=true but degree=0");
@@ -138,10 +142,11 @@ void RVmodel::from_prior(RNG& rng)
 
     if(data._multi)
     {
-        for(int i=0; i<offsets.size(); i++)
+        for (int i = 0; i < offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
-        for(int i=0; i<jitters.size(); i++)
+        for (int i = 0; i < jitters.size(); i++)
             jitters[i] = Jprior->generate(rng);
+        stellar_jitter = stellar_jitter_prior->generate(rng);
     }
     else
     {
@@ -399,6 +404,7 @@ double RVmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
+            stellar_jitter_prior->perturb(stellar_jitter, rng);
             for (int i = 0; i < jitters.size(); i++)
                 Jprior->perturb(jitters[i], rng);
         }
@@ -558,7 +564,7 @@ double RVmodel::log_likelihood() const
             if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
+                var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
             }
             else
                 var = sig[i]*sig[i] + jitter*jitter;
@@ -579,7 +585,7 @@ double RVmodel::log_likelihood() const
             if(data._multi)
             {
                 jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
+                var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
             }
             else
                 var = sig[i]*sig[i] + jitter*jitter;
@@ -610,6 +616,7 @@ void RVmodel::print(std::ostream& out) const
 
     if (data._multi)
     {
+        out << stellar_jitter << '\t';
         for (int j = 0; j < jitters.size(); j++)
             out << jitters[j] << '\t';
     }
@@ -671,6 +678,7 @@ string RVmodel::description() const
 
     if (data._multi)
     {
+        desc += "stellar_jitter" + sep;
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
     }
@@ -797,6 +805,8 @@ void RVmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
     fout << "Jprior: " << *Jprior << endl;
+    fout << "stellar_jitter_prior: " << *stellar_jitter_prior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
@@ -941,10 +951,16 @@ NB_MODULE(RVmodel, m) {
             [](RVmodel &m) { return m.Cprior; },
             [](RVmodel &m, distribution &d) { m.Cprior = d; },
             "Prior for the systemic velocity")
+
         .def_prop_rw("Jprior",
             [](RVmodel &m) { return m.Jprior; },
             [](RVmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
+        .def_prop_rw("stellar_jitter_prior",
+            [](RVmodel &m) { return m.stellar_jitter_prior; },
+            [](RVmodel &m, distribution &d) { m.stellar_jitter_prior = d; },
+            "Prior for the stellar jitter (common to all instruments)")
+
         .def_prop_rw("slope_prior",
             [](RVmodel &m) { return m.slope_prior; },
             [](RVmodel &m, distribution &d) { m.slope_prior = d; },
