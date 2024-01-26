@@ -7,7 +7,7 @@ __all__ = ['_51Peg']
 
 here = os.path.dirname(__file__) # cwd
 
-def _51Peg(run=False, **kwargs):
+def _51Peg(run=False, load=False, **kwargs):
     """
     Create (and optionally run) an RV model for analysis of 51 Peg data.
     This loads Keck/HIRES data from `51Peg.rv` and creates a model where
@@ -31,9 +31,11 @@ def _51Peg(run=False, **kwargs):
     if run:
         with chdir(here):
             kima.run(model, **kwargs)
+            if load:
+                res = kima.load_results()
+                return model, res
 
     return model
 
 if __name__ == '__main__':
-    model = _51Peg(run=True, steps=80000)
-    res = kima.load_results()
+    model, res = _51Peg(run=True, load=True, steps=80000)
