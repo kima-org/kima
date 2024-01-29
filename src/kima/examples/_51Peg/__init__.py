@@ -15,6 +15,7 @@ def _51Peg(run=False, load=False, **kwargs):
 
     Args:
         run (bool): whether to run the model
+        load (bool): load results after running
         **kwargs: keyword arguments passed directly to `kima.run`
     """
     # load the right data file
