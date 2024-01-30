@@ -36,6 +36,9 @@ class  GPmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
+        /// include in the model linear correlations with indicators
+        bool indicator_correlations = false;
+
     private:
         RVData data;// = RVData::get_instance();
 

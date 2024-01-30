@@ -34,6 +34,12 @@ void GPmodel::set_known_object(size_t n)
     KO_eprior.resize(n);
     KO_phiprior.resize(n);
     KO_wprior.resize(n);
+
+    KO_P.resize(n);
+    KO_K.resize(n);
+    KO_e.resize(n);
+    KO_phi.resize(n);
+    KO_w.resize(n);
 }
 
 /* set default priors if the user didn't change them */
@@ -127,20 +133,15 @@ void GPmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-    if (data.indicator_correlations)
+    if (indicator_correlations)
     {
-        for (unsigned i=0; i<data.number_indicators; i++)
+        for (int i = 0; i < data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
     }
 
     if (known_object) { // KO mode!
-        KO_P.resize(n_known_object);
-        KO_K.resize(n_known_object);
-        KO_e.resize(n_known_object);
-        KO_phi.resize(n_known_object);
-        KO_w.resize(n_known_object);
-
-        for (int i=0; i<n_known_object; i++){
+        for (int i = 0; i < n_known_object; i++)
+        {
             KO_P[i] = KO_Pprior[i]->generate(rng);
             KO_K[i] = KO_Kprior[i]->generate(rng);
             KO_e[i] = KO_eprior[i]->generate(rng);
@@ -205,12 +206,12 @@ void GPmodel::calculate_mu()
             }
         }
 
-        if(data.indicator_correlations)
+        if(indicator_correlations)
         {
-            for(size_t i=0; i<N; i++)
+            for (size_t i = 0; i < N; i++)
             {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * data.actind[j][i];
+                for (size_t j = 0; j < data.number_indicators; j++)
+                    mu[i] += betas[j] * data.actind[j][i];
             }   
         }
 
@@ -432,7 +433,7 @@ double GPmodel::perturb(RNG& rng)
                 }
             }
 
-            if(data.indicator_correlations) {
+            if(indicator_correlations) {
                 for(size_t j = 0; j < data.number_indicators; j++){
                     mu[i] -= betas[j] * actind[j][i];
                 }
@@ -457,7 +458,7 @@ double GPmodel::perturb(RNG& rng)
         }
 
         // propose new indicator correlations
-        if(data.indicator_correlations){
+        if(indicator_correlations){
             for(size_t j = 0; j < data.number_indicators; j++){
                 betaprior->perturb(betas[j], rng);
             }
@@ -477,7 +478,7 @@ double GPmodel::perturb(RNG& rng)
                 }
             }
 
-            if(data.indicator_correlations) {
+            if(indicator_correlations) {
                 for(size_t j = 0; j < data.number_indicators; j++){
                     mu[i] += betas[j]*actind[j][i];
                 }
@@ -586,9 +587,10 @@ void GPmodel::print(std::ostream& out) const
         }
     }
 
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
+    if(indicator_correlations){
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            out << betas[j] << '\t';
         }
     }
 
@@ -637,9 +639,11 @@ string GPmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
+    if (indicator_correlations)
+    {
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            desc += "beta" + std::to_string(j + 1) + sep;
         }
     }
 
@@ -705,6 +709,7 @@ void GPmodel::save_setup() {
     fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
+    fout << "indicator_correlations: " << indicator_correlations << endl;
     fout << endl;
 
     fout << endl;
@@ -718,6 +723,11 @@ void GPmodel::save_setup() {
     fout << "files: ";
     for (auto f: data._datafiles)
         fout << f << ",";
+    fout << endl;
+
+    fout << "indicators: ";
+    for (auto n: data._indicator_names)
+        fout << n << ",";
     fout << endl;
 
     fout.precision(15);
@@ -757,13 +767,14 @@ void GPmodel::save_setup() {
 
     if (known_object) {
         fout << endl << "[priors.known_object]" << endl;
-        // for(int i=0; i<n_known_object; i++){
-        //     fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-        //     fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
-        //     fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
-        //     fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-        //     fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
-        // }
+        for (int i = 0; i < n_known_object; i++)
+        {
+            fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+            fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
+            fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
+            fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+        }
     }
 
     fout << endl;
@@ -780,6 +791,7 @@ class GPmodel_publicist : public GPmodel
         using GPmodel::degree;
         using GPmodel::star_mass;
         using GPmodel::enforce_stability;
+        using GPmodel::indicator_correlations;
 };
 
 NB_MODULE(GPmodel, m) {
@@ -803,6 +815,10 @@ NB_MODULE(GPmodel, m) {
                 "stellar mass [Msun]")
         .def_rw("enforce_stability", &GPmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
+
+        //
+        .def_rw("indicator_correlations", &GPmodel_publicist::indicator_correlations, 
+                "include in the model linear correlations with indicators")
 
         // priors
         .def_prop_rw("Cprior",
