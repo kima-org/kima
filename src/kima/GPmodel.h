@@ -73,6 +73,13 @@ class  GPmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
 
+        // Parameters for the transiting planet, if set
+        std::vector<double> TR_P;
+        std::vector<double> TR_K;
+        std::vector<double> TR_e;
+        std::vector<double> TR_Tc;
+        std::vector<double> TR_w;
+
         double eta1, eta2, eta3, eta4;
         double log_eta1, log_eta2, log_eta3, log_eta4;
 
@@ -86,6 +93,8 @@ class  GPmodel
         void calculate_C();
         void add_known_object();
         void remove_known_object();
+        void add_transiting_planet();
+        void remove_transiting_planet();
 
         int is_stable() const;
 
@@ -148,6 +157,30 @@ class  GPmodel
         std::vector<distribution> KO_phiprior;
         /// Prior for the KO argument(s) of pericenter
         std::vector<distribution> KO_wprior;
+
+        /* Transiting planets! */
+
+        /// include known extra Keplerian curve(s) for transiting planet(s)?
+        bool transiting_planet {false};
+        bool get_transiting_planet() { return transiting_planet; }
+
+        /// how many known objects
+        size_t n_transiting_planet {0};
+        size_t get_n_transiting_planet() { return n_transiting_planet; }
+
+        void set_transiting_planet(size_t transiting_planet);
+
+        /// Prior for the TR orbital period(s)
+        std::vector<distribution> TR_Pprior;
+        /// Prior for the TR semi-amplitude(s)
+        std::vector<distribution> TR_Kprior;
+        /// Prior for the TR eccentricity(ies)
+        std::vector<distribution> TR_eprior;
+        /// Prior for the TR time(s) of transit
+        std::vector<distribution> TR_Tcprior;
+        /// Prior for the TR argument(s) of pericenter
+        std::vector<distribution> TR_wprior;
+
 
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"

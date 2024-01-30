@@ -115,7 +115,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         {
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
             {
-                std::string msg = "When known_object=true, must set priors for each of TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
+                std::string msg = "When transiting_planet=true, must set priors for each of TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
                 throw std::logic_error(msg);
             }
         }
@@ -347,6 +347,7 @@ void RVmodel::add_transiting_planet()
 }
 
 
+// TODO: compute stability for transiting planet(s)
 int RVmodel::is_stable() const
 {
     // Get the components
@@ -865,7 +866,7 @@ void RVmodel::save_setup() {
             fout << "Pprior_" << i << ": " << *TR_Pprior[i] << endl;
             fout << "Kprior_" << i << ": " << *TR_Kprior[i] << endl;
             fout << "eprior_" << i << ": " << *TR_eprior[i] << endl;
-            fout << "phiprior_" << i << ": " << *TR_Tcprior[i] << endl;
+            fout << "Tcprior_" << i << ": " << *TR_Tcprior[i] << endl;
             fout << "wprior_" << i << ": " << *TR_wprior[i] << endl;
         }
     }

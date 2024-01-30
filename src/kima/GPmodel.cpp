@@ -42,6 +42,24 @@ void GPmodel::set_known_object(size_t n)
     KO_w.resize(n);
 }
 
+void GPmodel::set_transiting_planet(size_t n)
+{
+    transiting_planet = true;
+    n_transiting_planet = n;
+
+    TR_Pprior.resize(n);
+    TR_Kprior.resize(n);
+    TR_eprior.resize(n);
+    TR_Tcprior.resize(n);
+    TR_wprior.resize(n);
+
+    TR_P.resize(n);
+    TR_K.resize(n);
+    TR_e.resize(n);
+    TR_Tc.resize(n);
+    TR_w.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
@@ -85,7 +103,21 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior)");
+            {
+                std::string msg = "When known_object=true, must set priors for each of KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
+                throw std::logic_error(msg);
+            }
+        }
+    }
+
+    if (transiting_planet) {
+        for (size_t i = 0; i < n_transiting_planet; i++)
+        {
+            if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
+            {
+                std::string msg = "When transiting_planet=true, must set priors for each of TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
+                throw std::logic_error(msg);
+            }
         }
     }
 
@@ -147,6 +179,17 @@ void GPmodel::from_prior(RNG& rng)
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
+        }
+    }
+
+    if (transiting_planet) {
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            TR_P[i] = TR_Pprior[i]->generate(rng);
+            TR_K[i] = TR_Kprior[i]->generate(rng);
+            TR_e[i] = TR_eprior[i]->generate(rng);
+            TR_Tc[i] = TR_Tcprior[i]->generate(rng);
+            TR_w[i] = TR_wprior[i]->generate(rng);
         }
     }
 
@@ -218,7 +261,12 @@ void GPmodel::calculate_mu()
         if (known_object) { // KO mode!
             add_known_object();
         }
+
+        if (transiting_planet) {
+            add_transiting_planet();
+        }
     }
+
     else // just updating (adding) planets
         staleness++;
 
@@ -322,6 +370,37 @@ void GPmodel::add_known_object()
     }
 }
 
+void GPmodel::remove_transiting_planet()
+{
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double ecc = TR_e[j];
+        double f = M_PI/2 - TR_w[j];  // true anomaly at conjunction
+        double E = 2.0 * atan(tan(f/2) * sqrt((1-ecc)/(1+ecc)));  // eccentric anomaly at conjunction
+        double M = E - ecc * sin(E);  // mean anomaly at conjunction
+        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], M, TR_Tc[j]);
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            mu[i] -= v[i];
+        }
+    }
+}
+
+void GPmodel::add_transiting_planet()
+{
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double ecc = TR_e[j];
+        double f = M_PI/2 - TR_w[j];  // true anomaly at conjunction
+        double E = 2.0 * atan(tan(f/2) * sqrt((1-ecc)/(1+ecc)));  // eccentric anomaly at conjunction
+        double M = E - ecc * sin(E);  // mean anomaly at conjunction
+        auto v = brandt::keplerian(data.t, TR_P[j], TR_K[j], TR_e[j], TR_w[j], M, TR_Tc[j]);
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            mu[i] += v[i];
+        }
+    }
+}
+
+// TODO: compute stability for transiting planet(s)
 int GPmodel::is_stable() const
 {
     // Get the components
@@ -331,6 +410,7 @@ int GPmodel::is_stable() const
     
     int stable_planets = 0;
     int stable_known_object = 0;
+    int stable_transiting_planet = 0;
 
     if (components.size() != 0)
         stable_planets = AMD::AMD_stable(components, star_mass);
@@ -345,7 +425,7 @@ int GPmodel::is_stable() const
         stable_known_object = AMD::AMD_stable(ko_components, star_mass);
     }
 
-    return stable_planets + stable_known_object;
+    return stable_planets + stable_known_object + stable_transiting_planet;
 }
 
 
@@ -414,6 +494,22 @@ double GPmodel::perturb(RNG& rng)
             }
 
             add_known_object();
+        }
+
+        if (transiting_planet)
+        {
+            remove_transiting_planet();
+
+            for (int i = 0; i < n_transiting_planet; i++)
+            {
+                TR_Pprior[i]->perturb(TR_P[i], rng);
+                TR_Kprior[i]->perturb(TR_K[i], rng);
+                TR_eprior[i]->perturb(TR_e[i], rng);
+                TR_Tcprior[i]->perturb(TR_Tc[i], rng);
+                TR_wprior[i]->perturb(TR_w[i], rng);
+            }
+
+            add_transiting_planet();
         }
     
     }
@@ -605,6 +701,14 @@ void GPmodel::print(std::ostream& out) const
         for (auto w: KO_w) out << w << "\t";
     }
 
+    if(transiting_planet){
+        for (auto P: TR_P) out << P << "\t";
+        for (auto K: TR_K) out << K << "\t";
+        for (auto Tc: TR_Tc) out << Tc << "\t";
+        for (auto e: TR_e) out << e << "\t";
+        for (auto w: TR_w) out << w << "\t";
+    }
+
     planets.print(out);
 
     out << staleness << '\t';
@@ -663,6 +767,19 @@ string GPmodel::description() const
             desc += "KO_w" + std::to_string(i) + sep;
     }
 
+    if(transiting_planet) {
+        for (int i = 0; i < n_transiting_planet; i++)
+            desc += "TR_P" + std::to_string(i) + sep;
+        for (int i = 0; i < n_transiting_planet; i++)
+            desc += "TR_K" + std::to_string(i) + sep;
+        for (int i = 0; i < n_transiting_planet; i++)
+            desc += "TR_Tc" + std::to_string(i) + sep;
+        for (int i = 0; i < n_transiting_planet; i++)
+            desc += "TR_ecc" + std::to_string(i) + sep;
+        for (int i = 0; i < n_transiting_planet; i++)
+            desc += "TR_w" + std::to_string(i) + sep;
+    }
+
     desc += "ndim" + sep + "maxNp" + sep;
     if(false) // hyperpriors
         desc += "muP" + sep + "wP" + sep + "muK";
@@ -709,6 +826,8 @@ void GPmodel::save_setup() {
     fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
+    fout << "transiting_planet: " << transiting_planet << endl;
+    fout << "n_transiting_planet: " << n_transiting_planet << endl;
     fout << "indicator_correlations: " << indicator_correlations << endl;
     fout << endl;
 
@@ -777,6 +896,18 @@ void GPmodel::save_setup() {
         }
     }
 
+    if (transiting_planet) {
+        fout << endl << "[priors.transiting_planet]" << endl;
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            fout << "Pprior_" << i << ": " << *TR_Pprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *TR_Kprior[i] << endl;
+            fout << "eprior_" << i << ": " << *TR_eprior[i] << endl;
+            fout << "Tcprior_" << i << ": " << *TR_Tcprior[i] << endl;
+            fout << "wprior_" << i << ": " << *TR_wprior[i] << endl;
+        }
+    }
+
     fout << endl;
 	fout.close();
 }
@@ -809,6 +940,14 @@ NB_MODULE(GPmodel, m) {
                      "whether the model includes (better) known extra Keplerian curve(s)")
         .def_prop_ro("n_known_object", [](GPmodel &m) { return m.get_n_known_object(); },
                      "how many known objects")
+
+        // transiting planets
+        .def("set_transiting_planet", &GPmodel::set_transiting_planet)
+        .def_prop_ro("transiting_planet", [](GPmodel &m) { return m.get_transiting_planet(); },
+                     "whether the model includes transiting planet(s)")
+        .def_prop_ro("n_transiting_planet", [](GPmodel &m) { return m.get_n_transiting_planet(); },
+                     "how many transiting planets")
+
 
         //
         .def_rw("star_mass", &GPmodel_publicist::star_mass,
