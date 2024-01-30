@@ -731,12 +731,14 @@ class KimaResults:
     def _read_actind_correlations(self):
         setup = self.setup
         try:
-            self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+            self.indicator_correlations = setup['kima']['indicator_correlations'] == 'true'
         except KeyError:
-            self.indcorrel = False
+            self.indicator_correlations = False
 
-        if self.indcorrel:
-            self.activity_indicators = setup['kima']['indicators'].split(',')
+        if self.indicator_correlations:
+            activity_indicators = setup['data']['indicators'].split(',')
+            activity_indicators = list(filter(None, activity_indicators))
+            self.activity_indicators = activity_indicators
             n_act_ind = len(self.activity_indicators)
             istart = self._current_column
             iend = istart + n_act_ind
@@ -1532,7 +1534,12 @@ class KimaResults:
                 print(f'{"FWHM":>10s}', end=': ')
                 print(p[self.indices['jitter']][self.n_instruments:])
             else:
-                print(p[self.indices['jitter']])
+                print(' ', p[self.indices['jitter']])
+
+        if self.indicator_correlations:
+            print('indicator correlations:')
+            c = p[self.indices['betas']]
+            print(f'  {c}')
 
         npl = int(p[self.index_component])
         if npl > 0:
@@ -1602,7 +1609,7 @@ class KimaResults:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0')
+            pars = ('P', 'K', 'M0', 'e', 'ω')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
@@ -1615,7 +1622,7 @@ class KimaResults:
 
         if self.has_gp:
             print('GP parameters: ', end='')
-            if self.model == 'RVmodel':
+            if self.model == 'GPmodel':
                 pars = ('η1', 'η2', 'η3', 'η4')
             elif self.model == 'RVFWHMmodel':
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
@@ -1704,6 +1711,7 @@ class KimaResults:
 
     def eval_model(self, sample, t = None,
                    include_planets=True, include_known_object=True,
+                   include_indicator_correlations=True,
                    include_trend=True, single_planet: int = None,
                    except_planet: Union[int, List] = None):
         """
@@ -1725,6 +1733,8 @@ class KimaResults:
             include_known_object (bool):
                 Whether to include the contribution from the known object
                 planets
+            include_indicator_correlations (bool):
+                Whether to include the indicator correlation model
             include_trend (bool):
                 Whether to include the contribution from the trend
             single_planet (int):
@@ -1866,6 +1876,15 @@ class KimaResults:
                 v[0, :] += np.polyval(trend_par, t - self.tmiddle)
             else:
                 v += np.polyval(trend_par, t - self.tmiddle)
+
+        # TODO: fix this for more than one indicator
+        if self.indicator_correlations and include_indicator_correlations:
+            c = sample[self.indices['betas']]
+            interp_u = np.zeros_like(t)
+            for i, ai in enumerate(self.activity_indicators):
+                if ai != '':
+                    interp_u += np.interp(t, self.data.t, self._extra_data[:, 3 + i])
+            v += c * interp_u
 
         return v
 

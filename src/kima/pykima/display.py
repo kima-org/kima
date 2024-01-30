@@ -1200,7 +1200,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
 
 def hist_correlations(res):
     """ Plot the histogram of the posterior for the activity correlations """
-    if not res.indcorrel:
+    if not res.indicator_correlations:
         msg = 'Model has no activity correlations! '\
               'hist_correlations() doing nothing...'
         print(msg)
@@ -1436,7 +1436,10 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
                 axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, e2[m],
                              **kw)
     else:
-        kw.update(label=res.data.instrument)
+        try:
+            kw.update(label=res.data.instrument)
+        except AttributeError:
+            kw.update(label='data')
 
         if outliers is None:
             ax.errorbar(t - time_offset, y - y_offset, e, **kw)
@@ -1982,7 +1985,7 @@ def phase_plot(res,
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
-        if res.model == 'RVmodel':
+        if res.model == 'GPmodel':
             pred, std = res.stochastic_model(sample, tt, return_std=True)
 
         elif res.model == 'RVFWHMmodel':
@@ -2212,7 +2215,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
             lnlike = res.posterior_lnlike[:, 1]
             sorted_lnlike = np.sort(lnlike)[::-1]
             mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
-            ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
+            ii = np.random.choice(np.where(mask & mask_lnlike)[0], size=ncurves,
+                                  replace=False)
         except ValueError:
             ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves,
                                   replace=False)
@@ -2271,6 +2275,11 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
         if res.has_gp:
             ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc, alpha=alpha)
+
+        if res.indicator_correlations:
+            model_wo_ind = res.eval_model(sample, tt,
+                                          include_indicator_correlations=False)
+            ax.plot(tt, (model - model_wo_ind + offset_model).T, color=gpc, alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
