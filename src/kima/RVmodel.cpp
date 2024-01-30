@@ -162,7 +162,7 @@ void RVmodel::from_prior(RNG& rng)
 
     if (indicator_correlations)
     {
-        for (unsigned i=0; i<data.number_indicators; i++)
+        for (int i = 0; i < data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
     }
 
@@ -639,8 +639,9 @@ void RVmodel::print(std::ostream& out) const
     }
 
     if(indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            out << betas[j] << '\t';
         }
     }
     
@@ -698,12 +699,14 @@ string RVmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    if(indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
+    if (indicator_correlations)
+    {
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            desc += "beta" + std::to_string(j + 1) + sep;
         }
     }
-    
+
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
@@ -781,6 +784,7 @@ void RVmodel::save_setup() {
     fout << "transiting_planet: " << transiting_planet << endl;
     fout << "n_transiting_planet: " << n_transiting_planet << endl;
     fout << "studentt: " << studentt << endl;
+    fout << "indicator_correlations: " << indicator_correlations << endl;
     fout << endl;
 
     fout << endl;
@@ -794,6 +798,11 @@ void RVmodel::save_setup() {
     fout << "files: ";
     for (auto f: data._datafiles)
         fout << f << ",";
+    fout << endl;
+
+    fout << "indicators: ";
+    for (auto n: data._indicator_names)
+        fout << n << ",";
     fout << endl;
 
     fout.precision(15);
