@@ -210,6 +210,15 @@ def clipped_std(arr, min, max):
     return np.std(arr[mask])
 
 
+def distribution_rvs(dist, size=1):
+    u = np.random.rand(size)
+    return np.array([dist.ppf(uu) for uu in u])
+
+
+def distribution_support(dist):
+    return dist.ppf(0.0), dist.ppf(1.0)
+
+
 def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
     from kima.distributions import Gaussian
     obsi = np.array(data.obsi)

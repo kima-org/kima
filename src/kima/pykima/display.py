@@ -13,6 +13,7 @@ from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 from .analysis import np_bayes_factor_threshold, find_outliers
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, get_instrument_name)
+from .utils import distribution_rvs, distribution_support
 
 try:
     from tqdm import tqdm
@@ -254,7 +255,7 @@ def plot_posterior_period(res,
                 start, end = 1e-1, 1e7
                 # try to get bin limits from prior support
                 if 'Pprior' in res.priors:
-                    prior_support = res.priors['Pprior'].support()
+                    prior_support = distribution_support(res.priors['Pprior'])
                     if not np.isinf(prior_support).any():
                         start, end = prior_support
             else:
@@ -299,7 +300,7 @@ def plot_posterior_period(res,
             if res.hyperpriors:
                 P = hyperprior_samples(T.size)
             else:
-                P = res.priors['Pprior'].rvs(res.ESS)
+                P = distribution_rvs(res.priors['Pprior'], res.ESS)
 
             counts, bin_edges = np.histogram(P, bins=bins)
             ax.bar(x=bin_edges[:-1],
@@ -362,7 +363,7 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
              points=True, colors_np=True, gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
-    period and eccentricity and orbital period. If `points` is True, plot
+    period and for eccentricity and orbital period. If `points` is True, plot
     each posterior sample, else plot hexbins
     """
 
@@ -377,13 +378,9 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
             return
 
     if mask is None:
-        ip = res.indices['planets']
-        mc = res.max_components
-        T = res.posterior_sample[:, ip][:, 0 * mc:1 * mc]
-        A = res.posterior_sample[:, ip][:, 1 * mc:2 * mc]
-        E = res.posterior_sample[:, ip][:, 3 * mc:4 * mc]
-        # T = res.T
-        # A, E = res.A, res.E
+        P = res.posteriors.P.copy()
+        K = res.posteriors.K.copy()
+        E = res.posteriors.e.copy()
     else:
         pars = res.posterior_sample[mask, res.indices['planets']]
         T = np.hstack(pars[:, 0 * res.max_components:1 * res.max_components])
@@ -397,12 +394,12 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
             KOpars = res.posterior_sample[:, res.indices['KOpars']]
         else:
             KOpars = res.posterior_sample[mask, res.indices['KOpars']]
-        T_KO = np.hstack(KOpars[:, 0 * res.nKO:1 * res.nKO])
-        A_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
+        P_KO = np.hstack(KOpars[:, 0 * res.nKO:1 * res.nKO])
+        K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
         E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
 
     if res.log_period:
-        T = np.exp(res.T)
+        P = np.exp(P)
 
     if 'ax1' in kwargs and 'ax2' in kwargs:
         ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
@@ -420,67 +417,121 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
 
         # plot known_object first so it always has the same color
         if include_known_object:
-            ax1.semilogx(T_KO, A_KO, '.', markersize=2, zorder=2)
-            ax2.semilogx(T_KO, E_KO, '.', markersize=2, zorder=2)
+            ax1.semilogx(P_KO, K_KO, '.', markersize=2, zorder=2)
+            ax2.semilogx(P_KO, E_KO, '.', markersize=2, zorder=2)
 
         if not colors_np:
-            T = T.ravel()
-            A = A.ravel()
+            P = P.ravel()
+            K = K.ravel()
             E = E.ravel()
 
-        if A.size > 1 and A.ptp() > Khdr_threshold:
-            ax1.loglog(T, A, '.', **kw)
+        if K.size > 1 and K.ptp() > Khdr_threshold:
+            ax1.loglog(P, K, '.', **kw)
         else:
-            ax1.semilogx(T, A, '.', **kw)
+            ax1.semilogx(P, K, '.', **kw)
 
-        ax2.semilogx(T, E, '.', **kw)
+        ax2.semilogx(P, E, '.', **kw)
 
 
     else:
-        if A.size > 1 and A.ptp() > 30:
-            ax1.hexbin(T[T != 0.0], A[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
-                       yscale='log', cmap=plt.get_cmap('coolwarm_r'))
+        if K.size > 1 and K.ptp() > 30:
+            cm = ax1.hexbin(P[P != 0.0], K[P != 0.0], gridsize=gridsize, bins='log', xscale='log',
+                            yscale='log', cmap=plt.get_cmap('coolwarm_r'))
         else:
-            ax1.hexbin(T[T != 0.0], A[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
-                       yscale='linear', cmap=plt.get_cmap('coolwarm_r'))
+            cm = ax1.hexbin(P[P != 0.0], K[P != 0.0], gridsize=gridsize, bins='log', xscale='log',
+                            yscale='linear', cmap=plt.get_cmap('coolwarm_r'))
 
-        ax2.hexbin(T[T != 0.0], E[T != 0.0], gridsize=gridsize, bins='log', xscale='log',
+        ax2.hexbin(P[P != 0.0], E[P != 0.0], gridsize=gridsize, bins='log', xscale='log',
                    cmap=plt.get_cmap('coolwarm_r'))
 
-    if res.removed_crossing:
-        if points:
-            mc, ic = res.max_components, res.index_component
+    if show_prior:
+        kw_prior = dict(ms=2, color='k', alpha=0.05, zorder=-10)
+        
+        if include_known_object:
+            P_KO_prior, K_KO_prior, E_KO_prior = [], [], []
+            for i in range(res.nKO):
+                if f'KO_Pprior_{i}' in res.priors:
+                    P_KO_prior.append(distribution_rvs(res.priors[f'KO_Pprior_{i}'], max(10_000, res.ESS)))
+                    K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], max(10_000, res.ESS)))
+                    E_KO_prior.append(distribution_rvs(res.priors[f'KO_eprior_{i}'], max(10_000, res.ESS)))
+                else:
+                    break
+            ax1.plot(np.ravel(P_KO_prior), np.ravel(K_KO_prior), '.', **kw_prior)
+            ax2.plot(np.ravel(P_KO_prior), np.ravel(E_KO_prior), '.', **kw_prior)
 
-            i1, i2 = 0 * mc + ic + 1, 0 * mc + ic + mc + 1
-            T = res.posterior_sample_original[:, i1:i2]
-            if res.log_period:
-                T = np.exp(T)
+        try:
+            P_prior = distribution_rvs(res.priors['Pprior'], max(10_000, res.ESS))
+            K_prior = distribution_rvs(res.priors['Kprior'], max(10_000, res.ESS))
+            E_prior = distribution_rvs(res.priors['eprior'], max(10_000, res.ESS))
+            ax1.plot(P_prior, K_prior, '.', **kw_prior)
+            ax2.plot(P_prior, E_prior, '.', **kw_prior)
+        except KeyError:
+            pass
 
-            i1, i2 = 1 * mc + ic + 1, 1 * mc + ic + mc + 1
-            A = res.posterior_sample_original[:, i1:i2]
+        """
+        from matplotlib.patches import Rectangle
+        if 'Pprior' in res.priors and 'Kprior' in res.priors:
+            support_P = res.priors['Pprior'].support()
+            span_support_P = np.ptp(support_P)
+            support_K = res.priors['Kprior'].support()
+            span_support_K = np.ptp(support_K)
+            try:
+                support_e = res.priors['eprior'].support()
+                span_support_e = np.ptp(support_e)
+            except AttributeError:
+                support_e = (0, 1)
+                span_support_e = 1
 
-            i1, i2 = 3 * mc + ic + 1, 3 * mc + ic + mc + 1
-            E = res.posterior_sample_original[:, i1:i2]
+        elif include_known_object:
+            for i in range(res.nKO):
+                if f'KO_Pprior_{i}' in res.priors:
+                    support_P = res.priors[f'KO_Pprior_{i}'].support()
+                    span_support_P = np.ptp(support_P)
+                if f'KO_Kprior_{i}' in res.priors:
+                    support_K = res.priors[f'KO_Kprior_{i}'].support()
+                    span_support_K = np.ptp(support_K)
+                if f'KO_eprior_{i}' in res.priors:
+                    try:
+                        support_e = res.priors[f'KO_eprior_{i}'].support()
+                        span_support_e = np.ptp(support_e)
+                    except AttributeError:
+                        support_e = (0, 1)
+                        span_support_e = 1
 
-            if A.ptp() > Khdr_threshold:
-                ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
-                           zorder=1)
-            else:
-                ax1.semilogx(T, A, '.', markersize=1, alpha=0.05, color='r',
-                             zorder=1)
+        finite = np.isfinite(support_P).all()
+        finite &= np.isfinite(support_K).all()
+        finite &= np.isfinite(support_e).all()
 
-            ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
-                         zorder=1)
+        if finite:
+            rect = Rectangle((support_P[0], support_K[0]), span_support_P, span_support_K,
+                                facecolor='k', alpha=0.1, zorder=-100)
+            ax1.add_patch(rect)
+            rect = Rectangle((support_P[0], support_e[0]), span_support_P, span_support_e,
+                                facecolor='k', alpha=0.1, zorder=-100)
+            ax2.add_patch(rect)
+        """
 
     ax1.set(ylabel='Semi-amplitude [m/s]',
             title='Joint posterior semi-amplitude $-$ orbital period')
     ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
             title='Joint posterior eccentricity $-$ orbital period',
-            ylim=[0, 1], xlim=[0.1, 1e7])
+            ylim=[0, 1])
 
-    if not include_known_object:
+    if show_prior:
         try:
-            ax2.set(xlim=res.priors['Pprior'].support())
+            minx, maxx = 0, np.inf
+            maxy = np.inf
+            if include_known_object:
+                for i in range(res.nKO):
+                    _1, _2 = res.priors[f'KO_Pprior_{i}'].support()
+                    minx = max(minx, _1)
+                    maxx = min(maxx, _2)
+                    maxy = min(maxy, res.priors[f'KO_Kprior_{i}'].support()[1])
+            _1, _2 = res.priors['Pprior'].support()
+            minx = max(minx, _1)
+            maxx = min(maxx, _2)
+            maxy = min(maxy, res.priors['Kprior'].support()[1])
+            ax1.set(xlim=(minx, maxx), ylim=(None, maxy))
         except (AttributeError, KeyError, ValueError):
             pass
 
@@ -519,7 +570,7 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
 
     nplots = int(np.ceil(n / 2))
     if fig is None:
-        fig, axes = plt.subplots(2, nplots)
+        fig, axes = plt.subplots(2, nplots, constrained_layout=True)
     else:
         axes = fig.axes
         assert len(axes) == 2 * nplots, 'figure has wrong number of axes!'
@@ -528,7 +579,7 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
 
     for i, eta in enumerate(available_etas):
         ax = np.ravel(axes)[i]
-        ax.hist(getattr(res, eta), bins=40, range=ranges[i], **hist_kwargs)
+        ax.hist(getattr(res.posteriors, f'η{i+1}'), bins=40, range=ranges[i], **hist_kwargs)
 
         if show_prior:
             priors = [p for p in res.priors.keys() if 'eta' in p]
@@ -594,81 +645,66 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
         gs = fig.add_gridspec(6, 3)
 
     histkw = dict(density=True, bins='doane')
+    histkw2 = {**histkw, **{'histtype':'step'}}
     allkw = dict(yticks=[])
 
-    if res.GPkernel == 'qpc':
-        ax1 = fig.add_subplot(gs[0:3, 0])
-        ax1.hist(res.etas[:, 0], **histkw)
-        ax1.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
-        ax1.set_xlim((0, None))
+    estimate = percentile68_ranges_latex(res.etas[:, 0]) + ' m/s'
+    axs['η1RV'].hist(res.etas[:, 0], **histkw)
+    axs['η1RV'].set_title(estimate, loc='right', fontsize=10)
+    axs['η1RV'].set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
+    axs['η1RV'].set_xlim((0, None))
 
-        ax2 = fig.add_subplot(gs[0:3, 1])
-        ax2.hist(res.etas[:, 1], **histkw)
-        ax2.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
-        ax2.set_xlim((0, None))
+    estimate = percentile68_ranges_latex(res.etas[:, 1]) + ' m/s'
+    axs['η1FW'].hist(res.etas[:, 1], label=estimate, **histkw)
+    axs['η1FW'].set_title(estimate, loc='right', fontsize=10)
+    axs['η1FW'].set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
+    axs['η1FW'].set_xlim((0, None))
 
-        ax = fig.add_subplot(gs[3:6, 0], sharex=ax1)
-        ax.hist(res.etas[:, -2], **histkw)
-        ax.set(xlabel=r'$\eta_5$ RV [m/s]', ylabel='posterior', **allkw)
 
-        ax = fig.add_subplot(gs[3:6, 1], sharex=ax2)
-        ax.hist(res.etas[:, -1], **histkw)
-        ax.set(xlabel=r'$\eta_5$ FWHM [m/s]', ylabel='posterior', **allkw)
+    if show_prior:
+        kw = dict(color='k', alpha=0.2, density=True, zorder=-1, bins='doane')
+        prior = res.priors['eta1_1_prior']
+        axs['η1RV'].hist(prior.rvs(10*res.ESS), **kw)
+        axs['η1RV'].set_xlim(*prior.support())
+        prior = res.priors['eta1_2_prior']
+        axs['η1FW'].hist(prior.rvs(10*res.ESS), **kw)
+        axs['η1FW'].set_xlim(*prior.support())
 
-        col = 2
-
-    else:
-        ax1 = fig.add_subplot(gs[0:3, 0])
-        ax1.hist(res.etas[:, 0], **histkw)
-        ax1.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
-        ax1.set_xlim((0, None))
-
-        ax2 = fig.add_subplot(gs[3:6, 0])
-        ax2.hist(res.etas[:, 1], color='C5', **histkw)
-        ax2.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
-        ax2.set_xlim((0, None))
-
-        if show_prior:
-            kw = dict(color='k', alpha=0.2, density=True, zorder=-1,
-                      bins='doane')
-            #
-            prior = res.priors['eta1_1_prior']
-            ax1.hist(prior.rvs(10*res.ESS), **kw)
-            ax1.set_xlim(*prior.support())
-            #
-            prior = res.priors['eta1_2_prior']
-            ax2.hist(prior.rvs(10*res.ESS), **kw)
-            ax2.set_xlim(*prior.support())
-
-        col = 1
+    col = 1
 
     units = [' [days]', ' [days]', '']
 
     for i in range(3):
-        j = 2 * (i + 1)
-        ax = fig.add_subplot(gs[2 * i:j, col])
-        ax.hist(res.etas[:, res._GP_par_indices[j]], **histkw)
-        if res._GP_par_indices[j] != res._GP_par_indices[j + 1]:
-            ax.hist(res.etas[:, res._GP_par_indices[j + 1]], color='C5',
-                    **histkw)
-        ax.set(xlabel=fr'$\eta_{2+i}$' + units[i], ylabel='posterior', **allkw)
+        ax = axs[f'η{i+2}']
+        j = 3 * (i+1)
+
+        multiple = res._GP_par_indices[j] != res._GP_par_indices[j + 1]
+
+        if multiple:
+            ax.hist(res.etas[:, res._GP_par_indices[j + 0]], **histkw2)
+            ax.hist(res.etas[:, res._GP_par_indices[j + 1]], **histkw2)
+            ax.hist(res.etas[:, res._GP_par_indices[j + 2]], **histkw2)
+            ax.legend(['RV', 'FWHM', r"R'$_{HK}$"])
+        else:
+            ax.hist(res.etas[:, res._GP_par_indices[j]], **histkw)
+            estimate = percentile68_ranges_latex(res.etas[:, res._GP_par_indices[j]]) + ' days'
+            ax.set_title(estimate, loc='right', fontsize=10)
+
+        ax.set(xlabel=fr'$\eta_{i+2}$' + units[i], ylabel='posterior', **allkw)
 
         if show_prior:
-            kw = dict(color='k', alpha=0.2, density=True, zorder=-1,
-                      bins='doane')
+            kw = dict(color='k', alpha=0.2, density=True, zorder=-1, bins='doane')
             prior = res.priors[f'eta{2+i}_1_prior']
             if prior is not None:
                 ax.hist(prior.rvs(10*res.ESS), **kw)
-
-    fig.tight_layout()
     return fig
 
 
-def plot_gp_corner(res, include_jitters=False, show=True, ranges=None):
+def plot_gp_corner(res, include_jitters=False, ranges=None):
     """ Corner plot for the GP hyperparameters """
 
     if not res.has_gp:
-        print('Model does not have GP! make_plot5() doing nothing...')
+        print('Model does not have GP! plot_gp_corner() doing nothing...')
         return
 
     data = []
@@ -691,7 +727,7 @@ def plot_gp_corner(res, include_jitters=False, show=True, ranges=None):
             print(i)
             labels += [rf'$\eta_{i}$']
     else:
-        labels += [rf'$\eta_{i}$' for i in range(1, 5)]
+        labels += [rf'$\eta_{i+1}$' for i in range(res.n_hyperparameters)]
 
     data.append(res.etas)
 
@@ -710,83 +746,6 @@ def plot_gp_corner(res, include_jitters=False, show=True, ranges=None):
                      plot_density=False)
 
     fig.subplots_adjust(top=0.95, bottom=0.1, wspace=0, hspace=0)
-    # for ax in fig.axes:
-    # ax.yaxis.set_label_coords(0.5, 0.5, fig.transFigure)
-
-    # available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-    # labels = [r'$s$'] * res.n_jitters
-    # labels += [r'$\eta_%d$' % (i + 1) for i, _ in enumerate(available_etas)]
-    # units = ['m/s'] * res.n_jitters + ['m/s', 'days', 'days', None]
-    # xlabels = []
-    # if res.multi:
-    #     for i in range(res.n_jitters):
-    #         label = r'%s$_{{\rm %s}}}$' % (labels[i], res.instruments[i])
-    #         xlabels.append(label)
-    # else:
-    #     xlabels.append(labels[0])
-
-    # for label, unit in zip(labels[res.n_jitters:], units[res.n_jitters:]):
-    #     xlabels.append(label)
-    #     #    ' (%s)' % unit if unit is not None else label)
-
-    # # all Np together
-    # res.post_samples = np.c_[res.extra_sigma, res.etas]
-    # # if res.multi:
-    # #     variables = list(res.extra_sigma.T)
-    # # else:
-    # #     variables = [res.extra_sigma]
-
-    # # for eta in available_etas:
-    # #     variables.append(getattr(res, eta))
-
-    # # res.post_samples = np.vstack(variables).T
-    # # ranges = [1.]*(len(available_etas) + res.extra_sigma.shape[1])
-
-    # if ranges is None:
-    #     ranges = [1.] * res.post_samples.shape[1]
-    # # ranges[3] = (res.pmin, res.pmax)
-
-    # try:
-    #     res.corner1 = corner(
-    #         res.post_samples,
-    #         labels=xlabels,
-    #         show_titles=True,
-    #         plot_contours=False,
-    #         plot_datapoints=False,
-    #         plot_density=True,
-    #         # fill_contours=True,
-    #         smooth=True,
-    #         contourf_kwargs={
-    #             'cmap': plt.get_cmap('afmhot'),
-    #             'colors': None
-    #         },
-    #         hexbin_kwargs={
-    #             'cmap': plt.get_cmap('afmhot_r'),
-    #             'bins': 'log'
-    #         },
-    #         hist_kwargs={'density': True},
-    #         range=ranges,
-    #         data_kwargs={'alpha': 1},
-    #     )
-    # except AssertionError as exc:
-    #     print('AssertionError from corner in make_plot5()', end='')
-    #     if "I don't believe" in str(exc):
-    #         print(', you probably need to get more posterior samples')
-    #     return
-
-    # res.corner1.suptitle(
-    #     'Joint and marginal posteriors for GP hyperparameters')
-
-    # if show:
-    #     res.corner1.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-    # if res.save_plots:
-    #     filename = 'kima-showresults-fig5.png'
-    #     print('saving in', filename)
-    #     res.corner1.savefig(filename)
-
-    # if res.return_figs:
-    #     return res.corner1
 
 
 def corner_all(res):
@@ -875,7 +834,7 @@ def corner_all(res):
         ax.set_xlim(xlim)
 
 
-def corner_planet_parameters(res, fig=None, true_values=None,
+def corner_planet_parameters(res, posteriors=None, fig=None, true_values=None,
                              include_known_object=False, include_transiting_planet=False):
     """ Corner plot of the posterior samples for the planet parameters """
     import pygtc
@@ -885,7 +844,10 @@ def corner_planet_parameters(res, fig=None, true_values=None,
     else:
         _labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
 
-    samples = res.posterior_sample[:, res.indices['planets']]
+    if posteriors is None:
+        samples = res.posterior_sample[:, res.indices['planets']]
+    else:
+        samples = np.c_[posteriors.P, posteriors.K, posteriors.e, posteriors.ω, posteriors.φ]
     nk = res.max_components
     labels = nk * _labels
 
@@ -897,7 +859,12 @@ def corner_planet_parameters(res, fig=None, true_values=None,
         __labels = copy(_labels)
         __labels[__labels.index(r'$\phi$')] = r'$T_c$'
         labels = labels + res.nTR * __labels
-    
+
+    labels_right_order = []
+    for i in range(res.n_dimensions):
+        labels_right_order += labels[i::res.n_dimensions]
+    labels = labels_right_order
+
     # set the parameter ranges to include everything
     def r(x, over=0.2):
         return x.min() - over * x.ptp(), x.max() + over * x.ptp()
@@ -915,7 +882,7 @@ def corner_planet_parameters(res, fig=None, true_values=None,
         labelRotation=(True, True),
         filledPlots=False,
         colorsOrder=['blues_old'],
-        figureSize='AandA_page',  # AandA_column
+        #figureSize='AandA_page',  # AandA_column
     )
     axs = fig.axes
     for ax in axs:
@@ -933,7 +900,7 @@ def corner_planet_parameters(res, fig=None, true_values=None,
         fig.set_size_inches(8, 6)
 
     fig.tight_layout()
-    fig.subplots_adjust(wspace=0.25, hspace=0.15)
+    #fig.subplots_adjust(wspace=0.25, hspace=0.15)
     return fig
 
 
@@ -980,7 +947,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
 
         # low, upp = prior.interval(1)
         d = kwargs.get('density', False)
-        ax.hist(prior.rvs(res.ESS),
+        ax.hist(distribution_rvs(prior, size=res.ESS),
                 density=d,
                 alpha=0.15,
                 color='k',
@@ -1024,7 +991,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                     if show_prior and j == 0:
                         d = kwargs.get('density', False)
                         kw = dict(density=d, alpha=0.15, color='k', zorder=-1)
-                        axs[j, i].hist(prior.rvs(res.ESS), **kw)
+                        axs[j, i].hist(distribution_rvs(prior, size=res.ESS), **kw)
                         axs[j, i].legend(['posterior', 'prior'])
 
         else:
@@ -1045,7 +1012,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                         pass
                     d = kwargs.get('density', False)
                     kw = dict(density=d, alpha=0.15, color='k', zorder=-1)
-                    axs[i].hist(prior.rvs(res.ESS), **kw)
+                    axs[i].hist(distribution_rvs(prior, size=res.ESS), **kw)
                     axs[i].legend(['posterior', 'prior'])
 
                 axs[i].set(xlabel=label, title=estimate,
@@ -1118,15 +1085,15 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
     if 'fig' in kwargs:
         fig = kwargs.pop('fig')
         axs = fig.axes
-        axs = np.array(axs).reshape(-1, res.n_instruments)
-        overplot = True
+        axs = np.array(axs).reshape(-1, res.n_jitters)
     else:
-        kw = dict(constrained_layout=True, sharey=True)
+        kw = dict(constrained_layout=True, sharey=False)
         if RVFWHM:
-            fig, axs = plt.subplots(2, res.n_instruments, **kw)
+            fig, axs = plt.subplots(2, res.n_jitters, 
+                                    figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
         else:
-            fig, axs = plt.subplots(1, res.n_instruments, **kw)
-        overplot = False
+            fig, axs = plt.subplots(1, res.n_jitters, 
+                                    figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
 
     if show_title:
         fig.suptitle('Posterior distribution for extra white noise')
@@ -1141,16 +1108,22 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
     kwargs.setdefault('bins', 'doane')
     axs = np.ravel(axs)
     for i, ax in enumerate(axs):
+        j = i // res.n_instruments
         estimate = percentile68_ranges_latex(res.jitter[:, i]) + ' m/s'
         ax.hist(res.jitter[:, i], label=estimate, **kwargs)
         leg = ax.legend()
         leg._legend_box.sep = 0
 
         if show_prior:
-            if RVFWHM and i >= res.n_instruments:
-                prior = res.priors['J2prior'].rvs(res.ESS)
+            if RVFWHM:
+                prior_name = 'Jprior' if j==0 else f'J{j+1}prior'
+                prior = distribution_rvs(res.priors[prior_name], size=res.ESS)
             else:
-                prior = res.priors['Jprior'].rvs(res.ESS)
+                if res.multi and i==0:
+                    prior = distribution_rvs(res.priors['stellar_jitter_prior'], size=res.ESS)
+                else:
+                    prior = distribution_rvs(res.priors['Jprior'], size=res.ESS)
+
             ax.hist(prior, density=True, color='k', alpha=0.15, zorder=-1)
 
         if show_stats:
@@ -1180,7 +1153,9 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
         ax.set(yticks=[], ylabel='posterior')
 
     insts = [get_instrument_name(i) for i in res.instruments]
-    if res.model == 'RVFWHMmodel':
+    if RVFWHM:
+        labels = [f'RV jitter {i} [m/s]' for i in insts]
+        labels += [f'FWHM jitter {i} [m/s]' for i in insts]
         labels = [f'RV jitter {i} [m/s]' for i in insts]
         labels += [f'FWHM jitter {i} [m/s]' for i in insts]
     else:
@@ -2302,7 +2277,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         if res.has_gp:
             ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc, alpha=alpha)
 
-        if res.indicator_correlations:
+        if hasattr(res, 'indicator_correlations') and res.indicator_correlations:
             model_wo_ind = res.eval_model(sample, tt,
                                           include_indicator_correlations=False)
             ax.plot(tt, (model - model_wo_ind + offset_model).T, color=gpc, alpha=alpha)
