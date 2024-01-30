@@ -1620,6 +1620,21 @@ class KimaResults:
                 s = s.rjust(20 + len(s))
                 print(s)
 
+        if self.TR:
+            print('number of transiting planets: ', self.nTR)
+            print('orbital parameters: ', end='')
+
+            pars = ('P', 'K', 'Tc', 'e', 'ω')
+            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+
+            for i in range(0, self.nTR):
+                formatter = {'all': lambda v: f'{v:11.5f}'}
+                with np.printoptions(formatter=formatter):
+                    s = str(p[self.indices['TRpars']][i::self.nTR])
+                    s = s.replace('[', '').replace(']', '')
+                s = s.rjust(20 + len(s))
+                print(s)
+
         if self.has_gp:
             print('GP parameters: ', end='')
             if self.model == 'GPmodel':

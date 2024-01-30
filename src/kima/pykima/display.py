@@ -1714,6 +1714,7 @@ def phase_plot(res,
 
     planetis = list(range(mc))
     KO_planet = [False] * mc
+    TR_planet = [False] * mc
 
     if res.KO:
         mc += res.nKO
@@ -1734,6 +1735,24 @@ def phase_plot(res,
             planetis.append(i)
             KO_planet.append(True)
 
+    if res.TR:
+        mc += res.nTR
+        if nplanets == 0:
+            k = 0
+        else:
+            k = planetis[-1]
+
+        for i in range(res.nTR):
+            TRpars = sample[res.indices['TRpars']][i::res.nTR]
+            if pars.size == 0:
+                pars = TRpars
+            else:
+                pars = np.insert(pars, range(1 + k, (1 + k) * 6, 1 + k),
+                                 TRpars)
+                k += 1
+            nplanets += 1
+            planetis.append(i)
+            TR_planet.append(True)
 
     if nplanets == 0:
         print('Sample has no planets! phase_plot() doing nothing...')
@@ -1745,14 +1764,20 @@ def phase_plot(res,
         for i in range(nd):
             pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
         planetis = list(ind)
-        KO_planet = np.array(KO_planet)[ind]
+        if res.KO:
+            KO_planet = np.array(KO_planet)[ind]
+        if res.TR:
+            TR_planet = np.array(TR_planet)[ind]
     elif sort_by_increasing_P:
         # sort by increasing period
         ind = np.argsort(pars[0:mc])
         for i in range(nd):
             pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
         planetis = list(ind)
-        KO_planet = np.array(KO_planet)[ind]
+        if res.KO:
+            KO_planet = np.array(KO_planet)[ind]
+        if res.TR:
+            TR_planet = np.array(TR_planet)[ind]
     else:
         planetis = list(range(nplanets))
 
@@ -1769,6 +1794,7 @@ def phase_plot(res,
     W = pars[4 * mc:5 * mc][:nplanets]
 
     KO_planet = KO_planet[:nplanets]
+    TR_planet = TR_planet[:nplanets]
 
     # subtract stochastic model and vsys / offsets from data
     v = res.full_model(sample, include_planets=False)
@@ -1852,7 +1878,7 @@ def phase_plot(res,
         phase = np.linspace(0, 1, 200)
         tt = phase * p + t0
 
-        if KO_planet[i]:
+        if (res.KO and KO_planet[i]) or (res.TR and TR_planet[i]):
             shown_KO_planets += 1
             sign = -1
             planet_index = sign * shown_KO_planets
