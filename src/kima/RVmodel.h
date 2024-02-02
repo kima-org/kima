@@ -122,8 +122,8 @@ class KIMA_API RVmodel
         distribution offsets_prior;
         std::vector<distribution> individual_offset_prior;
         // { (size_t) data.number_instruments - 1 };
-        /// no doc.
-        distribution betaprior;
+        /// (Common) prior for the activity indicator coefficients
+        distribution beta_prior;
 
         /* KO mode! */
 

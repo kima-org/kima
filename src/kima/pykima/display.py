@@ -83,7 +83,11 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True):
 
     Returns:
         fig (matplotlib.figure.Figure): The matplotlib figure with the plot
-    """    
+    """
+    if res.fix:
+        print(f'The number of Keplerians is fixed (to {res.npmax}). plot_posterior_np doing nothing')
+        return
+
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     else:
@@ -468,72 +472,29 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
         except KeyError:
             pass
 
-        """
-        from matplotlib.patches import Rectangle
-        if 'Pprior' in res.priors and 'Kprior' in res.priors:
-            support_P = res.priors['Pprior'].support()
-            span_support_P = np.ptp(support_P)
-            support_K = res.priors['Kprior'].support()
-            span_support_K = np.ptp(support_K)
-            try:
-                support_e = res.priors['eprior'].support()
-                span_support_e = np.ptp(support_e)
-            except AttributeError:
-                support_e = (0, 1)
-                span_support_e = 1
-
-        elif include_known_object:
-            for i in range(res.nKO):
-                if f'KO_Pprior_{i}' in res.priors:
-                    support_P = res.priors[f'KO_Pprior_{i}'].support()
-                    span_support_P = np.ptp(support_P)
-                if f'KO_Kprior_{i}' in res.priors:
-                    support_K = res.priors[f'KO_Kprior_{i}'].support()
-                    span_support_K = np.ptp(support_K)
-                if f'KO_eprior_{i}' in res.priors:
-                    try:
-                        support_e = res.priors[f'KO_eprior_{i}'].support()
-                        span_support_e = np.ptp(support_e)
-                    except AttributeError:
-                        support_e = (0, 1)
-                        span_support_e = 1
-
-        finite = np.isfinite(support_P).all()
-        finite &= np.isfinite(support_K).all()
-        finite &= np.isfinite(support_e).all()
-
-        if finite:
-            rect = Rectangle((support_P[0], support_K[0]), span_support_P, span_support_K,
-                                facecolor='k', alpha=0.1, zorder=-100)
-            ax1.add_patch(rect)
-            rect = Rectangle((support_P[0], support_e[0]), span_support_P, span_support_e,
-                                facecolor='k', alpha=0.1, zorder=-100)
-            ax2.add_patch(rect)
-        """
-
     ax1.set(ylabel='Semi-amplitude [m/s]',
             title='Joint posterior semi-amplitude $-$ orbital period')
     ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
             title='Joint posterior eccentricity $-$ orbital period',
             ylim=[0, 1])
 
-    if show_prior:
-        try:
-            minx, maxx = 0, np.inf
-            maxy = np.inf
-            if include_known_object:
-                for i in range(res.nKO):
-                    _1, _2 = res.priors[f'KO_Pprior_{i}'].support()
-                    minx = max(minx, _1)
-                    maxx = min(maxx, _2)
-                    maxy = min(maxy, res.priors[f'KO_Kprior_{i}'].support()[1])
-            _1, _2 = res.priors['Pprior'].support()
-            minx = max(minx, _1)
-            maxx = min(maxx, _2)
-            maxy = min(maxy, res.priors['Kprior'].support()[1])
-            ax1.set(xlim=(minx, maxx), ylim=(None, maxy))
-        except (AttributeError, KeyError, ValueError):
-            pass
+    # if show_prior:
+    #     try:
+    #         minx, maxx = 0, np.inf
+    #         maxy = np.inf
+    #         if include_known_object:
+    #             for i in range(res.nKO):
+    #                 _1, _2 = res.priors[f'KO_Pprior_{i}'].support()
+    #                 minx = max(minx, _1)
+    #                 maxx = min(maxx, _2)
+    #                 maxy = min(maxy, res.priors[f'KO_Kprior_{i}'].support()[1])
+    #         _1, _2 = res.priors['Pprior'].support()
+    #         minx = max(minx, _1)
+    #         maxx = min(maxx, _2)
+    #         maxy = min(maxy, res.priors['Kprior'].support()[1])
+    #         ax1.set(xlim=(minx, maxx), ylim=(None, maxy))
+    #     except (AttributeError, KeyError, ValueError):
+    #         pass
 
     if res.save_plots:
         filename = 'kima-showresults-fig3.png'
@@ -1173,11 +1134,10 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
         return fig
 
 
-def hist_correlations(res):
+def hist_correlations(res, show_prior=False):
     """ Plot the histogram of the posterior for the activity correlations """
     if not res.indicator_correlations:
-        msg = 'Model has no activity correlations! '\
-              'hist_correlations() doing nothing...'
+        msg = 'Model has no activity correlations! hist_correlations() doing nothing...'
         print(msg)
         return
 
@@ -1193,8 +1153,13 @@ def hist_correlations(res):
         ax.hist(res.betas[:, i], label=estimate)
         ax.set(ylabel='posterior samples',
                xlabel='$c_{%s}$' % res.activity_indicators[i])
+
+        if show_prior:
+            prior = distribution_rvs(res.priors['beta_prior'], res.ESS)
+            ax.hist(prior, alpha=0.15, color='k', zorder=-1, label='prior')
+
         leg = ax.legend(frameon=False)
-        leg.legendHandles[0].set_visible(False)
+        #leg.legendHandles[0].set_visible(False)
 
     title = 'Posterior distribution for activity correlations'
     fig.suptitle(title)

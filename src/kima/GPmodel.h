@@ -130,10 +130,10 @@ class  GPmodel
         distribution cubic_prior;
         /// (Common) prior for the between-instruments offsets.
         distribution offsets_prior;
-        std::vector<distribution> individual_offset_prior;
-        // { (size_t) data.number_instruments - 1 };
-        /// no doc.
-        distribution betaprior;
+        /// Individual priors for the between-instruments offsets.
+        std::vector<distribution> individual_offset_prior; // { (size_t) data.number_instruments - 1 };
+        /// (Common) prior for the activity indicator coefficients
+        distribution beta_prior;
 
         /* KO mode! */
 

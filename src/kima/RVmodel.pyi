@@ -248,6 +248,19 @@ class RVmodel:
         ...
     
     @property
+    def beta_prior(self) -> kima.distributions.Distribution:
+        """
+        (Common) prior for the activity indicator coefficients
+        """
+        ...
+    @beta_prior.setter
+    def beta_prior(self, arg: kima.distributions.Distribution, /) -> None:
+        """
+        (Common) prior for the activity indicator coefficients
+        """
+        ...
+    
+    @property
     def conditional(self) -> kima.RVmodel.RVConditionalPrior:
         ...
     @conditional.setter

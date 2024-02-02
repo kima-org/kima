@@ -60,7 +60,7 @@ void RVmodel::set_transiting_planet(size_t n)
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    betaprior = make_prior<Gaussian>(0, 1);
+    beta_prior = make_prior<Gaussian>(0, 1);
 
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
@@ -163,7 +163,7 @@ void RVmodel::from_prior(RNG& rng)
     if (indicator_correlations)
     {
         for (int i = 0; i < data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
+            betas[i] = beta_prior->generate(rng);
     }
 
     if (known_object) { // KO mode!
@@ -478,8 +478,10 @@ double RVmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data._multi){
-            for(unsigned j=0; j<offsets.size(); j++){
+        if (data._multi)
+        {
+            for (size_t j = 0; j < offsets.size(); j++)
+            {
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
         }
@@ -494,11 +496,11 @@ double RVmodel::perturb(RNG& rng)
         // propose new indicator correlations
         if(indicator_correlations){
             for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
+                beta_prior->perturb(betas[j], rng);
             }
         }
 
-        for(size_t i=0; i<mu.size(); i++)
+        for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] += background;
             if(trend) {
@@ -833,6 +835,9 @@ void RVmodel::save_setup() {
         }
     }
 
+    if (indicator_correlations)
+        fout << "beta_prior: " << *beta_prior << endl;
+
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
@@ -993,6 +998,11 @@ NB_MODULE(RVmodel, m) {
             [](RVmodel &m) { return m.individual_offset_prior; },
             [](RVmodel &m, std::vector<distribution>& vd) { m.individual_offset_prior = vd; },
             "Common prior for the between-instrument offsets")
+
+        .def_prop_rw("beta_prior",
+            [](RVmodel &m) { return m.beta_prior; },
+            [](RVmodel &m, distribution &d) { m.beta_prior = d; },
+            "(Common) prior for the activity indicator coefficients")
 
         .def_prop_rw("nu_prior",
             [](RVmodel &m) { return m.nu_prior; },

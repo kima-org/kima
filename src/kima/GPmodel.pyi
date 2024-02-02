@@ -102,6 +102,19 @@ class GPmodel:
         ...
     
     @property
+    def beta_prior(self) -> kima.distributions.Distribution:
+        """
+        (Common) prior for the activity indicator coefficients
+        """
+        ...
+    @beta_prior.setter
+    def beta_prior(self, arg: kima.distributions.Distribution, /) -> None:
+        """
+        (Common) prior for the activity indicator coefficients
+        """
+        ...
+    
+    @property
     def conditional(self) -> kima.RVmodel.RVConditionalPrior:
         ...
     @conditional.setter
@@ -200,6 +213,32 @@ class GPmodel:
         ...
     
     @property
+    def indicator_correlations(self) -> bool:
+        """
+        include in the model linear correlations with indicators
+        """
+        ...
+    @indicator_correlations.setter
+    def indicator_correlations(self, arg: bool, /) -> None:
+        """
+        include in the model linear correlations with indicators
+        """
+        ...
+    
+    @property
+    def individual_offset_prior(self) -> list[kima.distributions.Distribution]:
+        """
+        Common prior for the between-instrument offsets
+        """
+        ...
+    @individual_offset_prior.setter
+    def individual_offset_prior(self, arg: list[kima.distributions.Distribution], /) -> None:
+        """
+        Common prior for the between-instrument offsets
+        """
+        ...
+    
+    @property
     def known_object(self) -> bool:
         """
         whether the model includes (better) known extra Keplerian curve(s)
@@ -210,6 +249,13 @@ class GPmodel:
     def n_known_object(self) -> int:
         """
         how many known objects
+        """
+        ...
+    
+    @property
+    def n_transiting_planet(self) -> int:
+        """
+        how many transiting planets
         """
         ...
     
@@ -242,6 +288,9 @@ class GPmodel:
     def set_known_object(self, arg: int, /) -> None:
         ...
     
+    def set_transiting_planet(self, arg: int, /) -> None:
+        ...
+    
     @property
     def slope_prior(self) -> kima.distributions.Distribution:
         """
@@ -265,6 +314,13 @@ class GPmodel:
     def star_mass(self, arg: float, /) -> None:
         """
         stellar mass [Msun]
+        """
+        ...
+    
+    @property
+    def transiting_planet(self) -> bool:
+        """
+        whether the model includes transiting planet(s)
         """
         ...
     

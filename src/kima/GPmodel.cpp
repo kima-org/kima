@@ -64,7 +64,7 @@ void GPmodel::set_transiting_planet(size_t n)
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    betaprior = make_prior<Gaussian>(0, 1);
+    beta_prior = make_prior<Gaussian>(0, 1);
 
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
@@ -125,7 +125,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     if (!eta1_prior)
         eta1_prior = make_prior<LogUniform>(0.1, 100);
     if (!eta2_prior)
-        eta2_prior = make_prior<LogUniform>(1, 100);
+        eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
     if (!eta3_prior)
         eta3_prior = make_prior<Uniform>(10, 40);
     if (!eta4_prior)
@@ -147,9 +147,9 @@ void GPmodel::from_prior(RNG& rng)
 
     if(data._multi)
     {
-        for(int i=0; i<offsets.size(); i++)
+        for (int i = 0; i < offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
-        for(int i=0; i<jitters.size(); i++)
+        for (int i = 0; i < jitters.size(); i++)
             jitters[i] = Jprior->generate(rng);
     }
     else
@@ -168,7 +168,7 @@ void GPmodel::from_prior(RNG& rng)
     if (indicator_correlations)
     {
         for (int i = 0; i < data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
+            betas[i] = beta_prior->generate(rng);
     }
 
     if (known_object) { // KO mode!
@@ -540,8 +540,10 @@ double GPmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new instrument offsets
-        if (data._multi){
-            for(unsigned j=0; j<offsets.size(); j++){
+        if (data._multi)
+        {
+            for (size_t j = 0; j < offsets.size(); j++)
+            {
                 individual_offset_prior[j]->perturb(offsets[j], rng);
             }
         }
@@ -556,7 +558,7 @@ double GPmodel::perturb(RNG& rng)
         // propose new indicator correlations
         if(indicator_correlations){
             for(size_t j = 0; j < data.number_indicators; j++){
-                betaprior->perturb(betas[j], rng);
+                beta_prior->perturb(betas[j], rng);
             }
         }
 
@@ -858,13 +860,25 @@ void GPmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
     fout << "Jprior: " << *Jprior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data._multi)
+
+    if (data._multi) {
         fout << "offsets_prior: " << *offsets_prior << endl;
+        int i = 0;
+        for (auto &p : individual_offset_prior) {
+            fout << "individual_offset_prior[" << i << "]: " << *p << endl;
+            i++;
+        }
+    }
+
+    if (indicator_correlations)
+        fout << "beta_prior: " << *beta_prior << endl;
+
 
     fout << endl << "[priors.GP]" << endl;
     fout << "eta1_prior: " << *eta1_prior << endl;
@@ -964,10 +978,12 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.Cprior; },
             [](GPmodel &m, distribution &d) { m.Cprior = d; },
             "Prior for the systemic velocity")
+
         .def_prop_rw("Jprior",
             [](GPmodel &m) { return m.Jprior; },
             [](GPmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
+
         .def_prop_rw("slope_prior",
             [](GPmodel &m) { return m.slope_prior; },
             [](GPmodel &m, distribution &d) { m.slope_prior = d; },
@@ -980,10 +996,20 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.cubic_prior; },
             [](GPmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+
         .def_prop_rw("offsets_prior",
             [](GPmodel &m) { return m.offsets_prior; },
             [](GPmodel &m, distribution &d) { m.offsets_prior = d; },
             "Common prior for the between-instrument offsets")
+        .def_prop_rw("individual_offset_prior",
+            [](GPmodel &m) { return m.individual_offset_prior; },
+            [](GPmodel &m, std::vector<distribution>& vd) { m.individual_offset_prior = vd; },
+            "Common prior for the between-instrument offsets")
+
+        .def_prop_rw("beta_prior",
+            [](GPmodel &m) { return m.beta_prior; },
+            [](GPmodel &m, distribution &d) { m.beta_prior = d; },
+            "(Common) prior for the activity indicator coefficients")
 
         // priors for the GP hyperparameters
         .def_prop_rw("eta1_prior",
