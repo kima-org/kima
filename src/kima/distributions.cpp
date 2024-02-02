@@ -14,6 +14,7 @@ using _state_type = std::tuple<double, double, double, double>;
 
 NB_MODULE(distributions, m)
 {
+    nb::set_leak_warnings(false);
     nb::class_<DNest4::RNG>(m, "RNG")
         .def(nb::init<unsigned int>(), "seed"_a)
         #

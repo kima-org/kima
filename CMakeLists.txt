@@ -35,51 +35,52 @@ find_package(nanobind CONFIG REQUIRED)
 # compile the extension modules
 # this will make them available as kima.module
 
-nanobind_add_module(distributions STABLE_ABI NB_STATIC 
+nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp)
 
-nanobind_add_module(Data STABLE_ABI NB_STATIC
+nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
 
-nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC 
+nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/ConditionalPrior.cpp src/kima/Data.cpp)
 
 # different models, with their corresponding dependencies
-nanobind_add_module(RVmodel STABLE_ABI NB_STATIC
+nanobind_add_module(RVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC
+nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/OutlierRVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC
+nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/TRANSITmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(GPmodel STABLE_ABI NB_STATIC
+nanobind_add_module(GPmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/GPmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC
+nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
-nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC
+
+nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/BINARIESmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
                     
-nanobind_add_module(GAIAmodel STABLE_ABI NB_STATIC
+nanobind_add_module(GAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/GAIAmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
                     
-nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC
+nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVGAIAmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 
 # compile the Sampler module to create the kima.run function
-nanobind_add_module(Sampler STABLE_ABI NB_STATIC
+nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/run.cpp
                     src/kima/RVmodel.cpp
                     src/kima/OutlierRVmodel.cpp
@@ -94,15 +95,15 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC
                     src/kima/transits.cpp src/kima/AMDstability.cpp)
 
 
-nanobind_add_module(kepler STABLE_ABI NB_STATIC 
+nanobind_add_module(kepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/kepler.cpp)
 target_compile_features(kepler PRIVATE cxx_std_17)
 
-nanobind_add_module(postkepler STABLE_ABI NB_STATIC 
+nanobind_add_module(postkepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/postkepler.cpp src/kima/kepler.cpp)
 target_compile_features(postkepler PRIVATE cxx_std_17)
 
-nanobind_add_module(transits STABLE_ABI NB_STATIC 
+nanobind_add_module(transits STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/transits.cpp src/kima/kepler.cpp)
 target_compile_features(transits PRIVATE cxx_std_17)
 
