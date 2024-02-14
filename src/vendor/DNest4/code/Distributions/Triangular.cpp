@@ -50,10 +50,12 @@ double Triangular::log_pdf(double x) const
 {
     if ( (x < lower) || (x > upper) )
         return -std::numeric_limits<double>::infinity();
-    else if ( (x > lower) && ( x <= centre) )
+
+    else if ( (x >= lower) && ( x < centre) )
         return log(2.0*(x-lower)) - log((upper-lower)*(centre-lower));
+
     else
-        return log((upper-lower)) - log((upper-lower)*(upper-centre));
+        return log(2.0*(upper-x)) - log((upper-lower)*(upper-centre));
 }
 
 } // namespace DNest4

@@ -11,7 +11,7 @@ namespace DNest4
 class Gaussian:public ContinuousDistribution
 {
     private:
-        double _norm_pdf_logC = log(sqrt(2*M_PI));
+        const double _norm_pdf_logC = log(sqrt(2 * M_PI));
 
     public:
         // Location and scale parameter
@@ -29,6 +29,30 @@ class Gaussian:public ContinuousDistribution
             return out;
         }
 };
+
+
+class HalfGaussian:public ContinuousDistribution
+{
+    private:
+        const double _halfnorm_pdf_logC = log(sqrt(2 / M_PI));
+
+    public:
+        // scale parameter
+        double width;
+
+        HalfGaussian(double width=1.0);
+
+        double cdf(double x) const override;
+        double cdf_inverse(double p) const override;
+        double log_pdf(double x) const override;
+
+        virtual std::ostream& print(std::ostream& out) const override
+        {
+            out << "HalfGaussian(" << width << ")";
+            return out;
+        }
+};
+
 
 } // namespace DNest4
 
