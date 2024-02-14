@@ -152,6 +152,39 @@ class Gaussian:
     def scale(self, arg: float, /) -> None:
         ...
     
+class HalfGaussian:
+    """
+    Half-Gaussian distribution
+    """
+
+    def __init__(self, scale: float) -> None:
+        ...
+    
+    def cdf(self, x: float) -> float:
+        """
+        Cumulative distribution function evaluated at `x`
+        """
+        ...
+    
+    def logpdf(self, x: float) -> float:
+        """
+        Log of the probability density function evaluated at `x`
+        """
+        ...
+    
+    def ppf(self, q: float) -> float:
+        """
+        Percent point function (inverse of cdf) evaluated at `q`
+        """
+        ...
+    
+    @property
+    def scale(self) -> float:
+        ...
+    @scale.setter
+    def scale(self, arg: float, /) -> None:
+        ...
+    
 class Kumaraswamy:
     """
     Kumaraswamy distribution (similar to a Beta distribution)

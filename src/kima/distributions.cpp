@@ -143,6 +143,25 @@ NB_MODULE(distributions, m)
             }
         );
 
+    nb::class_<DNest4::HalfGaussian, DNest4::ContinuousDistribution>(m, "HalfGaussian", "Half-Gaussian distribution")
+        .def(nb::init<double>(), "scale"_a)
+        .def_rw("scale", &DNest4::HalfGaussian::width)
+        .def("__repr__", [](const DNest4::HalfGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::HalfGaussian::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::HalfGaussian::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::HalfGaussian::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::HalfGaussian &d) { 
+                return std::make_tuple(d.width, 0.0, 0.0, 0.0); 
+        })
+        .def("__setstate__",
+             [](DNest4::HalfGaussian &d, const _state_type &state) {
+                new (&d) DNest4::HalfGaussian(std::get<0>(state));
+            }
+        );
+
+
     // Kumaraswamy.cpp
     nb::class_<DNest4::Kumaraswamy, DNest4::ContinuousDistribution>(m, "Kumaraswamy", "Kumaraswamy distribution (similar to a Beta distribution)")
         .def(nb::init<double, double>(), "a"_a, "b"_a)
