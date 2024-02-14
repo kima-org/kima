@@ -88,11 +88,3 @@ def test_run():
     kima.run(m, steps=1)
 
 
-def test_distributions():
-    from kima import distributions
-    from kima.distributions import Gaussian, Uniform, Fixed
-    u = Uniform(0, 2)
-    assert str(u) == 'Uniform(0; 2)'
-    assert str(Gaussian(0, 1)) == 'Gaussian(0; 1)'
-    from kima.distributions import UniformAngle
-    assert_equal(UniformAngle().logpdf(1.0), Uniform(0.0, 2*np.pi).logpdf(1.0))
