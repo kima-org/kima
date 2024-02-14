@@ -151,6 +151,7 @@ def plot_posterior_period(res,
                           show_prior=False,
                           show_year=True,
                           show_timespan=True,
+                          show_aliases=False,
                           separate_colors=False,
                           return_bins=False,
                           mark_periods=None,
@@ -181,6 +182,8 @@ def plot_posterior_period(res,
             Show a vertical line at 1 year
         show_timespan (bool, optional):
             Show a vertical line at the timespan of the data
+        show_aliases (bool, optional):
+            Show daily and yearly aliases for top peak
         separate_colors (bool, optional):
             Show different Keplerians as different colors
         return_bins (bool, optional):
@@ -291,6 +294,10 @@ def plot_posterior_period(res,
 
             bottoms += np.append(counts / res.ESS, 0)
 
+        # save maximum peak
+        peaki = np.argmax(bottoms)
+        peakP = bins[peaki:peaki+2].mean()
+
         # ax.hist(T, bins=bins, alpha=0.8, density=density)
 
         if show_prior and T.size > 100:
@@ -320,6 +327,15 @@ def plot_posterior_period(res,
     if show_timespan:  # mark the timespan of the data
         ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
 
+    if show_aliases:  # mark daily and yearly aliases of top peak
+        yearly, solar_dayly, sidereal_dayly = 1 / 365.25, 1.0, 1 + 1 / 365.25
+        alias_year = [abs(1 / (yearly + i / peakP)) for i in [1, -1]]
+        alias_solar_day = [abs(1 / (solar_dayly + i / peakP)) for i in [1, -1]]
+        # alias_sidereal_day = [abs(1 / (sidereal_dayly + i / peakP)) for i in [1, -1]]
+        ax.plot(peakP, 1.1, 'v', color='orange')
+        ax.vlines(alias_year, 0, 1, color='orange', ls='--', alpha=0.1)
+        ax.vlines(alias_solar_day, 0, 1, color='orange', ls='--', alpha=0.1)
+        # ax.vlines(alias_sidereal_day, 0, 1, color='orange', ls='--', alpha=0.1)
 
     if kwargs.get('legend', True):
         ax.legend()
@@ -339,8 +355,6 @@ def plot_posterior_period(res,
             ax.set_title(title)
         else:
             ax.set_title('Posterior distribution for the orbital period(s)')
-
-    # ax.set_ylim(0, 1)
 
     if plims is not None:
         ax.set_xlim(plims)
@@ -364,7 +378,8 @@ def plot_posterior_period(res,
 
 
 def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
-             points=True, colors_np=True, gridsize=50, **kwargs):
+             reorder_P=False, sort_by_increasing_P=False, points=True, colors_np=True, 
+             gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
     period and for eccentricity and orbital period. If `points` is True, plot
@@ -382,14 +397,26 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
             return
 
     if mask is None:
-        P = res.posteriors.P.copy()
-        K = res.posteriors.K.copy()
-        E = res.posteriors.e.copy()
+        if reorder_P:
+            from .analysis import reorder_P
+            post = reorder_P(res)
+            P = post.P.copy()
+            K = post.K.copy()
+            E = post.e.copy()
+        elif sort_by_increasing_P:
+            from .analysis import sort_planet_samples
+            post = sort_planet_samples(res)
+            P = post.P.copy()
+            K = post.K.copy()
+            E = post.e.copy()
+        else:
+            P = res.posteriors.P.copy()
+            K = res.posteriors.K.copy()
+            E = res.posteriors.e.copy()
     else:
-        pars = res.posterior_sample[mask, res.indices['planets']]
-        T = np.hstack(pars[:, 0 * res.max_components:1 * res.max_components])
-        A = np.hstack(pars[:, 1 * res.max_components:2 * res.max_components])
-        E = np.hstack(pars[:, 3 * res.max_components:4 * res.max_components])
+        P = res.posteriors.P[mask].copy()
+        K = res.posteriors.K[mask].copy()
+        E = res.posteriors.e[mask].copy()
 
     include_known_object = include_known_object and res.KO
 
@@ -447,6 +474,8 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
 
         ax2.hexbin(P[P != 0.0], E[P != 0.0], gridsize=gridsize, bins='log', xscale='log',
                    cmap=plt.get_cmap('coolwarm_r'))
+    
+        plt.colorbar(cm, ax=ax1)
 
     if show_prior:
         kw_prior = dict(ms=2, color='k', alpha=0.05, zorder=-10)
@@ -806,9 +835,10 @@ def corner_planet_parameters(res, posteriors=None, fig=None, true_values=None,
         _labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
 
     if posteriors is None:
-        samples = res.posterior_sample[:, res.indices['planets']]
+        samples = res.posterior_sample[:, res.indices['planets']].copy()
     else:
         samples = np.c_[posteriors.P, posteriors.K, posteriors.e, posteriors.ω, posteriors.φ]
+
     nk = res.max_components
     labels = nk * _labels
 
@@ -820,6 +850,10 @@ def corner_planet_parameters(res, posteriors=None, fig=None, true_values=None,
         __labels = copy(_labels)
         __labels[__labels.index(r'$\phi$')] = r'$T_c$'
         labels = labels + res.nTR * __labels
+
+    if samples.shape[1] == 0:
+        print('no planet parameters to show')
+        return
 
     labels_right_order = []
     for i in range(res.n_dimensions):
@@ -1555,13 +1589,16 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
         return
 
     import pygtc
+    labels = [r'$P$', r'$K$', r'$e$', r'$M_0$', r'$\omega$']
 
-    labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', r'$\omega$']
     for i in range(res.nKO):
-        data = res.KOpars[:, i::res.nKO]
+        data = res.KOpars[:, i::res.nKO].copy()
+        # swtich M0 and ecc, just for convenience
+        data[:, [3, 2]] = data[:, [2, 3]]
+
         fig = pygtc.plotGTC(
             chains=data,
-            # smoothingKernel=0,
+            smoothingKernel=0,
             paramNames=labels,
             plotDensity=False,
             labelRotation=(True, False),
@@ -2007,7 +2044,7 @@ def phase_plot(res,
         axp = fig.add_subplot(gs[:, -1])
         from astropy.timeseries import LombScargle
         gls = LombScargle(res.data.t, residuals, res.data.e)
-        freq, power = gls.autopower()
+        freq, power = gls.autopower(maximum_frequency=1.0, minimum_frequency=1/res.data.t.ptp())
         axp.semilogy(power, 1 / freq, 'k', alpha=0.6)
 
         kwl = dict(color='k', alpha=0.2, ls='--')
