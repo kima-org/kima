@@ -28,8 +28,8 @@ double Rayleigh::cdf_inverse(double x) const
 
 double Rayleigh::log_pdf(double x) const
 {
-    double r = x/scale;
-    return log(r) - 0.5 * r * r;
+    double r = x / scale;
+    return log(r / scale) - 0.5 * r * r;
 }
 
 
