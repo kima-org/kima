@@ -440,25 +440,68 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
     return {'found': nfound, 'hdi': regions, 'withins': withins}
 
 
-def sort_planet_samples(res, planet_samples, byP=True, byK=False):
+def reorder_P(res, passes=1):
+    from .results import posterior_holder
+
+    if res.max_components != 2:
+        raise NotImplementedError('Only 2-planet solutions are supported')
+
+    new_posterior = posterior_holder()
+    new_posterior.P = res.posteriors.P.copy()
+    new_posterior.K = res.posteriors.K.copy()
+    new_posterior.e = res.posteriors.e.copy()
+    new_posterior.ω = res.posteriors.ω.copy()
+    new_posterior.φ = res.posteriors.φ.copy()
+
+    mask = res.Np == 2
+
+    for i in range(passes):
+        P = new_posterior.P.copy()
+        m, s = np.median(P[mask, 0]), np.std(P[mask, 0])
+        maybe_wrong_order = np.abs(P[:, 0] - m) > s
+        new_posterior.P[mask & maybe_wrong_order] = new_posterior.P[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.K[mask & maybe_wrong_order] = new_posterior.K[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.e[mask & maybe_wrong_order] = new_posterior.e[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.ω[mask & maybe_wrong_order] = new_posterior.ω[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.φ[mask & maybe_wrong_order] = new_posterior.φ[mask & maybe_wrong_order][:, ::-1]
+
+    return new_posterior
+
+
+def sort_planet_samples(res, byP=True, byK=False):
     # here we sort the planet_samples array by the orbital period
     # this is a bit difficult because the organization of the array is
     # P1 P2 K1 K2 ....
-    samples = np.empty_like(planet_samples)
-    n = res.max_components * res.n_dimensions
-    mc = res.max_components
-    if byP:
-        p = planet_samples[:, :mc]
-        ind_sort = np.arange(np.shape(p)[0])[:, np.newaxis], np.argsort(p)
-    elif byK:
-        k = planet_samples[:, mc:2 * mc]
-        ind_sort = np.arange(np.shape(k)[0])[:, np.newaxis], np.argsort(k)
-    else:
-        raise ValueError('one of byP or byK should be True')
+    from .results import posterior_holder
+    P = res.posteriors.P.copy()
+    sortP = np.argsort(P, axis=1)
 
-    for i, j in zip(range(0, n, mc), range(mc, n + mc, mc)):
-        samples[:, i:j] = planet_samples[:, i:j][ind_sort]
-    return samples
+    new_posterior = posterior_holder()
+
+    if byP:
+        n = np.arange(P.shape[0])[:, None]
+        new_posterior.P = P[n, sortP]
+        new_posterior.K = res.posteriors.K[n, sortP]
+        new_posterior.e = res.posteriors.e[n, sortP]
+        new_posterior.ω = res.posteriors.ω[n, sortP]
+        new_posterior.φ = res.posteriors.φ[n, sortP]
+        return new_posterior
+
+    # samples = np.empty_like(planet_samples)
+    # n = res.max_components * res.n_dimensions
+    # mc = res.max_components
+    # if byP:
+    #     p = planet_samples[:, :mc]
+    #     ind_sort = np.arange(np.shape(p)[0])[:, np.newaxis], np.argsort(p)
+    # elif byK:
+    #     k = planet_samples[:, mc:2 * mc]
+    #     ind_sort = np.arange(np.shape(k)[0])[:, np.newaxis], np.argsort(k)
+    # else:
+    #     raise ValueError('one of byP or byK should be True')
+
+    # for i, j in zip(range(0, n, mc), range(mc, n + mc, mc)):
+    #     samples[:, i:j] = planet_samples[:, i:j][ind_sort]
+    # return samples
 
 
 def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
@@ -525,18 +568,19 @@ def compare_planet_parameters(results1, results2, star_mass=1.0):
         figs.append(GTC)
 
 
-def find_outliers(results, sample, threshold=10, verbose=False):
+def find_outliers(results, sample, threshold=10, full_output=False):
     """
     Estimate which observations are outliers, for a model with a Student t
     likelihood. This function first calculates the residuals given the
     parameters in `sample`. Then it computes the relative probability of each
     residual point given a Student-t (Td) and a Gaussian (Gd) likelihoods. If
     the probability Td is larger than Gd (by a factor of `threshold`), the point
-    is flagged as an outlier. The function returns an "outlier mask".
+    is flagged as an outlier. The function returns an "outlier mask". If 
+    `full_output` is True, it also returns the ratio Td/Gd.
     """
     res = results
     # the model must have studentt = true
-    if not res.studentT:
+    if not res.studentt:
         raise ValueError('studentt option is off, cannot estimate outliers')
 
     # calculate residuals for this sample
@@ -564,15 +608,16 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     # the Gaussian likelihood
     ratio = Td / Gd
     outlier = ratio > threshold
-    if verbose:
-        print(f'Found {outlier.sum()} outliers')
+
+    if full_output:
+        return outlier, ratio
 
     return outlier
 
 
 def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
                      Np: int = None, bins: Union[int, np.ndarray] = 200,
-                     plot=True, semi_amplitude=False, semi_major_axis=False,
+                     plot=True, ax=None, semi_amplitude=False, semi_major_axis=False,
                      logX=True, return_mask=False, remove_nan=True,
                      show_eccentricity=False, K_lines=(5, 3, 1), smooth=False,
                      smooth_degree: int = 3):
@@ -616,37 +661,28 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
             array is in units of Earth masses, `bins` is in days.
     """
     res = results
-    if Np is None:
-        Np = np_bayes_factor_threshold(res)
 
-    if res.verbose:
-        print(f'Using samples with Np > {Np}')
+    if isinstance(results, list):
+        print(f'combining samples from {len(results)} results')
+        P = np.vstack([r.posteriors.P for r in results])
+        K = np.vstack([r.posteriors.K for r in results])
+        E = np.vstack([r.posteriors.e for r in results])
+    else:
+        if Np is None:
+            Np = np_bayes_factor_threshold(res)
 
-    mask = res.posterior_sample[:, res.index_component] > Np
-    pars = res.posterior_sample[mask, res.indices['planets']]
+        if res.verbose:
+            print(f'Using samples with Np > {Np}')
 
-    # if sorted_samples:
-    #     pars = sort_planet_samples(res, pars)
-
-    mc = res.max_components
-    periods = slice(0 * mc + Np, 1 * mc)
-    amplitudes = slice(1 * mc + Np, 2 * mc)
-    eccentricities = slice(3 * mc + Np, 4 * mc)
-
-    P = pars[:, periods]
-    K = pars[:, amplitudes]
-    E = pars[:, eccentricities]
+        P = res.posteriors.P[:, Np:]
+        K = res.posteriors.K[:, Np:]
+        E = res.posteriors.e[:, Np:]
 
     inds = np.nonzero(P)
 
     P = P[inds]
     K = K[inds]
     E = E[inds]
-    # J = res.extra_sigma[mask]
-
-    # if add_jitter:
-    #     # K = np.hypot(K, res.extra_sigma[mask])
-    #     K += res.extra_sigma[mask]
 
     M, A = get_planet_mass_and_semimajor_axis(P, K, E, star_mass=star_mass,
                                               full_output=True)
@@ -662,8 +698,9 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
     else:
         start, end = P.min(), P.max()
 
-    if logX:
-        bins = 10**np.linspace(np.log10(start), np.log10(end), bins)
+    if isinstance(bins, int):
+        if logX:
+            bins = 10**np.linspace(np.log10(start), np.log10(end), bins)
 
     # bins_start = bins[:-1]# - np.ediff1d(bins)/2
     # bins_end = bins[1:]# + np.ediff1d(bins)/2
@@ -719,7 +756,10 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
 
     if plot:
         import matplotlib.pyplot as plt
-        _, ax = plt.subplots(1, 1, constrained_layout=True)
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, constrained_layout=True)
+        else:
+            fig = ax.figure
 
         if isinstance(star_mass, tuple):
             Ms = star_mass[0]
@@ -771,7 +811,11 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
 
         if not semi_major_axis:
             kwargs = dict(ls='--', lw=2, alpha=0.5, zorder=-1, color='C5')
-            ax.axvline(res.t.ptp(), 0.5, 1, **kwargs)
+            if isinstance(res, list):
+                for r in res:
+                    ax.axvline(r.data.t.ptp(), 0.5, 1, **kwargs)
+            else:
+                ax.axvline(res.data.t.ptp(), 0.5, 1, **kwargs)
 
         # ax.hlines(s.max, bins_start, bins_end, lw=2)
         # ax.loglog(s99.bins, s99.max * mjup2mearth)
@@ -798,33 +842,45 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
             Lx = 'Orbital period [days]'
 
         ax.set(xlabel=Lx, ylabel=Ly)
-        ax.set_xlim(results.priors['Pprior'].support())
+        try:
+            ax.set_xlim(results.priors['Pprior'].support())
+        except (AttributeError, KeyError):
+            pass
 
         try:
             ax.set_title(res.star)
         except AttributeError:
             pass
 
-    if return_mask:
-        return P, K, E, M, s, mask
-    else:
-        return P, K, E, M, s
+        return fig, P, K, E, M, s
+
+    return P, K, E, M, s
 
 
 def parameter_clusters(results, n_clusters=None, method='KMeans',
-                       include_ecc=True, scale=False, plot=True, downsample=1,
+                       include_ecc=False, scale=False, plot=True, downsample=1,
                        **kwargs):
-    import sklearn.cluster
-    from sklearn import preprocessing
-    from sklearn.metrics import silhouette_samples, silhouette_score
+    try:
+        import sklearn.cluster
+        from sklearn import preprocessing
+        from sklearn.metrics import silhouette_samples, silhouette_score
+    except ImportError:
+        print('Please install the sklearn package in order to use this function')
+        return
+
     from scipy.spatial.distance import cdist
 
     res = results
 
     if include_ecc:
-        data = np.c_[res.T, res.A, res.Omega, res.phi, res.E]
+        # data = res.posterior_sample[:, res.indices['planets']]
+        data = np.c_[res.posteriors.P.ravel(), res.posteriors.K.ravel(), res.posteriors.e.ravel()]
     else:
-        data = np.c_[res.T, res.A, res.Omega, res.phi]
+        # data = np.c_[res.T, res.A, res.Omega, res.phi]
+        data = np.c_[
+            res.posteriors.P.ravel().copy(), 
+            res.posteriors.K.ravel().copy()
+        ]
 
     data = data[::downsample, :]
 
@@ -832,8 +888,8 @@ def parameter_clusters(results, n_clusters=None, method='KMeans',
         scaler = preprocessing.StandardScaler(copy=True, with_mean=True,
                                               with_std=True)
         scaler.fit(data)
-        # print('  mean: ', scaler.mean_, 'n', 'variance: ', scaler.var_)
-        data = scaler.transform(data)
+        data_orig = data.copy()
+        data = scaler.transform(data, copy=True)
 
     if n_clusters is None:
         k = res.max_components
@@ -852,7 +908,7 @@ def parameter_clusters(results, n_clusters=None, method='KMeans',
 
     elif method == 'DBSCAN':
         kwargs.setdefault('n_jobs', -1)
-        kwargs.setdefault('eps', 10)
+        kwargs.setdefault('eps', 1)
         kwargs.setdefault('min_samples', min_samples)
         clustering = sklearn.cluster.DBSCAN(**kwargs)
 
@@ -874,24 +930,29 @@ def parameter_clusters(results, n_clusters=None, method='KMeans',
         if include_ecc:
             fig, axs = plt.subplot_mosaic('ab\ndc', **kw)
         else:
-            fig, axs = plt.subplot_mosaic('ab', **kw)
+            fig, axs = plt.subplot_mosaic('a', **kw)
 
-        ax = axs['b']
-        ax.scatter(data[:, 0], data[:, 1], c=pred, s=2, alpha=0.1)
+        ax = axs['a']
+        kw = dict(s=2, alpha=0.1, cmap='Paired')
+        if scale:
+            sc = ax.scatter(data_orig[:, 0], data_orig[:, 1], c=pred, **kw)
+        else:
+            sc = ax.scatter(data[:, 0], data[:, 1], c=pred, **kw)
+        plt.colorbar(sc)
         ax.set(xscale='log', xlabel='P [days]', ylabel='K [m/s]')
 
-        if include_ecc:
-            ax = axs['a']
-            ax.scatter(data[:, 0], data[:, 2], c=pred, s=2, alpha=0.1)
-            ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\omega$')
+        # if include_ecc:
+        #     ax = axs['a']
+        #     ax.scatter(data[:, 0], data[:, 2], c=pred, s=2, alpha=0.1)
+        #     ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\omega$')
 
-            ax = axs['c']
-            ax.scatter(data[:, 0], data[:, 3], c=pred, s=2, alpha=0.1)
-            ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\phi$')
+        #     ax = axs['c']
+        #     ax.scatter(data[:, 0], data[:, 3], c=pred, s=2, alpha=0.1)
+        #     ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\phi$')
 
-            ax = axs['d']
-            ax.scatter(data[:, 0], data[:, 4], c=pred, s=2, alpha=0.1)
-            ax.set(xscale='log', xlabel='P [days]', ylabel='ecc')
+        #     ax = axs['d']
+        #     ax.scatter(data[:, 0], data[:, 4], c=pred, s=2, alpha=0.1)
+        #     ax.set(xscale='log', xlabel='P [days]', ylabel='ecc')
 
         if False and method == 'OPTICS':
             space = np.arange(len(data))
@@ -1159,3 +1220,64 @@ def _columns_with_dynamic_range(results):
     """ Return the columns in the posterior file which vary """
     dr = _column_dynamic_ranges(results)
     return np.nonzero(dr)[0]
+
+
+
+def hpd_grid(sample, alpha=0.05, bw_method=None, roundto=2):
+    """Calculate highest posterior density (HPD) of array for given alpha. 
+    The HPD is the minimum width Bayesian credible interval (BCI). 
+    The function works for multimodal distributions, returning more than one mode
+
+    Parameters
+    ----------
+    
+    sample : Numpy array or python list
+        An array containing MCMC samples
+    alpha : float
+        Desired probability of type I error (defaults to 0.05)
+    roundto: integer
+        Number of digits after the decimal point for the results
+
+    Returns
+    ----------
+    hpd: array with the lower 
+          
+    """
+    import scipy.stats.kde as kde
+    sample = np.asarray(sample)
+    sample = sample[~np.isnan(sample)]
+    # get upper and lower bounds
+    l = np.min(sample)
+    u = np.max(sample)
+    print('doing KDE')
+    density = kde.gaussian_kde(sample, bw_method)
+    print('done')
+    x = np.linspace(l, u, max(2000, sample.size//5))
+    y = density.evaluate(x)
+    #y = density.evaluate(x, l, u) waitting for PR to be accepted
+    xy_zipped = zip(x, y/np.sum(y))
+    xy = sorted(xy_zipped, key=lambda x: x[1], reverse=True)
+    xy_cum_sum = 0
+    hdv = []
+    for val in xy:
+        xy_cum_sum += val[1]
+        hdv.append(val[0])
+        if xy_cum_sum >= (1-alpha):
+            break
+    hdv.sort()
+    diff = (u-l)/100  # differences of 1%
+    hpd = []
+    hpd.append(round(min(hdv), roundto))
+    for i in range(1, len(hdv)):
+        if hdv[i]-hdv[i-1] >= diff:
+            hpd.append(round(hdv[i-1], roundto))
+            hpd.append(round(hdv[i], roundto))
+    hpd.append(round(max(hdv), roundto))
+    ite = iter(hpd)
+    hpd = list(zip(ite, ite))
+    modes = []
+    for value in hpd:
+         x_hpd = x[(x > value[0]) & (x < value[1])]
+         y_hpd = y[(x > value[0]) & (x < value[1])]
+         modes.append(round(x_hpd[np.argmax(y_hpd)], roundto))
+    return hpd, x, y, modes
