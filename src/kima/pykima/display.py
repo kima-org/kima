@@ -1634,6 +1634,57 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
     # return fig, inds, (M, A)
 
 
+def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing_P=False):
+    from string import ascii_lowercase
+    nplanets = int(sample[res.indices['np']])
+
+    params = {ascii_lowercase[1+i]: {} for i in range(nplanets)}
+    for i, k in enumerate(params.keys()):
+        params[k]['P'] = P = sample[res.indices['planets.P']][i]
+        params[k]['K'] = K = sample[res.indices['planets.K']][i]
+        params[k]['e'] = e = sample[res.indices['planets.e']][i]
+        params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
+        params[k]['ω'] = ω = sample[res.indices['planets.ω']][i]
+        params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        params[k]['index'] = i + 1
+
+    if res.KO:
+        nplanets += res.nKO
+        ko = {ascii_lowercase[i]: {} for i in range(nplanets, nplanets + res.nKO)}
+        for i, k in enumerate(ko.keys()):
+            ko[k]['P'] = P = sample[res.indices['KOpars']][i]
+            ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
+            ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+            ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+            ko[k]['ω'] = ω = sample[res.indices['KOpars']][i + 4 * res.nKO]
+            ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            ko[k]['index'] = -i - 1
+        params.update(ko)
+
+    if res.TR:
+        nplanets += res.nTR
+        tr = {ascii_lowercase[i]: {} for i in range(nplanets, nplanets + res.nTR)}
+        for i, k in enumerate(tr.keys()):
+            tr[k]['P'] = P = sample[res.indices['TRpars']][i]
+            tr[k]['K'] = K = sample[res.indices['TRpars']][i + res.nTR]
+            tr[k]['φ'] = φ = sample[res.indices['TRpars']][i + 2 * res.nTR]
+            tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
+            tr[k]['ω'] = ω = sample[res.indices['TRpars']][i + 4 * res.nTR]
+            tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            tr[k]['index'] = -i - 1
+        params.update(tr)
+
+    keys = list(params.keys())
+
+    if sort_by_decreasing_K:
+        keys = sorted(params, key=lambda i: params[i]['K'], reverse=True)
+
+    if sort_by_increasing_P:
+        keys = sorted(params, key=lambda i: params[i]['P'])
+
+    return nplanets, params, keys
+
+
 def phase_plot(res,
                sample,
                highlight=None,
@@ -1659,7 +1710,7 @@ def phase_plot(res,
 
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
-    M0_epoch = res.M0_epoch
+    
     if t[0] > 24e5:
         time_offset = 24e5
         time_label = 'Time [BJD - 2400000]'
@@ -1670,116 +1721,26 @@ def phase_plot(res,
         time_offset = 0
         time_label = 'Time [BJD]'
 
-    #     t -= 24e5
-    #     M0_epoch -= 24e5
-
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
         hl = highlight_points
         highlight_points = True
 
-    nd = res.n_dimensions
-    mc = res.max_components
-
-    # get the planet parameters for this sample
-    pars = sample[res.indices['planets']].copy()
-
-    # how many planets in this sample?
-    nplanets = (pars[:mc] != 0).sum()
-    # if mc != nplanets:
-    #     mc = nplanets
-
-    planetis = list(range(mc))
-    KO_planet = [False] * mc
-    TR_planet = [False] * mc
-
-    if res.KO:
-        mc += res.nKO
-        if nplanets == 0:
-            k = 0
-        else:
-            k = planetis[-1]
-
-        for i in range(res.nKO):
-            KOpars = sample[res.indices['KOpars']][i::res.nKO]
-            if pars.size == 0:
-                pars = KOpars
-            else:
-                pars = np.insert(pars, range(1 + k, (1 + k) * 6, 1 + k),
-                                 KOpars)
-                k += 1
-            nplanets += 1
-            planetis.append(i)
-            KO_planet.append(True)
-
-    if res.TR:
-        mc += res.nTR
-        if nplanets == 0:
-            k = 0
-        else:
-            k = planetis[-1]
-
-        for i in range(res.nTR):
-            TRpars = sample[res.indices['TRpars']][i::res.nTR]
-            if pars.size == 0:
-                pars = TRpars
-            else:
-                pars = np.insert(pars, range(1 + k, (1 + k) * 6, 1 + k),
-                                 TRpars)
-                k += 1
-            nplanets += 1
-            planetis.append(i)
-            TR_planet.append(True)
+    nplanets, params, keys = phase_plot_logic(res, sample, 
+                                              sort_by_decreasing_K, sort_by_increasing_P)
 
     if nplanets == 0:
         print('Sample has no planets! phase_plot() doing nothing...')
         return
 
-    if sort_by_decreasing_K:
-        # sort by decreasing amplitude (arbitrary)
-        ind = np.argsort(pars[1 * mc:2 * mc])[::-1]
-        for i in range(nd):
-            pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
-        planetis = list(ind)
-        if res.KO:
-            KO_planet = np.array(KO_planet)[ind]
-        if res.TR:
-            TR_planet = np.array(TR_planet)[ind]
-    elif sort_by_increasing_P:
-        # sort by increasing period
-        ind = np.argsort(pars[0:mc])
-        for i in range(nd):
-            pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
-        planetis = list(ind)
-        if res.KO:
-            KO_planet = np.array(KO_planet)[ind]
-        if res.TR:
-            TR_planet = np.array(TR_planet)[ind]
-    else:
-        planetis = list(range(nplanets))
-
-    # extract periods, phases and calculate times of periastron
-    P = pars[0 * mc:1 * mc][:nplanets]
-    # semi-amplitudes
-    K = pars[1 * mc:2 * mc][:nplanets]
-    # mean anomalies
-    phi = pars[2 * mc:3 * mc][:nplanets]
-    TP = M0_epoch - (P * phi) / (2. * np.pi)
-    # eccentricities
-    ECC = pars[3 * mc:4 * mc][:nplanets]
-    # arguments of periastron
-    W = pars[4 * mc:5 * mc][:nplanets]
-
-    KO_planet = KO_planet[:nplanets]
-    TR_planet = TR_planet[:nplanets]
-
     # subtract stochastic model and vsys / offsets from data
     v = res.full_model(sample, include_planets=False)
-    if res.model == 'RVFWHMmodel':
+    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
         v = v[0]
 
     y = y - v
 
+    # errorbar plot arguments
     ekwargs = {
         'fmt': 'o',
         'mec': 'none',
@@ -1798,6 +1759,8 @@ def phase_plot(res,
     ]
     if res.has_gp:
         fs[1] += 3
+    if show_gls_residuals:
+        fs[0] += 2
 
     fig = plt.figure(constrained_layout=True, figsize=fs)
     nrows = {
@@ -1830,11 +1793,8 @@ def phase_plot(res,
     gs_indices = {i: (i // 3, i % 3) for i in range(50)}
     axs = []
 
-    shown_planets = 0
-    shown_KO_planets = 0
-
     # for each planet in this sample
-    for i, letter in zip(range(nplanets), ascii_lowercase[1:]):
+    for i, letter in enumerate(keys):
         if phase_axs is None:
             ax = fig.add_subplot(gs[gs_indices[i]])
         else:
@@ -1848,27 +1808,17 @@ def phase_plot(res,
         ax.axvline(0.5, ls='--', color='k', alpha=0.2, zorder=-5)
         ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
 
-        p = P[i]
-        t0 = TP[i]
+        P = params[letter]['P']
+        Tp = params[letter]['Tp']
 
         # plot the keplerian curve in phase (3 times)
         phase = np.linspace(0, 1, 200)
-        tt = phase * p + t0
-
-        if (res.KO and KO_planet[i]) or (res.TR and TR_planet[i]):
-            shown_KO_planets += 1
-            sign = -1
-            planet_index = sign * shown_KO_planets
-            # print('KO:', planet_index)
-        else:
-            shown_planets += 1
-            sign = 1
-            planet_index = sign * shown_planets
-            planet_index = planetis[planet_index - 1] + 1
-            # print('normal:', planet_index, p, t0)
+        tt = phase * P + Tp
 
         # keplerian for this planet
+        planet_index = params[letter]['index']
         vv = res.eval_model(sample, tt, single_planet=planet_index)
+
         # the background model at these times
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
@@ -1876,15 +1826,11 @@ def phase_plot(res,
             vv = vv[0]
             offset_model = offset_model[0]
 
+
         for j in (-1, 0, 1):
             alpha = 0.2 if j in (-1, 1) else 1
-            ax.plot(np.sort(phase) + j,
-                    vv[np.argsort(phase)] - offset_model,
+            ax.plot(np.sort(phase) + j, vv[np.argsort(phase)] - offset_model,
                     color='k', alpha=alpha, zorder=100)
-
-        # the other planets which are not the ith
-        # other = copy(planetis)
-        # other.remove(planeti)
 
         # subtract the other planets from the data and plot it (the data)
         vv = res.planet_model(sample, except_planet=planet_index)
@@ -1897,7 +1843,7 @@ def phase_plot(res,
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = res.data.obs == k
-                phase = ((t[m] - t0) / p) % 1.0
+                phase = ((t[m] - Tp) / P) % 1.0
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
@@ -1934,9 +1880,8 @@ def phase_plot(res,
                                     ee[np.argsort(phase[hlm])],
                                     alpha=alpha, **hlkw)
 
-
         else:
-            phase = ((t - t0) / p) % 1.0
+            phase = ((t - Tp) / P) % 1.0
             yy = y - vv
 
             for j in (-1, 0, 1):
@@ -1947,18 +1892,14 @@ def phase_plot(res,
 
         ax.set(xlabel="phase", ylabel="RV [m/s]")
         ax.set_xlim(-0.1, 1.1)
-        # ax.set_xticklabels(['', '0', '0.25', '0.5', '0.75', '1'])
 
         if add_titles:
+            # ax.set_title('%s' % letter, loc='left', **title_kwargs)
+            K = params[letter]['K']
+            ecc = params[letter]['e']
+            title = f'{P=:.2f} days\n {K=:.2f} m/s  {ecc=:.2f}'
             title_kwargs = dict(fontsize=12)
-            ax.set_title('%s' % letter, loc='left', **title_kwargs)
-            # if nplanets == 1:
-            k = K[i]
-            ecc = ECC[i]
-            title = f'P={p:.2f} days\n K={k:.2f} m/s  ecc={ecc:.2f}'
             ax.set_title(title, loc='right', **title_kwargs)
-            # else:
-            #     ax.set_title('P=%.2f days' % p, loc='right', **title_kwargs)
 
     if sharey:
         for ax in axs:
@@ -1970,11 +1911,6 @@ def phase_plot(res,
         overlap = res._time_overlaps[0]
     except ValueError:
         overlap = False
-
-    # print(fig)
-    # ax = fig.axes[0]
-    # ax.legend()
-
 
     ## GP panel
     ###########
