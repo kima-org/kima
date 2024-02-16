@@ -439,8 +439,7 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
 
     return {'found': nfound, 'hdi': regions, 'withins': withins}
 
-
-def reorder_P(res, passes=1):
+def reorder_P(res, replace=False, passes=1):
     from .results import posterior_holder
 
     if res.max_components != 2:
@@ -464,6 +463,9 @@ def reorder_P(res, passes=1):
         new_posterior.e[mask & maybe_wrong_order] = new_posterior.e[mask & maybe_wrong_order][:, ::-1]
         new_posterior.ω[mask & maybe_wrong_order] = new_posterior.ω[mask & maybe_wrong_order][:, ::-1]
         new_posterior.φ[mask & maybe_wrong_order] = new_posterior.φ[mask & maybe_wrong_order][:, ::-1]
+
+    if replace:
+        res.posteriors = new_posterior
 
     return new_posterior
 
