@@ -211,6 +211,8 @@ def clipped_std(arr, min, max):
 
 
 def distribution_rvs(dist, size=1):
+    if hasattr(dist, 'rvs'):
+        return dist.rvs(size)
     u = np.random.rand(size)
     return np.array([dist.ppf(uu) for uu in u])
 
