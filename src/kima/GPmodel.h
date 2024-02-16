@@ -38,6 +38,8 @@ class  GPmodel
 
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
+        /// whether to consider a (periodic) GP kernel for a magnetic cycle
+        bool magnetic_cycle_kernel = false;
 
     private:
         RVData data;// = RVData::get_instance();
@@ -83,6 +85,8 @@ class  GPmodel
         double eta1, eta2, eta3, eta4;
         double log_eta1, log_eta2, log_eta3, log_eta4;
 
+        double eta5, eta6, eta7;
+        double log_eta5, log_eta6, log_eta7;
 
         // The signal
         std::vector<double> mu; // = std::vector<double>(data.N());
@@ -192,6 +196,12 @@ class  GPmodel
         /// Prior for $\eta_4$, the recurrence timescale
         distribution eta4_prior;
 
+        /// Prior for $\eta_5$, the "amplitude" of the magnetic cycle kernel
+        distribution eta5_prior;
+        /// Prior for $\eta_6$, the period of the magnetic cycle kernel
+        distribution eta6_prior;
+        /// Prior for $\eta_7$, the recurrence timescale of the magnetic cycle kernel
+        distribution eta7_prior;
 
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }

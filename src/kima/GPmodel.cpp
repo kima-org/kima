@@ -131,6 +131,15 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     if (!eta4_prior)
         eta4_prior = make_prior<Uniform>(0.2, 5);
 
+    if (magnetic_cycle_kernel) {
+        if (!eta5_prior)
+            eta5_prior = make_prior<LogUniform>(0.1, 100);
+        if (!eta6_prior)
+            eta6_prior = make_prior<LogUniform>(365, 5*data.get_timespan());
+        if (!eta7_prior)
+            eta7_prior = make_prior<Uniform>(1, 10);
+    }
+
 }
 
 
@@ -198,6 +207,12 @@ void GPmodel::from_prior(RNG& rng)
     eta2 = eta2_prior->generate(rng); // days
     eta3 = eta3_prior->generate(rng); // days
     eta4 = eta4_prior->generate(rng);
+
+    if (magnetic_cycle_kernel) {
+        eta5 = eta5_prior->generate(rng);  // m/s
+        eta6 = eta6_prior->generate(rng);  // days
+        eta7 = eta7_prior->generate(rng);
+    }
 
     calculate_mu();
     calculate_C();
@@ -318,8 +333,9 @@ void GPmodel::calculate_C()
         for(size_t j=i; j<N; j++)
         {
             double r = data.t[i] - data.t[j];
-            C(i, j) = eta1*eta1*exp(-0.5*pow(r/eta2, 2)
-                        -2.0*pow(sin(M_PI*r/eta3)/eta4, 2) );
+            C(i, j) = eta1*eta1 * exp(-0.5*pow(r/eta2, 2) - 2.0*pow(sin(M_PI*r/eta3)/eta4, 2));
+            if (magnetic_cycle_kernel)
+                C(i, j) += eta5*eta5 * exp(- 2.0*pow(sin(M_PI*r/eta6)/eta7, 2));
 
             if(i==j)
             {
@@ -465,6 +481,12 @@ double GPmodel::perturb(RNG& rng)
             eta4_prior->perturb(eta4, rng);
         }
         
+        if (magnetic_cycle_kernel) {
+            eta5_prior->perturb(eta5, rng);
+            eta6_prior->perturb(eta6, rng);
+            eta7_prior->perturb(eta7, rng);
+        }
+
         calculate_C(); // recalculate covariance matrix
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
@@ -695,6 +717,9 @@ void GPmodel::print(std::ostream& out) const
     // write GP parameters
     out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
 
+    if (magnetic_cycle_kernel)
+        out << eta5 << '\t' << eta6 << '\t' << eta7 << '\t';
+
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
@@ -755,6 +780,9 @@ string GPmodel::description() const
 
     // GP parameters
     desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
+
+    if (magnetic_cycle_kernel)
+        desc += "eta5" + sep + "eta6" + sep + "eta7" + sep;
 
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
@@ -831,6 +859,7 @@ void GPmodel::save_setup() {
     fout << "transiting_planet: " << transiting_planet << endl;
     fout << "n_transiting_planet: " << n_transiting_planet << endl;
     fout << "indicator_correlations: " << indicator_correlations << endl;
+    fout << "magnetic_cycle_kernel: " << magnetic_cycle_kernel << endl;
     fout << endl;
 
     fout << endl;
@@ -885,6 +914,11 @@ void GPmodel::save_setup() {
     fout << "eta2_prior: " << *eta2_prior << endl;
     fout << "eta3_prior: " << *eta3_prior << endl;
     fout << "eta4_prior: " << *eta4_prior << endl;
+    if (magnetic_cycle_kernel) {
+        fout << "eta5_prior: " << *eta5_prior << endl;
+        fout << "eta6_prior: " << *eta6_prior << endl;
+        fout << "eta7_prior: " << *eta7_prior << endl;
+    }
     fout << endl;
 
     if (planets.get_max_num_components()>0){
@@ -937,6 +971,7 @@ class GPmodel_publicist : public GPmodel
         using GPmodel::star_mass;
         using GPmodel::enforce_stability;
         using GPmodel::indicator_correlations;
+        using GPmodel::magnetic_cycle_kernel;
 };
 
 NB_MODULE(GPmodel, m) {
@@ -968,6 +1003,9 @@ NB_MODULE(GPmodel, m) {
                 "stellar mass [Msun]")
         .def_rw("enforce_stability", &GPmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
+        
+        .def_rw("magnetic_cycle_kernel", &GPmodel_publicist::magnetic_cycle_kernel, 
+                "whether to consider a (periodic) GP kernel for a magnetic cycle")
 
         //
         .def_rw("indicator_correlations", &GPmodel_publicist::indicator_correlations, 

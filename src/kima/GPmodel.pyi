@@ -246,6 +246,19 @@ class GPmodel:
         ...
     
     @property
+    def magnetic_cycle_kernel(self) -> bool:
+        """
+        whether to consider a (periodic) GP kernel for a magnetic cycle
+        """
+        ...
+    @magnetic_cycle_kernel.setter
+    def magnetic_cycle_kernel(self, arg: bool, /) -> None:
+        """
+        whether to consider a (periodic) GP kernel for a magnetic cycle
+        """
+        ...
+    
+    @property
     def n_known_object(self) -> int:
         """
         how many known objects
