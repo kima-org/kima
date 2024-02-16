@@ -4,7 +4,7 @@ from functools import partial
 import numpy as np
 # from numpy import exp, sin, cos, sqrt, abs
 
-from jax.config import config
+from jax import config
 config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
@@ -194,6 +194,30 @@ class PERkernel(Kernel):
         r = xi - xj
         pr = π * r / self.η3
         K = self.η1**2 * exp(- 2 * (sin(pr) / self.η4)**2)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class QPpMAGCYCLEkernel(Kernel):
+    """ Quasi-periodic *plus* periodic kernel """
+    η1: float
+    η2: float
+    η3: float
+    η4: float
+    η5: float
+    η6: float
+    η7: float
+    names = ['η1', 'η2', 'η3', 'η4', 'η5', 'η6', 'η7']
+    npars = 7
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = xi - xj
+        sr = r / self.η2
+        pr = π * r / self.η3
+        pr2 = π * r / self.η6
+        K = self.η1**2 * exp(-0.5 * sr**2 - 2 * (sin(pr) / self.η4)**2) + \
+            self.η5**2 * exp(- 2 * (sin(pr2) / self.η7)**2)
         return K
 
 
