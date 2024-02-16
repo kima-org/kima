@@ -18,7 +18,7 @@
 # along with spleaf.  If not, see <http://www.gnu.org/licenses/>.
 
 from setuptools import setup, Extension
-import numpy.distutils.misc_util
+import numpy as np
 import os
 
 path = os.path.abspath(os.path.dirname(__file__))
@@ -43,6 +43,6 @@ setup(name=info['__title__'],
   url=info['__url__'],
   packages=['spleaf'],
   ext_modules=[c_ext],
-  include_dirs=numpy.distutils.misc_util.get_numpy_include_dirs(),
+  include_dirs=[np.get_include()],
   python_requires='>=3.6',
   install_requires=['numpy>=1.16', 'scipy>=1.3'])

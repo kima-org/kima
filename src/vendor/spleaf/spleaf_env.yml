@@ -7,6 +7,7 @@ dependencies:
    - pytest
    - sphinx
    - numpydoc
+   - pydata-sphinx-theme
    - matplotlib
    - scipy
    - twine
