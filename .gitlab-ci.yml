@@ -1,7 +1,11 @@
-variables:
-  DACECALC1: "10.194.66.55"
+default:
+  tags:
+    - kubernetes-runner
 
-image: docker-registry.obsuks2.unige.ch/condaforge/mambaforge:latest
+variables:
+  PROJECT_NAME: "spleaf"
+  PROJECT_ID: "1383"
+  DACECALC1: "10.194.66.55"
 
 stages:
   - build
@@ -12,35 +16,18 @@ stages:
 
 .setup_env:
   before_script:
-    - apt-get update -y
-    ##
-    ## Install ssh-agent if not already installed, it is required by Docker.
-    ## (change apt-get to yum if you use an RPM-based image)
-    ##
-    - 'command -v ssh-agent >/dev/null || ( apt-get install openssh-client -y )'
-    ## Run ssh-agent (inside the build environment)
-    ##
+    - apt update
+    - apt install -y curl rsync bzip2 build-essential openssh-client git
     - eval $(ssh-agent -s)
-    ##
-    ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
-    ## We're using tr to fix line endings which makes ed25519 keys work
-    ## without extra base64 encoding.
-    ## https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
-    ##
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    ##
-    ## Create the SSH directory and give it the right permissions
-    ##
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - echo "$SSH_KNOWN_HOSTS_DACECALC1" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
-    ## Install necessary packages
-    - apt-get install build-essential rsync curl -y
-    ## Conda env
-    - source /opt/conda/etc/profile.d/conda.sh
-    - mamba env create -f spleaf_env.yml
-    - conda activate spleaf
+    - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    - eval "$(./bin/micromamba shell hook -s posix)"
+    - micromamba env create -f ${PROJECT_NAME}_env.yml
+    - micromamba activate $PROJECT_NAME
 
 Build distribution:
   extends: .setup_env
@@ -76,8 +63,8 @@ Deploy on Staging:
   extends: .setup_env
   stage: staging
   script:
-    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/spleaf/
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/staging/spleaf/doc
+    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/doc
 
 Release and deploy on Production:
   extends: .setup_env
@@ -88,19 +75,19 @@ Release and deploy on Production:
     - git checkout -B master origin/master
     - git config --global user.name 'Gitlab CI'
     - git config --global user.email ''
-    - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/jean-baptiste.delisle/spleaf.git"
+    - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/delisle/${PROJECT_NAME}.git"
     # Tag
-    - VERSION=`grep __version__ spleaf/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
     - TAG_VERSION="v$VERSION"
-    - git tag -a "$TAG_VERSION" -m "Release spleaf $TAG_VERSION"
+    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
     - git push origin "$TAG_VERSION" --quiet
     - CHANGES=`cat CHANGES.txt`
     # Add release on gitlab (via gitlab API)
-    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release spleaf $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" 'https://gitlab.unige.ch/api/v4/projects/1383/releases'
+    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
     # Deploy on https://obswww.unige.ch/~delisle/
-    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/doc
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/doc_hist/${TAG_VERSION}
+    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/doc
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
     # Deploy on Pypi
     - python -m twine upload dist/*.tar.gz
     # Upgrade to next version
@@ -111,8 +98,8 @@ Release and deploy on Production:
     - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
     - echo $NEW_VERSION
     # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" spleaf/__info__.py
-    - git add spleaf/__info__.py
+    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" ${PROJECT_NAME}/__info__.py
+    - git add ${PROJECT_NAME}/__info__.py
     - git commit -m "Upgrade project to next version $NEW_VERSION"
     - git push origin master --quiet
   when: manual

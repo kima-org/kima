@@ -22,5 +22,5 @@ __description__ = 'Symmetric S+LEAF matrix.'
 __author__ = 'Jean-Baptiste Delisle'
 __author_email__ = 'jean-baptiste.delisle@unige.ch'
 __license__ = 'GPLv3'
-__url__ = 'https://gitlab.unige.ch/jean-baptiste.delisle/spleaf'
-__version__ = "2.1.7"
+__url__ = 'https://gitlab.unige.ch/delisle/spleaf'
+__version__ = "2.1.9"

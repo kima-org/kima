@@ -365,6 +365,9 @@ class Cov(Spleaf):
 
     n2 = t2.size
     dt2 = t2[1:] - t2[:-1]
+    if np.min(dt2) < 0:
+      raise Exception('Cov.conditional: the timeseries must be provided'
+        ' in increasing order.')
     U2 = np.empty((n2, self.r))
     V2 = np.empty((n2, self.r))
     phi2 = np.empty((n2 - 1, self.r))
@@ -488,6 +491,9 @@ class Cov(Spleaf):
 
     n2 = t2.size
     dt2 = t2[1:] - t2[:-1]
+    if np.min(dt2) < 0:
+      raise Exception('Cov.conditional_derivative: the timeseries must be provided'
+        ' in increasing order.')
     dU2 = np.empty((n2, self.r))
     V2 = np.empty((n2, self.r))
     phi2 = np.empty((n2 - 1, self.r))
