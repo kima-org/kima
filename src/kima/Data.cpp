@@ -944,6 +944,9 @@ NB_MODULE(Data, m) {
 
 
         // properties
+        .def_ro("datafile", &RVData::_datafile, "The file name")
+        .def_ro("datafiles", &RVData::_datafiles, "The list of file names")
+        // 
         .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")
         .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); }, "The observed RV uncertainties")
@@ -955,6 +958,7 @@ NB_MODULE(Data, m) {
         .def_ro("multi", &RVData::_multi, "Data comes from multiple instruments")
         .def_ro("skip", &RVData::_skip, "Lines skipped when reading data")
         .def_rw("instrument", &RVData::_instrument, "instrument name")
+        .def_rw("instruments", &RVData::_instruments, "instrument names")
         //
         .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
 
