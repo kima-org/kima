@@ -425,11 +425,19 @@ class KimaResults:
         res.data.e = np.array(np.copy(model.data.sig))
         res.data.obs = np.array(np.copy(model.data.obsi))
         res.data.N = model.data.N
-        res.data.instrument = model.data.instrument
 
+        res.M0_epoch = model.data.M0_epoch
         res.n_instruments = np.unique(model.data.obsi).size
         res.multi = model.data.multi
-        res.M0_epoch = model.data.M0_epoch
+
+        if res.multi:
+            res.data_file = model.data.datafiles
+        else:
+            res.data_file = model.data.datafile
+
+        res.data.instrument = model.data.instrument
+        if res.multi and len(model.data.instruments) > 0:
+            res.instruments = model.data.instruments
 
         try:
             res.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
