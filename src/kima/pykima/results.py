@@ -2333,16 +2333,23 @@ class KimaResults:
 
     @property
     def instruments(self):
-        if not hasattr(self, 'data_file'):
-            return [''] if self.multi else ''
+        if not hasattr(self, '_instruments'):
+            self.instruments = None
+        return self._instruments
+    
+    @instruments.setter
+    def instruments(self, instruments=None):
+        if instruments is None:
+            if not hasattr(self, 'data_file'):
+                self._instruments = self.n_instruments * [''] if self.multi else ''
 
-        if self.multi:
-            if self.multi_onefile:
-                return ['inst %d' % i for i in np.unique(self.data.obs)]
+            if self.multi:
+                self._instruments = list(map(get_instrument_name, self.data_file))
             else:
-                return list(map(get_instrument_name, self.data_file))
+                self._instruments = get_instrument_name(self.data_file)
         else:
-            return get_instrument_name(self.data_file)
+            self._instruments = instruments
+
 
     @property
     def Np(self):
