@@ -10,7 +10,8 @@ from scipy.signal import find_peaks
 from corner import corner
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
-from .analysis import np_bayes_factor_threshold, find_outliers
+from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
+from .analysis import get_planet_mass_and_semimajor_axis
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, get_instrument_name)
 from .utils import distribution_rvs, distribution_support
@@ -182,8 +183,8 @@ def plot_posterior_period(res,
             Show a vertical line at 1 year
         show_timespan (bool, optional):
             Show a vertical line at the timespan of the data
-        show_aliases (bool, optional):
-            Show daily and yearly aliases for top peak
+        show_aliases (bool or int, optional):
+            Show daily and yearly aliases for top peak(s)
         separate_colors (bool, optional):
             Show different Keplerians as different colors
         return_bins (bool, optional):
@@ -258,17 +259,9 @@ def plot_posterior_period(res,
     else:
         if bins is None:
             if plims is None:
-                # default to these
-                start, end = 1e-1, 1e7
-                # try to get bin limits from prior support
-                if 'Pprior' in res.priors:
-                    prior_support = distribution_support(res.priors['Pprior'])
-                    if not np.isinf(prior_support).any():
-                        start, end = prior_support
+                bins = get_bins(res, nbins=nbins)
             else:
-                start, end = plims
-
-            bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
+                bins = get_bins(res, *plims, nbins=nbins)
 
         bottoms = np.zeros_like(bins)
         for i in range(res.max_components):
@@ -294,9 +287,9 @@ def plot_posterior_period(res,
 
             bottoms += np.append(counts / res.ESS, 0)
 
-        # save maximum peak
-        peaki = np.argmax(bottoms)
-        peakP = bins[peaki:peaki+2].mean()
+        # save maximum peak(s)
+        peaki = np.argsort(bottoms)[-10:][::-1]
+        peakP = np.array([bins[pi:pi+2].mean() for pi in peaki])
 
         # ax.hist(T, bins=bins, alpha=0.8, density=density)
 
@@ -327,15 +320,16 @@ def plot_posterior_period(res,
     if show_timespan:  # mark the timespan of the data
         ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
 
-    if show_aliases:  # mark daily and yearly aliases of top peak
-        yearly, solar_dayly, sidereal_dayly = 1 / 365.25, 1.0, 1 + 1 / 365.25
-        alias_year = [abs(1 / (yearly + i / peakP)) for i in [1, -1]]
-        alias_solar_day = [abs(1 / (solar_dayly + i / peakP)) for i in [1, -1]]
-        # alias_sidereal_day = [abs(1 / (sidereal_dayly + i / peakP)) for i in [1, -1]]
-        ax.plot(peakP, 1.1, 'v', color='orange')
-        ax.vlines(alias_year, 0, 1, color='orange', ls='--', alpha=0.1)
-        ax.vlines(alias_solar_day, 0, 1, color='orange', ls='--', alpha=0.1)
-        # ax.vlines(alias_sidereal_day, 0, 1, color='orange', ls='--', alpha=0.1)
+    if show_aliases is not None:  # mark daily and yearly aliases of top peak
+        from .analysis import aliases
+        ymax = 1.1 * ax.get_ylim()[1]
+        if isinstance(show_aliases, int):
+            peakP = peakP[:show_aliases]
+
+        alias_year, alias_solar_day, _ = aliases(peakP)
+        ax.plot(peakP, np.full_like(peakP, ymax), 'v', color='orange')
+        ax.vlines(alias_year, 0, ymax, color='orange', ls='--', alpha=0.1)
+        ax.vlines(alias_solar_day, 0, ymax, color='orange', ls='--', alpha=0.1)
 
     if kwargs.get('legend', True):
         ax.legend()
@@ -378,8 +372,8 @@ def plot_posterior_period(res,
 
 
 def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
-             reorder_P=False, sort_by_increasing_P=False, points=True, colors_np=True, 
-             gridsize=50, **kwargs):
+             show_aliases=None, reorder_P=False, sort_by_increasing_P=False,
+             points=True, colors_np=True, gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
     period and for eccentricity and orbital period. If `points` is True, plot

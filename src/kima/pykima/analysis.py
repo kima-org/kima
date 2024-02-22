@@ -10,7 +10,7 @@ from typing import Tuple, Union
 import numpy as np
 from scipy.stats import norm, t as T, binned_statistic
 
-from .utils import mjup2mearth
+from .utils import mjup2mearth, distribution_support
 
 
 def np_most_probable(results: KimaResults):
@@ -279,6 +279,27 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     a = get_planet_semimajor_axis(P, K, star_mass, full_output)
     return mass, a
 
+
+def get_bins(res, start=None, end=None, nbins=100):
+    try:
+        _start, _end = distribution_support(res.priors['Pprior'])
+    except KeyError:
+        _start, _end = 1e-1, 1e7
+
+    if start is None:
+        start = _start
+    if end is None:
+        end = _end
+    
+    bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
+    return bins
+
+def aliases(P):
+    yearly, solar_dayly, sidereal_dayly = 1 / 365.25, 1.0, 1 + 1 / 365.25
+    alias_year = [abs(1 / (yearly + i / P)) for i in [1, -1]]
+    alias_solar_day = [abs(1 / (solar_dayly + i / P)) for i in [1, -1]]
+    alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
+    return alias_year, alias_solar_day, alias_sidereal_day
 
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
     Tobs = results.t.ptp()
