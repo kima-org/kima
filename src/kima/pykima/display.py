@@ -988,10 +988,11 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
         assert len(true_values) == res.n_dimensions, \
             f'len(true_values) should be {res.n_dimensions}, got {len(true_values)}'
 
-    if period_ranges is not None:
-        if isinstance(period_ranges, list):
-            assert len(period_ranges) == len(Np), \
-                f'len(period_ranges) should be equal to len(Np)'
+    if period_ranges is None:
+        period_ranges = [None] * len(Np)
+    else:
+        assert len(period_ranges) == len(Np), \
+            f'{len(period_ranges)=} should be equal to {len(Np)=}'
 
 
     figs, axss = [], []
