@@ -91,9 +91,26 @@ def read_datafile_rvfwhm(datafile, skip):
 
 
 @contextlib.contextmanager
-def chdir(dir):
+def hide_stdout():
+    """ A simple context manager to hide stdout temporarily """
+    from io import StringIO
+    hidden = StringIO()
+    try:
+        with contextlib.redirect_stdout(hidden):
+            yield
+    finally:
+        pass
+
+
+@contextlib.contextmanager
+def chdir(dir, create=True):
     """ A simple context manager to switch directories temporarily """
     curdir = os.getcwd()
+    if not os.path.isdir(dir):
+        if create:
+            os.makedirs(dir)
+        else:
+            raise FileNotFoundError(f'directory does not exist: {dir}')
     try:
         os.chdir(dir)
         yield
@@ -212,7 +229,10 @@ def clipped_std(arr, min, max):
 
 def distribution_rvs(dist, size=1):
     if hasattr(dist, 'rvs'):
-        return dist.rvs(size)
+        try:
+            return dist.rvs(size)
+        except TypeError:
+            return np.array([dist.rvs() for _ in range(size)])
     u = np.random.rand(size)
     return np.array([dist.ppf(uu) for uu in u])
 
