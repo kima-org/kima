@@ -25,6 +25,12 @@ using namespace nb::literals;
 class  GPmodel
 {
     protected:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -41,14 +47,9 @@ class  GPmodel
         /// whether to consider a (periodic) GP kernel for a magnetic cycle
         bool magnetic_cycle_kernel = false;
 
-    private:
         RVData data;// = RVData::get_instance();
 
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
+    private:
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());

@@ -966,6 +966,10 @@ using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 class GPmodel_publicist : public GPmodel
 {
     public:
+        using GPmodel::fix;
+        using GPmodel::npmax;
+        using GPmodel::data;
+        //
         using GPmodel::trend;
         using GPmodel::degree;
         using GPmodel::star_mass;
@@ -978,6 +982,14 @@ NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel>(m, "GPmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
         //
+        .def_rw("fix", &GPmodel_publicist::fix,
+                "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &GPmodel_publicist::npmax,
+                "maximum number of Keplerians")
+        .def_ro("data", &GPmodel_publicist::data,
+                "the data")
+        //
+
         .def_rw("trend", &GPmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &GPmodel_publicist::degree,
