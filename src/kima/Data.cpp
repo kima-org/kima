@@ -59,8 +59,8 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
         }
     }
 
-    // epoch for the mean anomaly, by default the time of the first observation
-    M0_epoch = t[0];
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
@@ -132,8 +132,8 @@ RVData::RVData(const vector<vector<double>> _t,
         }
     }
 
-    // epoch for the mean anomaly, by default the time of the first observation
-    M0_epoch = t[0];
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
@@ -278,8 +278,8 @@ void RVData::load(const string filename, const string units, int skip, int max_r
         }
     }
 
-    // epoch for the mean anomaly, by default the time of the first observation
-    M0_epoch = t[0];
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
@@ -411,8 +411,8 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     if (units == "kms" && VERBOSE)
         cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
-    // epoch for the mean anomaly, by default the time of the first observation
-    M0_epoch = t[0];
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
 }
 
 /**
@@ -577,8 +577,8 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         }
     }
 
-    // epoch for the mean anomaly, by default the time of the first observation
-    M0_epoch = t[0];
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
 }
 
 
