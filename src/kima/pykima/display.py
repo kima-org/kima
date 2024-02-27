@@ -1,5 +1,6 @@
 from string import ascii_lowercase
 from copy import copy
+from matplotlib.ticker import ScalarFormatter
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -818,79 +819,378 @@ def corner_all(res):
         ax.set_xlim(xlim)
 
 
-def corner_planet_parameters(res, posteriors=None, fig=None, true_values=None,
-                             include_known_object=False, include_transiting_planet=False):
-    """ Corner plot of the posterior samples for the planet parameters """
-    import pygtc
+def corner_orbital(samples, labels=None, units=None, ranges=None, priors=None,
+                   fig=None, wrap_M0=False, angles=True):
+    from .utils import percentile68_ranges, percentile68_ranges_latex
+    ns, n = samples.shape
+
+    def _check(lst, name, default=''):
+        if lst is None:
+            lst = n * [default]
+        else:
+            assert len(lst) == n, \
+                f'Number of {name} {len(lst)} must match number of parameters {n}'
+        return lst
+
+    labels = _check(labels, 'labels')
+    units = _check(units, 'units')
+    ranges = _check(ranges, 'ranges', None)
+    priors = _check(priors, 'priors', None)
+
+    style = 'seaborn-v0_8-deep'
+    with plt.style.context(style):
+        if fig is None:
+            fig, axs = plt.subplots(n, n, constrained_layout=True,
+                                    gridspec_kw={'wspace': 0.1},
+                                    figsize=(8, 6))
+        else:
+            axs = fig.axes
+
+
+        for i in range(1, n):
+            upper_diag_axs = np.diag(axs, i)
+            for ax in upper_diag_axs:
+                ax.axis('off')
+
+        diag_axs = np.diag(axs)
+        for i, (var, label, ax) in enumerate(zip(samples.T, labels, diag_axs)):
+            ax.hist(var, density=True, histtype='step', bins='doane',
+                    color='k', range=ranges[i], label='posterior')
+
+            title = ' = '.join([label, percentile68_ranges_latex(var)])
+            ax.set_title(title, fontsize=10)
+            ax.set_yticks([])
+            if ax != diag_axs[-1]:
+                ax.set_xticklabels([])
+            ax.margins(x=0)
+
+            if priors[i] is not None:
+                ax.hist(priors[i], density=True, bins='doane', color='C0', 
+                        alpha=0.1, range=ranges[i], label='prior')
+
+        line_kws = dict(color='C1', linestyle='--')
+        for i, var in enumerate(samples.T):
+            me, pl, mi = percentile68_ranges(var)
+            for ax in axs[i:, i].flatten():
+                ax.axvline(me, **line_kws, alpha=0.4)
+                ax.axvline(me + pl, **line_kws, alpha=0.15)
+                ax.axvline(me - mi, **line_kws, alpha=0.15)
+            if i > 0:
+                for ax in axs[i, :i].flatten():
+                    ax.axhline(me, **line_kws, alpha=0.4)
+                    ax.axhline(me + pl, **line_kws, alpha=0.15)
+                    ax.axhline(me - mi, **line_kws, alpha=0.15)
+
+        for ax in axs.flatten():
+            ax.minorticks_on()
+
+        for i in range(1, n):
+            for j in range(i):
+                ax = axs[i, j]
+                x = samples[:, j]
+                y = samples[:, i]
+                _, binsx = np.histogram(x, bins='doane', range=ranges[j])
+                _, binsy = np.histogram(y, bins='doane')
+                ax.hist2d(x, y, bins=(binsx, binsy), density=True,
+                          cmap='Greys')
+
+        for ax in axs[:-1].flatten():
+            ax.set_xticklabels([])
+        for ax in axs[:, 1:].flatten():
+            ax.set_yticklabels([])
+
+        # labels and units on the left axes
+        left_axs = axs[1:, 0].flatten()
+        for i, ax in enumerate(left_axs):
+            if units[i+1] != '':
+                ax.set_ylabel(f'{labels[i+1]} [{units[i+1]}]')
+            else:
+                ax.set_ylabel(labels[i+1])
+
+        if angles:
+            if wrap_M0:
+                pi_axs = axs[-1, 3:4].flatten()
+                pi_axs_vert = axs[3:4, 0].flatten()
+                two_pi_axs = axs[-1, 4:].flatten()
+                two_pi_axs_vert = axs[4:, 0].flatten()
+            else:
+                pi_axs = []
+                pi_axs_vert = []
+                two_pi_axs = axs[-1, 3:].flatten()
+                two_pi_axs_vert = axs[3:, 0].flatten()
+
+            two_pi_labels = ['0', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$']
+            for ax in two_pi_axs:
+                ax.set(xticks=np.linspace(0, 2*np.pi, 5), xticklabels=two_pi_labels)
+            for ax in two_pi_axs_vert:
+                ax.set(yticks=np.linspace(0, 2*np.pi, 3), yticklabels=two_pi_labels[::2])
+            pi_labels = [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$']
+            for ax in pi_axs:
+                ax.set(xticks=np.linspace(-np.pi, np.pi, 5), xticklabels=pi_labels)
+            for ax in pi_axs_vert:
+                ax.set(yticks=np.linspace(-np.pi, np.pi, 3), yticklabels=pi_labels[::2])
+
+        bottom_axs = axs[-1, :]
+        for i, (label, unit, ax) in enumerate(zip(labels, units, bottom_axs)):
+            if ranges[i] is not None:
+                ax.set_xlim(ranges[i])
+            elif i == 2:
+                ax.set_xlim(0, None)
+                # ax.xaxis.set_major_locator(plt.MaxNLocator(3))
+
+            if unit != '':
+                ax.set_xlabel(f'{label} [{unit}]')
+            else:
+                ax.set_xlabel(label)
+
+            # same column
+            for _ax in axs[:-1, i].flatten():
+                _ax.set_xlim(ax.get_xlim())
+            # corresponding row
+            for _ax in axs[i, :i].flatten():
+                _ax.set_ylim(ax.get_xlim())
+
+    if np.any(priors):
+        leg = axs[0, 0].get_legend_handles_labels()
+        axs[0, -1].legend(*leg)
+
+    # fig.tight_layout()
+    return fig, axs
+
+def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ranges=None,
+                             include_known_object=False, include_transiting_planet=False,
+                             KO_Np=None, TR_Np=None, show_prior=False,
+                             wrap_M0=False, replace_angles_with_mass=False, star_mass=1.0, a_factor=1.0):
+    """ Corner plots of the posterior samples for the planet parameters """
 
     if res.model == 'GAIAmodel':
-        _labels = ['$P$', r'$\phi$', 'e', 'a', r'$\omega$', r'$\cos i$', 'W']
+        labels = ['$P$', r'$\phi$', 'e', 'a', r'$\omega$', r'$\cos i$', 'W']
+        units = ['days', 'rad', '', 'AU', 'rad', '', '']
     else:
-        _labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
-
-    if posteriors is None:
-        samples = res.posterior_sample[:, res.indices['planets']].copy()
-    else:
-        samples = np.c_[posteriors.P, posteriors.K, posteriors.e, posteriors.ω, posteriors.φ]
+        if replace_angles_with_mass:
+            labels = [r'$P$', r'$K$', '$e$', '$M_p$', '$a$']
+            units = ['days', 'm/s', '', 'M$_\oplus$', 'AU']
+            if a_factor != 1.0:
+                labels[-1] = f'${a_factor:.0e}'.replace('e+0', '0^') + r'\times a$'
+        else:
+            labels = [r'$P$', r'$K$', '$e$', '$M_0$', r'$\omega$']
+            units = ['days', 'm/s', '', 'rad', 'rad']
 
     nk = res.max_components
-    labels = nk * _labels
 
-    if include_known_object:
-        samples = np.c_[samples, res.KOpars]
-        labels = labels + res.nKO * _labels
-    if include_transiting_planet:
-        samples = np.c_[samples, res.TRpars]
-        __labels = copy(_labels)
-        __labels[__labels.index(r'$\phi$')] = r'$T_c$'
-        labels = labels + res.nTR * __labels
-
-    if samples.shape[1] == 0:
-        print('no planet parameters to show')
-        return
-
-    labels_right_order = []
-    for i in range(res.n_dimensions):
-        labels_right_order += labels[i::res.n_dimensions]
-    labels = labels_right_order
-
-    # set the parameter ranges to include everything
-    def r(x, over=0.2):
-        return x.min() - over * x.ptp(), x.max() + over * x.ptp()
+    if Np is None:
+        Np = list(range(1, nk + 1))
+    else:
+        if isinstance(Np, int):
+            Np = [Np]
 
     if true_values is not None:
-        assert len(true_values) == samples.shape[1], \
-            f'len(true_values) should be {samples.shape[1]}, got {len(true_values)}'
+        assert len(true_values) == res.n_dimensions, \
+            f'len(true_values) should be {res.n_dimensions}, got {len(true_values)}'
 
-    fig = pygtc.plotGTC(
-        chains=samples,
-        # smoothingKernel=0,
-        paramNames=labels,
-        truths=true_values,
-        plotDensity=False,
-        labelRotation=(True, True),
-        filledPlots=False,
-        colorsOrder=['blues_old'],
-        #figureSize='AandA_page',  # AandA_column
-    )
-    axs = fig.axes
-    for ax in axs:
-        ax.autoscale()
-        ax.yaxis.set_label_coords(-0.3, 0.5, transform=None)
-        ax.xaxis.set_label_coords(0.5, -0.4, transform=None)
+    if period_ranges is not None:
+        if isinstance(period_ranges, list):
+            assert len(period_ranges) == len(Np), \
+                f'len(period_ranges) should be equal to len(Np)'
 
-    fs = axs[-1].xaxis.label.get_fontsize()
-    start = len(labels)
-    for i in range(-start, 0):
-        val = percentile68_ranges_latex(samples.T[i])
-        axs[i].set_title(f'{labels[i]} = {val}', fontsize=fs - 1)
 
-    if res.model == 'GAIAmodel':
-        fig.set_size_inches(8, 6)
+    figs, axss = [], []
 
-    fig.tight_layout()
-    #fig.subplots_adjust(wspace=0.25, hspace=0.15)
-    return fig
+    kwargs = dict(wrap_M0=wrap_M0, angles=not replace_angles_with_mass)
+
+    for i in range(nk):
+        if i + 1 not in Np:
+            continue
+
+        if replace_angles_with_mass:
+            if period_ranges[i] is not None:
+                mask = (period_ranges[i][0] < res.posteriors.P[:, i]) & (res.posteriors.P[:, i] < period_ranges[i][1])
+            else:
+                mask = np.full(res.ESS, True)
+
+            m, a = get_planet_mass_and_semimajor_axis(
+                res.posteriors.P[mask, i], 
+                res.posteriors.K[mask, i], 
+                res.posteriors.e[mask, i],
+                star_mass=star_mass, full_output=True
+            )
+            m = m[2] * mjup2mearth
+            a = a[2] * a_factor
+
+            samples = np.c_[
+                res.posteriors.P[mask, i].copy(),
+                res.posteriors.K[mask, i].copy(),
+                res.posteriors.e[mask, i].copy(),
+                m,
+                a
+            ]
+        else:
+            samples = np.c_[
+                res.posteriors.P[:, i].copy(),
+                res.posteriors.K[:, i].copy(),
+                res.posteriors.e[:, i].copy(),
+                res.posteriors.φ[:, i].copy(),
+                res.posteriors.ω[:, i].copy(),
+            ]
+
+        if wrap_M0 and not replace_angles_with_mass:
+            samples[:, 3] = np.arctan2(np.sin(samples[:, 3]), np.cos(samples[:, 3]))
+
+        ranges = res.n_dimensions * [None]
+        if period_ranges is not None:
+            ranges[0] = period_ranges[i]
+
+        fig, axs = corner_orbital(samples, labels=labels, #units=units, 
+                                  ranges=ranges, **kwargs)
+
+        figs.append(fig)
+        axss.append(axs)
+    
+    if res.KO and include_known_object:
+        if KO_Np is None:
+            KO_Np = list(range(1, res.nKO + 1))
+        else:
+            if isinstance(KO_Np, int):
+                KO_Np = [KO_Np]
+
+        for i in range(res.nKO):
+            if i + 1 not in KO_Np:
+                continue
+            samples = res.KOpars[:, i::res.nKO].copy()
+            # swtich M0 and ecc, just for convenience
+            samples[:, [3, 2]] = samples[:, [2, 3]]
+
+            if replace_angles_with_mass:
+                (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                    samples[:, 0], samples[:, 1], samples[:, 2],
+                    star_mass=star_mass, full_output=True
+                )
+                m *= mjup2mearth
+                a *= a_factor
+
+                samples = np.c_[samples[:, :3], m, a]
+
+            if wrap_M0:
+                samples[:, 3] = np.arctan2(np.sin(samples[:, 3]), np.cos(samples[:, 3]))
+
+            if show_prior:
+                priors = [p for k, p in res.priors.items()
+                          if 'KO_' in k and f'_{i}' in k]
+                priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
+                if replace_angles_with_mass:
+                    (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                        priors[0], priors[1], priors[2], 
+                        star_mass=star_mass, full_output=True
+                    )
+                    m *= mjup2mearth
+                    a *= a_factor
+                    priors[3] = m
+                    priors[4] = a
+
+            fig, axs = corner_orbital(samples, labels=labels, units=units,
+                                      priors=priors, **kwargs)
+            figs.append(fig)
+            axss.append(axs)
+
+    if res.TR and include_transiting_planet:
+        for i in range(res.nTR):
+            samples = res.TRpars[:, i::res.nTR].copy()
+            # swtich M0 and ecc, just for convenience
+            samples[:, [3, 2]] = samples[:, [2, 3]]
+
+            if wrap_M0:
+                samples[:, 3] = np.arctan2(np.sin(samples[:, 3]), np.cos(samples[:, 3]))
+
+            fig, axs = corner_orbital(samples, labels=labels, units=units,
+                                      wrap_M0=wrap_M0)
+            figs.append(fig)
+            axss.append(axs)
+
+    if replace_angles_with_mass:
+        for axs, fig in zip(axss, figs):
+            text = 'stellar mass: '
+            if isinstance(star_mass, float):
+                text += rf'${star_mass} \, M_{{\odot}}$'
+            elif isinstance(star_mass, tuple):
+                text += rf'${star_mass[0]} \pm {star_mass[1]} \, M_{{\odot}}$'
+            # leg = axs[0, -1].get_legend_handles_labels()
+            # axs[0, -1].legend(*leg, title=text)
+
+
+    return figs, axss
+
+
+    #     fig = corner(samples, show_titles=True,
+    #                  labels=labels, truths=true_values)
+    #     # fig = pygtc.plotGTC(
+    #     #     chains=samples,
+    #     #     # smoothingKernel=0,
+    #     #     paramNames=labels,
+    #     #     truths=true_values,
+    #     #     plotDensity=True,
+    #     #     # labelRotation=(True, True),
+    #     #     filledPlots=False,
+    #     #     colorsOrder=['blues_old'],
+    #     #     #figureSize='AandA_page',  # AandA_column
+    #     # )
+    #     fig.set_size_inches(8, 6)
+    #     fig.tight_layout()
+    
+    # return
+    # if include_known_object:
+    #     samples = np.c_[samples, res.KOpars]
+    #     labels = labels + res.nKO * _labels
+    # if include_transiting_planet:
+    #     samples = np.c_[samples, res.TRpars]
+    #     __labels = copy(_labels)
+    #     __labels[__labels.index(r'$\phi$')] = r'$T_c$'
+    #     labels = labels + res.nTR * __labels
+
+    # if samples.shape[1] == 0:
+    #     print('no planet parameters to show')
+    #     return
+
+    # labels_right_order = []
+    # for i in range(res.n_dimensions):
+    #     labels_right_order += labels[i::res.n_dimensions]
+    # labels = labels_right_order
+
+    # # set the parameter ranges to include everything
+    # def r(x, over=0.2):
+    #     return x.min() - over * x.ptp(), x.max() + over * x.ptp()
+
+
+
+    # fig = pygtc.plotGTC(
+    #     chains=samples,
+    #     # smoothingKernel=0,
+    #     paramNames=labels,
+    #     truths=true_values,
+    #     plotDensity=False,
+    #     labelRotation=(True, True),
+    #     filledPlots=False,
+    #     colorsOrder=['blues_old'],
+    #     #figureSize='AandA_page',  # AandA_column
+    # )
+
+    # axs = fig.axes
+    # for ax in axs:
+    #     ax.autoscale()
+    #     # ax.yaxis.set_label_coords(-0.3, 0.5, transform=None)
+    #     # ax.xaxis.set_label_coords(0.5, -0.4, transform=None)
+
+    # # fs = axs[-1].xaxis.label.get_fontsize()
+    # # start = len(labels)
+    # # for i in range(-start, 0):
+    # #     val = percentile68_ranges_latex(samples.T[i])
+    # #     axs[i].set_title(f'{labels[i]} = {val}', fontsize=fs - 1)
+
+    # if res.model == 'GAIAmodel':
+    #     fig.set_size_inches(8, 6)
+
+    # fig.tight_layout()
+    # #fig.subplots_adjust(wspace=0.25, hspace=0.15)
+    # return fig
 
 
 def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
