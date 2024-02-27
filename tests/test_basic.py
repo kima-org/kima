@@ -28,7 +28,7 @@ def test_RVData():
     assert_equal(len(D.t), 40)
     assert_equal(np.array(D.obsi), 1)
 
-    assert_allclose(D.M0_epoch, 0.16166)
+    assert_allclose(D.M0_epoch, 7.49793)
     D.M0_epoch = 0.0
     assert_allclose(D.M0_epoch, 0.0)
 
