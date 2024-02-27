@@ -224,10 +224,11 @@ class KimaResults:
         self.return_figs = return_figs
         self.verbose = verbose
 
-        if _dummy:
-            return
 
         self.setup = setup = read_model_setup()
+
+        if _dummy:
+            return
 
         try:
             self.model = setup['kima']['model']
@@ -425,6 +426,7 @@ class KimaResults:
         res.data.e = np.array(np.copy(model.data.sig))
         res.data.obs = np.array(np.copy(model.data.obsi))
         res.data.N = model.data.N
+        res._extra_data = np.array(np.copy(model.data.actind))
 
         res.M0_epoch = model.data.M0_epoch
         res.n_instruments = np.unique(model.data.obsi).size
@@ -500,8 +502,8 @@ class KimaResults:
         # multiple instruments? read offsets
         res._read_multiple_instruments()
 
-        # # activity indicator correlations?
-        # res._read_actind_correlations()
+        # activity indicator correlations?
+        res._read_actind_correlations()
 
         # find GP in the compiled model
         res._read_GP()
@@ -527,8 +529,11 @@ class KimaResults:
         # staleness (ignored)
         res._current_column += 1
 
-        res.studentt = model.studentt
-        res._read_studentt()
+        try:
+            res.studentt = model.studentt
+            res._read_studentt()
+        except AttributeError:
+            pass
 
         if res.model == 'RVFWHMmodel':
             res.C2 = res.posterior_sample[:, res._current_column]
