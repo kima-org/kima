@@ -463,8 +463,8 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
 def reorder_P(res, replace=False, passes=1):
     from .results import posterior_holder
 
-    if res.max_components != 2:
-        raise NotImplementedError('Only 2-planet solutions are supported')
+    # if res.max_components >= 4:
+    #     raise NotImplementedError('Only 2- or 3-planet solutions are supported')
 
     new_posterior = posterior_holder()
     new_posterior.P = res.posteriors.P.copy()
@@ -473,7 +473,8 @@ def reorder_P(res, replace=False, passes=1):
     new_posterior.ω = res.posteriors.ω.copy()
     new_posterior.φ = res.posteriors.φ.copy()
 
-    mask = res.Np == 2
+    mask = res.Np > 1
+    print(mask.sum())
 
     for i in range(passes):
         P = new_posterior.P.copy()
@@ -491,7 +492,48 @@ def reorder_P(res, replace=False, passes=1):
     return new_posterior
 
 
-def sort_planet_samples(res, byP=True, byK=False):
+def reorder_P2(res, replace=False):
+    from tqdm import trange, tqdm
+    from .results import posterior_holder
+
+    # if res.max_components >= 4:
+    #     raise NotImplementedError('Only 2- or 3-planet solutions are supported')
+
+    new_posterior = posterior_holder()
+    new_posterior.P = res.posteriors.P.copy()
+    new_posterior.K = res.posteriors.K.copy()
+    new_posterior.e = res.posteriors.e.copy()
+    new_posterior.ω = res.posteriors.ω.copy()
+    new_posterior.φ = res.posteriors.φ.copy()
+
+    mask = res.Np > 1
+
+    s = np.std(new_posterior.P, axis=0)
+    # print(s)
+
+    for i in tqdm(np.where(mask)[0]):
+        for j in range(int(res.Np[i]) - 1):
+            # print(new_posterior.P[i])
+            new_posterior.P[i, j:j+2] = new_posterior.P[i, j:j+2][::-1]
+            # print(new_posterior.P[i])
+            _s = np.std(new_posterior.P, axis=0)
+            # print(_s, (_s < s)[j])
+            if (_s < s)[j]:
+                new_posterior.K[i, j:j+2] = new_posterior.K[i, j:j+2][::-1]
+                new_posterior.e[i, j:j+2] = new_posterior.e[i, j:j+2][::-1]
+                new_posterior.ω[i, j:j+2] = new_posterior.ω[i, j:j+2][::-1]
+                new_posterior.φ[i, j:j+2] = new_posterior.φ[i, j:j+2][::-1]
+                s = _s
+            else:
+                new_posterior.P[i, j:j+2] = new_posterior.P[i, j:j+2][::-1]
+            # input()
+
+    if replace:
+        res.posteriors = new_posterior
+
+    return new_posterior
+
+def sort_planet_samples(res, byP=True, replace=False):
     # here we sort the planet_samples array by the orbital period
     # this is a bit difficult because the organization of the array is
     # P1 P2 K1 K2 ....
@@ -508,23 +550,11 @@ def sort_planet_samples(res, byP=True, byK=False):
         new_posterior.e = res.posteriors.e[n, sortP]
         new_posterior.ω = res.posteriors.ω[n, sortP]
         new_posterior.φ = res.posteriors.φ[n, sortP]
-        return new_posterior
 
-    # samples = np.empty_like(planet_samples)
-    # n = res.max_components * res.n_dimensions
-    # mc = res.max_components
-    # if byP:
-    #     p = planet_samples[:, :mc]
-    #     ind_sort = np.arange(np.shape(p)[0])[:, np.newaxis], np.argsort(p)
-    # elif byK:
-    #     k = planet_samples[:, mc:2 * mc]
-    #     ind_sort = np.arange(np.shape(k)[0])[:, np.newaxis], np.argsort(k)
-    # else:
-    #     raise ValueError('one of byP or byK should be True')
-
-    # for i, j in zip(range(0, n, mc), range(mc, n + mc, mc)):
-    #     samples[:, i:j] = planet_samples[:, i:j][ind_sort]
-    # return samples
+    if replace:
+        res.posteriors = new_posterior
+    
+    return new_posterior
 
 
 def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
