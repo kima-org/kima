@@ -1042,7 +1042,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
         if period_ranges is not None:
             ranges[0] = period_ranges[i]
 
-        fig, axs = corner_orbital(samples, labels=labels, #units=units, 
+        fig, axs = corner_orbital(samples, labels=labels, units=units, 
                                   ranges=ranges, **kwargs)
 
         figs.append(fig)
