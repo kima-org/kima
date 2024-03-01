@@ -135,6 +135,13 @@ class GPmodel:
         ...
     
     @property
+    def data(self) -> kima.Data.RVData:
+        """
+        the data
+        """
+        ...
+    
+    @property
     def degree(self) -> int:
         """
         degree of the polynomial trend
@@ -213,6 +220,19 @@ class GPmodel:
         ...
     
     @property
+    def fix(self) -> bool:
+        """
+        whether the number of Keplerians is fixed
+        """
+        ...
+    @fix.setter
+    def fix(self, arg: bool, /) -> None:
+        """
+        whether the number of Keplerians is fixed
+        """
+        ...
+    
+    @property
     def indicator_correlations(self) -> bool:
         """
         include in the model linear correlations with indicators
@@ -269,6 +289,19 @@ class GPmodel:
     def n_transiting_planet(self) -> int:
         """
         how many transiting planets
+        """
+        ...
+    
+    @property
+    def npmax(self) -> int:
+        """
+        maximum number of Keplerians
+        """
+        ...
+    @npmax.setter
+    def npmax(self, arg: int, /) -> None:
+        """
+        maximum number of Keplerians
         """
         ...
     
