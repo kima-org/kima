@@ -2030,7 +2030,7 @@ def phase_plot(res,
         return
 
     # subtract stochastic model and vsys / offsets from data
-    v = res.full_model(sample, include_planets=False)
+    v = res.full_model(sample, t=None, include_planets=False)
     if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
         v = v[0]
 
@@ -2138,7 +2138,7 @@ def phase_plot(res,
 
         if res.multi:
             for k in range(1, res.n_instruments + 1):
-                m = res.data.obs == k
+                m = obs == k
                 phase = ((t[m] - Tp) / P) % 1.0
 
                 yy = (y - vv)[m]
@@ -2212,7 +2212,11 @@ def phase_plot(res,
     ###########
     if res.has_gp:
         axGP = fig.add_subplot(gs[1, :end])
-        _, y_offset = plot_data(res, ax=axGP, ignore_y2=True, legend=False,
+
+        y = res.data.y.copy()
+        y = y - res.eval_model(sample)
+
+        _, y_offset = plot_data(res, y=y, ax=axGP, ignore_y2=True, legend=False,
                                 time_offset=time_offset, **ekwargs)
         axGP.set(xlabel=time_label, ylabel="GP [m/s]")
 
@@ -3117,3 +3121,36 @@ def plot_parameter_samples(res):
     # axs[0].set(yscale='symlog')
     axs[-1].set(xlabel='sample')
     return fig, axs
+
+
+def interactive_plotter(res):
+
+    def on_pick(event):
+        artist = event.artist
+        ind = event.ind
+        # xmouse, ymouse = event.mouseevent.xdata, event.mouseevent.ydata
+        # x, y = artist.get_xdata(), artist.get_ydata()
+        # print('Artist picked:', event.artist)
+        # print('{} vertices picked'.format(len(ind)))
+        # print('Pick between vertices {} and {}'.format(min(ind), max(ind)+1))
+        # print('x, y of mouse: {:.2f},{:.2f}'.format(xmouse, ymouse))
+        # print('Data point:', x[ind[0]], y[ind[0]])
+        # print()
+        i = ind[0]
+        print(i)
+        res.print_sample(res.posterior_sample[i])
+        print()
+        res.phase_plot(res.posterior_sample[i])
+        p, k, e = res.posteriors.P[ind[0]], res.posteriors.K[ind[0]], res.posteriors.e[ind[0]]
+        k, e, p = k[np.argsort(p)], e[np.argsort(p)], p[np.argsort(p)]
+        line1.set_data(p, k)
+        line2.set_data(p, e)
+        #print(line in axs[0].lines)
+        fig.canvas.draw()
+
+    fig, axs = plt.subplots(2, 1, constrained_layout=True)
+    line1, = axs[0].semilogx([], [], '-ok')
+    line2, = axs[1].semilogx([], [], '-ok')
+    axs[0].semilogx(res.posteriors.P, res.posteriors.K, '.', ms=1, picker=5)
+    axs[1].semilogx(res.posteriors.P, res.posteriors.e, '.', ms=1)
+    fig.canvas.callbacks.connect('pick_event', on_pick)
