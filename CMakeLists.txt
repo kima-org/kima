@@ -65,6 +65,9 @@ nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
+nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
+                    src/kima/RVFWHMRHKmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
 nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/BINARIESmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
@@ -90,6 +93,7 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/BINARIESmodel.cpp
                     src/kima/GAIAmodel.cpp
                     src/kima/RVGAIAmodel.cpp
+                    src/kima/RVFWHMRHKmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/postkepler.cpp 
                     src/kima/transits.cpp src/kima/AMDstability.cpp)
@@ -119,10 +123,10 @@ foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITm
 endforeach()
 
 # add Eigen path to includes
-set(INCLUDES_EIGEN ${INCLUDES} src/vendor/eigen)
+set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH})
 
 # compilation settings for each module that requires Eigen
-foreach(targ GPmodel RVFWHMmodel)
+foreach(targ GPmodel RVFWHMmodel RVFWHMRHKmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES_EIGEN})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -144,7 +148,8 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel TRANSITmodel GPmodel RVFWHMmodel BINARIESmodel GAIAmodel RVGAIAmodel)
+foreach(module RVmodel OutlierRVmodel TRANSITmodel 
+        GPmodel RVFWHMmodel RVFWHMRHKmodel BINARIESmodel GAIAmodel RVGAIAmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 

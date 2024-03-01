@@ -100,4 +100,6 @@ NB_MODULE(Sampler, m)
     m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS, RUN_DOC);
     
     m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS, RUN_DOC);
+
+    m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS, RUN_DOC);
 }

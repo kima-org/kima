@@ -2,8 +2,11 @@
 from .Data import RVData, PHOTdata, GAIAData
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
+
 from .RVFWHMmodel import RVFWHMmodel
 from .TRANSITmodel import TRANSITmodel
+from .RVFWHMRHKmodel import RVFWHMRHKmodel
+
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
 from .GAIAmodel import GAIAmodel
@@ -13,6 +16,7 @@ __models__ = (
     RVmodel,
     GPmodel,
     RVFWHMmodel,
+    RVFWHMRHKmodel,
     TRANSITmodel,
     OutlierRVmodel,
     BINARIESmodel,
@@ -28,7 +32,7 @@ RVData.plot = plot_RVData
 # kima.run
 from .Sampler import run
 # kima.load_results
-from .pykima.results import load_results, KimaResults
+from .pykima.results import load_results #, KimaResults
 # kima.cleanup
 from .pykima.cli import cli_clean as cleanup
 
