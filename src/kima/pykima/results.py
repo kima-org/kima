@@ -16,6 +16,7 @@ from contextlib import redirect_stdout
 
 from .. import __models__
 from kima.kepler import keplerian as kepleriancpp
+from kima import distributions
 from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  mixtureGP)
@@ -62,10 +63,18 @@ def _read_priors(setup=None):
     except KeyError:
         pass
 
-    priors = {
-        n: v
-        for n, v in zip(prior_names, [get_prior(p) for p in priors])
-    }
+    prior_dists = []
+    for p in priors:
+        p = p.replace(';', ',')
+        if 'UniformAngle' in p:
+            p = 'UniformAngle()'
+        prior_dists.append(eval('distributions.' + p))
+
+    priors = {n: v for n, v in zip(prior_names, prior_dists)}
+    # priors = {
+    #     n: v
+    #     for n, v in zip(prior_names, [get_prior(p) for p in priors])
+    # }
 
     return priors
 
