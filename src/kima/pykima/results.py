@@ -140,12 +140,20 @@ class posterior_holder:
     φ: np.ndarray = field(init=False)
     # 
     jitter: np.ndarray = field(init=False)
+    stellar_jitter: np.ndarray = field(init=False)
     offset: np.ndarray = field(init=False)
     vsys: np.ndarray = field(init=False)
     # 
     outlier_mean: np.ndarray = field(init=False)
     outlier_sigma: np.ndarray = field(init=False)
     outlier_Q: np.ndarray = field(init=False)
+    #
+    η1: np.ndarray = field(init=False)
+    η2: np.ndarray = field(init=False)
+    η3: np.ndarray = field(init=False)
+    η4: np.ndarray = field(init=False)
+    η5: np.ndarray = field(init=False)
+    η6: np.ndarray = field(init=False)
 
     def __repr__(self):
         fields = list(self.__dataclass_fields__.keys())
@@ -1063,15 +1071,22 @@ class KimaResults:
                     priors[i + 1] = self.priors['eta4_1_prior']
                     i += 2
 
+        if self.KO:
+            KO_priors = []
+            KO_priors += [self.priors[f'KO_Pprior_{i}'] for i in range(self.nKO)]
+            KO_priors += [self.priors[f'KO_Kprior_{i}'] for i in range(self.nKO)]
+            KO_priors += [self.priors[f'KO_phiprior_{i}'] for i in range(self.nKO)]
+            KO_priors += [self.priors[f'KO_eprior_{i}'] for i in range(self.nKO)]
+            KO_priors += [self.priors[f'KO_wprior_{i}'] for i in range(self.nKO)]
+            priors[self.indices['KOpars']] = KO_priors
+
         if self.fix:
-            from .utils import Fixed
-            priors[self.indices['np']] = Fixed(self.npmax)
+            priors[self.indices['np']] = distributions.Fixed(self.npmax)
         else:
             try:
                 priors[self.indices['np']] = self.priors['np_prior']
             except KeyError:
-                priors[self.indices['np']] = discrete_uniform(
-                    0, self.npmax + 1)
+                priors[self.indices['np']] = discrete_uniform(0, self.npmax + 1)
 
         if self.max_components > 0:
             planet_priors = []
@@ -1267,6 +1282,10 @@ class KimaResults:
         self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
         if self.n_jitters == 1:
             self.posteriors.jitter = self.posteriors.jitter.ravel()
+
+        if self.model == 'GPmodel':
+            for i in range(self.n_hyperparameters):
+                setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
 
         if self.model == 'GAIAmodel':
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
@@ -1745,7 +1764,7 @@ class KimaResults:
         ttGP.sort()  # in-place
         return ttGP
 
-    def eval_model(self, sample, t = None,
+    def eval_model(self, sample, t=None,
                    include_planets=True, include_known_object=True,
                    include_indicator_correlations=True,
                    include_trend=True, single_planet: int = None,
@@ -1826,7 +1845,10 @@ class KimaResults:
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    if self.model not in ('RVmodel', 'GPmodel'):
+                        v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    else:
+                        v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
             
             # transiting planet ?
             if hasattr(self, 'TR') and self.TR:
@@ -1848,7 +1870,10 @@ class KimaResults:
                     f = np.pi/2 - w # true anomaly at conjunction
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
-                    v += keplerian(t, P, K, ecc, w, M, Tc)
+                    if self.model != 'RVmodel':
+                        v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    else:
+                        v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -2072,30 +2097,9 @@ class KimaResults:
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
 
-            if self.GPkernel == 'standard':
-                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV,
-                 η4FWHM) = GPpars[self._GP_par_indices]
-                self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV])
-                self.GP2.kernel.pars = np.array(
-                    [η1FWHM, η2FWHM, η3FWHM, η4FWHM])
-
-            elif self.GPkernel == 'qpc':
-                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM, η5RV,
-                 η5FWHM) = GPpars[self._GP_par_indices]
-
-                self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV, η5RV])
-                self.GP2.kernel.pars = np.array(
-                    [η1FWHM, η2FWHM, η3FWHM, η4FWHM, η5FWHM])
-
-            elif self.GPkernel == 'qp_plus_cos':
-                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM, η5RV,
-                 η5FWHM, η6RV, η6FWHM) = GPpars[self._GP_par_indices]
-
-                self.GP1.kernel.pars = np.array(
-                    [η1RV, η2RV, η3RV, η4RV, η5RV, η6RV])
-                self.GP2.kernel.pars = np.array(
-                    [η1FWHM, η2FWHM, η3FWHM, η4FWHM, η5FWHM, η6FWHM])
-
+            η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM = GPpars[self._GP_par_indices]
+            self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV])
+            self.GP2.kernel.pars = np.array([η1FWHM, η2FWHM, η3FWHM, η4FWHM])
 
             if derivative:
                 out0 = self.GP1.derivative(r[0], t, return_std=return_std)
@@ -2143,7 +2147,7 @@ class KimaResults:
                 self.GP.kernel.pars = GPpars
                 return self.GP.predict(r, t, return_std=return_std)
 
-    def full_model(self, sample, t = None, **kwargs):
+    def full_model(self, sample, t=None, **kwargs):
         """
         Evaluate the full model at one posterior sample, including the GP. If
         `t` is `None`, use the observed times. Instrument offsets are only added
@@ -2522,6 +2526,7 @@ class KimaResults:
     
     #
     corner_planet_parameters = display.corner_planet_parameters
+    corner_known_object = display.corner_known_object
 
 
     def get_sorted_planet_samples(self, full=True):
