@@ -2006,6 +2006,7 @@ def phase_plot(res,
 
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
+    obs = res.data.obs.copy()
     
     if t[0] > 24e5:
         time_offset = 24e5
