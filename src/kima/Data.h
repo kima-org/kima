@@ -57,6 +57,7 @@ class  KIMA_API RVData {
   friend class OutlierRVmodel;
   friend class BINARIESmodel;
   friend class RVGAIAmodel;
+  friend class RVFWHMRHKmodel;
 
   private:
     vector<double> t, y, sig, y2, sig2;
