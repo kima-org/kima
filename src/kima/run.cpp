@@ -16,6 +16,7 @@ using namespace nb::literals;
 #include "BINARIESmodel.h"
 #include "GAIAmodel.h"
 #include "RVGAIAmodel.h"
+#include "RVFWHMRHKmodel.h"
 
 
 auto RUN_DOC = R"D(
