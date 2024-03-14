@@ -18,10 +18,13 @@ double median(vector<double> v)
 
 
 /// @brief Load data from a single filename
-RVData::RVData(const string& filename, const string& units, int skip, int max_rows, 
+RVData::RVData(const string& filename, const string& units, int skip, int max_rows, bool multi,
                const string& delimiter, const vector<string>& indicators)
 {
-    load(filename, units, skip, max_rows, delimiter, indicators);
+    if (multi)
+        load_multi(filename, units, skip, max_rows, delimiter, indicators);
+    else
+        load(filename, units, skip, max_rows, delimiter, indicators);
 }
 
 /// @brief Load data from a list of filenames
@@ -190,7 +193,7 @@ RVData::RVData(const vector<vector<double>> _t,
  * @param indicators
  */
 void RVData::load(const string filename, const string units, int skip, int max_rows,
-                    const string delimiter, const vector<string>& indicators)
+                  const string delimiter, const vector<string>& indicators)
 {
     if (filename.empty()) {
         std::string msg = "kima: RVData: no filename provided";
@@ -298,7 +301,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
  *   time  vrad  error  ...  obs
  *   ...   ...   ...    ...  ...
  * ```
- * The `obs` column should be an integer identifying the instrument.
+ * The `obs` column should be the last one and an integer identifying the instrument.
  *
  * @param filename   the name of the file
  * @param units      units of the RVs and errors, either "kms" or "ms"
@@ -307,6 +310,16 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 void RVData::load_multi(const string filename, const string units, int skip, int max_rows,
                         const string delimiter, const vector<string> &indicators)
 {
+    if (filename.empty()) {
+        std::string msg = "kima: RVData: no filename provided";
+        throw std::invalid_argument(msg);
+        // exit(1);
+    }
+
+    if (filename.size() == 1) {
+        std::string msg = "kima: RVData: filename with one character is probably an error";
+        throw std::runtime_error(msg);
+    }
 
     auto data = loadtxt(filename)
                     .skiprows(skip)
@@ -314,9 +327,10 @@ void RVData::load_multi(const string filename, const string units, int skip, int
                     .delimiter(delimiter)();
 
     if (data.size() < 4) {
-        printf("Data file (%s) contains less than 4 columns!\n", filename.c_str());
-        exit(1);
+        std::string msg = "kima: RVData: file (" + filename + ") contains less than 4 columns! (multi=true)";
+        throw std::runtime_error(msg);
     }
+
 
     auto Ncol = data.size();
     auto N = data[0].size();
@@ -380,7 +394,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
         }
     }
 
-    // the 4th column of the file identifies the instrument; it can have "0"s
+    // the last column of the file identifies the instrument; it can have "0"s
     // this is to make sure the obsi vector always starts at 1, to avoid
     // segmentation faults later
     vector<int> inst_id;
@@ -930,8 +944,8 @@ NB_MODULE(Data, m) {
              "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string&, const string&, int, int, const string&, const vector<string>&>(),
-             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&>(),
+             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" ", "indicators"_a=vector<string>(),
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
@@ -963,7 +977,6 @@ NB_MODULE(Data, m) {
         .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
 
         // to un/pickle RVData
-
         .def("__getstate__", [](const RVData &d)
             {
                 return std::make_tuple(d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
@@ -973,13 +986,14 @@ NB_MODULE(Data, m) {
                 bool _multi = std::get<5>(state);
                 if (_multi) {
                     new (&d) RVData(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
-                    //              filename,           units,              skip   
-                } else {
-                    new (&d) RVData(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
                     //              filenames,          units,              skip   
+                } else {
+                    new (&d) RVData(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, _multi, " ", std::get<4>(state));
+                    //              filename,           units,              skip   
                 }
             })
         //
+
         .def("get_timespan", &RVData::get_timespan)
         .def("get_RV_span", &RVData::get_RV_span)
         .def("topslope", &RVData::topslope)

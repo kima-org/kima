@@ -36,6 +36,19 @@ def test_RVData():
     D = kima.RVData(['tests/simulated1.txt', 'tests/simulated2.txt'])
     assert_equal(D.N, 80)
 
+    # two instruments but only one file
+    D = kima.RVData('tests/simulated2.txt', multi=True)
+    assert_equal(D.N, 40)
+    assert(D.multi)
+    assert_equal(len(D.obsi), 40)
+    assert_equal((np.array(D.obsi) == 1).sum(), 21)
+    assert_equal((np.array(D.obsi) == 2).sum(), 19)
+
+    # should fail on a file that doesn't have the 4th column
+    with pytest.raises(RuntimeError):
+        D = kima.RVData('tests/simulated1.txt', multi=True)
+
+
     # read indicators too
     D = kima.RVData('tests/simulated2.txt', indicators=['i', 'j'])
     assert_equal(D.N, 40)
