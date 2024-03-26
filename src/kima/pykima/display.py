@@ -339,10 +339,7 @@ def plot_posterior_period(res,
     ax.set_xscale('log' if logx else 'linear')
 
     if kwargs.get('labels', True):
-        if kde:
-            ylabel = 'KDE density'
-        else:
-            ylabel = 'Number of posterior samples / ESS'
+        ylabel = 'KDE density' if kde else 'Number of posterior samples / ESS'
         ax.set(xlabel=r'Period [days]', ylabel=ylabel)
 
     title = kwargs.get('title', True)

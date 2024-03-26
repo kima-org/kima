@@ -41,7 +41,7 @@ def read_model_setup(filename='kima_model_setup.txt'):
 def read_datafile(datafile, skip):
     """
     Read data from `datafile` for multiple instruments.
-    Can be str, in which case the 4th column is assumed to contain an integer
+    Can be str, in which case the last column is assumed to contain an integer
     identifier of the instrument.
     Or list, in which case each element will be one different filename
     containing three columns each.
@@ -56,21 +56,16 @@ def read_datafile(datafile, skip):
         return data, obs
     else:
         data = np.loadtxt(datafile, usecols=(0, 1, 2), skiprows=skip)
-        obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
+        obs = np.loadtxt(datafile, usecols=(-1, ), skiprows=skip, dtype=int)
         uobs = np.unique(obs)
         if uobs.min() > 0:
             uobs -= uobs.min()
-
         return data, obs
 
 
 def read_datafile_rvfwhm(datafile, skip):
     """
     Read data from `datafile` for multiple instruments and RV-FWHM data.
-    Can be str, in which case the 4th column is assumed to contain an integer
-    identifier of the instrument.
-    Or list, in which case each element will be one different filename
-    containing three columns each.
     """
     if isinstance(datafile, list):
         data = np.empty((0, 5))
