@@ -77,12 +77,21 @@ def read_datafile_rvfwhm(datafile, skip):
         return data, obs
     else:
         raise NotImplementedError
-        # data = np.loadtxt(datafile, usecols=range(5), skiprows=skip)
-        # obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
-        # uobs = np.unique(obs)
-        # if uobs.min() > 0:
-        #     uobs -= uobs.min()
-        # return data
+
+def read_datafile_rvfwhmrhk(datafile, skip):
+    """
+    Read data from `datafile` for multiple instruments and RV-FWHM-RHK data.
+    """
+    if isinstance(datafile, list):
+        data = np.empty((0, 7))
+        obs = np.empty((0, ))
+        for i, df in enumerate(datafile):
+            d = np.loadtxt(df, usecols=range(7), skiprows=skip, ndmin=2)
+            data = np.append(data, d, axis=0)
+            obs = np.append(obs, (i + 1) * np.ones((d.shape[0])))
+        return data, obs
+    else:
+        raise NotImplementedError
 
 
 @contextlib.contextmanager

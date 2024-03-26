@@ -1,6 +1,5 @@
 from string import ascii_lowercase
 from copy import copy
-from matplotlib.ticker import ScalarFormatter
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -155,6 +154,7 @@ def plot_posterior_period(res,
                           show_year=True,
                           show_timespan=True,
                           show_aliases=False,
+                          include_known_object=False,
                           separate_colors=False,
                           return_bins=False,
                           mark_periods=None,
@@ -494,6 +494,33 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
         except KeyError:
             pass
 
+    if show_aliases is not None:  # mark daily and yearly aliases of top peak
+        from .analysis import aliases
+        
+        point, = ax1.plot([], [], 'v', color='k')
+
+        def mark_alias(event):
+            print(event.ind[0])
+            print(res.posteriors.P[event.ind[0]])
+        
+        fig.canvas.callbacks.connect('pick_event', mark_alias)
+        # # get maximum peak(s)
+        # bins = get_bins(res, nbins=200)
+        # counts, _ = np.histogram(P, bins=bins)
+        # peaki = np.argsort(counts)[-10:][::-1]
+        # peakP = np.array([bins[pi:pi+2].mean() for pi in peaki])
+        # ymax = 1.1 * ax1.get_ylim()[1]
+
+        # if isinstance(show_aliases, int):
+        #     peakP = peakP[:show_aliases]
+
+        # alias_year, alias_solar_day, alias_sidereal_day = aliases(peakP)
+        # for ax in (ax1, ax2):
+        #     ax.vlines(alias_year, 0, ymax, color='k', ls='--', alpha=0.1)
+        #     ax.vlines(alias_solar_day, 0, ymax, color='k', ls='--', alpha=0.1)
+        #     ax.vlines(alias_sidereal_day, 0, ymax, color='k', ls='--', alpha=0.1)
+        # ax.set_xlim(np.min(alias_solar_day), None)
+
     ax1.set(ylabel='Semi-amplitude [m/s]',
             title='Joint posterior semi-amplitude $-$ orbital period')
     ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
@@ -538,9 +565,8 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
         return
 
     # dispatch if RVFWHMmodel
-    if res.model == 'RVFWHMmodel':
-        return make_plot4_rvfwhm(res, Np, ranges, show_prior, fig,
-                                 **hist_kwargs)
+    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        return plot_gp_rvfwhm(res, Np, ranges, show_prior, fig, **hist_kwargs)
 
     n = res.etas.shape[1]
     available_etas = [f'eta{i}' for i in range(1, n + 1)]
@@ -590,7 +616,7 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
         )
 
     # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    fig.tight_layout()
+    # fig.tight_layout()
 
     if res.save_plots:
         filename = 'kima-showresults-fig4.png'
@@ -620,12 +646,24 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    fig = plt.figure()
-
-    if res.GPkernel == 'standard':
-        gs = fig.add_gridspec(6, 2)
-    elif res.GPkernel == 'qpc':
-        gs = fig.add_gridspec(6, 3)
+    if res.model == 'RVFWHMmodel':
+        fig, axs = plt.subplot_mosaic(
+            [
+                ['η1RV', 'η2'], 
+                ['η1RV', 'η2'], 
+                ['η1RV', 'η3'],
+                ['η1FW', 'η3'],
+                ['η1FW', 'η4'],
+                ['η1FW', 'η4'],
+            ],
+        constrained_layout=True)
+    elif res.model == 'RVFWHMRHKmodel':
+        fig, axs = plt.subplot_mosaic(
+            [
+                ['η1RV', 'η1FW', 'η1RHK'], 
+                ['η2', 'η3', 'η4']
+            ],
+        constrained_layout=True)
 
     histkw = dict(density=True, bins='doane')
     histkw2 = {**histkw, **{'histtype':'step'}}
@@ -636,13 +674,22 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     axs['η1RV'].set_title(estimate, loc='right', fontsize=10)
     axs['η1RV'].set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
     axs['η1RV'].set_xlim((0, None))
+    j = 1
 
     estimate = percentile68_ranges_latex(res.etas[:, 1]) + ' m/s'
     axs['η1FW'].hist(res.etas[:, 1], label=estimate, **histkw)
     axs['η1FW'].set_title(estimate, loc='right', fontsize=10)
     axs['η1FW'].set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
     axs['η1FW'].set_xlim((0, None))
+    j = 2
 
+    if res.model == 'RVFWHMRHKmodel':
+        estimate = percentile68_ranges_latex(res.etas[:, 2])
+        axs['η1RHK'].hist(res.etas[:, 2], **histkw)
+        axs['η1RHK'].set_title(estimate, loc='right', fontsize=10)
+        axs['η1RHK'].set(xlabel=r"$\eta_1$ R'$_{HK}$", ylabel='posterior', **allkw)
+        axs['η1RHK'].set_xlim((0, None))
+        j = 3
 
     if show_prior:
         kw = dict(color='k', alpha=0.2, density=True, zorder=-1, bins='doane')
@@ -699,6 +746,10 @@ def plot_gp_corner(res, include_jitters=False, ranges=None):
             if res.model == 'RVFWHMmodel':
                 labels += [rf'$s_{{\rm {i}}}^{{\rm RV}}$' for i in instruments]
                 labels += [rf'$s_{{\rm {i}}}^{{\rm FWHM}}$' for i in instruments]
+            elif res.model == 'RVFWHMRHKmodel':
+                labels += [rf'$s_{{\rm {i}}}^{{\rm RV}}$' for i in instruments]
+                labels += [rf'$s_{{\rm {i}}}^{{\rm FWHM}}$' for i in instruments]
+                labels += [rf'$s_{{\rm {i}}}^{{\rm RHK}}$' for i in instruments]
             else:
                 labels += [rf'$s_{{\rm {i}}}$' for i in instruments]
 
@@ -707,7 +758,10 @@ def plot_gp_corner(res, include_jitters=False, ranges=None):
     if res.model == 'RVFWHMmodel':
         labels += [r'$\eta_1^{RV}$', r'$\eta_1^{FWHM}$']
         for i in range(2, res.n_hyperparameters):
-            print(i)
+            labels += [rf'$\eta_{i}$']
+    elif res.model == 'RVFWHMRHKmodel':
+        labels += [r'$\eta_1^{RV}$', r'$\eta_1^{FWHM}$', r'$\eta_1^{RHK}$']
+        for i in range(2, res.n_hyperparameters):
             labels += [rf'$\eta_{i}$']
     else:
         labels += [rf'$\eta_{i+1}$' for i in range(res.n_hyperparameters)]
@@ -967,7 +1021,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
     else:
         if replace_angles_with_mass:
             labels = [r'$P$', r'$K$', '$e$', '$M_p$', '$a$']
-            units = ['days', 'm/s', '', 'M$_\oplus$', 'AU']
+            units = ['days', 'm/s', '', r'M$_\oplus$', 'AU']
             if a_factor != 1.0:
                 labels[-1] = f'${a_factor:.0e}'.replace('e+0', '0^') + r'\times a$'
         else:
@@ -1369,6 +1423,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
     #     units = ' (m/s)'  # if res.units == 'ms' else ' (km/s)'
 
     RVFWHM = res.model == 'RVFWHMmodel'
+    RVFWHMRHK = res.model == 'RVFWHMRHKmodel'
 
     if 'fig' in kwargs:
         fig = kwargs.pop('fig')
@@ -1379,18 +1434,21 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
         if RVFWHM:
             fig, axs = plt.subplots(2, res.n_jitters, 
                                     figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
+        elif RVFWHMRHK:
+            fig, axs = plt.subplots(3, res.n_jitters // 3, 
+                                    figsize=(min(10, 5 + res.n_jitters * 2), 6), **kw)
         else:
-            fig, axs = plt.subplots(1, res.n_jitters, 
+            nrows = 2 if res.n_jitters >= 6 else 1
+            fig, axs = plt.subplots(nrows, res.n_jitters // nrows, 
                                     figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
 
     if show_title:
         fig.suptitle('Posterior distribution for extra white noise')
 
     if isinstance(axs, np.ndarray) and res.multi:
-        if RVFWHM:
-            for row in axs:
-                for ax in row:
-                    ax.sharex(row[0])
+        if RVFWHM or RVFWHMRHK:
+            for ax in axs[1]:
+                ax.sharex(axs[0, 0])
 
     kwargs.setdefault('density', True)
     kwargs.setdefault('bins', 'doane')
@@ -1406,8 +1464,11 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
             if RVFWHM:
                 prior_name = 'Jprior' if j==0 else f'J{j+1}prior'
                 prior = distribution_rvs(res.priors[prior_name], size=res.ESS)
+            elif RVFWHMRHK:
+                prior_name = 'Jprior' if j==0 else f'J{j+1}prior'
+                prior = distribution_rvs(res.priors[prior_name], size=res.ESS)
             else:
-                if res.multi and i==0:
+                if res.model == 'RVmodel' and res.multi and i==0:
                     prior = distribution_rvs(res.priors['stellar_jitter_prior'], size=res.ESS)
                 else:
                     prior = distribution_rvs(res.priors['Jprior'], size=res.ESS)
@@ -1441,13 +1502,18 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
         ax.set(yticks=[], ylabel='posterior')
 
     insts = [get_instrument_name(i) for i in res.instruments]
+
     if RVFWHM:
         labels = [f'RV jitter {i} [m/s]' for i in insts]
         labels += [f'FWHM jitter {i} [m/s]' for i in insts]
+    elif RVFWHMRHK:
         labels = [f'RV jitter {i} [m/s]' for i in insts]
         labels += [f'FWHM jitter {i} [m/s]' for i in insts]
+        labels += [f'RHK jitter {i}' for i in insts]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
+        if res.model == 'RVmodel':
+            labels.insert(0, 'stellar jitter')
 
     for ax, label in zip(axs, labels):
         ax.set_xlabel(label, fontsize=10)
@@ -1650,10 +1716,13 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
               legend=True, show_rms=False, outliers=None, **kwargs):
 
     fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
+    rhk_model = res.model == 'RVFWHMRHKmodel' and not (ignore_y3 or ignore_y2)
 
     if ax is None:
         if fwhm_model:
             fig, (ax, axf) = plt.subplots(2, 1, sharex=True)
+        elif rhk_model:
+            fig, (ax, axf, axr) = plt.subplots(3, 1, sharex=True)
         else:
             fig, ax = plt.subplots(1, 1)
 
@@ -1662,21 +1731,32 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
 
     if y is None:
         y = res.data.y.copy()
+    else:
+        if y.ndim > 1:
+            y = y[0]
 
-    if fwhm_model:
+    if fwhm_model or rhk_model:
         y2 = res.data.y2.copy()
         e2 = res.data.e2.copy()
+    
+    if rhk_model:
+        y3 = res.data.y3.copy()
+        e3 = res.data.e3.copy()
 
     assert y.size == res.data.N, 'wrong dimensions!'
 
     if extract_offset:
         y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
-        if fwhm_model:
+        if fwhm_model or rhk_model:
             y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
+        if rhk_model:
+            y3_offset = round(y3.mean(), 0) if abs(y3.mean()) > 100 else 0
     else:
         y_offset = 0
-        if fwhm_model:
+        if fwhm_model or rhk_model:
             y2_offset = 0
+        if rhk_model:
+            y3_offset = 0
 
     kw = dict(fmt='o', ms=3)
     kw.update(**kwargs)
@@ -1699,33 +1779,29 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
                 ax.errorbar(t[m & ~outliers] - time_offset,
                             y[m & ~outliers] - y_offset, e[m & ~outliers],
                             **kw)
-            if fwhm_model:
-                axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, e2[m],
-                             **kw)
+            if fwhm_model or rhk_model:
+                axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, e2[m], **kw)
+            if rhk_model:
+                axr.errorbar(t[m] - time_offset, y3[m] - y3_offset, e3[m], **kw)
     else:
         try:
             kw.update(label=res.data.instrument)
+            if kw['label'] == '':
+                raise AttributeError
         except AttributeError:
-            kw.update(label='data')
+            kw.update(label=res.instruments)
 
         if outliers is None:
             ax.errorbar(t - time_offset, y - y_offset, e, **kw)
         else:
-            ax.errorbar(t[~outliers] - time_offset, y[~outliers] - y_offset,
-                        e[~outliers], **kw)
-        if fwhm_model:
+            ax.errorbar(t[~outliers] - time_offset, y[~outliers] - y_offset, e[~outliers], **kw)
+        if fwhm_model or rhk_model:
             axf.errorbar(t - time_offset, y2 - y2_offset, e2, **kw)
+        if rhk_model:
+            axr.errorbar(t - time_offset, y3 - y3_offset, e3, **kw)
 
     if legend:
         ax.legend(loc='best')
-        # ax.legend(loc='upper left')
-
-    # if res.multi:
-    #     kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
-    #     for ot in res._offset_times:
-    #         ax.axvline(ot - time_offset, **kw)
-    #         if fwhm_model:
-    #             axf.axvline(ot, **kw)
 
     if res.arbitrary_units:
         lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
@@ -1733,16 +1809,12 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
         lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
 
     ax.set(**lab)
-    if fwhm_model:
+    if fwhm_model or rhk_model:
         axf.set(xlabel='Time [days]', ylabel='FWHM [m/s]')
+    if rhk_model:
+        axr.set(xlabel='Time [days]', ylabel=r"$\log$ R'$_{HK}$")
 
     if show_rms:
-        # if res.studentt:
-        #     outliers = find_outliers(res)
-        #     rms1 = wrms(y, 1 / res.e**2)
-        #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
-        #     ax.set_title(f'rms: {rms2:.2f} ({rms1:.2f}) m/s', loc='right')
-        # else:
         rms = wrms(y, 1 / e**2)
         if outliers is None or not np.any(outliers):
             title = f'rms: {rms:.2f} [m/s]'
@@ -1758,15 +1830,161 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
         fs = ax.xaxis.get_label().get_fontsize()
         ax.set_title(offset, loc='left', fontsize=fs)
 
-    if fwhm_model and y2_offset != 0:
+    if (fwhm_model or rhk_model) and y2_offset != 0:
         sign_symbol = {1.0: '+', -1.0: '-'}
         offset = sign_symbol[np.sign(y2_offset)] + str(int(abs(y2_offset)))
         fs = axf.xaxis.get_label().get_fontsize()
         axf.set_title(offset, loc='left', fontsize=fs)
-
+    
+    if rhk_model and y3_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y3_offset)] + str(int(abs(y3_offset)))
+        fs = axr.xaxis.get_label().get_fontsize()
+        axr.set_title(offset, loc='left', fontsize=fs)
 
     if fwhm_model:
         return ax, axf, y_offset, y2_offset
+    elif rhk_model:
+        return ax, axf, axr, y_offset, y2_offset, y3_offset
+    else:
+        return ax, y_offset
+
+
+def plot_data_jitters(res, sample, ax=None, axf=None, axr=None,
+                      extract_offset=True, ignore_y2=False, ignore_y3=False,
+                      time_offset=0.0, highlight=None, legend=True,
+                      show_rms=False, outliers=None, **kwargs):
+
+    fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
+    rhk_model = res.model == 'RVFWHMRHKmodel' and not ignore_y3
+
+    if ax is None:
+        if fwhm_model:
+            fig, (ax, axf) = plt.subplots(2, 1, sharex=True)
+        elif rhk_model:
+            fig, (ax, axf, axr) = plt.subplots(3, 1, sharex=True)
+        else:
+            fig, ax = plt.subplots(1, 1)
+
+    t = res.data.t.copy()
+    e = res.data.e.copy()
+    y = res.data.y.copy()
+
+    jRV = sample[res.indices['jitter']][:res.n_instruments]
+    jRV = jRV[res.data.obs.astype(int) - 1]
+
+    if fwhm_model or rhk_model:
+        y2 = res.data.y2.copy()
+        e2 = res.data.e2.copy()
+    
+        jFW = sample[res.indices['jitter']][res.n_instruments : 2*res.n_instruments]
+        jFW = jFW[res.data.obs.astype(int) - 1]
+
+    if rhk_model:
+        y3 = res.data.y3.copy()
+        e3 = res.data.e3.copy()
+
+        jRHK = sample[res.indices['jitter']][2*res.n_instruments:]
+        jRHK = jRHK[res.data.obs.astype(int) - 1]
+
+    assert y.size == res.data.N, 'wrong dimensions!'
+
+    if extract_offset:
+        y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
+        if fwhm_model or rhk_model:
+            y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
+        if rhk_model:
+            y3_offset = round(y3.mean(), 0) if abs(y3.mean()) > 100 else 0
+    else:
+        y_offset = 0
+        if fwhm_model or rhk_model:
+            y2_offset = 0
+        if rhk_model:
+            y3_offset = 0
+
+    kw = dict(fmt='o', ms=0, ecolor='k', alpha=0.1)
+    kw.update(**kwargs)
+
+    if res.multi:
+        for j in range(res.n_instruments):
+            inst = res.instruments[j]
+            m = res.data.obs == j + 1
+            kw.update(label=inst)
+
+            if highlight is not None:
+                if highlight in inst:
+                    kw.update(alpha=1)
+                else:
+                    kw.update(alpha=0.1)
+
+            if outliers is None:
+                ax.errorbar(t[m] - time_offset, y[m] - y_offset, np.hypot(e[m], jRV[m]), **kw)
+            else:
+                ax.errorbar(t[m & ~outliers] - time_offset,
+                            y[m & ~outliers] - y_offset, np.hypot(e[m & ~outliers], jRV[m & ~outliers]),
+                            **kw)
+            if fwhm_model or rhk_model:
+                axf.errorbar(t[m] - time_offset, y2[m] - y2_offset, np.hypot(e2[m], jFW[m]), **kw)
+            if rhk_model:
+                axr.errorbar(t[m] - time_offset, y3[m] - y3_offset, np.hypot(e3[m], jRHK[m]), **kw)
+    else:
+        kw.update(label=res.data.instrument)
+
+        if outliers is None:
+            ax.errorbar(t - time_offset, y - y_offset, np.hypot(e, jRV), **kw)
+        else:
+            ax.errorbar(t[~outliers] - time_offset, y[~outliers] - y_offset, np.hypot(e[~outliers], jRV[~outliers]), **kw)
+        if fwhm_model or rhk_model:
+            axf.errorbar(t - time_offset, y2 - y2_offset, np.hypot(e2, jFW), **kw)
+        if rhk_model:
+            axr.errorbar(t - time_offset, y3 - y3_offset, np.hypot(e3, jRHK), **kw)
+
+    if legend:
+        ax.legend(loc='best')
+
+    if res.arbitrary_units:
+        lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
+    else:
+        lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
+
+    ax.set(**lab)
+    if fwhm_model or rhk_model:
+        axf.set(xlabel='Time [days]', ylabel='FWHM [m/s]')
+    if rhk_model:
+        axr.set(xlabel='Time [days]', ylabel=r"$\log$ R'$_{HK}$")
+
+    if show_rms:
+        rms = wrms(y, 1 / e**2)
+        if outliers is None or not np.any(outliers):
+            title = f'rms: {rms:.2f} [m/s]'
+        else:
+            rms_out = wrms(y[~outliers], 1 / e[~outliers]**2)
+            title = f'rms: {rms:.2f} ({rms_out:.2f} w/o outliers) [m/s]'
+
+        ax.set_title(title, loc='right', fontsize=10)
+
+    if y_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y_offset)] + str(int(abs(y_offset)))
+        fs = ax.xaxis.get_label().get_fontsize()
+        ax.set_title(offset, loc='left', fontsize=fs)
+
+    if (fwhm_model or rhk_model) and y2_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y2_offset)] + str(int(abs(y2_offset)))
+        fs = axf.xaxis.get_label().get_fontsize()
+        axf.set_title(offset, loc='left', fontsize=fs)
+    
+    if rhk_model and y3_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y3_offset)] + str(int(abs(y3_offset)))
+        fs = axr.xaxis.get_label().get_fontsize()
+        axr.set_title(offset, loc='left', fontsize=fs)
+
+    if fwhm_model:
+        return ax, axf, y_offset, y2_offset
+    elif rhk_model:
+        return ax, axf, axr, y_offset, y2_offset, y3_offset
     else:
         return ax, y_offset
 
@@ -2004,7 +2222,7 @@ def phase_plot(res,
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
     obs = res.data.obs.copy()
-    
+
     if t[0] > 24e5:
         time_offset = 24e5
         time_label = 'Time [BJD - 2400000]'
@@ -2116,7 +2334,7 @@ def phase_plot(res,
         # the background model at these times
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
-        if res.model == 'RVFWHMmodel':
+        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             vv = vv[0]
             offset_model = offset_model[0]
 
@@ -2128,7 +2346,7 @@ def phase_plot(res,
 
         # subtract the other planets from the data and plot it (the data)
         vv = res.planet_model(sample, except_planet=planet_index)
-        if res.model == 'RVFWHMmodel':
+        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             vv = vv[0]
 
         if res.studentt:
@@ -2222,18 +2440,20 @@ def phase_plot(res,
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
-        if res.model == 'GPmodel':
-            pred, std = res.stochastic_model(sample, tt, return_std=True)
-
-        elif res.model == 'RVFWHMmodel':
-            (pred, _), (std, _) = res.stochastic_model(sample, tt,
-                                                       return_std=True)
+        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            if res.model == 'RVFWHMmodel':
+                (pred, _), (std, _) = res.stochastic_model(sample, tt, return_std=True)
+            elif res.model == 'RVFWHMRHKmodel':
+                (pred, _, _), (std, _, _) = res.stochastic_model(sample, tt, return_std=True)
             if overlap:
                 no_planets_model = no_planets_model[::2]
             else:
                 no_planets_model = no_planets_model[0]
+        
+        else:
+            pred, std = res.stochastic_model(sample, tt, return_std=True)
 
-        pred = pred + no_planets_model - y_offset
+        # pred = pred #+ no_planets_model - y_offset
         pred = np.atleast_2d(pred)
         for p in pred:
             axGP.plot(tt - time_offset, p, 'k')
@@ -2244,7 +2464,7 @@ def phase_plot(res,
     ############
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
-    if res.model == 'RVFWHMmodel':
+    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
         residuals = residuals[0]
 
     if res.studentt:
@@ -2516,7 +2736,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         if hasattr(res, 'indicator_correlations') and res.indicator_correlations:
             model_wo_ind = res.eval_model(sample, tt,
                                           include_indicator_correlations=False)
-            ax.plot(tt, (model - model_wo_ind + offset_model).T, color=gpc, alpha=alpha)
+            curve = (model - model_wo_ind + offset_model).T - y_offset
+            ax.plot(tt, curve, color=gpc, alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
@@ -2560,7 +2781,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
 
 def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt=10000, 
-                                    show_vsys=False, include_jitters=True, just_rvs=False, 
+                                    show_vsys=False, isolate_known_object=True,
+                                    include_jitters=True, just_rvs=False, 
                                     full_plot=False, highest_likelihood=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
@@ -2569,8 +2791,9 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     If the model has a GP component, the prediction is calculated using the
     GP hyperparameters for each of the random samples.
     """
-    colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
     full_plot = kwargs.pop('full_plot', False)
+    rhk = res.model == 'RVFWHMRHKmodel'
+
 
     if samples is None:
         samples = res.posterior_sample
@@ -2606,11 +2829,10 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     y2 = res.data.y2.copy()
     y2err = res.data.e2.copy()
 
-    # y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
-    # y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
+    if rhk:
+        y3 = res.data.y3.copy()
+        y3err = res.data.e3.copy()
 
-    # print(samples.shape)
-    # print(ncurves)
     ncurves = min(ncurves, samples.shape[0])
 
     if samples.shape[0] == 1:
@@ -2630,8 +2852,8 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
         # ii = np.random.choice(np.where(mask)[0], ncurves)
 
-    if 'ax1' in kwargs and 'ax2' in kwargs:
-        ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
+    if 'ax1' in kwargs and 'ax2' in kwargs and 'ax3' in kwargs:
+        ax1, ax2, ax3 = kwargs.pop('ax1'), kwargs.pop('ax2'), kwargs.pop('ax3')
         fig = ax1.figure
     elif 'ax' in kwargs:
         ax1 = kwargs.pop('ax')
@@ -2653,15 +2875,37 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
             if just_rvs:
                 ax1 = fig.add_subplot(1, 1, 1)
             else:
-                gs = plt.GridSpec(2, 1, figure=fig)
-                ax1 = fig.add_subplot(gs[0])
-                ax2 = fig.add_subplot(gs[1], sharex=ax1)
+                if rhk:
+                    gs = plt.GridSpec(3, 1, figure=fig)
+                    ax1 = fig.add_subplot(gs[0])
+                    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+                    ax3 = fig.add_subplot(gs[2], sharex=ax1)
+                else:
+                    gs = plt.GridSpec(2, 1, figure=fig)
+                    ax1 = fig.add_subplot(gs[0])
+                    ax2 = fig.add_subplot(gs[1], sharex=ax1)
             # ax1r, ax2r = fig.add_subplot(gs[1]), fig.add_subplot(gs[3])
 
     if just_rvs:
         _, y_offset = plot_data(res, ax=ax1, ms=3, legend=False, ignore_y2=True)
     else:
-        _, _, y_offset, y2_offset = plot_data(res, ax=ax1, axf=ax2, ms=3, legend=False)
+        if rhk:
+            _, _, _, y_offset, y2_offset, y3_offset = plot_data(res, ax=ax1, axf=ax2, axr=ax3, ms=3, legend=False)
+        else:
+            _, _, y_offset, y2_offset = plot_data(res, ax=ax1, axf=ax2, ms=3, legend=False)
+
+
+    if include_jitters:
+        if ncurves == 1:
+            if just_rvs:
+                _ = plot_data_jitters(res, samples[0], ax=ax1, ms=3, legend=False, ignore_y2=True)
+            else:
+                if rhk:
+                    _ = plot_data_jitters(res, samples[0], ax=ax1, axf=ax2, axr=ax3, ms=3, legend=False)
+                else:
+                    _ = plot_data_jitters(res, samples[0], ax=ax1, axf=ax2, ms=3, legend=False)
+        else:
+            print('include_jitters in the data points can only be used when ncurves=1')
 
     ## plot the Keplerian curves
     alpha = 0.2 if ncurves > 1 else 1
@@ -2674,27 +2918,26 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     for icurve, i in enumerate(ii):
         # just the GP, centered around 0
         # for models without GP, stoc_model will be full of zeros
-        stoc_model = res.stochastic_model(samples[i], tt)
+        stoc_model = res.stochastic_model(samples[i], tt, include_jitters=include_jitters)
         # the model, including planets, systemic RV/FWHM, and offsets
         model = res.eval_model(samples[i], tt)
         # burst the model if there are multiple instruments
         model = res.burst_model(samples[i], tt, model)
 
-        if not show_only_GP:
-            kw = dict(color='k', alpha=alpha, zorder=-2)
-            if overlap:
-                v = stoc_model[0] + model[::2] - y_offset
-                ax1.plot(tt, v.T, **kw)
-            else:
-                ax1.plot(tt, stoc_model[0] + model[0] - y_offset, **kw)
-                # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
+        kw = dict(color='k', alpha=alpha, zorder=-2)
+        if overlap:
+            v = stoc_model[0] + model[::2] - y_offset
+            ax1.plot(tt, v.T, **kw)
+        else:
+            ax1.plot(tt, stoc_model[0] + model[0] - y_offset, **kw)
+            # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
 
         # the model without planets, just systemic RV/FWHM and offsets
         offset_model = res.eval_model(samples[i], tt, include_planets=False)
         # burst the model if there are multiple instruments
         offset_model = res.burst_model(samples[i], tt, offset_model)
 
-        if res.KO:
+        if res.KO and isolate_known_object:
             for iko in range(res.nKO):
                 KOpl = res.eval_model(samples[i], tt,
                                       single_planet=-iko - 1)[0]
@@ -2708,9 +2951,13 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
                 ax1.plot(tt, v.T, **kw)
                 f = stoc_model[1] + offset_model[1::2] - y2_offset
                 ax2.plot(tt, f.T, **kw)
+                if rhk:
+                    pass
             else:
                 ax1.plot(tt, stoc_model[0] + offset_model[0] - y_offset, **kw)
                 ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
+                if rhk:
+                    ax3.plot(tt, stoc_model[2] + offset_model[2] - y3_offset, **kw)
 
         if show_vsys:
             kw = dict(alpha=0.1, color='r', ls='--')
@@ -3077,7 +3324,6 @@ def simulation(results, sample):
 
 
 from .analysis import get_planet_mass
-from .utils import mjup2msun
 import rebound
 
 

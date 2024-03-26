@@ -2,6 +2,7 @@
 This module defines the `KimaResults` class to hold results from a run.
 """
 
+from copy import deepcopy
 import os
 import sys
 import pickle
@@ -19,12 +20,12 @@ from kima.kepler import keplerian as kepleriancpp
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
-                 mixtureGP)
+                 QPpMAGCYCLEkernel, mixtureGP)
 
 from .analysis import get_planet_mass_and_semimajor_axis
-from .utils import (read_datafile, read_datafile_rvfwhm, read_model_setup,
+from .utils import (read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
                     get_star_name, mjup2mearth, get_prior, get_instrument_name,
-                    _show_kima_setup, read_big_file, wrms, chdir)
+                    _show_kima_setup, read_big_file, rms, wrms, chdir)
 
 from .import display
 
@@ -44,7 +45,8 @@ def keplerian(*args, **kwargs):
     return np.array(kepleriancpp(*args, **kwargs))
 
 
-def _read_priors(setup=None):
+
+def _read_priors(res, setup=None):
     if setup is None:
         setup = read_model_setup()
 
@@ -171,39 +173,38 @@ class posterior_holder:
         return f'posterior_holder({fields})'
 
 
-def load_results(model_or_file=None, data=None, diagnostic=False, verbose=True,
+def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
                  moreSamples=1):
     # load from a pickle or zip file
     if isinstance(model_or_file, str):
         if not os.path.exists(model_or_file):
             raise FileNotFoundError(model_or_file)
         res = KimaResults.load(model_or_file)
-    
-    # load from current directory (latest results)
-    elif model_or_file is None:
-        # cannot do it if there is no data information
-        setup = read_model_setup()
-        if setup['data']['file'] == '' and setup['data']['files'] == '':
-            raise ValueError('no data information saved; provide `data` argument')
 
-        hidden = StringIO()
-        stdout = sys.stdout if verbose else hidden
-
-        with redirect_stdout(stdout):
-            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1,
-                                                    moreSamples=moreSamples)
-        
-        res = KimaResults()
-        res.evidence = evidence
-        res.information = H
-        res.ESS = res.posterior_sample.shape[0]
-    
-    # load from a model object
     elif isinstance(model_or_file, __models__):
-        return KimaResults.from_model(model_or_file, diagnostic, verbose)
-    else:
-        raise NotImplementedError
+        res = KimaResults(model_or_file, data, diagnostic=diagnostic, verbose=verbose)
+
     return res
+
+    # # load from current directory (latest results)
+    # elif model_or_file is None:
+    #     # cannot do it if there is no data information
+    #     setup = read_model_setup()
+    #     if setup['data']['file'] == '' and setup['data']['files'] == '':
+    #         msg = 'no data information saved in kima_model_setup.txt '
+    #         msg += '(RVData was probably created with list/array arguments) \n'
+    #         msg += 'provide the `model` to load_results()'
+    #         raise ValueError(msg)
+
+        
+    #     res = KimaResults()
+    
+    # # load from a model object
+    # elif isinstance(model_or_file, __models__):
+    #     return KimaResults.from_model(model_or_file, diagnostic, verbose)
+    # else:
+    #     raise NotImplementedError
+    # return res
 
 
 class KimaResults:
@@ -236,46 +237,243 @@ class KimaResults:
 
     _debug = False
 
-    def __init__(self, save_plots=False, return_figs=True, verbose=False, _dummy=False):
+    # def __init__(self, save_plots=False, return_figs=True, verbose=False, _dummy=False):
+    #     self.save_plots = save_plots
+    #     self.return_figs = return_figs
+    #     self.verbose = verbose
+
+
+    #     self.setup = setup = read_model_setup()
+
+    #     if _dummy:
+    #         return
+
+    #     try:
+    #         self.model = setup['kima']['model']
+    #     except KeyError:
+    #         self.model = 'RVmodel'
+
+    #     if self._debug:
+    #         print('model:', self.model)
+
+    #     try:
+    #         self.fix = setup['kima']['fix'] == 'true'
+    #         self.npmax = int(setup['kima']['npmax'])
+    #     except KeyError:
+    #         self.fix = True
+    #         self.npmax = 0
+
+    #     # read the priors
+    #     self.priors = _read_priors(self, setup)
+    #     if self._debug:
+    #         print('finished reading priors')
+
+    #     # and the data
+    #     self._read_data()
+    #     if self._debug:
+    #         print('finished reading data')
+
+    #     # read the posterior samples
+    #     self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+
+    #     # try reading posterior sample info to get log-likelihoods
+    #     try:
+    #         self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
+    #         self._lnlike_available = True
+    #     except IOError:
+    #         self._lnlike_available = False
+    #         print('Could not find file "posterior_sample_info.txt", '
+    #               'log-likelihoods will not be available.')
+
+    #     # read original samples
+    #     try:
+    #         t1 = time.time()
+    #         self.sample = np.atleast_2d(read_big_file('sample.txt'))
+    #         t2 = time.time()
+    #         self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
+    #         with open('sample.txt', 'r') as fs:
+    #             header = fs.readline()
+    #             header = header.replace('#', '').replace('  ', ' ').strip()
+    #             self.parameters = [p for p in header.split(' ') if p != '']
+    #             self.parameters.pop(self.parameters.index('ndim'))
+    #             self.parameters.pop(self.parameters.index('maxNp'))
+    #             self.parameters.pop(self.parameters.index('staleness'))
+
+    #         # different sizes can happen when running the model and sample_info
+    #         # was updated while reading sample.txt
+    #         if self.sample.shape[0] != self.sample_info.shape[0]:
+    #             minimum = min(self.sample.shape[0], self.sample_info.shape[0])
+    #             self.sample = self.sample[:minimum]
+    #             self.sample_info = self.sample_info[:minimum]
+
+    #     except IOError:
+    #         self.sample = None
+    #         self.sample_info = None
+    #         self.parameters = []
+
+    #     if self._debug:
+    #         print('finished reading sample file', end=' ')
+    #         print(f'(took {t2 - t1:.1f} seconds)')
+
+    #     self.indices = {}
+    #     self.total_parameters = 0
+
+    #     self._current_column = 0
+        
+    #     # read jitters
+    #     self._read_jitters()
+
+    #     # read astrometric solution
+    #     if self.model == 'GAIAmodel':
+    #         self._read_astrometric_solution()
+
+    #     # read limb-darkening coefficients
+    #     if self.model == 'TRANSITmodel':
+    #         self._read_limb_dark()
+        
+    #     # find trend in the compiled model and read it
+    #     try:
+    #         self.trend = self.setup['kima']['trend'] == 'true'
+    #         self.trend_degree = int(self.setup['kima']['degree'])
+    #         self._read_trend()
+    #     except KeyError:
+    #         self.trend, self.trend_degree = False, 0
+    #     # multiple instruments? read offsets
+    #     self._read_multiple_instruments()
+    #     # activity indicator correlations?
+    #     self._read_actind_correlations()
+    #     # find GP in the compiled model
+    #     self._read_GP()
+    #     # find MA in the compiled model
+    #     self._read_MA()
+
+    #     # find KO in the compiled model
+    #     try:
+    #         self.KO = self.setup['kima']['known_object'] == 'true'
+    #         self.nKO = int(self.setup['kima']['n_known_object'])
+    #     except KeyError:
+    #         self.KO = False
+    #         self.nKO = 0
+    #     self._read_KO()
+
+    #     # find transiting planet in the compiled model
+    #     try:
+    #         self.TR = self.setup['kima']['transiting_planet'] == 'true'
+    #         self.nTR = int(self.setup['kima']['n_transiting_planet'])
+    #     except KeyError:
+    #         self.TR = False
+    #         self.nTR = 0
+    #     self._read_TR()
+
+
+    #     if self.model == 'OutlierRVmodel':
+    #         self._read_outlier()
+
+    #     self._read_components()
+
+    #     # staleness (ignored)
+    #     self._current_column += 1
+
+    #     # student-t likelihood?
+    #     try:
+    #         self.studentt = self.setup['kima']['studentt'] == 'true'
+    #     except KeyError:
+    #         self.studentt = False
+    #     self._read_studentt()
+
+    #     if self.model == 'RVFWHMRHKmodel':
+    #         self.C3 = self.posterior_sample[:, self._current_column]
+    #         self.indices['C3'] = self._current_column
+    #         self._current_column += 1
+
+    #     if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+    #         self.C2 = self.posterior_sample[:, self._current_column]
+    #         self.indices['C2'] = self._current_column
+    #         self._current_column += 1
+
+    #     if self.model != 'GAIAmodel':
+    #         self.vsys = self.posterior_sample[:, -1]
+    #         self.indices['vsys'] = -1
+
+    #     # build the marginal posteriors for planet parameters
+    #     self.get_marginals()
+
+    #     if self.fix:
+    #         self.parameters.pop(self.parameters.index('Np'))
+
+    #     self._set_plots()
+    #     # # make the plots, if requested
+    #     # self.make_plots(options, self.save_plots)
+
+
+    # @classmethod
+    # def from_model(cls, model, diagnostic=False, verbose=True):
+    def __init__(self, model, data=None, diagnostic=False, 
+                 save_plots=False, return_figs=True, verbose=False):
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
 
-
         self.setup = setup = read_model_setup()
 
-        if _dummy:
-            return
+        hidden = StringIO()
+        stdout = sys.stdout if verbose else hidden
 
-        try:
-            self.model = setup['kima']['model']
-        except KeyError:
-            self.model = 'RVmodel'
+        with redirect_stdout(stdout):
+            try:
+                evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
+            except FileNotFoundError as e:
+                if e.filename == 'levels.txt':
+                    msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
+                    raise FileNotFoundError(msg)
+                raise e
 
-        if self._debug:
-            print('model:', self.model)
+        self.model = model.__class__.__name__
+        self.fix = model.fix
+        self.npmax = model.npmax
+        self.evidence = evidence
+        self.information = H
 
-        try:
-            self.fix = setup['kima']['fix'] == 'true'
-            self.npmax = int(setup['kima']['npmax'])
-        except KeyError:
-            self.fix = True
-            self.npmax = 0
-
-        # read the priors
-        self.priors = _read_priors(setup)
-        if self._debug:
-            print('finished reading priors')
-
-        # and the data
-        self._read_data()
-        if self._debug:
-            print('finished reading data')
-
-        # read the posterior samples
         self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+        self._ESS = self.posterior_sample.shape[0]
 
-        # try reading posterior sample info to get log-likelihoods
+        #self.priors = {}
+        self.priors = _read_priors(self)
+
+        # arbitrary units?
+        if 'arb' in model.data.units:
+            self.arbitrary_units = True
+        else:
+            self.arbitrary_units = False
+
+        if data is None:
+            data = model.data
+
+        self.data = data_holder()
+        self.data.t = np.array(np.copy(data.t))
+        self.data.y = np.array(np.copy(data.y))
+        self.data.e = np.array(np.copy(data.sig))
+        self.data.obs = np.array(np.copy(data.obsi))
+        self.data.N = data.N
+
+        if self.model == 'RVFWHMmodel':
+            self.data.y2, self.data.e2, *_ = np.array(data.actind)
+
+        self._extra_data = np.array(np.copy(data.actind))
+
+        self.M0_epoch = data.M0_epoch
+        self.n_instruments = np.unique(data.obsi).size
+        self.multi = data.multi
+
+        if self.multi:
+            self.data_file = data.datafiles
+        else:
+            self.data_file = data.datafile
+
+        self.data.instrument = data.instrument
+        if self.multi and len(data.instruments) > 0:
+            self.instruments = data.instruments
+
         try:
             self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
             self._lnlike_available = True
@@ -284,7 +482,6 @@ class KimaResults:
             print('Could not find file "posterior_sample_info.txt", '
                   'log-likelihoods will not be available.')
 
-        # read original samples
         try:
             t1 = time.time()
             self.sample = np.atleast_2d(read_big_file('sample.txt'))
@@ -310,60 +507,59 @@ class KimaResults:
             self.sample_info = None
             self.parameters = []
 
-        if self._debug:
-            print('finished reading sample file', end=' ')
-            print(f'(took {t2 - t1:.1f} seconds)')
-
         self.indices = {}
         self.total_parameters = 0
 
         self._current_column = 0
-        
-        # read jitters
-        self._read_jitters()
 
-        # read astrometric solution
-        if self.model == 'GAIAmodel':
-            self._read_astrometric_solution()
+        # read jitters
+        if self.multi and self.model in ('RVmodel'):
+            self.n_jitters = 1  # stellar jitter
+        else:
+            self.n_jitters = 0
+
+        self.n_jitters += self.n_instruments
+
+        if self.model == 'RVFWHMmodel':
+            self.n_jitters *= 2
+        if self.model == 'RVFWHMRHKmodel':
+            self.n_jitters *= 3
+        self._read_jitters()
 
         # read limb-darkening coefficients
         if self.model == 'TRANSITmodel':
             self._read_limb_dark()
-        
-        # find trend in the compiled model and read it
-        try:
-            self.trend = self.setup['kima']['trend'] == 'true'
-            self.trend_degree = int(self.setup['kima']['degree'])
-            self._read_trend()
-        except KeyError:
-            self.trend, self.trend_degree = False, 0
+
+        # read trend
+        self.trend = model.trend
+        self.trend_degree = model.degree
+        self._read_trend()
+
         # multiple instruments? read offsets
         self._read_multiple_instruments()
+
         # activity indicator correlations?
         self._read_actind_correlations()
+
         # find GP in the compiled model
         self._read_GP()
-        # find MA in the compiled model
-        self._read_MA()
+
+        # # find MA in the compiled model
+        # self._read_MA()
 
         # find KO in the compiled model
-        try:
-            self.KO = self.setup['kima']['known_object'] == 'true'
-            self.nKO = int(self.setup['kima']['n_known_object'])
-        except KeyError:
-            self.KO = False
-            self.nKO = 0
+        self.KO = model.known_object
+        self.nKO = model.n_known_object
         self._read_KO()
 
         # find transiting planet in the compiled model
         try:
-            self.TR = self.setup['kima']['transiting_planet'] == 'true'
-            self.nTR = int(self.setup['kima']['n_transiting_planet'])
-        except KeyError:
+            self.TR = model.transiting_planet
+            self.nTR = model.n_transiting_planet
+        except AttributeError:
             self.TR = False
             self.nTR = 0
         self._read_TR()
-
 
         if self.model == 'OutlierRVmodel':
             self._read_outlier()
@@ -373,26 +569,19 @@ class KimaResults:
         # staleness (ignored)
         self._current_column += 1
 
-        # student-t likelihood?
         try:
-            self.studentt = self.setup['kima']['studentt'] == 'true'
-        except KeyError:
+            self.studentt = model.studentt
+            self._read_studentt()
+        except AttributeError:
             self.studentt = False
-        self._read_studentt()
 
-        if self.model == 'RVFWHMRHKmodel':
-            self.C3 = self.posterior_sample[:, self._current_column]
-            self.indices['C3'] = self._current_column
-            self._current_column += 1
-
-        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if self.model == 'RVFWHMmodel':
             self.C2 = self.posterior_sample[:, self._current_column]
             self.indices['C2'] = self._current_column
             self._current_column += 1
 
-        if self.model != 'GAIAmodel':
-            self.vsys = self.posterior_sample[:, -1]
-            self.indices['vsys'] = -1
+        self.vsys = self.posterior_sample[:, -1]
+        self.indices['vsys'] = -1
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -401,293 +590,142 @@ class KimaResults:
             self.parameters.pop(self.parameters.index('Np'))
 
         self._set_plots()
-        # # make the plots, if requested
-        # self.make_plots(options, self.save_plots)
 
 
-    @classmethod
-    def from_model(cls, model, diagnostic=False, verbose=True):
-
-        hidden = StringIO()
-        stdout = sys.stdout if verbose else hidden
-
-        with redirect_stdout(stdout):
-            evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
-
-        res = cls(_dummy=True)
-
-        res.return_figs = True
-        res.verbose = verbose
-
-        res.model = model.__class__.__name__
-        res.fix = model.fix
-        res.npmax = model.npmax
-        res.evidence = evidence
-        res.information = H
-
-        res.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
-        res.ESS = res.posterior_sample.shape[0]
-
-        #res.priors = {}
-        res.priors = _read_priors()
-
-        # arbitrary units?
-        if 'arb' in model.data.units:
-            res.arbitrary_units = True
-        else:
-            res.arbitrary_units = False
-
-        res.data = data_holder()
-        res.data.t = np.array(np.copy(model.data.t))
-        res.data.y = np.array(np.copy(model.data.y))
-        res.data.e = np.array(np.copy(model.data.sig))
-        res.data.obs = np.array(np.copy(model.data.obsi))
-        res.data.N = model.data.N
-        res._extra_data = np.array(np.copy(model.data.actind))
-
-        res.M0_epoch = model.data.M0_epoch
-        res.n_instruments = np.unique(model.data.obsi).size
-        res.multi = model.data.multi
-
-        if res.multi:
-            res.data_file = model.data.datafiles
-        else:
-            res.data_file = model.data.datafile
-
-        res.data.instrument = model.data.instrument
-        if res.multi and len(model.data.instruments) > 0:
-            res.instruments = model.data.instruments
-
-        try:
-            res.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
-            res._lnlike_available = True
-        except IOError:
-            res._lnlike_available = False
-            print('Could not find file "posterior_sample_info.txt", '
-                  'log-likelihoods will not be available.')
-
-        try:
-            t1 = time.time()
-            res.sample = np.atleast_2d(read_big_file('sample.txt'))
-            t2 = time.time()
-            res.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
-            with open('sample.txt', 'r') as fs:
-                header = fs.readline()
-                header = header.replace('#', '').replace('  ', ' ').strip()
-                res.parameters = [p for p in header.split(' ') if p != '']
-                res.parameters.pop(res.parameters.index('ndim'))
-                res.parameters.pop(res.parameters.index('maxNp'))
-                res.parameters.pop(res.parameters.index('staleness'))
-
-            # different sizes can happen when running the model and sample_info
-            # was updated while reading sample.txt
-            if res.sample.shape[0] != res.sample_info.shape[0]:
-                minimum = min(res.sample.shape[0], res.sample_info.shape[0])
-                res.sample = res.sample[:minimum]
-                res.sample_info = res.sample_info[:minimum]
-
-        except IOError:
-            res.sample = None
-            res.sample_info = None
-            res.parameters = []
-
-        res.indices = {}
-        res.total_parameters = 0
-
-        res._current_column = 0
-
-        # read jitters
-        if res.multi:
-            res.n_jitters = res.n_instruments + 1
-        else:
-            res.n_jitters = res.n_instruments
-        if res.model == 'RVFWHMmodel':
-            res.n_jitters *= 2
-        if res.model == 'RVFWHMRHKmodel':
-            res.n_jitters *= 3
-        res._read_jitters()
-
-        # read limb-darkening coefficients
-        if res.model == 'TRANSITmodel':
-            res._read_limb_dark()
-
-        # read trend
-        res.trend = model.trend
-        res.trend_degree = model.degree
-        res._read_trend()
-
-        # multiple instruments? read offsets
-        res._read_multiple_instruments()
-
-        # activity indicator correlations?
-        res._read_actind_correlations()
-
-        # find GP in the compiled model
-        res._read_GP()
-
-        # # find MA in the compiled model
-        # res._read_MA()
-
-        # find KO in the compiled model
-        res.KO = model.known_object
-        res.nKO = model.n_known_object
-        res._read_KO()
-
-        # find transiting planet in the compiled model
-        res.TR = model.transiting_planet
-        res.nTR = model.n_transiting_planet
-        res._read_TR()
-
-        if res.model == 'OutlierRVmodel':
-            res._read_outlier()
-
-        res._read_components()
-
-        # staleness (ignored)
-        res._current_column += 1
-
-        try:
-            res.studentt = model.studentt
-            res._read_studentt()
-        except AttributeError:
-            pass
-
-        if res.model == 'RVFWHMmodel':
-            res.C2 = res.posterior_sample[:, res._current_column]
-            res.indices['C2'] = res._current_column
-            res._current_column += 1
-
-        res.vsys = res.posterior_sample[:, -1]
-        res.indices['vsys'] = -1
-
-        # build the marginal posteriors for planet parameters
-        res.get_marginals()
-
-        if res.fix:
-            res.parameters.pop(res.parameters.index('Np'))
-
-        res._set_plots()
-
-        return res
-
+    @property
+    def ESS(self):
+        """ Effective sample size """
+        return self._ESS
 
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
 
-    def _read_data(self):
-        setup = self.setup
-        section = 'data' if 'data' in setup else 'kima'
+    # def _read_data(self):
+    #     setup = self.setup
+    #     section = 'data' if 'data' in setup else 'kima'
 
-        try:
-            self.multi = setup[section]['multi'] == 'true'
-        except KeyError:
-            self.multi = False
+    #     try:
+    #         self.multi = setup[section]['multi'] == 'true'
+    #     except KeyError:
+    #         self.multi = False
 
-        if self.model == 'HierarchicalRVmodel':
-            self.multi = True
+    #     if self.model == 'HierarchicalRVmodel':
+    #         self.multi = True
 
-        if self.multi:
-            if setup[section]['files'] == '':
-                # multi is true but in only one file
-                data_file = setup[section]['file']
-                self.multi_onefile = True
-            else:
-                data_file = setup[section]['files'].split(',')[:-1]
-                self.multi_onefile = False
-                # raise NotImplementedError('TO DO')
-        else:
-            data_file = setup[section]['file']
+    #     if self.multi:
+    #         if setup[section]['files'] == '':
+    #             # multi is true but in only one file
+    #             data_file = setup[section]['file']
+    #             self.multi_onefile = True
+    #         else:
+    #             data_file = setup[section]['files'].split(',')[:-1]
+    #             self.multi_onefile = False
+    #             # raise NotImplementedError('TO DO')
+    #     else:
+    #         data_file = setup[section]['file']
 
-        if self.verbose:
-            print('Loading data file %s' % data_file)
+    #     if self.verbose:
+    #         print('Loading data file %s' % data_file)
 
-        if data_file == '':
-            raise ValueError('no data information in kima_model_setup.txt')
+    #     if data_file == '':
+    #         raise ValueError('no data information in kima_model_setup.txt')
 
-        self.data_file = data_file
+    #     self.data_file = data_file
 
-        self.data_skip = int(setup[section]['skip'])
-        self.units = setup[section]['units']
-        self.M0_epoch = float(setup[section]['M0_epoch'])
+    #     self.data_skip = int(setup[section]['skip'])
+    #     self.units = setup[section]['units']
+    #     self.M0_epoch = float(setup[section]['M0_epoch'])
 
-        if self.multi:
-            if self.model == 'RVFWHMmodel':
-                data, obs = read_datafile_rvfwhm(self.data_file,
-                                                 self.data_skip)
-            else:
-                data, obs = read_datafile(self.data_file, self.data_skip)
+    #     if self.multi:
+    #         if self.model == 'RVFWHMmodel':
+    #             data, obs = read_datafile_rvfwhm(self.data_file, self.data_skip)
+    #         if self.model == 'RVFWHMRHKmodel':
+    #             data, obs = read_datafile_rvfwhmrhk(self.data_file, self.data_skip)
+    #         else:
+    #             data, obs = read_datafile(self.data_file, self.data_skip)
+            
+    #         if self.multi_onefile:
+    #             self.instruments = list(np.unique(obs).astype(str))
 
-            # make sure the times are sorted when coming from multiple
-            # instruments
-            ind = data[:, 0].argsort()
-            data = data[ind]
-            obs = obs[ind]
-            self.n_instruments = np.unique(obs).size
-            if self.model == 'RVFWHMmodel':
-                self.n_jitters = 2 * self.n_instruments
-            elif self.model == 'HierarchicalRVmodel':
-                self.n_instruments = 1
-                self.n_jitters = 1
-            else:
-                self.n_jitters = self.n_instruments
+    #         if obs.min() == 0:
+    #             obs += 1
 
-            if self.model == 'RVmodel':
-                # for stellar jitter
-                self.n_jitters += 1
+    #         # make sure the times are sorted when coming from multiple
+    #         # instruments
+    #         ind = data[:, 0].argsort()
+    #         data = data[ind]
+    #         obs = obs[ind]
+    #         self.n_instruments = np.unique(obs).size
+    #         if self.model == 'RVFWHMmodel':
+    #             self.n_jitters = 2 * self.n_instruments
+    #         elif self.model == 'RVFWHMRHKmodel':
+    #             self.n_jitters = 3 * self.n_instruments
+    #         elif self.model == 'HierarchicalRVmodel':
+    #             self.n_instruments = 1
+    #             self.n_jitters = 1
+    #         else:
+    #             self.n_jitters = self.n_instruments
 
-        else:
-            if self.model == 'RVFWHMmodel':
-                cols = range(5)
-                self.n_jitters = 2
-            elif self.model == 'RVFWHMRHKmodel':
-                cols = range(7)
-                self.n_jitters = 3
-            else:
-                cols = range(3)
-                self.n_jitters = 1
-            self.n_instruments = 1
+    #         if self.model == 'RVmodel':
+    #             # for stellar jitter
+    #             self.n_jitters += 1
 
-            data = np.loadtxt(self.data_file, skiprows=self.data_skip, usecols=cols)
-            obs = np.ones_like(data[:, 0], dtype=int)
-            self._extra_data = np.loadtxt(self.data_file, skiprows=self.data_skip)
+    #     else:
+    #         if self.model == 'RVFWHMmodel':
+    #             cols = range(5)
+    #             self.n_jitters = 2
+    #         elif self.model == 'RVFWHMRHKmodel':
+    #             cols = range(7)
+    #             self.n_jitters = 3
+    #         else:
+    #             cols = range(3)
+    #             self.n_jitters = 1
+    #         self.n_instruments = 1
 
-        # to m/s
-        if self.units == 'kms':
-            data[:, 1] *= 1e3
-            data[:, 2] *= 1e3
-            if self.model == 'RVFWHMmodel':
-                data[:, 3] *= 1e3
-                data[:, 4] *= 1e3
+    #         data = np.loadtxt(self.data_file, skiprows=self.data_skip, usecols=cols)
+    #         obs = np.ones_like(data[:, 0], dtype=int)
+    #         self._extra_data = np.loadtxt(self.data_file, skiprows=self.data_skip)
 
-        # arbitrary units?
-        if 'arb' in self.units:
-            self.arbitrary_units = True
-        else:
-            self.arbitrary_units = False
+    #     # to m/s
+    #     if self.units == 'kms':
+    #         data[:, 1] *= 1e3
+    #         data[:, 2] *= 1e3
+    #         if self.model == 'RVFWHMmodel':
+    #             data[:, 3] *= 1e3
+    #             data[:, 4] *= 1e3
 
-        self.data = data_holder()
-        self.data.t = data[:, 0].copy()
-        self.data.y = data[:, 1].copy()
-        self.data.e = data[:, 2].copy()
-        self.data.obs = obs.copy()
-        self.data.N = self.data.t.size
+    #     # arbitrary units?
+    #     if 'arb' in self.units:
+    #         self.arbitrary_units = True
+    #     else:
+    #         self.arbitrary_units = False
 
-        if self.model == 'RVFWHMmodel':
-            self.data.y2 = data[:, 3].copy()
-            self.data.e2 = data[:, 4].copy()
+    #     self.data = data_holder()
+    #     self.data.t = data[:, 0].copy()
+    #     self.data.y = data[:, 1].copy()
+    #     self.data.e = data[:, 2].copy()
+    #     self.data.obs = obs.copy()
+    #     self.data.N = self.data.t.size
 
-        if self.model == 'GAIAmodel':
-            self.astrometric_data = astrometric_data_holder()
-            data = np.genfromtxt(self.data_file, names=True, comments='--')
-            self.astrometric_data.t = data['mjd']
-            self.astrometric_data.w = data['w']
-            self.astrometric_data.sigw = data['sigw']
-            self.astrometric_data.psi = data['psi']
-            self.astrometric_data.pf = data['pf']
-            self.astrometric_data.N = data['mjd'].size
+    #     if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+    #         self.data.y2 = data[:, 3].copy()
+    #         self.data.e2 = data[:, 4].copy()
+    #     if self.model in ('RVFWHMRHKmodel'):
+    #         self.data.y3 = data[:, 5].copy()
+    #         self.data.e3 = data[:, 6].copy()
+
+    #     if self.model == 'GAIAmodel':
+    #         self.astrometric_data = astrometric_data_holder()
+    #         data = np.genfromtxt(self.data_file, names=True, comments='--')
+    #         self.astrometric_data.t = data['mjd']
+    #         self.astrometric_data.w = data['w']
+    #         self.astrometric_data.sigw = data['sigw']
+    #         self.astrometric_data.psi = data['psi']
+    #         self.astrometric_data.pf = data['pf']
+    #         self.astrometric_data.N = data['mjd'].size
             
 
-        self.tmiddle = self.data.t.min() + 0.5 * self.data.t.ptp()
+    #     self.tmiddle = self.data.t.min() + 0.5 * self.data.t.ptp()
 
     def _read_jitters(self):
         i1, i2 = self._current_column, self._current_column + self.n_jitters
@@ -711,14 +749,15 @@ class KimaResults:
             print('finished reading astrometric solution')
 
     def _read_limb_dark(self):
-        i1, i2 = self._current_column, self._current_column + 2
-        self.u = self.posterior_sample[:, i1:i2]
-        self._current_column += 2
-        self.indices['u_start'] = i1
-        self.indices['u_end'] = i2
-        self.indices['u'] = slice(i1, i2)
-        if self._debug:
-            print('finished reading limb darkening')
+        return
+        # i1, i2 = self._current_column, self._current_column + 2
+        # self.u = self.posterior_sample[:, i1:i2]
+        # self._current_column += 2
+        # self.indices['u_start'] = i1
+        # self.indices['u_end'] = i2
+        # self.indices['u'] = slice(i1, i2)
+        # if self._debug:
+        #     print('finished reading limb darkening')
 
     def _read_trend(self):
         if self.trend:
@@ -740,6 +779,8 @@ class KimaResults:
             # there are n instruments and n-1 offsets per output
             if self.model == 'RVFWHMmodel':
                 n_inst_offsets = 2 * (self.n_instruments - 1)
+            elif self.model == 'RVFWHMRHKmodel':
+                n_inst_offsets = 3 * (self.n_instruments - 1)
             else:
                 n_inst_offsets = self.n_instruments - 1
 
@@ -850,44 +891,42 @@ class KimaResults:
         """
         if self.model == 'RVFWHMmodel':
             i = [0, 1]  # eta1_rv, eta1_fwhm
-            
-            i.append(2)
-            if self.share_eta2:
-                i.append(2)
-            
-            i.append(3)
-            if self.share_eta3:
-                i.append(3)
-            
-            i.append(4)
-            if self.share_eta3:
-                i.append(4)
+            i += [2, 2] if self.share_eta2 else [2]
+            i += [3, 3] if self.share_eta3 else [3]
+            i += [4, 4] if self.share_eta4 else [4]
+        elif self.model == 'RVFWHMRHKmodel':
+            i = [0, 1, 2]  # eta1_rv, eta1_fwhm, eta1_rhk
+            i += 3 * [i[-1]+1] if self.share_eta2 else list(range(i[-1]+1, i[-1] + 4))
+            i += 3 * [i[-1]+1] if self.share_eta3 else list(range(i[-1]+1, i[-1] + 4))
+            i += 3 * [i[-1]+1] if self.share_eta4 else list(range(i[-1]+1, i[-1] + 4))
+            if self.magnetic_cycle_kernel:
+                i += range(i[-1] + 1, i[-1] + 1 + 5)
         else:
             i = [0, 1, 2, 3]
 
         return i
 
     def _read_GP(self):
-        if self.model not in ('GPmodel', 'RVFWHMmodel', 'SPLEAFmodel'):
+        if self.model not in ('GPmodel', 'RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
             self.has_gp = False
             self.n_hyperparameters = 0
             return
         
         self.has_gp = True
+        self.GPkernel = 'standard'
+
+        try:
+            self.magnetic_cycle_kernel = self.setup['kima']['magnetic_cycle_kernel'] == 'true'
+            if self.magnetic_cycle_kernel:
+                self.GPkernel = 'standard+magcycle'
+        except KeyError:
+            pass
 
         if self.model == 'GPmodel':
-            self.GPkernel = 'standard'
-            # if 'kernel' in self.setup['kima']:
-            #     self.GPkernel = self.setup['kima']['kernel']
-            # else:
-            #     self.GPkernel = self.setup['kima']['GP_kernel']
-
             try:
                 n_hyperparameters = {
                     'standard': 4,
-                    'periodic': 3,
-                    'qpc': 5,
-                    'RBF': 2,
+                    'standard+magcycle': 7,
                 }
                 n_hyperparameters = n_hyperparameters[self.GPkernel]
             except KeyError:
@@ -911,11 +950,27 @@ class KimaResults:
             self.n_hyperparameters = n_hyperparameters
             self._n_shared_hyperparameters = _n_shared
 
+        elif self.model == 'RVFWHMRHKmodel':
+            _n_shared = 0
+            for i in range(2, 5):
+                setattr(self, f'share_eta{i}',
+                        self.setup['kima'][f'share_eta{i}'] == 'true')
+                if getattr(self, f'share_eta{i}'):
+                    _n_shared += 1
+
+            n_hyperparameters = 3  # at least 3 x eta1
+            n_hyperparameters += 1 if self.share_eta2 else 3
+            n_hyperparameters += 1 if self.share_eta3 else 3
+            n_hyperparameters += 1 if self.share_eta4 else 3
+            if self.magnetic_cycle_kernel:
+                n_hyperparameters += 5
+            self.n_hyperparameters = n_hyperparameters
+            self._n_shared_hyperparameters = _n_shared
+
         elif self.model == 'SPLEAFmodel':
             self.multi_series = self.setup['kima']['multi_series'] == 'true'
             self.nseries = int(self.setup['kima']['nseries'])
             self.n_hyperparameters = 2
-
 
         istart = self._current_column
         iend = istart + self.n_hyperparameters
@@ -929,24 +984,30 @@ class KimaResults:
         t, e = self.data.t, self.data.e
         kernels = {
             'standard': QPkernel(1, 1, 1, 1),
-            'periodic': PERkernel(1, 1, 1),
-            'qpc': QPCkernel(1, 1, 1, 1, 1),
-            'RBF': RBFkernel(1, 1),
-            'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
+            'standard+magcycle': QPpMAGCYCLEkernel(1, 1, 1, 1, 1, 1, 1),
+            #'periodic': PERkernel(1, 1, 1),
+            #'qpc': QPCkernel(1, 1, 1, 1, 1),
+            #'RBF': RBFkernel(1, 1),
+            #'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
         }
 
         if self.model == 'RVFWHMmodel':
-            self.GP1 = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
-            self.GP2 = GP(kernels[self.GPkernel], t, self.data.e2,
-                            white_noise=0.0)
+            self.GP1 = GP(deepcopy(kernels[self.GPkernel]), t, e, white_noise=0.0)
+            self.GP2 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e2, white_noise=0.0)
+
+        if self.model == 'RVFWHMRHKmodel':
+            self.GP1 = GP(deepcopy(kernels[self.GPkernel]), t, e, white_noise=0.0)
+            self.GP2 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e2, white_noise=0.0)
+            self.GP3 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e3, white_noise=0.0)
+
         elif self.model == 'GPmodel_systematics':
             X = np.c_[self.data.t, self._extra_data[:, 3]]
             self.GP = mixtureGP([], X, None, e)
+
         elif self.model == 'SPLEAFmodel':
             pass
         else:
             self.GP = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
-
 
     def _read_MA(self):
         # find MA in the compiled model
@@ -1017,17 +1078,17 @@ class KimaResults:
     @property
     def parameter_priors(self):
         """ A list of priors which can be indexed using self.indices """
-        n = self.posterior_sample.shape[1]
-        priors = np.full(n, None)
+        priors = np.full(self.posterior_sample.shape[1], None)
 
-        if self.model == 'RVmodel':
-            priors[self.indices['jitter']] = self.priors['Jprior']
-
-        elif self.model == 'RVFWHMmodel':
+        if self.model == 'RVFWHMmodel':
             for i in range(self.n_instruments):
                 priors[i] = self.priors['Jprior']
             for i in range(self.n_instruments, 2 * self.n_instruments):
                 priors[i] = self.priors['J2prior']
+        else:
+            priors[self.indices['jitter']] = self.priors['Jprior']
+            if self.model == 'RVmodel':
+                priors[0] = self.priors['stellar_jitter_prior']
 
         if self.trend:
             names = ('slope_prior', 'quadr_prior', 'cubic_prior')
@@ -1036,19 +1097,19 @@ class KimaResults:
 
         if self.multi:
             no = self.n_instruments - 1
-            if self.model == 'RVmodel':
-                prior = self.priors['offsets_prior']
-                priors[self.indices['inst_offsets']] = np.array(no * [prior])
-            elif self.model == 'RVFWHMmodel':
+            if self.model == 'RVFWHMmodel':
                 prior1 = self.priors['offsets_prior']
                 prior2 = self.priors['offsets2_prior']
                 offset_priors = no * [prior1] + no * [prior2]
                 priors[self.indices['inst_offsets']] = np.array(offset_priors)
+            else:
+                prior = self.priors['offsets_prior']
+                priors[self.indices['inst_offsets']] = np.array(no * [prior])
 
         if self.has_gp:
-            if self.model == 'RVmodel':
+            if self.model == 'GPmodel':
                 priors[self.indices['GPpars']] = [
-                    self.priors[f'eta{i}_prior'] for i in range(5)
+                    self.priors[f'eta{i}_prior'] for i in range(1, 5)
                 ]
             elif self.model == 'RVFWHMmodel':
                 i = self.indices['GPpars_start']
@@ -1292,9 +1353,10 @@ class KimaResults:
         if self.n_jitters == 1:
             self.posteriors.jitter = self.posteriors.jitter.ravel()
 
-        if self.model == 'GPmodel':
+        if self.has_gp:
             for i in range(self.n_hyperparameters):
                 setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
+                setattr(self.posteriors, f'_eta{i+1}', self.etas[:, i])
 
         if self.model == 'GAIAmodel':
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
@@ -1325,39 +1387,33 @@ class KimaResults:
         i2 = 0 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
         self.posteriors.P = self.posterior_sample[:, s]
-        self.T = self.posteriors.P
 
         # amplitudes
         i1 = 1 * max_components + index_component + 1
         i2 = 1 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
         self.posteriors.K = self.posterior_sample[:, s]
-        self.A = self.posterior_sample[:, s]
 
         # phases
         i1 = 2 * max_components + index_component + 1
         i2 = 2 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
-        self.posteriors.φ = self.posterior_sample[:, s]
-        self.phi = self.posterior_sample[:, s]
+        self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
 
         # eccentricities
         i1 = 3 * max_components + index_component + 1
         i2 = 3 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
         self.posteriors.e = self.posterior_sample[:, s]
-        self.E = self.posterior_sample[:, s]
 
         # omegas
         i1 = 4 * max_components + index_component + 1
         i2 = 4 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
         self.posteriors.ω = self.posterior_sample[:, s]
-        self.Omega = self.posterior_sample[:, s]
 
         # times of periastron
-        self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
-        self.Tp = (self.T * self.phi) / (2. * np.pi) + self.M0_epoch
+        self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
 
         # # times of inferior conjunction (transit, if the planet transits)
         # f = np.pi / 2 - self.Omega
@@ -1365,14 +1421,6 @@ class KimaResults:
         #     np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
         # Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
         # self.posteriors.Tc = Tc
-
-        which = self.T != 0
-        self.T = self.T[which].flatten()
-        self.A = self.A[which].flatten()
-        self.E = self.E[which].flatten()
-        self.phi = self.phi[which].flatten()
-        self.Omega = self.Omega[which].flatten()
-        self.Tp = self.Tp[which].flatten()
 
     def get_medians(self):
         """ return the median values of all the parameters """
@@ -1403,24 +1451,26 @@ class KimaResults:
         To evaluate at all posterior samples, consider using
             np.apply_along_axis(self.log_prior, 1, self.posterior_sample)
         """
-        logp = []
-        for p, v in zip(self.parameter_priors, sample):
-            if p is None:
-                # continue
-                logp.append(0.0)
-            else:
-                try:
-                    logp.append(p.logpdf(v))
-                except AttributeError:
-                    logp.append(p.logpmf(v))
+        # logp = []
+        # for p, v in zip(self.parameter_priors, sample):
+        #     if p is None:
+        #         # continue
+        #         logp.append(0.0)
+        #     else:
+        #         try:
+        #             logp.append(p.logpdf(v))
+        #         except AttributeError:
+        #             logp.append(p.logpmf(v))
 
-        _np = int(sample[self.indices['np']])
-        st = self.indices['planets'].start
-        k = 0
-        for j in range(self._nd):
-            for i in range(_np, self._mc):
-                logp.pop(st + i + 3 * j - k)
-                k += 1
+        logp = [p.logpdf(v) if p else 0.0 for p, v in zip(self.parameter_priors, sample)]
+
+        # _np = int(sample[self.indices['np']])
+        # st = self.indices['planets'].start
+        # k = 0
+        # for j in range(self._nd):
+        #     for i in range(_np, self._mc):
+        #         logp.pop(st + i + 3 * j - k)
+        #         k += 1
         # return logp
         return np.sum(logp)
 
@@ -1491,6 +1541,9 @@ class KimaResults:
                 pars = self.posterior_sample[ind]
             else:
                 mask = self.posterior_sample[:, self.index_component] == Np
+                if not mask.any():
+                    raise ValueError(f'No samples with {Np} Keplerians')
+
                 ind = np.argmax(self.posterior_lnlike[mask, 1])
                 maxlike = self.posterior_lnlike[mask][ind, 1]
                 pars = self.posterior_sample[mask][ind]
@@ -1504,6 +1557,9 @@ class KimaResults:
                 pars = self.sample[mask][ind]
             else:
                 mask = self.sample[:, self.index_component] == Np
+                if not mask.any():
+                    raise ValueError(f'No samples with {Np} Keplerians')
+
                 ind = np.argmax(self.sample_info[mask, 1])
                 maxlike = self.sample_info[mask][ind, 1]
                 pars = self.sample[mask][ind]
@@ -1577,11 +1633,15 @@ class KimaResults:
             for i, jit in enumerate(p[self.indices['jitter']]):
                 print(f'  {data[i]:5s} ({inst[i]}): {jit:.2f} m/s')
         else:
-            if self.model == 'RVFWHMmodel':
+            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                 print(f'{"RV":>10s}', end=': ')
                 print(p[self.indices['jitter']][:self.n_instruments])
                 print(f'{"FWHM":>10s}', end=': ')
-                print(p[self.indices['jitter']][self.n_instruments:])
+                print(p[self.indices['jitter']][self.n_instruments:2*self.n_instruments])
+
+                if self.model == 'RVFWHMRHKmodel':
+                    print(f'{"RHK":>10s}', end=': ')
+                    print(p[self.indices['jitter']][2*self.n_instruments:])
             else:
                 print(' ', p[self.indices['jitter']])
 
@@ -1690,6 +1750,11 @@ class KimaResults:
                 pars = ('η1', 'η2', 'η3', 'η4')
             elif self.model == 'RVFWHMmodel':
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
+            elif self.model == 'RVFWHMRHKmodel':
+                pars = ['η1 RV', 'η1 FWHM', 'η1 RHK']
+                pars += ['η2'] if self.share_eta2 else ['η2 RV', 'η2 FWHM', 'η2 RHK']
+                pars += ['η3'] if self.share_eta3 else ['η3 RV', 'η3 FWHM', 'η3 RHK']
+                pars += ['η4'] if self.share_eta4 else ['η4 RV', 'η4 FWHM', 'η4 RHK']
 
             if squeeze:
                 print()
@@ -1824,6 +1889,8 @@ class KimaResults:
 
         if self.model == 'RVFWHMmodel':
             v = np.zeros((2, t.size))
+        elif self.model == 'RVFWHMRHKmodel':
+            v = np.zeros((3, t.size))
         else:
             v = np.zeros_like(t)
 
@@ -1910,7 +1977,7 @@ class KimaResults:
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
-                if self.model == 'RVFWHMmodel':
+                if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                     v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
@@ -1918,6 +1985,9 @@ class KimaResults:
         # systemic velocity (and C2) for this sample
         if self.model == 'RVFWHMmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
+            v += C.reshape(-1, 1)
+        elif self.model == 'RVFWHMRHKmodel':
+            C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']], sample[self.indices['C3']]]
             v += C.reshape(-1, 1)
         else:
             v += sample[self.indices['vsys']]
@@ -1928,7 +1998,7 @@ class KimaResults:
             offsets = sample[self.indices['inst_offsets']]
             ii = self.data.obs.astype(int) - 1
 
-            if self.model == 'RVFWHMmodel':
+            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                 ni = self.n_instruments
                 offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
@@ -1942,7 +2012,7 @@ class KimaResults:
             # polyval wants coefficients in reverse order, and vsys was already
             # added so the last coefficient is 0
             trend_par = np.r_[trend_par[::-1], 0.0]
-            if self.model == 'RVFWHMmodel':
+            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                 v[0, :] += np.polyval(trend_par, t - self.tmiddle)
             else:
                 v += np.polyval(trend_par, t - self.tmiddle)
@@ -1953,7 +2023,7 @@ class KimaResults:
             interp_u = np.zeros_like(t)
             for i, (c, ai) in enumerate(zip(betas, self.activity_indicators)):
                 if ai != '':
-                    interp_u += c * np.interp(t, self.data.t, self._extra_data[:, 3 + i])
+                    interp_u += c * np.interp(t, self.data.t, self._extra_data[i])
             v += interp_u
 
         return v
@@ -2003,6 +2073,8 @@ class KimaResults:
 
         if self.model == 'RVFWHMmodel':
             v = np.zeros((2, t.size))
+        elif self.model == 'RVFWHMRHKmodel':
+            v = np.zeros((3, t.size))
         else:
             v = np.zeros_like(t)
 
@@ -2058,15 +2130,15 @@ class KimaResults:
             # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
-            if self.model == 'RVFWHMmodel':
+            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                 v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
             else:
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         return v
 
-    def stochastic_model(self, sample, t=None, return_std=False,
-                         derivative=False, **kwargs):
+    def stochastic_model(self, sample, t=None, return_std=False, derivative=False,
+                         include_jitters=True, **kwargs):
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
@@ -2086,13 +2158,14 @@ class KimaResults:
                 Default is False.
             derivative (bool, optional):
                 Return the first time derivative of the GP prediction instead
+            include_jitters (bool, optional):
+                Whether to include the jitter values in `sample` in the prediction
         """
 
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
             n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, '\
-                  'should be %d got %d' % (n2, n1)
+            msg = '`sample` has wrong dimensions, should be %d got %d' % (n2, n1)
             raise ValueError(msg)
 
         if t is None or t is self.data.t:
@@ -2124,6 +2197,75 @@ class KimaResults:
                 )
             else:
                 return np.vstack([out0, out1])
+
+        elif self.model == 'RVFWHMRHKmodel':
+            D = np.vstack((self.data.y, self.data.y2, self.data.y3))
+            r = D - self.eval_model(sample)
+            GPpars = sample[self.indices['GPpars']]
+            pars = GPpars[self._GP_par_indices]
+            η1RV, η1FWHM, η1RHK, *pars = pars
+            η2RV, η2FWHM, η2RHK, *pars = pars
+            η3RV, η3FWHM, η3RHK, *pars = pars
+            η4RV, η4FWHM, η4RHK, *pars = pars
+            if self.magnetic_cycle_kernel:
+                η5RV, η5FWHM, η5RHK, η6, η7, *pars = pars
+
+            parsRV = [η1RV, η2RV, η3RV, η4RV]
+            if self.magnetic_cycle_kernel:
+                parsRV += [η5RV, η6, η7]
+
+            parsFWHM = [η1FWHM, η2FWHM, η3FWHM, η4FWHM]
+            if self.magnetic_cycle_kernel:
+                parsFWHM += [η5FWHM, η6, η7]
+
+            parsRHK = [η1RHK, η2RHK, η3RHK, η4RHK]
+            if self.magnetic_cycle_kernel:
+                parsRHK += [η5RHK, η6, η7]
+
+            self.GP1.kernel.pars = np.array(parsRV)
+            if include_jitters:
+                # get jitters per instrument in an array
+                jRV = sample[self.indices['jitter']][:self.n_instruments]
+                jRV = jRV[self.data.obs.astype(int) - 1]
+                self.GP1.white_noise = jRV
+            else:
+                self.GP1.white_noise = 0.0
+
+            self.GP2.kernel.pars = np.array(parsFWHM)
+            if include_jitters:
+                # get jitters per instrument in an array
+                jFW = sample[self.indices['jitter']][self.n_instruments:2*self.n_instruments]
+                jFW = jFW[self.data.obs.astype(int) - 1]
+                self.GP2.white_noise = jFW
+            else:
+                self.GP2.white_noise = 0.0
+
+            self.GP3.kernel.pars = np.array(parsRHK)
+            if include_jitters:
+                # get jitters per instrument in an array
+                jRHK = sample[self.indices['jitter']][2*self.n_instruments:]
+                jRHK = jRHK[self.data.obs.astype(int) - 1]
+                self.GP3.white_noise = jRHK
+            else:
+                self.GP3.white_noise = 0.0
+
+            if derivative:
+                out1 = self.GP1.derivative(r[0], t, return_std=return_std)
+                out2 = self.GP2.derivative(r[1], t, return_std=return_std)
+                out3 = self.GP3.derivative(r[2], t, return_std=return_std)
+            else:
+                out1 = self.GP1.predict(r[0], t, return_std=return_std)
+                out2 = self.GP2.predict(r[1], t, return_std=return_std)
+                out3 = self.GP3.predict(r[2], t, return_std=return_std)
+
+            if return_std:
+                return (
+                    np.vstack([out1[0], out2[0], out3[0]]),
+                    np.vstack([out1[1], out1[1], out3[1]])
+                )
+            else:
+                return np.vstack([out1, out2, out3])
+
 
         elif self.model == 'SPLEAFmodel':
             r = self.data.y - self.eval_model(sample)
@@ -2198,7 +2340,7 @@ class KimaResults:
 
         ni = self.n_instruments
         offsets = sample[self.indices['inst_offsets']]
-        if self.model == 'RVFWHMmodel':
+        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
         else:
             offsets = np.pad(offsets, (0, 1))
@@ -2239,7 +2381,7 @@ class KimaResults:
                 ii = -ii.max() * (ii - ii.max())
             #! end HACK!
 
-            if self.model == 'RVFWHMmodel':
+            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
                 v += np.take(offsets, ii, axis=1)
             else:
                 v += np.take(offsets, ii)
@@ -2249,6 +2391,8 @@ class KimaResults:
     def residuals(self, sample, full=False):
         if self.model == 'RVFWHMmodel':
             D = np.vstack([self.data.y, self.data.y2])
+        elif self.model == 'RVFWHMRHKmodel':
+            D = np.vstack([self.data.y, self.data.y2, self.data.y3])
         else:
             D = self.data.y
 
@@ -2259,7 +2403,7 @@ class KimaResults:
 
     def residual_rms(self, sample, weighted=True, printit=True):
         r = self.residuals(sample, full=True)
-        if self.model == 'RVFWHMmodel':
+        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             r = r[0]
 
         vals = []
@@ -2479,32 +2623,32 @@ class KimaResults:
             if v[2]:
                 print(f'({1/v[0]:10.6f} {v[1]}⁻¹)')
 
-    @property
-    def eta1(self):
-        if self.has_gp:
-            return self.posterior_sample[:, self.indices['GPpars']][:, 0]
-        return None
+    # @property
+    # def eta1(self):
+    #     if self.has_gp:
+    #         return self.posterior_sample[:, self.indices['GPpars']][:, 0]
+    #     return None
 
-    @property
-    def eta2(self):
-        if self.has_gp:
-            i = 2 if self.model == 'RVFWHMmodel' else 1
-            return self.posterior_sample[:, self.indices['GPpars']][:, i]
-        return None
+    # @property
+    # def eta2(self):
+    #     if self.has_gp:
+    #         i = 2 if self.model == 'RVFWHMmodel' else 1
+    #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
+    #     return None
 
-    @property
-    def eta3(self):
-        if self.has_gp:
-            i = 3 if self.model == 'RVFWHMmodel' else 2
-            return self.posterior_sample[:, self.indices['GPpars']][:, i]
-        return None
+    # @property
+    # def eta3(self):
+    #     if self.has_gp:
+    #         i = 3 if self.model == 'RVFWHMmodel' else 2
+    #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
+    #     return None
 
-    @property
-    def eta4(self):
-        if self.has_gp:
-            i = 4 if self.model == 'RVFWHMmodel' else 3
-            return self.posterior_sample[:, self.indices['GPpars']][:, i]
-        return None
+    # @property
+    # def eta4(self):
+    #     if self.has_gp:
+    #         i = 4 if self.model == 'RVFWHMmodel' else 3
+    #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
+    #     return None
 
     # most of the following methods just dispatch to display
     make_plots = display.make_plots
@@ -2611,8 +2755,8 @@ class KimaResults:
     #
     def _set_plots(self):
         from functools import partial
-        if self.model == 'RVFWHMmodel':
-            self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_rvfwhm, res=self)
+        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_multiseries, res=self)
         else:
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples, res=self)
 
