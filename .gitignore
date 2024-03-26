@@ -1,6 +1,21 @@
 # ignore /docs at the top level repo
 docs
 
+# output files
+**sample.txt
+**sample_info.txt
+**levels.txt
+**sampler_state.txt
+
+# build files
+build
+dist
+
+# IDE files
+.vscode
+
+# backups
+*.bak
 
 # Python
 __pycache__
@@ -22,10 +37,6 @@ __pycache__
 *.so
 *.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
 
 # Compiled Static libraries
 *.lai
