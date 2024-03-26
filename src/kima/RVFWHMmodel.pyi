@@ -122,6 +122,13 @@ class RVFWHMmodel:
         ...
     
     @property
+    def data(self) -> kima.Data.RVData:
+        """
+        the data
+        """
+        ...
+    
+    @property
     def degree(self) -> int:
         """
         degree of the polynomial trend
@@ -252,6 +259,19 @@ class RVFWHMmodel:
         ...
     
     @property
+    def fix(self) -> bool:
+        """
+        whether the number of Keplerians is fixed
+        """
+        ...
+    @fix.setter
+    def fix(self, arg: bool, /) -> None:
+        """
+        whether the number of Keplerians is fixed
+        """
+        ...
+    
+    @property
     def known_object(self) -> bool:
         """
         whether the model includes (better) known extra Keplerian curve(s)
@@ -262,6 +282,19 @@ class RVFWHMmodel:
     def n_known_object(self) -> int:
         """
         how many known objects
+        """
+        ...
+    
+    @property
+    def npmax(self) -> int:
+        """
+        maximum number of Keplerians
+        """
+        ...
+    @npmax.setter
+    def npmax(self, arg: int, /) -> None:
+        """
+        maximum number of Keplerians
         """
         ...
     

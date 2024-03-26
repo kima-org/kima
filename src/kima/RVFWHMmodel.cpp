@@ -966,6 +966,10 @@ using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 class RVFWHMmodel_publicist : public RVFWHMmodel
 {
     public:
+        using RVFWHMmodel::fix;
+        using RVFWHMmodel::npmax;
+        using RVFWHMmodel::data;
+        //
         using RVFWHMmodel::trend;
         using RVFWHMmodel::degree;
         using RVFWHMmodel::star_mass;
@@ -979,6 +983,14 @@ class RVFWHMmodel_publicist : public RVFWHMmodel
 NB_MODULE(RVFWHMmodel, m) {
     nb::class_<RVFWHMmodel>(m, "RVFWHMmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        //
+        .def_rw("fix", &RVFWHMmodel_publicist::fix,
+                "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &RVFWHMmodel_publicist::npmax,
+                "maximum number of Keplerians")
+        .def_ro("data", &RVFWHMmodel_publicist::data,
+                "the data")
+
         //
         .def_rw("trend", &RVFWHMmodel_publicist::trend,
                 "whether the model includes a polynomial trend")

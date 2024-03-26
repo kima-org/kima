@@ -28,6 +28,12 @@ using namespace nb::literals;
 class  RVFWHMmodel
 {
     protected:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -47,14 +53,9 @@ class  RVFWHMmodel
         /// Whether $\eta_4$ is shared between RVs and FWHM
         bool share_eta4 {true};
 
-    private:
         RVData data;
 
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
+    private:
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
