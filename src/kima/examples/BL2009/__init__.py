@@ -8,7 +8,7 @@ __all__ = ['BL2009']
 
 here = os.path.dirname(__file__) # cwd
 
-def BL2009(run=False, which=1, **kwargs):
+def BL2009(run=False, load=False, which=1, **kwargs):
     """
     Create (and optionally run) an RV model for analysis of simulated datasets
     from Balan & Lahav (2009).
@@ -31,19 +31,20 @@ def BL2009(run=False, which=1, **kwargs):
     model.conditional.Kprior = distributions.ModifiedLogUniform(1.0, 2e3)
     model.conditional.eprior = distributions.Uniform(0, 1)
 
-    kwargs.setdefault('steps', 5000)
+    kwargs.setdefault('steps', 10_000)
     kwargs.setdefault('num_threads', 4)
     kwargs.setdefault('num_particles', 2)
     kwargs.setdefault('new_level_interval', 2000)
     kwargs.setdefault('save_interval', 500)
-    kwargs.setdefault('thin_print', 200)
+    kwargs.setdefault('print_thin', 200)
 
-    if run:
-        # with chdir(here):
-        kima.run(model, **kwargs)
-
+    with chdir(here):
+        if run:
+            kima.run(model, **kwargs)
+        if load:
+            res = kima.load_results(model)
+            return model, res
     return model
 
 if __name__ == '__main__':
-    model = BL2009(run=True, which=1, steps=20_000)
-    res = kima.load_results()
+    model, res = BL2009(run=True, load=True, which=1)

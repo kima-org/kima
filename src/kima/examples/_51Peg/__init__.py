@@ -29,14 +29,13 @@ def _51Peg(run=False, load=False, **kwargs):
     kwargs.setdefault('new_level_interval', 2000)
     kwargs.setdefault('save_interval', 500)
 
-    if run:
-        with chdir(here):
+    with chdir(here):
+        if run:
             kima.run(model, **kwargs)
-            if load:
-                res = kima.load_results()
-                return model, res
-
+        if load:
+            res = kima.load_results(model)
+            return model, res
     return model
 
 if __name__ == '__main__':
-    model, res = _51Peg(run=True, load=True, steps=80000)
+    model, res = _51Peg(run=True, load=True)
