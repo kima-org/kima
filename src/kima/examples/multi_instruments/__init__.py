@@ -37,19 +37,18 @@ def multi_instruments(run=False, load=False, **kwargs):
     #model.Cprior = get_gaussian_prior_vsys(data)
     #model.individual_offset_prior = get_gaussian_priors_individual_offsets(data)
 
-    kwargs.setdefault('steps', 50_000)
+    kwargs.setdefault('steps', 20_000)
     kwargs.setdefault('num_threads', 4)
     kwargs.setdefault('num_particles', 4)
     kwargs.setdefault('new_level_interval', 5000)
     kwargs.setdefault('save_interval', 500)
 
-    if run:
-        with chdir(here):
+    with chdir(here):
+        if run:
             kima.run(model, **kwargs)
-            if load:
-                res = kima.load_results()
-                return model, res
-
+        if load:
+            res = kima.load_results(model)
+            return model, res
     return model
 
 if __name__ == '__main__':
