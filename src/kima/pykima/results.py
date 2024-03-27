@@ -595,7 +595,11 @@ class KimaResults:
     @property
     def ESS(self):
         """ Effective sample size """
-        return self._ESS
+        try:
+            return self._ESS
+        except AttributeError:
+            self._ESS = self.posterior_sample.shape[0]
+            return self._ESS
 
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
