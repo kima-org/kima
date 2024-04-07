@@ -22,7 +22,8 @@ namespace postKep
     std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
-                                  const double &M0_epoch);
+                                  const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
+                                  const double &R1, bool GR, bool Tid);
 }
 
 namespace MassConv

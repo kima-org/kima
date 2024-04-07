@@ -345,11 +345,10 @@ void BINARIESmodel::remove_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] -= v[i];
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         }
     }
 }
@@ -364,7 +363,8 @@ void BINARIESmodel::remove_known_object_secondary()
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         K2 = KO_K[j]/KO_q[j];
         w = KO_w[j] - M_PI;
-        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
+        
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu_2[i] -= v[i];
@@ -380,7 +380,7 @@ void BINARIESmodel::add_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
@@ -398,7 +398,7 @@ void BINARIESmodel::add_known_object_secondary()
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         K2 = KO_K[j]/KO_q[j];
         w = KO_w[j] - M_PI;
-        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu_2[i] += v[i];

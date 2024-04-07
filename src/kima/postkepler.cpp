@@ -100,34 +100,31 @@ namespace postKep
         return delta_LT;
     }
     
-    inline double transverse_doppler(double K1, double f, double ecc, double cosi=0)
+    inline double transverse_doppler(double K1, double f, double ecc, double cosi)
     {
-        //here assume inclination of 90 (eclipsing) so sin(i) = 1
         double sini = 1.0 - cosi*cosi;
         double delta_TD = pow(K1,2.0)*(1 + ecc*cos(f) - (1-pow(ecc,2.0))/2)/(c_light*pow(sini,2.0));
     
         return delta_TD;
     }
     
-    inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi=0)
+    inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi)
     {
-        //again assume inclination of 90 (eclipsing) so sin(i) = 1
         double sini = 1.0 - cosi*cosi;
         double delta_GR = K1*(K1+K2)*(1+ecc*cos(f))/(c_light*pow(sini,2.0));
     
         return delta_GR;
     }
     
-    inline double v_tide(double R1, double M1, double M2, double P, double f, double w)
+    inline double v_tide(double R1, double M1, double M2, double P, double f, double w, double cosi)
     {
         double phi_0 = M_PI/2 - w;
-        double MjMs = 1047.5655;
-        M2 = M2*MjMs;
+        double sini = 1.0 - cosi*cosi;
         
-        return 1.13*M2/(M1*(M1+M2/MjMs))*pow(R1,4.0)*pow(P,-3.0)*sin(2*(f-phi_0));
+        return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin(2*(f-phi_0))*sini*sini;
     }
     
-    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2, double R1, bool GR, bool Tid)
+    double post_Newtonian(double K1, double f, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid)
     {
         double K2;
         double v = 0.0;
@@ -150,14 +147,14 @@ namespace postKep
             {
                 R1 = pow(M1,0.8);
             }
-            double delta_v_tide = v_tide(R1,M1,M2,P,f,w);
+            double delta_v_tide = v_tide(R1,M1,M2,P,f,w,cosi);
             v = v + delta_v_tide;
         }
         if (GR)
         {
             double delta_LT = light_travel_time(K1, f, w, ecc);
-            double delta_TD = transverse_doppler(K1, f, ecc);
-            double delta_GR = gravitational_redshift(K1, K2, f, ecc);
+            double delta_TD = transverse_doppler(K1, f, ecc,cosi);
+            double delta_GR = gravitational_redshift(K1, K2, f, ecc,cosi);
             v = v + delta_LT + delta_TD + delta_GR;
         }
         
@@ -169,7 +166,8 @@ namespace postKep
     std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
-                                  const double &M0_epoch)
+                                  const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
+                                  const double &R1, bool GR, bool Tid)
     {
         // allocate RVs
         std::vector<double> rv(t.size());
@@ -202,11 +200,12 @@ namespace postKep
             double g = g_e * ((1 - cosE) / sinE);
             double g2 = g * g;
             
-            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+            double vrad = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
             
 //             double f ;
             
-//             double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, double M1, double M2, double R1, bool GR, bool Tid);
+            double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, cosi, double M1, double M2, double R1, bool GR, bool Tid);
+            rv[i] = vrad + v_correction
       }
 
       return rv;
