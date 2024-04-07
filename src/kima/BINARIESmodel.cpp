@@ -74,17 +74,18 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
-        if (!KO_cosiprior){
+        if (!KO_cosiprior[0]){
             if (eclipsing) {
-                KO_cosiprior = make_prior<Fixed>(0)
+//                 KO_cosiprior[0] = make_prior<Fixed>(0);
+                KO_cosiprior[0] = make_prior<Gaussian>(0.0,0.000000001);
             }
             else{
-                KO_cosiprior = make_prior<Uniform>(0.0,1.0)
+                KO_cosiprior[0] = make_prior<Uniform>(0.0,1.0);
             }
         }
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_wdotprior[i])
-                throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
+                throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior) for each known object");
             if (double_lined && !KO_qprior[i])
                 throw std::logic_error("When double_lined=true, please set prior for KO_qprior");
         }
