@@ -74,6 +74,14 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
+        if (!KO_cosiprior){
+            if (eclipsing) {
+                KO_cosiprior = make_prior<Fixed>(0)
+            }
+            else{
+                KO_cosiprior = make_prior<Uniform>(0.0,1.0)
+            }
+        }
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_wdotprior[i])
                 throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
@@ -121,12 +129,6 @@ void BINARIESmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
-
-//     if (data.indicator_correlations)
-//     {
-//         for (unsigned i=0; i<data.number_indicators; i++)
-//             betas[i] = betaprior->generate(rng);
-//     }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -207,14 +209,6 @@ void BINARIESmodel::calculate_mu()
             }
         }
 
-        //if(data.indicator_correlations)
-        //{
-            //for(size_t i=0; i<N; i++)
-            //{
-                //for(size_t j = 0; j < data.number_indicators; j++)
-                   //mu[i] += betas[j] * actind[j][i];
-            //}   
-        //}
 
         if (known_object) { // KO mode!
             add_known_object();
@@ -249,17 +243,6 @@ void BINARIESmodel::calculate_mu()
         for(size_t i=0; i<N; i++)
             mu[i] += v[i];
 
-//         for(size_t i=0; i<N; i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(P, 0);
-//             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-//             omega_t = postKep::change_omega(omega, 0, ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-//             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-//             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
-//             mu[i] += v;
-//         }
     }
 
 
@@ -314,14 +297,6 @@ void BINARIESmodel::calculate_mu_2()
             }
         }
 
-//         if(data.indicator_correlations)
-//         {
-//             for(size_t i=0; i<N; i++)
-//             {
-//                 for(size_t j = 0; j < data.number_indicators; j++)
-//                    mu_2[i] += betas[j] * actind[j][i];
-//             }   
-//         }
 
         if (known_object) { // KO mode!
             add_known_object_secondary();
@@ -340,10 +315,6 @@ void BINARIESmodel::calculate_mu_2()
     double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
     for(size_t j=0; j<components.size(); j++)
     {
-//         if(hyperpriors)
-//             P = exp(components[j][0]);
-//         else
-//             P = components[j][0];
 
         P = components[j][0];
         K = components[j][1];
@@ -355,17 +326,7 @@ void BINARIESmodel::calculate_mu_2()
         for(size_t i=0; i<N; i++)
             mu_2[i] += v[i];
 
-//         for(size_t i=0; i<t.size(); i++)
-//         {
-//             ti = t[i];
-//             P_anom = postKep::period_correction(P, omegadot);
-//             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-//             omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-//             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-//             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
-//             mu_2[i] += v;
-//         }
+
     }
 
 
@@ -390,18 +351,6 @@ void BINARIESmodel::remove_known_object()
             mu[i] -= v[i];
 //             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         }
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu[i] -= v;
-//         }
     }
 }
 
@@ -420,19 +369,7 @@ void BINARIESmodel::remove_known_object_secondary()
         {
             mu_2[i] -= v[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             K2 = KO_K[j]/KO_q[j];
-//             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu_2[i] -= v;
-//         }
+
     }
 }
 
@@ -448,18 +385,7 @@ void BINARIESmodel::add_known_object()
         {
             mu[i] += v[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu[i] += v;
-//         }
+
     }
 }
 
@@ -477,19 +403,7 @@ void BINARIESmodel::add_known_object_secondary()
         {
             mu_2[i] += v[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             K2 = KO_K[j]/KO_q[j];
-//             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu_2[i] += v;
-//         }
+
     }
 }
 

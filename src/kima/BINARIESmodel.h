@@ -53,6 +53,8 @@ class KIMA_API BINARIESmodel
         
         ///Is the binary a double lined binary with RV data on both stars
         bool double_lined = false;
+        
+        bool eclipsing = true;
     
     private:
         
@@ -99,6 +101,7 @@ class KIMA_API BINARIESmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
         std::vector<double> KO_wdot;
+        std::vector<double> KO_cosi;
 
         // The signal
         std::vector<double> mu;// the RV model
@@ -152,6 +155,7 @@ class KIMA_API BINARIESmodel
         std::vector<distribution> KO_phiprior {(size_t) n_known_object};
         std::vector<distribution> KO_wprior {(size_t) n_known_object};
         std::vector<distribution> KO_wdotprior {(size_t) n_known_object};
+        std::vector<distribution> KO_cosiprior {(size_t) n_known_object};
 
 
         distribution nu_prior;
