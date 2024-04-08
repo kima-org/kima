@@ -76,8 +76,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         if (!KO_cosiprior[0]){
             if (eclipsing) {
-//                 KO_cosiprior[0] = make_prior<Fixed>(0);
-                KO_cosiprior[0] = make_prior<Gaussian>(0.0,0.000000001);
+                KO_cosiprior[0] = make_prior<Fixed>(0);
             }
             else{
                 KO_cosiprior[0] = make_prior<Uniform>(0.0,1.0);
@@ -140,6 +139,7 @@ void BINARIESmodel::from_prior(RNG& rng)
         KO_phi.resize(n_known_object);
         KO_w.resize(n_known_object);
         KO_wdot.resize(n_known_object);
+        KO_cosi.resize(n_known_object);
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
@@ -150,6 +150,7 @@ void BINARIESmodel::from_prior(RNG& rng)
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
             KO_wdot[i] = KO_wdotprior[i]->generate(rng);
+            KO_cosi[i] = KO_cosiprior[i]->generate(rng);
         }
     }
 
@@ -490,6 +491,7 @@ double BINARIESmodel::perturb(RNG& rng)
                 KO_phiprior[i]->perturb(KO_phi[i], rng);
                 KO_wprior[i]->perturb(KO_w[i], rng);
                 KO_wdotprior[i]->perturb(KO_wdot[i], rng);
+                KO_cosiprior[i]->perturb(KO_cosi[i], rng);
                 if (double_lined)
                     KO_qprior[i]->perturb(KO_q[i],rng);
             }
@@ -784,6 +786,7 @@ void BINARIESmodel::print(std::ostream& out) const
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_w) out << w << "\t";
         for (auto wdot: KO_wdot) out <<wdot << "\t";
+        for (auto cosi: KO_cosi) out <<cosi << "\t";
     }
 
     planets.print(out);
@@ -859,6 +862,8 @@ string BINARIESmodel::description() const
             desc += "KO_w" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_wdot" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_cosi" + std::to_string(i) + sep;
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -911,6 +916,7 @@ void BINARIESmodel::save_setup() {
     fout << "relativistic_correction: " << relativistic_correction <<endl;
     fout << "tidal_correction: " << tidal_correction <<endl;
     fout << "double_lined: " << double_lined <<endl;
+    fout << "eclipsing: " << eclipsing <<endl;
     fout << endl;
 
     fout << endl;
@@ -968,6 +974,7 @@ void BINARIESmodel::save_setup() {
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
             fout << "wdotprior_" << i << ": " << *KO_wdotprior[i] << endl;
+            fout << "cosiprior_" << i << ": " << *KO_cosiprior[i] << endl;
         }
     }
 
