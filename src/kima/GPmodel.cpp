@@ -1079,6 +1079,21 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
 
+        // hyperparameters of the magnetic cycle kernel
+        .def_prop_rw("eta5_prior",
+            [](GPmodel &m) { return m.eta5_prior; },
+            [](GPmodel &m, distribution &d) { m.eta5_prior = d; },
+            "Prior for η5")
+        .def_prop_rw("eta6_prior",
+            [](GPmodel &m) { return m.eta6_prior; },
+            [](GPmodel &m, distribution &d) { m.eta6_prior = d; },
+            "Prior for η6")
+        .def_prop_rw("eta7_prior",
+            [](GPmodel &m) { return m.eta7_prior; },
+            [](GPmodel &m, distribution &d) { m.eta7_prior = d; },
+            "Prior for η7")
+
+
         // known object priors
         // ? should these setters check if known_object is true?
         .def_prop_rw("KO_Pprior",
