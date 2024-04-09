@@ -60,7 +60,7 @@ class PHOTdata:
         """
         ...
     
-    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, delimiter: str = ' ') -> None:
+    def __init__(self, filename: str, skip: int = 0, delimiter: str = ' ') -> None:
         """
         Load photometric data from a file
         """
@@ -126,7 +126,7 @@ class RVData:
         ...
     
     @overload
-    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, delimiter: str = ' ', indicators: list[str] = []) -> None:
+    def __init__(self, filename: str, units: str = 'ms', skip: int = 0, max_rows: int = 0, multi: bool = False, delimiter: str = ' ', indicators: list[str] = []) -> None:
         """
         Load RV data from a file
         """
@@ -146,10 +146,36 @@ class RVData:
         """
         ...
     
+    @property
+    def datafile(self) -> str:
+        """
+        The file name
+        """
+        ...
+    
+    @property
+    def datafiles(self) -> list[str]:
+        """
+        The list of file names
+        """
+        ...
+    
     def get_RV_span(self) -> float:
+        """
+        Get the RV span of the data
+        """
+        ...
+    
+    def get_max_RV_span(self) -> float:
+        """
+        Get the maximum RV span of individual instruments
+        """
         ...
     
     def get_timespan(self) -> float:
+        """
+        Get the timespan of the data
+        """
         ...
     
     @property
@@ -162,6 +188,19 @@ class RVData:
     def instrument(self, arg: str, /) -> None:
         """
         instrument name
+        """
+        ...
+    
+    @property
+    def instruments(self) -> list[str]:
+        """
+        instrument names
+        """
+        ...
+    @instruments.setter
+    def instruments(self, arg: list[str], /) -> None:
+        """
+        instrument names
         """
         ...
     
@@ -222,6 +261,9 @@ class RVData:
         ...
     
     def topslope(self) -> float:
+        """
+        Get the maximum slope allowed by the data
+        """
         ...
     
     @property
