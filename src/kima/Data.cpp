@@ -340,6 +340,8 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     _units = units;
     _skip = skip;
     _multi = true;
+    _instrument = "";
+    _instruments = {};
 
     t = data[0];
     y = data[1];
@@ -417,7 +419,12 @@ void RVData::load_multi(const string filename, const string units, int skip, int
         printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
     // Of how many instruments?
-    set<int> s(obsi.begin(), obsi.end());
+    set<int> s(inst_id.begin(), inst_id.end());
+
+    for (auto& inst : s) {
+        _instruments.push_back(std::to_string(inst));
+    }
+
     number_instruments = s.size();
     if (VERBOSE)
         printf("# RVs come from %zu different instruments.\n", s.size());
@@ -994,9 +1001,10 @@ NB_MODULE(Data, m) {
             })
         //
 
-        .def("get_timespan", &RVData::get_timespan)
-        .def("get_RV_span", &RVData::get_RV_span)
-        .def("topslope", &RVData::topslope)
+        .def("get_timespan", &RVData::get_timespan, "Get the timespan of the data")
+        .def("get_RV_span", &RVData::get_RV_span, "Get the RV span of the data")
+        .def("get_max_RV_span", &RVData::get_max_RV_span, "Get the maximum RV span of individual instruments")
+        .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
         // ...
         .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
@@ -1018,8 +1026,8 @@ Args:
 
     nb::class_<PHOTdata>(m, "PHOTdata", "docs")
         // constructor
-        .def(nb::init<const string&, const string&, int, const string&>(),
-             "filename"_a, "units"_a="ms", "skip"_a=0, "delimiter"_a=" ",
+        .def(nb::init<const string&, int, const string&>(),
+             "filename"_a, "skip"_a=0, "delimiter"_a=" ",
              "Load photometric data from a file")
         // properties
         .def_prop_ro("t", [](PHOTdata &d) { return d.get_t(); }, "The times of observations")
