@@ -123,7 +123,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
 
     /* GP parameters */
     if (!eta1_prior)
-        eta1_prior = make_prior<LogUniform>(0.1, 100);
+        eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
     if (!eta2_prior)
         eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
     if (!eta3_prior)
@@ -133,7 +133,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (magnetic_cycle_kernel) {
         if (!eta5_prior)
-            eta5_prior = make_prior<LogUniform>(0.1, 100);
+            eta5_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
         if (!eta6_prior)
             eta6_prior = make_prior<LogUniform>(365, 5*data.get_timespan());
         if (!eta7_prior)
