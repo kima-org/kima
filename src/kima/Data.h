@@ -202,7 +202,7 @@ class  KIMA_API RVData {
 
 
 
-class  PHOTdata {
+class KIMA_API PHOTdata {
 
   friend class TRANSITmodel;
 
@@ -219,17 +219,16 @@ class  PHOTdata {
     string _units;
     int _skip;
 
-    PHOTdata();
-    PHOTdata(const string& filename, const string& units="ms", int skip=0, const string& delimiter=" ")
+    PHOTdata() {};
+    PHOTdata(const string& filename, int skip=0, const string& delimiter=" ")
     {
-      load(filename, units, skip, delimiter);
+      load(filename, skip, delimiter);
     }
 
     friend ostream& operator<<(ostream& os, const PHOTdata& d);
 
     // to read data from one file, one instrument
-    void load(const string filename, const string units, int skip=0, 
-              const string delimiter=" ");
+    void load(const string filename, int skip=0, const string delimiter=" ");
 
     /// docs for M0_epoch
     double M0_epoch;

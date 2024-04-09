@@ -738,119 +738,106 @@ ostream& operator<<(ostream& os, const RVData& d)
 
 /*****************************************************************************/
 
-PHOTdata::PHOTdata() {};
-
-    /**
-     * @brief Load RV data from a file.
-     *
-     * Read a tab/space separated file with columns
-     * ```
-     *   time  vrad  error  quant  error
-     *   ...   ...   ...    ...    ...
-     * ```
-     *
-     * @param filename   the name of the file
-     * @param units      units of the RVs and errors, either "kms" or "ms"
-     * @param skip       number of lines to skip in the beginning of the file (default = 2)
-     * @param indicators
-     */
-    void PHOTdata::load(const string filename, const string units, int skip,
-                        const string delimiter)
-    {
-        if (filename.empty()) {
-            std::string msg = "kima: PHOTdata: no filename provided";
-            throw std::invalid_argument(msg);
-            // exit(1);
-        }
-
-        auto data = loadtxt(filename)
-                        .skiprows(skip)
-                        .delimiter(delimiter)();
-
-        if (data.size() < 3) {
-            std::string msg = "kima: PHOTdata: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
-            throw std::runtime_error(msg);
-        }
-        
-
-        _datafile = filename;
-        _units = units;
-        _skip = skip;
-
-        t = data[0];
-        y = data[1];
-        sig = data[2];
-
-        double factor = 1.;
-        if (units == "kms") factor = 1E3;
-
-        for (size_t n = 0; n < t.size(); n++) {
-            y[n] = y[n] * factor;
-            sig[n] = sig[n] * factor;
-        }
-
-        // epoch for the mean anomaly, by default the time of the first observation
-        M0_epoch = t[0];
-
-        // How many points did we read?
-        if (VERBOSE)
-            printf("# Loaded %zu data points from file %s\n", t.size(),
-                filename.c_str());
-
-        // What are the units?
-        if (units == "kms" && VERBOSE)
-            printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+/**
+ * @brief Load RV data from a file.
+ *
+ * Read a tab/space separated file with columns
+ * ```
+ *   time  vrad  error  quant  error
+ *   ...   ...   ...    ...    ...
+ * ```
+ *
+ * @param filename   the name of the file
+ * @param units      units of the RVs and errors, either "kms" or "ms"
+ * @param skip       number of lines to skip in the beginning of the file (default = 2)
+ * @param indicators
+ */
+void PHOTdata::load(const string filename, int skip, const string delimiter)
+{
+    if (filename.empty()) {
+        std::string msg = "kima: PHOTdata: no filename provided";
+        throw std::invalid_argument(msg);
+        // exit(1);
     }
 
-
-    double PHOTdata::get_flux_mean() const
-    {
-        double sum = accumulate(begin(y), end(y), 0.0);
-        return sum / y.size();
+    if (filename.size() == 1) {
+        std::string msg = "kima: RVData: filename with one character is probably an error";
+        throw std::runtime_error(msg);
     }
 
-    double PHOTdata::get_flux_var() const
-    {
-        double sum = accumulate(begin(y), end(y), 0.0);
-        double mean = sum / y.size();
+    auto data = loadtxt(filename)
+                    .skiprows(skip)
+                    .delimiter(delimiter)();
 
-        double accum = 0.0;
-        for_each(begin(y), end(y),
-                [&](const double d) { accum += (d - mean) * (d - mean); });
-        return accum / (y.size() - 1);
+    if (data.size() < 3) {
+        std::string msg = "kima: PHOTdata: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+        throw std::runtime_error(msg);
     }
 
-    /**
-     * @brief Calculate the maximum slope "allowed" by the data
-     *
-     * This calculates peak-to-peak(RV) / peak-to-peak(time), which is a good upper
-     * bound for the linear slope of a given dataset. When there are multiple
-     * instruments, the function returns the maximum of this peak-to-peak ratio of
-     * all individual instruments.
-     */
-    double PHOTdata::topslope() const
-    {
-        return get_flux_span() / get_timespan();
-    }
+    _datafile = filename;
+    _skip = skip;
 
-    /**
-     * @brief Order of magnitude of trend coefficient (of degree) given the data
-     *
-     * Returns the expected order of magnitude of the trend coefficient of degree
-     * `degree` supported by the data. It calculates the order of magnitude of
-     *    RVspan / timespan^degree
-     */
-    int PHOTdata::get_trend_magnitude(int degree) const
-    {
-        return (int)round(log10(get_flux_span() / pow(get_timespan(), degree)));
-    }
+    t = data[0];
+    y = data[1];
+    sig = data[2];
+
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
+
+    // How many points did we read?
+    if (VERBOSE)
+        printf("# Loaded %zu data points from file %s\n", t.size(),
+            filename.c_str());
+}
+
+double PHOTdata::get_flux_mean() const
+{
+    double sum = accumulate(begin(y), end(y), 0.0);
+    return sum / y.size();
+}
+
+double PHOTdata::get_flux_var() const
+{
+    double sum = accumulate(begin(y), end(y), 0.0);
+    double mean = sum / y.size();
+
+    double accum = 0.0;
+    for_each(begin(y), end(y),
+            [&](const double d) { accum += (d - mean) * (d - mean); });
+    return accum / (y.size() - 1);
+}
+
+/**
+ * @brief Calculate the maximum slope "allowed" by the data
+ *
+ * This calculates peak-to-peak(RV) / peak-to-peak(time), which is a good upper
+ * bound for the linear slope of a given dataset. When there are multiple
+ * instruments, the function returns the maximum of this peak-to-peak ratio of
+ * all individual instruments.
+ */
+double PHOTdata::topslope() const
+{
+    return get_flux_span() / get_timespan();
+}
+
+/**
+ * @brief Order of magnitude of trend coefficient (of degree) given the data
+ *
+ * Returns the expected order of magnitude of the trend coefficient of degree
+ * `degree` supported by the data. It calculates the order of magnitude of
+ *    RVspan / timespan^degree
+ */
+int PHOTdata::get_trend_magnitude(int degree) const
+{
+    return (int)round(log10(get_flux_span() / pow(get_timespan(), degree)));
+}
 
 
-    ostream& operator<<(ostream& os, const PHOTdata& d)
-    {
-        os << "PHOT data from file " << d._datafile << " with " << d.N() << " points";
-        return os;
-    }
+ostream& operator<<(ostream& os, const PHOTdata& d)
+{
+    os << "PHOT data from file " << d._datafile << " with " << d.N() << " points";
+    return os;
+}
 
 /*****************************************************************************/
 
