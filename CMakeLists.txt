@@ -20,7 +20,9 @@ FILE(GLOB DNEST4_SRC
 add_library(dnest4 STATIC ${DNEST4_SRC})
 target_compile_features(dnest4 PRIVATE cxx_std_17)
 
-# path to include Eigen
+# paths for #include 
+set(LOADTXT_PATH src/vendor/cpp-loadtxt/src)
+set(GCEM_PATH src/vendor/gcem/include)
 set(EIGEN_PATH src/vendor/eigen)
 
 
@@ -113,7 +115,7 @@ target_compile_features(transits PRIVATE cxx_std_17)
 
 
 # add loadtxt path to includes
-set(INCLUDES src/vendor/cpp-loadtxt/src ${DNEST4_PATH})
+set(INCLUDES ${LOADTXT_PATH} ${DNEST4_PATH} ${GCEM_PATH})
 
 # compilation settings for each module
 foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel)
