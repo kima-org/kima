@@ -38,7 +38,8 @@ find_package(nanobind CONFIG REQUIRED)
 # this will make them available as kima.module
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/distributions.cpp)
+                    src/kima/distributions.cpp 
+                    src/kima/InverseGamma.cpp)
 
 nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)

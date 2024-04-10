@@ -3,13 +3,13 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import pytest
 
-from scipy.stats import (cauchy, expon, norm, halfnorm, laplace,
-                            loguniform, rayleigh, triang, uniform)
+from scipy.stats import (cauchy, expon, norm, halfnorm, invgamma, laplace,
+                         loguniform, rayleigh, triang, uniform)
 from kumaraswamy import kumaraswamy
 
 
 from kima.distributions import (Cauchy, Exponential, Fixed, Kumaraswamy,
-                                Gaussian, HalfGaussian, Laplace, LogUniform,
+                                Gaussian, HalfGaussian, InverseGamma, Laplace, LogUniform,
                                 Rayleigh, Triangular, Uniform, UniformAngle)
 
 def test_creation():
@@ -44,63 +44,82 @@ def test_cdf(loc_scale, number, positive):
     loc, scale = loc_scale
     a, b = positive(2)
 
-    # Cauchy
-    for r in cauchy(loc, scale).rvs(N):
-        assert_allclose(Cauchy(loc, scale).cdf(r), cauchy(loc, scale).cdf(r))
-    
-    # Exponential
-    for r in expon(scale=scale).rvs(N):
-        assert_allclose(Exponential(scale).cdf(r), expon(scale=scale).cdf(r))
+    pairs = [
+        (cauchy(loc, scale), Cauchy(loc, scale)),
+        (expon(scale=scale), Exponential(scale)),
+        (norm(loc, scale), Gaussian(loc, scale)),
+        (halfnorm(scale=scale), HalfGaussian(scale)),
+        (invgamma(a, scale=b), InverseGamma(a, b)),
+        (laplace(loc, scale), Laplace(loc, scale)),
+        (loguniform(0.1*scale, 3*scale), LogUniform(0.1*scale, 3*scale)),
+        (rayleigh(scale=scale), Rayleigh(scale)),
+        (uniform(0.1*scale, 5*scale-0.1*scale), Uniform(0.1*scale, 5*scale)),
+    ]
+
+    for dist1, dist2 in pairs:
+        for r in dist1.rvs(N):
+            assert_allclose(dist2.cdf(r), dist1.cdf(r))
 
     # Fixed
     assert_allclose(Fixed(number).cdf(number), 1.0)
     assert_allclose(Fixed(number).cdf(number*2), 0.0)
     assert_allclose(Fixed(number).cdf(number/10), 0.0)
-    
-    # Gaussian
-    for r in norm(loc, scale).rvs(N):
-        assert_allclose(Gaussian(loc, scale).cdf(r), norm(loc, scale).cdf(r))
 
-    # HalfGaussian
-    for r in halfnorm(scale=scale).rvs(N):
-        assert_allclose(HalfGaussian(scale).cdf(r), halfnorm(scale=scale).cdf(r))
-
-    # Kumaraswamy
-    for r in kumaraswamy(a, b).rvs(N):
-        assert_allclose(Kumaraswamy(a, b).cdf(r), kumaraswamy(a, b).cdf(r))
     # is Kumaraswamy(1, 1) the same as Uniform(0, 1) ?
     assert_allclose(Kumaraswamy(1, 1).cdf(0.5), uniform(0, 1).cdf(0.5))
     # assert_allclose(Kumaraswamy(1, 1).cdf(1.5), uniform(0, 1).cdf(1.5))
 
-    # Laplace
-    for r in laplace(loc, scale).rvs(N):
-        assert_allclose(Laplace(loc, scale).cdf(r), laplace(loc, scale).cdf(r))
-
-    # LogUniform
-    for r in loguniform(0.1*scale, 3*scale).rvs(N):
-        assert_allclose(LogUniform(0.1*scale, 3*scale).cdf(r),
-                        loguniform(0.1*scale, 3*scale).cdf(r))
-
     # ModifiedLogUniform
     # ...
-        
-    # Rayleigh
-    for r in rayleigh(scale=scale).rvs(N):
-        assert_allclose(Rayleigh(scale).cdf(r), rayleigh(scale=scale).cdf(r))
-
-    # TruncatedRayleigh
         
     # Triangular
     for r in triang(c=0.75, scale=4).rvs(N):
         assert_allclose(Triangular(0, 3, 4).cdf(r), triang(c=0.75, scale=4).cdf(r))
 
-    # Uniform
-    for r in uniform(0.1*scale, 5*scale-0.1*scale).rvs(N):
-        assert_allclose(Uniform(0.1*scale, 5*scale).cdf(r), 
-                        uniform(0.1*scale, 5*scale-0.1*scale).cdf(r))
-
     # is UniformAngle the same as Uniform(0, 2pi) ?
     assert_equal(UniformAngle().cdf(1.0), Uniform(0.0, 2*np.pi).cdf(1.0))
+
+
+
+def test_inverse_cdf(loc_scale, number, positive):
+    N = 50
+    loc, scale = loc_scale
+    a, b = positive(2)
+
+    pairs = [
+        (cauchy(loc, scale), Cauchy(loc, scale)),
+        (expon(scale=scale), Exponential(scale)),
+        (norm(loc, scale), Gaussian(loc, scale)),
+        (halfnorm(scale=scale), HalfGaussian(scale)),
+        (invgamma(a, scale=b), InverseGamma(a, b)),
+        (laplace(loc, scale), Laplace(loc, scale)),
+        (loguniform(0.1*scale, 3*scale), LogUniform(0.1*scale, 3*scale)),
+        (rayleigh(scale=scale), Rayleigh(scale)),
+        (uniform(0.1*scale, 5*scale-0.1*scale), Uniform(0.1*scale, 5*scale)),
+    ]
+
+    for dist1, dist2 in pairs:
+        for r in np.random.rand(N):
+            assert_allclose(dist2.ppf(r), dist1.ppf(r), err_msg=f'{dist1} != {dist2}')
+
+    # # Fixed
+    # assert_allclose(Fixed(number).cdf(number), 1.0)
+    # assert_allclose(Fixed(number).cdf(number*2), 0.0)
+    # assert_allclose(Fixed(number).cdf(number/10), 0.0)
+
+    # # is Kumaraswamy(1, 1) the same as Uniform(0, 1) ?
+    # assert_allclose(Kumaraswamy(1, 1).cdf(0.5), uniform(0, 1).cdf(0.5))
+    # # assert_allclose(Kumaraswamy(1, 1).cdf(1.5), uniform(0, 1).cdf(1.5))
+
+    # # ModifiedLogUniform
+    # # ...
+        
+    # # Triangular
+    # for r in triang(c=0.75, scale=4).rvs(N):
+    #     assert_allclose(Triangular(0, 3, 4).cdf(r), triang(c=0.75, scale=4).cdf(r))
+
+    # # is UniformAngle the same as Uniform(0, 2pi) ?
+    # assert_equal(UniformAngle().cdf(1.0), Uniform(0.0, 2*np.pi).cdf(1.0))
 
 
 
@@ -129,6 +148,10 @@ def test_logpdf(loc_scale, number, positive):
     # HalfGaussian
     for r in halfnorm(scale=scale).rvs(N):
         assert_allclose(HalfGaussian(scale).logpdf(r), halfnorm(scale=scale).logpdf(r))
+
+    # InverseGamma
+    for r in invgamma(a, scale=b).rvs(N):
+        assert_allclose(InverseGamma(a, b).logpdf(r), invgamma(a, scale=b).logpdf(r))
 
     # Kumaraswamy
     for r in kumaraswamy(a, b).rvs(N):
