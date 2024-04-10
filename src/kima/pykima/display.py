@@ -2279,13 +2279,13 @@ def phase_plot(res,
         1: 2,
         2: 2,
         3: 2,
-        4: 3,
-        5: 3,
-        6: 3,
-        7: 4,
-        8: 4,
-        9: 4,
-        10: 4
+        4: 4,
+        5: 4,
+        6: 4,
+        7: 5,
+        8: 5,
+        9: 5,
+        10: 5
     }[nplanets]
 
     if res.has_gp:
@@ -2427,7 +2427,8 @@ def phase_plot(res,
     ## GP panel
     ###########
     if res.has_gp:
-        axGP = fig.add_subplot(gs[1, :end])
+        # grab the first row after the one that is attributed to the planets
+        axGP = fig.add_subplot(gs[gs_indices[nplanets][0] + 1, :end])
 
         y = res.data.y.copy()
         y = y - res.eval_model(sample)
