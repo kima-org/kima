@@ -185,6 +185,61 @@ class HalfGaussian:
     def scale(self, arg: float, /) -> None:
         ...
     
+class InverseGamma:
+    """
+    Inverse gamma distribution
+    """
+
+    def __init__(self, alpha: float, beta: float) -> None:
+        """
+        Inverse gamma distribution
+        """
+        ...
+    
+    @property
+    def alpha(self) -> float:
+        """
+        Shape parameter α
+        """
+        ...
+    @alpha.setter
+    def alpha(self, arg: float, /) -> None:
+        """
+        Shape parameter α
+        """
+        ...
+    
+    @property
+    def beta(self) -> float:
+        """
+        Scale parameter β
+        """
+        ...
+    @beta.setter
+    def beta(self, arg: float, /) -> None:
+        """
+        Scale parameter β
+        """
+        ...
+    
+    def cdf(self, x: float) -> float:
+        """
+        Cumulative distribution function evaluated at `x`
+        """
+        ...
+    
+    def logpdf(self, x: float) -> float:
+        """
+        Log of the probability density function evaluated at `x`
+        """
+        ...
+    
+    def ppf(self, q: float) -> float:
+        """
+        Percent point function (inverse of cdf) evaluated at `q`
+        """
+        ...
+    
 class Kumaraswamy:
     """
     Kumaraswamy distribution (similar to a Beta distribution)

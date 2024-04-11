@@ -336,10 +336,10 @@ NB_MODULE(distributions, m)
 
 
     // InverseGamma
-    nb::class_<DNest4::InverseGamma, DNest4::ContinuousDistribution>(m, "InverseGamma", "Inverse-Gamma distribution")
-        .def(nb::init<double, double>(), "alpha"_a, "beta"_a)
-        .def_rw("alpha", &DNest4::InverseGamma::alpha)
-        .def_rw("beta", &DNest4::InverseGamma::beta)
+    nb::class_<DNest4::InverseGamma, DNest4::ContinuousDistribution>(m, "InverseGamma", "Inverse gamma distribution")
+        .def(nb::init<double, double>(), "alpha"_a, "beta"_a, "Inverse gamma distribution")
+        .def_rw("alpha", &DNest4::InverseGamma::alpha, "Shape parameter α")
+        .def_rw("beta", &DNest4::InverseGamma::beta, "Scale parameter β")
         .def("__repr__", [](const DNest4::InverseGamma &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::InverseGamma::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
         .def("ppf", &DNest4::InverseGamma::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
