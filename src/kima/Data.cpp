@@ -19,8 +19,10 @@ double median(vector<double> v)
 
 /// @brief Load data from a single filename
 RVData::RVData(const string& filename, const string& units, int skip, int max_rows, bool multi,
-               const string& delimiter, const vector<string>& indicators)
+               const string& delimiter, const vector<string>& indicators, bool double_lined)
 {
+    if (double_lined)
+        sb2=true;
     if (multi)
         load_multi(filename, units, skip, max_rows, delimiter, indicators);
     else
@@ -29,8 +31,10 @@ RVData::RVData(const string& filename, const string& units, int skip, int max_ro
 
 /// @brief Load data from a list of filenames
 RVData::RVData(const vector<string>& filenames, const string& units, int skip, int max_rows, 
-               const string& delimiter, const vector<string>& indicators)
+               const string& delimiter, const vector<string>& indicators, bool double_lined)
 {
+    if (double_lined)
+        sb2=true;
     load_multi(filenames, units, skip, max_rows, delimiter, indicators);
 }
 
@@ -226,7 +230,6 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     t = data[0];
     y = data[1];
     sig = data[2];
-
     obsi = vector<int>(t.size(), 1);
     
     if (sb2)
@@ -466,7 +469,6 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     sig2.clear();
     obsi.clear();
     medians.clear();
-
     // check for indicator correlations and store stuff
     int nempty = count(indicators.begin(), indicators.end(), "");
     number_indicators = indicators.size() - nempty;
@@ -495,6 +497,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         t.insert(t.end(), data[0].begin(), data[0].end());
         y.insert(y.end(), data[1].begin(), data[1].end());
         sig.insert(sig.end(), data[2].begin(), data[2].end());
+
 
         // store medians
         medians.push_back(median(data[1]));
@@ -934,12 +937,12 @@ NB_MODULE(Data, m) {
     // 
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
-        .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&>(),
-             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&, bool>(),
+             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(), "double_lined"_a=false,
              "Load RV data from a list of files")
         //
-        .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&>(),
-             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" ", "indicators"_a=vector<string>(),
+        .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&, bool>(),
+             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" ", "indicators"_a=vector<string>(), "double_lined"_a=false,
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
@@ -969,6 +972,7 @@ NB_MODULE(Data, m) {
         .def_rw("instruments", &RVData::_instruments, "instrument names")
         //
         .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
+        .def_rw("double_lined", &RVData::sb2, "if the data is for a double-lined binary")
 
         // to un/pickle RVData
         .def("__getstate__", [](const RVData &d)

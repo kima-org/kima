@@ -77,12 +77,12 @@ class  KIMA_API RVData {
     RVData() {};
 
     // read data from a list of files
-    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0, 
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>());
+    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0,
+           const string& delimiter=" ", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from a single file
     RVData(const string& filename, const string& units="ms", int skip=0, int max_rows=0, bool multi=false,
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>());
+           const string& delimiter=" ", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from arrays
     RVData(const vector<double> t, const vector<double> y, const vector<double> sig,

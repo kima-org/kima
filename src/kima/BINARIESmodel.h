@@ -109,11 +109,12 @@ class KIMA_API BINARIESmodel
         std::vector<double> mu_2;// the RV model for secondary
                             //std::vector<long double>(RVData::get_instance().N()); // changed to imitate RVFWHM get_data replaced by get_instance
         void calculate_mu();
-        void calculate_mu_2();
+//         void calculate_mu_2();
+        void calculate_mus();
         void add_known_object();
-        void add_known_object_secondary();
+        void add_known_object_sb2();
         void remove_known_object();
-        void remove_known_object_secondary();
+        void remove_known_object_sb2();
         
         int is_stable() const;
 
