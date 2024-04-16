@@ -1,5 +1,5 @@
 
-from .Data import RVData, PHOTdata, GAIAData
+from .Data import RVData, PHOTdata, GAIAData, ETData
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 
@@ -11,6 +11,7 @@ from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
 from .GAIAmodel import GAIAmodel
 from .RVGAIAmodel import RVGAIAmodel
+from .ETmodel import ETmodel
 
 __models__ = (
     RVmodel,
@@ -22,6 +23,7 @@ __models__ = (
     BINARIESmodel,
     GAIAmodel,
     RVGAIAmodel,
+    ETmodel,
 )
 
 # add plot method to data classes

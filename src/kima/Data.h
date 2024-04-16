@@ -345,3 +345,72 @@ class KIMA_API GAIAData {
   //   static RVData& get_instance() { return instance; }
 };
 
+class ETData {
+
+  friend class ETmodel;
+  private:
+    vector<double> epochs, et, etsig, y2, sig2;
+
+  public:
+  
+    string _datafile;
+    string _units;
+    int _skip;
+    
+    ETData();
+    ETData(const string& filename, const string& units="days", int skip=0, int max_rows=0, 
+            const string& delimiter=" ")
+    {
+      load(filename, units, skip, max_rows, delimiter);
+    }
+    
+    friend ostream& operator<<(ostream& os, const ETData& d);
+    
+    // to read data from one file, one instrument
+    void load(const string filename, const string units, int skip=0, int max_rows=0,
+              const string delimiter=" ");
+
+    /// docs for M0_epoch
+    double M0_epoch;
+
+    // to deprecate a function (C++14), put
+    // [[deprecated("Replaced by bar, which has an improved interface")]]
+    // before the definition
+
+    /// Get the total number of data points
+    int N() const { return epochs.size(); }
+
+    /// @brief Get the array of epoch @return const vector<double>&
+    const vector<double>& get_epochs() const { return epochs; }
+
+    /// @brief Get the array of RVs @return const vector<double>&
+    const vector<double>& get_et() const { return et; }
+    const vector<double>& get_y2() const { return y2; }
+    /// Get the array of errors @return const vector<double>&
+    const vector<double>& get_etsig() const { return etsig; }
+    const vector<double>& get_sig2() const { return sig2; }
+
+    /// @brief Get the mininum (starting) time @return double
+    double get_et_min() const { return *min_element(et.begin(), et.end()); }
+    /// @brief Get the maximum (ending) time @return double
+    double get_et_max() const { return *max_element(et.begin(), et.end()); }
+    /// @brief Get the timespan @return double
+    double get_timespan() const { return get_et_max() - get_et_min(); }
+    double get_et_span() const { return get_et_max() - get_et_min(); }
+    /// @brief Get the middle time @return double
+    double get_et_middle() const { return get_et_min() + 0.5 * get_timespan(); }
+
+    /// @brief Get the mininum RV @return double
+    double get_epoch_min() const { return *min_element(epochs.begin(), epochs.end()); }
+    /// @brief Get the maximum RV @return double
+    double get_epoch_max() const { return *max_element(epochs.begin(), epochs.end()); }
+    /// @brief Get the RV span @return double
+
+    /// @brief Get the mininum y2 @return double
+    double get_y2_min() const { return *min_element(y2.begin(), y2.end()); }
+    /// @brief Get the maximum y2 @return double
+    double get_y2_max() const { return *max_element(y2.begin(), y2.end()); }
+    /// @brief Get the y2 span @return double
+    double get_y2_span() const { return get_y2_max() - get_y2_min(); }
+
+};

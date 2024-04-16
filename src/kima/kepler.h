@@ -81,6 +81,10 @@ namespace brandt
                                   const double &B, const double &F, const double &G,
                                   const double &ecc, const double P, const double &M0,
                                   const double &M0_epoch);
+    std::vector<double> keplerian_et(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &M0,
+                                  const double &M0_epoch);
 }
 
 

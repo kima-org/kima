@@ -474,7 +474,81 @@ void RVGAIAConditionalPrior::print(std::ostream& out) const //needed?
 
 /*****************************************************************************/
 
+ETConditionalPrior::ETConditionalPrior()
+{
+    
 
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1., 1e5);
+    if (!Kprior)
+        Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!phiprior)
+        phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!wprior)
+        wprior = make_shared<Uniform>(0, 2*M_PI);
+}
+
+void ETConditionalPrior::set_default_priors(const ETData &ETdata)
+{
+    
+}
+
+
+void ETConditionalPrior::from_prior(RNG& rng)
+{
+
+}
+
+double ETConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    return 0.0;
+}
+
+// vec[0] = period
+// vec[1] = amplitude
+// vec[2] = phase
+// vec[3] = ecc
+// vec[4] = viewing angle
+
+double ETConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+
+    return Pprior->log_pdf(vec[0]) + 
+           Kprior->log_pdf(vec[1]) + 
+           phiprior->log_pdf(vec[2]) + 
+           eprior->log_pdf(vec[3]) + 
+           wprior->log_pdf(vec[4]);
+}
+
+void ETConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+
+    vec[0] = Pprior->cdf_inverse(vec[0]);
+    vec[1] = Kprior->cdf_inverse(vec[1]);
+    vec[2] = phiprior->cdf_inverse(vec[2]);
+    vec[3] = eprior->cdf_inverse(vec[3]);
+    vec[4] = wprior->cdf_inverse(vec[4]);
+}
+
+void ETConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+
+    vec[0] = Pprior->cdf(vec[0]);
+    vec[1] = Kprior->cdf(vec[1]);
+    vec[2] = phiprior->cdf(vec[2]);
+    vec[3] = eprior->cdf(vec[3]);
+    vec[4] = wprior->cdf(vec[4]);
+}
+
+void ETConditionalPrior::print(std::ostream& out) const
+{
+
+}
+
+
+/*****************************************************************************/
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
@@ -617,6 +691,31 @@ void bind_RVGAIAConditionalPrior(nb::module_ &m) {
             [](RVGAIAConditionalPrior &c) { return c.cosiprior; },
             [](RVGAIAConditionalPrior &c, distribution &d) { c.cosiprior = d; },
             "Prior for cosine(s) of the orbital inclination");
+}
+
+void bind_ETConditionalPrior(nb::module_ &m) {
+    nb::class_<ETConditionalPrior>(m, "ETConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](RVConditionalPrior &c) { return c.Pprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)")
+        .def_prop_rw("Kprior",
+            [](RVConditionalPrior &c) { return c.Kprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            "Prior for the semi-amplitude(s)")
+        .def_prop_rw("eprior",
+            [](RVConditionalPrior &c) { return c.eprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricity(ies)")
+        .def_prop_rw("wprior",
+            [](RVConditionalPrior &c) { return c.wprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
+            "Prior for the argument(s) of periastron")
+        .def_prop_rw("phiprior",
+            [](RVConditionalPrior &c) { return c.phiprior; },
+            [](RVConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            "Prior for the mean anomaly(ies)");
 }
 
 // NB_MODULE(ConditionalPrior, m) {

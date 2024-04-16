@@ -908,6 +908,68 @@ GAIAData::GAIAData() {};
 
 /*****************************************************************************/
 
+ETData::ETData() {};
+    /**
+      * @brief Load Gaia epoch astrometry data from a file.
+      *
+      * Read a tab/space separated file with columns
+      * ```
+      *   time  position  error  scan-angle  parallax-factor-along-scan
+      *   ...   ...   ...    ...    ...
+      * ```
+      *
+      * @param filename   the name of the file
+      * @param units      units of the positions and errors, either "mas" or "muas"(?)
+      * @param skip       number of lines to skip in the beginning of the file (default = 2)
+      */
+
+    void ETData::load(const string filename, const string units, int skip, int max_rows,
+                        const string delimiter)
+    {
+        if (filename.empty()) {
+            std::string msg = "kima: ETData: no filename provided";
+            throw std::invalid_argument(msg);
+            // exit(1);
+        }
+
+        if (filename.size() == 1) {
+            std::string msg = "kima: ETData: filename with one character is probably an error";
+            throw std::runtime_error(msg);
+        }
+
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .max_rows(max_rows)
+                        .delimiter(delimiter)();
+
+        if (data.size() < 3) {
+            std::string msg = "kima: ETData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+            throw std::runtime_error(msg);
+        }
+        
+
+        _datafile = filename;
+        _units = units;
+        _skip = skip;
+
+        epochs = data[0];
+        et = data[1];
+        etsig = data[2];
+
+        // epoch for the mean anomaly, by default the gaia reference time
+        M0_epoch = et[0];
+
+        // How many points did we read?
+        if (VERBOSE)
+            printf("# Loaded %zu data points from file %s\n", epochs.size(),
+                filename.c_str());
+
+    }
+
+
+
+/*****************************************************************************/
+
 // class RVData_publicist : public RVData
 // {
 //     public:
@@ -1039,6 +1101,19 @@ Args:
         .def_prop_ro("wsig", [](GAIAData &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
         .def_prop_ro("psi", [](GAIAData &d) { return d.get_psi(); }, "The Gaia scan angles")
         .def_prop_ro("pf", [](GAIAData &d) { return d.get_pf(); }, "the parallax factors");
+        //
+        //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
+        
+    nb::class_<ETData>(m, "ETData", "docs")
+        // constructor
+        .def(nb::init<const string&, const string& , int, int, const string&>(),
+              "filename"_a, "units"_a="days", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
+              "Load Eclipse timing data from a file")
+        // properties
+        .def_prop_ro("epochs", [](ETData &d) { return d.get_epochs(); }, "The epoch (Nth eclipse since number 0)")
+        .def_prop_ro("et", [](ETData &d) { return d.get_et(); }, "The observed mid-eclipse times")
+        .def_prop_ro("etsig", [](ETData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times");
+
         //
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
 }

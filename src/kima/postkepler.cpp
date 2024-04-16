@@ -245,8 +245,9 @@ namespace postKep
             
             double vrad = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
             
+
             double f = acos((cosE - ecc) / (1 - ecc * cosE));
-            
+                
             double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, cosi, M1, M2, R1, GR, Tid);
             
             rv[i] = vrad + v_correction;
@@ -299,6 +300,7 @@ namespace postKep
             double f = acos((cosE - ecc) / (1 - ecc * cosE));
             
             auto [v_correction1,v_correction2] = postKep::post_Newtonian_sb2(K, K/q, f, ecc, w_t, P, cosi, q, R1, R2, GR, Tid);
+           
             rv1[i] = vrad1 + v_correction1;
             rv2[i] = vrad2 + v_correction2;
       }

@@ -17,6 +17,7 @@ using namespace nb::literals;
 #include "GAIAmodel.h"
 #include "RVGAIAmodel.h"
 #include "RVFWHMRHKmodel.h"
+#include "ETmodel.h"
 
 
 auto RUN_DOC = R"D(
@@ -103,4 +104,6 @@ NB_MODULE(Sampler, m)
     m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS, RUN_DOC);
 
     m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS, RUN_DOC);
+    
+    m.def("run", RUN_SIGNATURE(ETmodel) { RUN_BODY(ETmodel) }, RUN_ARGS, RUN_DOC);
 }
