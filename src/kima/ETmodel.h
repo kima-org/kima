@@ -7,7 +7,6 @@
 #include "ConditionalPrior.h"
 #include "utils.h"
 #include "kepler.h"
-#include "AMDstability.h"
 
 using namespace std;
 using namespace DNest4;

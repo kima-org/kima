@@ -402,8 +402,7 @@ string ETmodel::description() const
     desc += "staleness" + sep;
     if (studentt)
         desc += "nu" + sep;
-    desc += "tanvel" + sep;
-
+    
     return desc;
 }
 

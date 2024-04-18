@@ -697,24 +697,24 @@ void bind_ETConditionalPrior(nb::module_ &m) {
     nb::class_<ETConditionalPrior>(m, "ETConditionalPrior")
         .def(nb::init<>())
         .def_prop_rw("Pprior",
-            [](RVConditionalPrior &c) { return c.Pprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            [](ETConditionalPrior &c) { return c.Pprior; },
+            [](ETConditionalPrior &c, distribution &d) { c.Pprior = d; },
             "Prior for the orbital period(s)")
         .def_prop_rw("Kprior",
-            [](RVConditionalPrior &c) { return c.Kprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            [](ETConditionalPrior &c) { return c.Kprior; },
+            [](ETConditionalPrior &c, distribution &d) { c.Kprior = d; },
             "Prior for the semi-amplitude(s)")
         .def_prop_rw("eprior",
-            [](RVConditionalPrior &c) { return c.eprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.eprior = d; },
+            [](ETConditionalPrior &c) { return c.eprior; },
+            [](ETConditionalPrior &c, distribution &d) { c.eprior = d; },
             "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("wprior",
-            [](RVConditionalPrior &c) { return c.wprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
+            [](ETConditionalPrior &c) { return c.wprior; },
+            [](ETConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
         .def_prop_rw("phiprior",
-            [](RVConditionalPrior &c) { return c.phiprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            [](ETConditionalPrior &c) { return c.phiprior; },
+            [](ETConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)");
 }
 
