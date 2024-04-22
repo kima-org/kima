@@ -240,6 +240,46 @@ class InverseGamma:
         """
         ...
     
+class InverseMoment:
+    """
+    InverseMoment prior
+    """
+
+    def __init__(self, tau: float, kmax: float) -> None:
+        ...
+    
+    def cdf(self, x: float) -> float:
+        """
+        Cumulative distribution function evaluated at `x`
+        """
+        ...
+    
+    @property
+    def kmax(self) -> float:
+        ...
+    @kmax.setter
+    def kmax(self, arg: float, /) -> None:
+        ...
+    
+    def logpdf(self, x: float) -> float:
+        """
+        Log of the probability density function evaluated at `x`
+        """
+        ...
+    
+    def ppf(self, q: float) -> float:
+        """
+        Percent point function (inverse of cdf) evaluated at `q`
+        """
+        ...
+    
+    @property
+    def tau(self) -> float:
+        ...
+    @tau.setter
+    def tau(self, arg: float, /) -> None:
+        ...
+    
 class Kumaraswamy:
     """
     Kumaraswamy distribution (similar to a Beta distribution)

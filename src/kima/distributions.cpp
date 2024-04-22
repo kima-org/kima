@@ -9,6 +9,7 @@ using namespace nb::literals;
 #include "DNest4.h"
 
 #include "InverseGamma.h"
+#include "InverseMoment.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
@@ -333,6 +334,26 @@ NB_MODULE(distributions, m)
         // for pickling
         .def("__getstate__", [](const DNest4::UniformAngle &d) { return 0; })
         .def("__setstate__", [](DNest4::UniformAngle &d, const int &state) { new (&d) DNest4::UniformAngle(); });
+
+    // InverseMoment
+    nb::class_<DNest4::InverseMoment, DNest4::ContinuousDistribution>(m, "InverseMoment", "InverseMoment prior")
+        .def(nb::init<double, double>(), "tau"_a, "kmax"_a)
+        .def_rw("tau", &DNest4::InverseMoment::tau)
+        .def_rw("kmax", &DNest4::InverseMoment::kmax)
+        .def("__repr__", [](const DNest4::InverseMoment &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::InverseMoment::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::InverseMoment::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::InverseMoment::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::InverseMoment &d) { 
+                return std::make_tuple(d.tau, d.kmax, 0.0, 0.0); 
+        })
+        .def("__setstate__",
+             [](DNest4::InverseMoment &d, const _state_type &state) {
+                new (&d) DNest4::InverseMoment(std::get<0>(state), std::get<1>(state));
+            }
+        );
 
 
     // InverseGamma
