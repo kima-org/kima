@@ -13,9 +13,12 @@ from kima.distributions import (Cauchy, Exponential, Fixed, Kumaraswamy,
                                 Rayleigh, Triangular, Uniform, UniformAngle)
 
 def test_creation():
+    c = Cauchy(1, 3.0)
+    e = Exponential(2.0)
+    f = Fixed(2.5)
+    k = Kumaraswamy(0.8, 3)
     g = Gaussian(0, 2)
     u = Uniform(0, 10)
-    f = Fixed(2.5)
 
 def test_repr():
     u = Uniform(0, 2)
