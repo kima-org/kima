@@ -1951,9 +1951,9 @@ class KimaResults:
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
                     if self.model != 'RVmodel':
-                        v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                        v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
-                        v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                        v += keplerian(t, P, K, ecc, w, M, Tc)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
