@@ -18,11 +18,18 @@ namespace postKep
     inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi);
     inline double v_tide(double R1, double M1, double M2, double P, double f, double w);
     double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2, double R1, bool GR, bool Tid);
+    double post_Newtonian_sb2(double K1, double K2, double f, double ecc, double w, double P, double q, double R1, double R2, bool GR, bool Tid);
     
     std::vector<double> keplerian_prec(const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
-                                  const double &M0_epoch);
+                                  const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
+                                  const double &R1, bool GR, bool Tid);
+    std::tuple<std::vector<double>, std::vector<double>> keplerian_prec_sb2(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &q, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
+                                  const double &M0_epoch, const double &cosi,
+                                  const double &R1, const double &R2, bool GR, bool Tid);
 }
 
 namespace MassConv

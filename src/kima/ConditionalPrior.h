@@ -223,10 +223,49 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
 
 };
 
+class ETConditionalPrior:public DNest4::ConditionalPrior
+{
+	private:
+
+		double perturb_hyperparameters(DNest4::RNG& rng);
+
+	public:
+		ETConditionalPrior();
+		
+		void set_default_priors(const ETData &ETdata);
+		
+		// priors for all planet parameters
+		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+		
+		/// Prior for the orbital periods.
+		distribution Pprior;
+		/// Prior for the semi-amplitudes (in m/s).
+		distribution Kprior;
+		/// Prior for the eccentricities.
+		distribution eprior;
+		/// Prior for the phases.
+		distribution phiprior;
+		/// Prior for the .
+		distribution wprior;
+
+
+		/// Generate a point from the prior.
+		void from_prior(DNest4::RNG& rng);
+
+		double log_pdf(const std::vector<double>& vec) const;
+		/// Get parameter sample from a uniform sample (CDF)
+		void from_uniform(std::vector<double>& vec) const;
+		/// Get uniform sample from a parameter sample (inverse CDF)
+		void to_uniform(std::vector<double>& vec) const;
+
+		void print(std::ostream& out) const;
+		static const int weight_parameter = 1;
+
+};
 
 
 
 void bind_RVConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
 void bind_RVGAIAConditionalPrior(nb::module_ &m);
-
+void bind_ETConditionalPrior(nb::module_&m);

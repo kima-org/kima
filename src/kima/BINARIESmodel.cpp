@@ -63,7 +63,6 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
     // if offsets_prior is not (re)defined, assume a default
     if (data._multi && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
-
     for (size_t j = 0; j < data.number_instruments - 1; j++)
     {
         // if individual_offset_prior is not (re)defined, assume a offsets_prior
@@ -71,12 +70,19 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
             individual_offset_prior[j] = offsets_prior;
     }
 
-
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
+        if (!KO_cosiprior[0]){
+            if (eclipsing) {
+                KO_cosiprior[0] = make_prior<Fixed>(0);
+            }
+            else{
+                KO_cosiprior[0] = make_prior<Uniform>(0.0,1.0);
+            }
+        }
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_wdotprior[i])
-                throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
+                throw std::logic_error("When using BINARIESmodel, please set priors on the binary parameters (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior) for each known object");
             if (double_lined && !KO_qprior[i])
                 throw std::logic_error("When double_lined=true, please set prior for KO_qprior");
         }
@@ -93,7 +99,6 @@ void BINARIESmodel::from_prior(RNG& rng)
     // preliminaries
     setPriors();
     save_setup();
-
     planets.from_prior(rng);
     planets.consolidate_diff();
 
@@ -122,12 +127,6 @@ void BINARIESmodel::from_prior(RNG& rng)
     }
 
 
-//     if (data.indicator_correlations)
-//     {
-//         for (unsigned i=0; i<data.number_indicators; i++)
-//             betas[i] = betaprior->generate(rng);
-//     }
-
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
         KO_K.resize(n_known_object);
@@ -137,6 +136,7 @@ void BINARIESmodel::from_prior(RNG& rng)
         KO_phi.resize(n_known_object);
         KO_w.resize(n_known_object);
         KO_wdot.resize(n_known_object);
+        KO_cosi.resize(n_known_object);
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
@@ -147,6 +147,7 @@ void BINARIESmodel::from_prior(RNG& rng)
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
             KO_wdot[i] = KO_wdotprior[i]->generate(rng);
+            KO_cosi[i] = KO_cosiprior[i]->generate(rng);
         }
     }
 
@@ -154,9 +155,13 @@ void BINARIESmodel::from_prior(RNG& rng)
         nu = nu_prior->generate(rng);
 
 
-    calculate_mu();
-    if (double_lined)
-        calculate_mu_2();
+    
+    if (double_lined){
+        calculate_mus();
+    }
+    else{
+        calculate_mu();
+    }
 
 }
 
@@ -207,14 +212,6 @@ void BINARIESmodel::calculate_mu()
             }
         }
 
-        //if(data.indicator_correlations)
-        //{
-            //for(size_t i=0; i<N; i++)
-            //{
-                //for(size_t j = 0; j < data.number_indicators; j++)
-                   //mu[i] += betas[j] * actind[j][i];
-            //}   
-        //}
 
         if (known_object) { // KO mode!
             add_known_object();
@@ -249,17 +246,6 @@ void BINARIESmodel::calculate_mu()
         for(size_t i=0; i<N; i++)
             mu[i] += v[i];
 
-//         for(size_t i=0; i<N; i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(P, 0);
-//             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-//             omega_t = postKep::change_omega(omega, 0, ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-//             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-//             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
-//             mu[i] += v;
-//         }
     }
 
 
@@ -272,7 +258,90 @@ void BINARIESmodel::calculate_mu()
 
 }
 
-void BINARIESmodel::calculate_mu_2()
+// void BINARIESmodel::calculate_mu_2()
+// {
+//     size_t N = data.N();
+// 
+//     // Update or from scratch?
+//     bool update = (planets.get_added().size() < planets.get_components().size()) &&
+//             (staleness <= 10);
+// 
+//     // Get the components
+//     const vector< vector<double> >& components = (update)?(planets.get_added()):
+//                 (planets.get_components());
+//     // at this point, components has:
+//     //  if updating: only the added planets' parameters
+//     //  if from scratch: all the planets' parameters
+// 
+//     // Zero the signal
+//     if(!update) // not updating, means recalculate everything
+//     {
+//         mu_2.assign(mu_2.size(), bkg2);
+//         staleness = 0;
+//         if(trend)
+//         {
+//             double tmid = data.get_t_middle();
+//             for(size_t i=0; i<N; i++)
+//             {
+//                 mu_2[i] += slope*(data.t[i]-tmid) + 
+//                             quadr*pow(data.t[i]-tmid, 2) + 
+//                             cubic*pow(data.t[i]-tmid, 3);
+//             }
+//         }
+// 
+//         if(data._multi)
+//         {
+//             for(size_t j=0; j<offsets_2.size(); j++)
+//             {
+//                 for(size_t i=0; i<N; i++)
+//                 {
+//                     if (data.obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
+//                 }
+//             }
+//         }
+// 
+// 
+//         if (known_object) { // KO mode!
+//             add_known_object_secondary();
+//         }
+//     }
+//     else // just updating (adding) planets
+//         staleness++;
+// 
+// 
+//     #if TIMING
+//     auto begin = std::chrono::high_resolution_clock::now();  // start timing
+//     #endif
+// 
+// 
+//     double f, v, ti;
+//     double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+//     for(size_t j=0; j<components.size(); j++)
+//     {
+// 
+//         P = components[j][0];
+//         K = components[j][1];
+//         phi = components[j][2];
+//         ecc = components[j][3];
+//         omega = components[j][4];
+//         
+//         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
+//         for(size_t i=0; i<N; i++)
+//             mu_2[i] += v[i];
+// 
+// 
+//     }
+// 
+// 
+//     #if TIMING
+//     auto end = std::chrono::high_resolution_clock::now();
+//     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+//     #endif
+//     
+// 
+// }
+
+void BINARIESmodel::calculate_mus()
 {
     size_t N = data.N();
 
@@ -290,6 +359,7 @@ void BINARIESmodel::calculate_mu_2()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
+        mu.assign(mu.size(), bkg);
         mu_2.assign(mu_2.size(), bkg2);
         staleness = 0;
         if(trend)
@@ -297,34 +367,29 @@ void BINARIESmodel::calculate_mu_2()
             double tmid = data.get_t_middle();
             for(size_t i=0; i<N; i++)
             {
-                mu_2[i] += slope*(data.t[i]-tmid) + 
-                            quadr*pow(data.t[i]-tmid, 2) + 
-                            cubic*pow(data.t[i]-tmid, 3);
+                mu[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
+                mu_2[i] += slope*(data.t[i]-tmid) + quadr*pow(data.t[i]-tmid, 2) + cubic*pow(data.t[i]-tmid, 3);
             }
         }
 
         if(data._multi)
         {
-            for(size_t j=0; j<offsets_2.size(); j++)
+            for(size_t j=0; j<offsets.size(); j++)
             {
                 for(size_t i=0; i<N; i++)
                 {
-                    if (data.obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
+                    if (data.obsi[i] == j+1) 
+                    { 
+                        mu[i] += offsets[j]; 
+                        mu_2[i] += offsets_2[j]; 
+                    }
                 }
             }
         }
 
-//         if(data.indicator_correlations)
-//         {
-//             for(size_t i=0; i<N; i++)
-//             {
-//                 for(size_t j = 0; j < data.number_indicators; j++)
-//                    mu_2[i] += betas[j] * actind[j][i];
-//             }   
-//         }
 
         if (known_object) { // KO mode!
-            add_known_object_secondary();
+            add_known_object_sb2();
         }
     }
     else // just updating (adding) planets
@@ -340,10 +405,6 @@ void BINARIESmodel::calculate_mu_2()
     double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
     for(size_t j=0; j<components.size(); j++)
     {
-//         if(hyperpriors)
-//             P = exp(components[j][0]);
-//         else
-//             P = components[j][0];
 
         P = components[j][0];
         K = components[j][1];
@@ -353,19 +414,12 @@ void BINARIESmodel::calculate_mu_2()
         
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
+        {
+            mu[i] += v[i];
             mu_2[i] += v[i];
+        }
 
-//         for(size_t i=0; i<t.size(); i++)
-//         {
-//             ti = t[i];
-//             P_anom = postKep::period_correction(P, omegadot);
-//             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-//             omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-//             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-//             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
-//             mu_2[i] += v;
-//         }
+
     }
 
 
@@ -379,117 +433,70 @@ void BINARIESmodel::calculate_mu_2()
 
 void BINARIESmodel::remove_known_object()
 {   
-    double f, v, delta_v, ti, Tp, w_t, P_anom;
+    double f, v, ti, Tp, w_t, P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] -= v[i];
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         }
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu[i] -= v;
-//         }
     }
 }
 
-void BINARIESmodel::remove_known_object_secondary()
+void BINARIESmodel::remove_known_object_sb2()
 {
     
-    double f, v, delta_v, ti, Tp, w, w_t, P_anom, K2;
+    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        K2 = KO_K[j]/KO_q[j];
-        w = KO_w[j] - M_PI;
-        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        
         for(size_t i=0; i<data.t.size(); i++)
         {
-            mu_2[i] -= v[i];
+            mu[i] -= v1[i];
+            mu_2[i] -= v2[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             K2 = KO_K[j]/KO_q[j];
-//             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu_2[i] -= v;
-//         }
+
     }
 }
 
 void BINARIESmodel::add_known_object()
 {
     
-    double f, v, delta_v, ti, Tp, w_t, P_anom;
+    double f, v, ti, Tp, w_t, P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu[i] += v;
-//         }
+
     }
 }
 
-void BINARIESmodel::add_known_object_secondary()
+void BINARIESmodel::add_known_object_sb2()
 {
     
-    double f, v, delta_v, ti, Tp, w, w_t, P_anom, K2;
+    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        K2 = KO_K[j]/KO_q[j];
-        w = KO_w[j] - M_PI;
-        auto v = postKep::keplerian_prec(data.t, P_anom, K2, KO_e[j], w, KO_wdot[j], KO_phi[j], data.M0_epoch);
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        
+
         for(size_t i=0; i<data.t.size(); i++)
         {
-            mu_2[i] += v[i];
+            mu[i] += v1[i];
+            mu_2[i] += v2[i];
         }        
-//         for(size_t i=0; i<data.t.size(); i++)
-//         {
-//             ti = data.t[i];
-//             P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-//             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-//             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
-//             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-//             K2 = KO_K[j]/KO_q[j];
-//             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-//             delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius,relativistic_correction,tidal_correction);
-//             v += delta_v;
-//             mu_2[i] += v;
-//         }
+
     }
 }
 
@@ -536,9 +543,16 @@ double BINARIESmodel::perturb(RNG& rng)
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
-        calculate_mu();
-        if (double_lined)
-            calculate_mu_2();
+        if (double_lined){
+            calculate_mus();
+        }
+        else{
+            calculate_mu();
+        }
+//         calculate_mu();
+//         if (double_lined)
+//             calculate_mu_2();
+
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
@@ -564,9 +578,12 @@ double BINARIESmodel::perturb(RNG& rng)
 
         if (known_object)
         {
-            remove_known_object();
+            
             if (double_lined)
-                remove_known_object_secondary();
+                remove_known_object_sb2();
+            else{
+                remove_known_object();
+            }
 
             for (int i=0; i<n_known_object; i++){
                 KO_Pprior[i]->perturb(KO_P[i], rng);
@@ -575,13 +592,17 @@ double BINARIESmodel::perturb(RNG& rng)
                 KO_phiprior[i]->perturb(KO_phi[i], rng);
                 KO_wprior[i]->perturb(KO_w[i], rng);
                 KO_wdotprior[i]->perturb(KO_wdot[i], rng);
+                KO_cosiprior[i]->perturb(KO_cosi[i], rng);
                 if (double_lined)
                     KO_qprior[i]->perturb(KO_q[i],rng);
             }
 
-            add_known_object();
+            
             if (double_lined)
-                add_known_object_secondary();
+                add_known_object_sb2();
+            else{
+                add_known_object();
+            }
         }
     
     }
@@ -733,7 +754,6 @@ double BINARIESmodel::log_likelihood() const
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
-
     if (studentt){
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
@@ -789,15 +809,38 @@ double BINARIESmodel::log_likelihood() const
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
+//             cout << logL <<endl;
+//             sleep(0.1);
             if (double_lined)
             {
                 logL += - halflog2pi - 0.5*log(var_2)
                         - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
+                
             }
+//         cout << "y"  <<endl;
+//         for (auto k: y)
+//             std::cout << k << ' ';
+//         cout << endl;
+//         sleep(1);
+//         cout << "mu"  <<endl;
+//         for (auto k: mu)
+//             std::cout << k << ' ';
+//         cout << endl;
+//         sleep(1);
+//         cout << "y2"  <<endl;
+//         for (auto k: y_2)
+//             std::cout << k << ' ';
+//         cout << endl;
+//         sleep(1);
+//         cout << "mu2"  <<endl;
+//         for (auto k: mu_2)
+//             std::cout << k << ' ';
+//         cout << endl;
+//         sleep(1);
+//         cout << logL <<endl;
         }
     }
 
-    
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -869,6 +912,7 @@ void BINARIESmodel::print(std::ostream& out) const
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_w) out << w << "\t";
         for (auto wdot: KO_wdot) out <<wdot << "\t";
+        for (auto cosi: KO_cosi) out <<cosi << "\t";
     }
 
     planets.print(out);
@@ -944,6 +988,8 @@ string BINARIESmodel::description() const
             desc += "KO_w" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_wdot" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_cosi" + std::to_string(i) + sep;
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -996,6 +1042,7 @@ void BINARIESmodel::save_setup() {
     fout << "relativistic_correction: " << relativistic_correction <<endl;
     fout << "tidal_correction: " << tidal_correction <<endl;
     fout << "double_lined: " << double_lined <<endl;
+    fout << "eclipsing: " << eclipsing <<endl;
     fout << endl;
 
     fout << endl;
@@ -1053,6 +1100,7 @@ void BINARIESmodel::save_setup() {
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
             fout << "wdotprior_" << i << ": " << *KO_wdotprior[i] << endl;
+            fout << "cosiprior_" << i << ": " << *KO_cosiprior[i] << endl;
         }
     }
 
@@ -1091,6 +1139,7 @@ class BINARIESmodel_publicist : public BINARIESmodel
         using BINARIESmodel::relativistic_correction;
         using BINARIESmodel::tidal_correction;
         using BINARIESmodel::double_lined;
+        using BINARIESmodel::eclipsing;
 };
 
 
@@ -1132,6 +1181,9 @@ NB_MODULE(BINARIESmodel, m) {
         //
         .def_rw("double_lined", &BINARIESmodel_publicist::double_lined,
                 "whether the data is for a double lined binary, and has two sets of RVs for each epoch")
+        //
+        .def_rw("eclipsing", &BINARIESmodel_publicist::eclipsing,
+                "whether binary is eclipsing and the inclination can be fixed to 90, defaults to true. If false, default prior is uniform in cosi")
 
         // priors
         .def_prop_rw("Cprior",
@@ -1167,25 +1219,36 @@ NB_MODULE(BINARIESmodel, m) {
         // ? should these setters check if known_object/sb2 is true?
         .def_prop_rw("KO_Pprior",
                      [](BINARIESmodel &m) { return m.KO_Pprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
+                     "Prior for Period of Binary orbit (+other known objects)")
         .def_prop_rw("KO_Kprior",
                      [](BINARIESmodel &m) { return m.KO_Kprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+                     "Prior for Semi-amplitude of Binary orbit (+other known objects)")
         .def_prop_rw("KO_eprior",
                      [](BINARIESmodel &m) { return m.KO_eprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
+                     "Prior for eccentricity of Binary orbit (+other known objects)")
         .def_prop_rw("KO_wprior",
                      [](BINARIESmodel &m) { return m.KO_wprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
+                     "Prior for argument of periastron of Binary orbit (+other known objects)")
         .def_prop_rw("KO_phiprior",
                      [](BINARIESmodel &m) { return m.KO_phiprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
+                     "Prior for phase of Binary orbit at the reference time (+other known objects)")
         .def_prop_rw("KO_wdotprior",
                      [](BINARIESmodel &m) { return m.KO_wdotprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wdotprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_wdotprior = vd; },
+                     "Prior for apsidal precession rate of Binary orbit (+other known objects)")
         .def_prop_rw("KO_qprior",
                      [](BINARIESmodel &m) { return m.KO_qprior; },
-                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_qprior = vd; })
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_qprior = vd; },
+                     "Prior for mass ratio of Binary (+other known objects), used if double lined")
+        .def_prop_rw("KO_cosiprior",
+                     [](BINARIESmodel &m) { return m.KO_cosiprior; },
+                     [](BINARIESmodel &m, std::vector<distribution>& vd) { m.KO_cosiprior = vd; },
+                     "Prior for cosine of the inclination of Binary orbit (+other known objects) to the line-of-sight")
                      
             
             

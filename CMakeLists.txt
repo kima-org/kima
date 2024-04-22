@@ -83,6 +83,10 @@ nanobind_add_module(GAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
 nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVGAIAmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    
+nanobind_add_module(ETmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
+                    src/kima/ETmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
+                    src/kima/kepler.cpp)
 
 
 # compile the Sampler module to create the kima.run function
@@ -97,6 +101,7 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/GAIAmodel.cpp
                     src/kima/RVGAIAmodel.cpp
                     src/kima/RVFWHMRHKmodel.cpp
+                    src/kima/ETmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/postkepler.cpp 
                     src/kima/transits.cpp src/kima/AMDstability.cpp)
@@ -119,7 +124,7 @@ target_compile_features(transits PRIVATE cxx_std_17)
 set(INCLUDES ${LOADTXT_PATH} ${DNEST4_PATH} ${GCEM_PATH})
 
 # compilation settings for each module
-foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel)
+foreach(targ distributions Data ConditionalPrior RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel ETmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -152,7 +157,7 @@ foreach(module Data ConditionalPrior)
 endforeach()
 
 foreach(module RVmodel OutlierRVmodel TRANSITmodel 
-        GPmodel RVFWHMmodel RVFWHMRHKmodel BINARIESmodel GAIAmodel RVGAIAmodel)
+        GPmodel RVFWHMmodel RVFWHMRHKmodel BINARIESmodel GAIAmodel RVGAIAmodel ETmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 

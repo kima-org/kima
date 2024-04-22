@@ -53,6 +53,8 @@ class KIMA_API BINARIESmodel
         
         ///Is the binary a double lined binary with RV data on both stars
         bool double_lined = false;
+        
+        bool eclipsing = true;
     
     private:
         
@@ -99,6 +101,7 @@ class KIMA_API BINARIESmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
         std::vector<double> KO_wdot;
+        std::vector<double> KO_cosi;
 
         // The signal
         std::vector<double> mu;// the RV model
@@ -106,11 +109,12 @@ class KIMA_API BINARIESmodel
         std::vector<double> mu_2;// the RV model for secondary
                             //std::vector<long double>(RVData::get_instance().N()); // changed to imitate RVFWHM get_data replaced by get_instance
         void calculate_mu();
-        void calculate_mu_2();
+//         void calculate_mu_2();
+        void calculate_mus();
         void add_known_object();
-        void add_known_object_secondary();
+        void add_known_object_sb2();
         void remove_known_object();
-        void remove_known_object_secondary();
+        void remove_known_object_sb2();
         
         int is_stable() const;
 
@@ -152,6 +156,7 @@ class KIMA_API BINARIESmodel
         std::vector<distribution> KO_phiprior {(size_t) n_known_object};
         std::vector<distribution> KO_wprior {(size_t) n_known_object};
         std::vector<distribution> KO_wdotprior {(size_t) n_known_object};
+        std::vector<distribution> KO_cosiprior {(size_t) n_known_object};
 
 
         distribution nu_prior;
