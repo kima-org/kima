@@ -675,7 +675,7 @@ def get_instrument_name(data_file):
             # 'ESPRESSO*[\d+]*',
             r'ESPRESSO*[\d+_\w+]*',
             r'HARPS[^\W_]*[\d+]*',
-            r'HIRES',
+            r'HIRES[^\W_]*[\d+]*',
             r'APF',
             r'CORALIE[\d+]*',
             r'HJS',
