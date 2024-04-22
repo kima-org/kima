@@ -36,14 +36,13 @@ jobs:
       run: |
         echo "MACOS_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
 
-    - name: Requirements for development
+    - name: Update pip
       run: |
         pip install pip -U
-        pip install wheel nanobind "scikit-build-core[pyproject]" -U
 
     - name: Build and install
       run: |
-        pip install --no-build-isolation -Ceditable.rebuild=true -ve .
+        pip install -ve .
 
     - name: Import
       run: |
