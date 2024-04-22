@@ -39,7 +39,7 @@ find_package(nanobind CONFIG REQUIRED)
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp 
-                    src/kima/InverseGamma.cpp)
+                    src/kima/InverseGamma.cpp src/kima/InverseMoment.cpp)
 
 nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
