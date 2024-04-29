@@ -588,35 +588,20 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
 
     for i, eta in enumerate(available_etas):
         ax = np.ravel(axes)[i]
-        ax.hist(getattr(res.posteriors, f'η{i+1}'), bins=40, range=ranges[i], **hist_kwargs)
+        try:
+            ax.hist(getattr(res.posteriors, f'η{i+1}'), bins=40, range=ranges[i], **hist_kwargs)
+        except AttributeError:
+            ax.hist(res.etas[:, i], bins=40, range=ranges[i], **hist_kwargs)
 
         if show_prior:
-            priors = [p for p in res.priors.keys() if 'eta' in p]
-            # ax.hist(prior.rvs(res.ESS), bins=40, color='k', alpha=0.2)
-
-        if Np is not None:
-            ax.hist(eta[m],
-                    bins=40,
-                    histtype='step',
-                    alpha=0.5,
-                    label='$N_p$=%d samples' % Np,
-                    range=ranges[i])
-            ax.legend()
+            prior = res.priors[f'eta{i+1}_prior']
+            ax.hist(distribution_rvs(prior, res.ESS), bins=40, 
+                    color='k', alpha=0.2, density=True)
 
         ax.set(xlabel=labels[i], ylabel='posterior')
 
     for j in range(i + 1, 2 * nplots):
         np.ravel(axes)[j].axis('off')
-
-    if show_prior:
-        axes[0, 0].legend(
-            ['posterior', 'prior'],
-            bbox_to_anchor=(-0.1, 1.25), ncol=2,
-            loc='upper left',
-        )
-
-    # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    # fig.tight_layout()
 
     if res.save_plots:
         filename = 'kima-showresults-fig4.png'
