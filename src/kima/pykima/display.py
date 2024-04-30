@@ -3383,3 +3383,40 @@ def interactive_plotter(res):
     axs[0].semilogx(res.posteriors.P, res.posteriors.K, '.', ms=1, picker=5)
     axs[1].semilogx(res.posteriors.P, res.posteriors.e, '.', ms=1)
     fig.canvas.callbacks.connect('pick_event', on_pick)
+
+
+def report(res):
+    fig, axs = plt.subplot_mosaic('aaab\npppt\nccc.\nddde', figsize=(8.3, 11.7), constrained_layout=True)
+
+    res.plot_random_samples(ax=axs['a'])
+    axs['a'].set(title='')
+
+    res.plot1(ax=axs['b'], show_ESS=False)
+    axs['b'].set(ylabel='posterior', title='')
+
+    res.plot2(ax=axs['p'])
+    axs['p'].set(title='', ylabel='posterior')
+
+    res.plot3(ax1=axs['c'], ax2=axs['d'])
+    axs['c'].set(title='')
+    axs['d'].set(title='')
+
+    res.hist_jitter(ax=axs['e'])
+    axs['e'].set(title='')
+
+    axs['t'].axis('off')
+    y = 0
+    axs['t'].text(0, y, res.model); y -= 1
+    axs['t'].text(0, y, f'logZ: {res.evidence:.2f}'); y -= 1
+    axs['t'].text(0, y, f'ESS: {res.ESS}'); y -= 1
+    axs['t'].text(0, y, f'fix: {res.fix}, $N_{{p, max}}: {res.npmax}$'); y -= 1
+    if res.KO:
+        axs['t'].text(0, y, f'KO: True'); y -= 1
+    if res.TR:
+        axs['t'].text(0, y, f'TR: True'); y -= 1
+    if res.trend:
+        axs['t'].text(0, y, f'trend: True, degree: {res.trend_degree}'); y -= 1
+    axs['t'].set(ylim=(y-1, 1))
+
+
+    return fig, axs
