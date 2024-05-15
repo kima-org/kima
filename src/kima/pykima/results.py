@@ -102,6 +102,10 @@ class data_holder:
     def __repr__(self):
         return f'data_holder(N={self.N}, t, y, e, obs)'
 
+    @property
+    def tmiddle(self):
+        return self.t.min() + 0.5 * self.t.ptp()
+
 
 @dataclass
 class astrometric_data_holder:
@@ -728,8 +732,6 @@ class KimaResults:
     #         self.astrometric_data.pf = data['pf']
     #         self.astrometric_data.N = data['mjd'].size
             
-
-    #     self.tmiddle = self.data.t.min() + 0.5 * self.data.t.ptp()
 
     def _read_jitters(self):
         i1, i2 = self._current_column, self._current_column + self.n_jitters
@@ -2017,9 +2019,9 @@ class KimaResults:
             # added so the last coefficient is 0
             trend_par = np.r_[trend_par[::-1], 0.0]
             if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-                v[0, :] += np.polyval(trend_par, t - self.tmiddle)
+                v[0, :] += np.polyval(trend_par, t - self.data.tmiddle)
             else:
-                v += np.polyval(trend_par, t - self.tmiddle)
+                v += np.polyval(trend_par, t - self.data.tmiddle)
 
         # TODO: check if _extra_data is always read correctly
         if hasattr(self, 'indicator_correlations') and self.indicator_correlations and include_indicator_correlations:
