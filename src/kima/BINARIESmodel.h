@@ -25,6 +25,9 @@ using namespace nb::literals;
 class KIMA_API BINARIESmodel
 {
     protected:
+
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -60,8 +63,6 @@ class KIMA_API BINARIESmodel
         
         RVData data;
         
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
         /// Maximum number of planets (by default 1)
         int npmax {1};
 

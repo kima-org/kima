@@ -1100,8 +1100,9 @@ Args:
         .def_prop_ro("w", [](GAIAData &d) { return d.get_w(); }, "The observed centroid positions")
         .def_prop_ro("wsig", [](GAIAData &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
         .def_prop_ro("psi", [](GAIAData &d) { return d.get_psi(); }, "The Gaia scan angles")
-        .def_prop_ro("pf", [](GAIAData &d) { return d.get_pf(); }, "the parallax factors");
+        .def_prop_ro("pf", [](GAIAData &d) { return d.get_pf(); }, "the parallax factors")
         //
+        .def_rw("M0_epoch", &GAIAData::M0_epoch, "reference epoch for the mean anomaly");
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
         
     nb::class_<ETData>(m, "ETData", "docs")

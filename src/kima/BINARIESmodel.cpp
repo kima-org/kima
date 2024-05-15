@@ -1126,6 +1126,7 @@ Args:
 class BINARIESmodel_publicist : public BINARIESmodel
 {
     public:
+        using BINARIESmodel::fix;
         using BINARIESmodel::trend;
         using BINARIESmodel::degree;
         using BINARIESmodel::studentt;
@@ -1147,6 +1148,9 @@ NB_MODULE(BINARIESmodel, m) {
     nb::class_<BINARIESmodel>(m, "BINARIESmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, BINARIESMODEL_DOC)
         //
+
+        .def_rw("fix", &BINARIESmodel_publicist::fix,
+                "whether the number of Keplerians is fixed")
         .def_rw("trend", &BINARIESmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &BINARIESmodel_publicist::degree,
