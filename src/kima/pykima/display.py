@@ -70,7 +70,8 @@ def make_plots(res, options, save_plots=False):
                 methods(**kwargs)
 
 
-def plot_posterior_np(res, ax=None, errors=False, show_ESS=True):
+def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
+                      show_title=True):
     """ Plot the histogram of the posterior for Np
 
     Args:
@@ -120,11 +121,13 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True):
 
     xlim = (-0.5, res.max_components + 0.5)
     xticks = np.arange(res.max_components + 1)
-    ax.set(xlabel='Number of Planets',
-           ylabel='Number of Posterior Samples / ESS',
-           xlim=xlim,
-           xticks=xticks,
-           title='Posterior distribution for $N_p$')
+    ax.set(
+        xlabel='Number of Planets',
+        ylabel='Number of Posterior Samples / ESS',
+        xlim=xlim,
+        xticks=xticks,
+        title='Posterior distribution for $N_p$' if show_title else ''
+    )
 
     nn = n[np.nonzero(n)]
     print('Np probability ratios: ', nn.flat[1:] / nn.flat[:-1])
@@ -727,7 +730,7 @@ def plot_gp_corner(res, include_jitters=False, ranges=None):
 
     if include_jitters:
         if res.multi:
-            instruments = [get_instrument_name(df) for df in res.data_file]
+            instruments = res.instruments
             if res.model == 'RVFWHMmodel':
                 labels += [rf'$s_{{\rm {i}}}^{{\rm RV}}$' for i in instruments]
                 labels += [rf'$s_{{\rm {i}}}^{{\rm FWHM}}$' for i in instruments]
@@ -1548,7 +1551,8 @@ def hist_correlations(res, show_prior=False):
         fig.savefig(filename)
 
 
-def hist_trend(res, per_year=True, show_prior=False, ax=None):
+def hist_trend(res, per_year=True, ax=None,
+               show_prior=False, show_title=True):
     """
     Plot the histogram of the posterior for the coefficients of the trend
     """
@@ -1576,7 +1580,9 @@ def hist_trend(res, per_year=True, show_prior=False, ax=None):
         fig, ax = plt.subplots(deg, 1, constrained_layout=True, squeeze=True)
         ax = np.atleast_1d(ax)
 
-    fig.suptitle('Posterior distribution for trend coefficients')
+    if show_title:
+        fig.suptitle('Posterior distribution for trend coefficients')
+
     for i in range(deg):
         estimate = percentile68_ranges_latex(trend[:, i]) + ' ' + units[i]
 
@@ -1584,7 +1590,8 @@ def hist_trend(res, per_year=True, show_prior=False, ax=None):
         if show_prior:
             prior = res.priors[names[i] + '_prior']
             f = 365.25**(i + 1) if per_year else 1.0
-            ax[i].hist(prior.rvs(res.ESS) * f, alpha=0.15, color='k', zorder=-1, label='prior')
+            ax[i].hist(distribution_rvs(prior, res.ESS) * f,
+                       alpha=0.15, color='k', zorder=-1, label='prior')
 
         ax[i].set(xlabel=f'{names[i]} ({units[i]})')
 
@@ -1595,8 +1602,8 @@ def hist_trend(res, per_year=True, show_prior=False, ax=None):
             leg._legend_box.sep = 0
 
 
-    fig.set_constrained_layout_pads(w_pad=0.3)
-    fig.text(0.01, 0.5, 'posterior samples', rotation=90, va='center')
+    # fig.set_constrained_layout_pads(w_pad=0.3)
+    # fig.text(0.01, 0.5, 'posterior samples', rotation=90, va='center')
 
     if res.save_plots:
         filename = 'kima-showresults-fig7.5.png'
@@ -1605,7 +1612,6 @@ def hist_trend(res, per_year=True, show_prior=False, ax=None):
 
     if res.return_figs:
         return fig
-
 
 def hist_MA(res):
     """ Plot the histogram of the posterior for the MA parameters """
