@@ -345,9 +345,9 @@ class KIMA_API GAIAData {
   //   static RVData& get_instance() { return instance; }
 };
 
-class ETData {
+class ETVData {
 
-  friend class ETmodel;
+  friend class ETVmodel;
   private:
     vector<double> epochs, et, etsig, y2, sig2;
 
@@ -357,14 +357,14 @@ class ETData {
     string _units;
     int _skip;
     
-    ETData();
-    ETData(const string& filename, const string& units="days", int skip=0, int max_rows=0, 
+    ETVData();
+    ETVData(const string& filename, const string& units="days", int skip=0, int max_rows=0, 
             const string& delimiter=" ")
     {
       load(filename, units, skip, max_rows, delimiter);
     }
     
-    friend ostream& operator<<(ostream& os, const ETData& d);
+    friend ostream& operator<<(ostream& os, const ETVData& d);
     
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,

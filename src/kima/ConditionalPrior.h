@@ -223,16 +223,16 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
 
 };
 
-class ETConditionalPrior:public DNest4::ConditionalPrior
+class ETVConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
 
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
-		ETConditionalPrior();
+		ETVConditionalPrior();
 		
-		void set_default_priors(const ETData &ETdata);
+		void set_default_priors(const ETVData &ETVdata);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -268,4 +268,4 @@ class ETConditionalPrior:public DNest4::ConditionalPrior
 void bind_RVConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
 void bind_RVGAIAConditionalPrior(nb::module_ &m);
-void bind_ETConditionalPrior(nb::module_&m);
+void bind_ETVConditionalPrior(nb::module_&m);

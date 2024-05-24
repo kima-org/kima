@@ -474,7 +474,7 @@ void RVGAIAConditionalPrior::print(std::ostream& out) const //needed?
 
 /*****************************************************************************/
 
-ETConditionalPrior::ETConditionalPrior()
+ETVConditionalPrior::ETVConditionalPrior()
 {
     
 
@@ -490,18 +490,18 @@ ETConditionalPrior::ETConditionalPrior()
         wprior = make_shared<Uniform>(0, 2*M_PI);
 }
 
-void ETConditionalPrior::set_default_priors(const ETData &ETdata)
+void ETVConditionalPrior::set_default_priors(const ETVData &ETVdata)
 {
     
 }
 
 
-void ETConditionalPrior::from_prior(RNG& rng)
+void ETVConditionalPrior::from_prior(RNG& rng)
 {
 
 }
 
-double ETConditionalPrior::perturb_hyperparameters(RNG& rng)
+double ETVConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
     return 0.0;
 }
@@ -512,7 +512,7 @@ double ETConditionalPrior::perturb_hyperparameters(RNG& rng)
 // vec[3] = ecc
 // vec[4] = viewing angle
 
-double ETConditionalPrior::log_pdf(const std::vector<double>& vec) const
+double ETVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
 
     return Pprior->log_pdf(vec[0]) + 
@@ -522,7 +522,7 @@ double ETConditionalPrior::log_pdf(const std::vector<double>& vec) const
            wprior->log_pdf(vec[4]);
 }
 
-void ETConditionalPrior::from_uniform(std::vector<double>& vec) const
+void ETVConditionalPrior::from_uniform(std::vector<double>& vec) const
 {
 
     vec[0] = Pprior->cdf_inverse(vec[0]);
@@ -532,7 +532,7 @@ void ETConditionalPrior::from_uniform(std::vector<double>& vec) const
     vec[4] = wprior->cdf_inverse(vec[4]);
 }
 
-void ETConditionalPrior::to_uniform(std::vector<double>& vec) const
+void ETVConditionalPrior::to_uniform(std::vector<double>& vec) const
 {
 
     vec[0] = Pprior->cdf(vec[0]);
@@ -542,7 +542,7 @@ void ETConditionalPrior::to_uniform(std::vector<double>& vec) const
     vec[4] = wprior->cdf(vec[4]);
 }
 
-void ETConditionalPrior::print(std::ostream& out) const
+void ETVConditionalPrior::print(std::ostream& out) const
 {
 
 }
@@ -693,28 +693,28 @@ void bind_RVGAIAConditionalPrior(nb::module_ &m) {
             "Prior for cosine(s) of the orbital inclination");
 }
 
-void bind_ETConditionalPrior(nb::module_ &m) {
-    nb::class_<ETConditionalPrior>(m, "ETConditionalPrior")
+void bind_ETVConditionalPrior(nb::module_ &m) {
+    nb::class_<ETVConditionalPrior>(m, "ETVConditionalPrior")
         .def(nb::init<>())
         .def_prop_rw("Pprior",
-            [](ETConditionalPrior &c) { return c.Pprior; },
-            [](ETConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            [](ETVConditionalPrior &c) { return c.Pprior; },
+            [](ETVConditionalPrior &c, distribution &d) { c.Pprior = d; },
             "Prior for the orbital period(s)")
         .def_prop_rw("Kprior",
-            [](ETConditionalPrior &c) { return c.Kprior; },
-            [](ETConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            [](ETVConditionalPrior &c) { return c.Kprior; },
+            [](ETVConditionalPrior &c, distribution &d) { c.Kprior = d; },
             "Prior for the semi-amplitude(s)")
         .def_prop_rw("eprior",
-            [](ETConditionalPrior &c) { return c.eprior; },
-            [](ETConditionalPrior &c, distribution &d) { c.eprior = d; },
+            [](ETVConditionalPrior &c) { return c.eprior; },
+            [](ETVConditionalPrior &c, distribution &d) { c.eprior = d; },
             "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("wprior",
-            [](ETConditionalPrior &c) { return c.wprior; },
-            [](ETConditionalPrior &c, distribution &d) { c.wprior = d; },
+            [](ETVConditionalPrior &c) { return c.wprior; },
+            [](ETVConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
         .def_prop_rw("phiprior",
-            [](ETConditionalPrior &c) { return c.phiprior; },
-            [](ETConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            [](ETVConditionalPrior &c) { return c.phiprior; },
+            [](ETVConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)");
 }
 

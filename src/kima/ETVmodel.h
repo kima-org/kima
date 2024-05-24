@@ -20,7 +20,7 @@ using namespace nb::literals;
 
 
 
-class KIMA_API ETmodel
+class KIMA_API ETVmodel
 {
     protected:
         /// Fix the number of planets? (by default, yes)
@@ -37,7 +37,7 @@ class KIMA_API ETmodel
         
         double star_mass = 1.0;  // [Msun]
         
-        ETData data;
+        ETVData data;
     
     private:
 
@@ -68,12 +68,12 @@ class KIMA_API ETmodel
 
     public:
         
-        ETmodel() {};
-        ETmodel(bool fix, int npmax, ETData& data) : fix(fix), npmax(npmax), data(data) {
+        ETVmodel() {};
+        ETVmodel(bool fix, int npmax, ETVData& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(ETData& data);
+        void initialize_from_data(ETVData& data);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets

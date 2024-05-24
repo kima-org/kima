@@ -1,10 +1,10 @@
-#include "ETmodel.h"
+#include "ETVmodel.h"
 
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
-void ETmodel::initialize_from_data(ETData& data)
+void ETVmodel::initialize_from_data(ETVData& data)
 {
 
     // resize RV model vector
@@ -17,7 +17,7 @@ void ETmodel::initialize_from_data(ETData& data)
 
 /* set default priors if the user didn't change them */
 
-void ETmodel::setPriors()  // BUG: should be done by only one thread!
+void ETVmodel::setPriors()  // BUG: should be done by only one thread!
 {
     
      if (!Jprior)
@@ -54,7 +54,7 @@ void ETmodel::setPriors()  // BUG: should be done by only one thread!
 }
 
 
-void ETmodel::from_prior(RNG& rng)
+void ETVmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -97,7 +97,7 @@ void ETmodel::from_prior(RNG& rng)
  * @brief Calculate the full ET model
  * 
 */
-void ETmodel::calculate_mu()
+void ETVmodel::calculate_mu()
 {
     size_t N = data.N();
     
@@ -162,7 +162,7 @@ void ETmodel::calculate_mu()
 }
 
 
-void ETmodel::remove_known_object()
+void ETVmodel::remove_known_object()
 {
     auto epochs = data.get_epochs();
     double f, tau, ti, Tp;
@@ -177,7 +177,7 @@ void ETmodel::remove_known_object()
 }
 
 
-void ETmodel::add_known_object()
+void ETVmodel::add_known_object()
 {
     auto epochs = data.get_epochs();
     double f, tau, ti, Tp;
@@ -192,7 +192,7 @@ void ETmodel::add_known_object()
 }
 
 
-double ETmodel::perturb(RNG& rng)
+double ETVmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -269,7 +269,7 @@ double ETmodel::perturb(RNG& rng)
  * 
  * @return double the log-likelihood
 */
-double ETmodel::log_likelihood() const
+double ETVmodel::log_likelihood() const
 {
     size_t N = data.N();
     const auto& et = data.get_et();
@@ -325,7 +325,7 @@ double ETmodel::log_likelihood() const
 }
 
 
-void ETmodel::print(std::ostream& out) const
+void ETVmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
@@ -360,7 +360,7 @@ void ETmodel::print(std::ostream& out) const
 }
 
 
-string ETmodel::description() const
+string ETVmodel::description() const
 {
     string desc;
     string sep = "   ";
@@ -410,7 +410,7 @@ string ETmodel::description() const
  * Save the options of the current model in a INI file.
  * 
 */
-void ETmodel::save_setup() {
+void ETVmodel::save_setup() {
 
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
@@ -421,7 +421,7 @@ void ETmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "ETmodel" << endl << endl;
+    fout << "model: " << "ETVmodel" << endl << endl;
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
@@ -483,7 +483,7 @@ void ETmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
-auto ETMODEL_DOC = R"D(
+auto ETVMODEL_DOC = R"D(
 Implements a sum-of-Keplerians model for eclipse timing data where the number of Keplerians can be free. These are light-travel time ETVs.
 
 Args:
@@ -491,106 +491,106 @@ Args:
         whether the number of Keplerians should be fixed
     npmax (int):
         maximum number of Keplerians
-    data (ETData):
+    data (ETVData):
         the Eclipse timing data
 )D";
 
-class ETmodel_publicist : public ETmodel
+class ETVmodel_publicist : public ETVmodel
 {
     public:
-        using ETmodel::fix;
-        using ETmodel::npmax;
-        using ETmodel::ephemeris;
-        using ETmodel::data;
+        using ETVmodel::fix;
+        using ETVmodel::npmax;
+        using ETVmodel::ephemeris;
+        using ETVmodel::data;
         //
-        using ETmodel::studentt;
-        using ETmodel::star_mass;
+        using ETVmodel::studentt;
+        using ETVmodel::star_mass;
 };
 
 
-NB_MODULE(ETmodel, m) {
+NB_MODULE(ETVmodel, m) {
     // bind ETconditionalPrior so it can be returned
-    bind_ETConditionalPrior(m);
+    bind_ETVConditionalPrior(m);
 
-    nb::class_<ETmodel>(m, "ETmodel", "")
-        .def(nb::init<bool&, int&, ETData&>(), "fix"_a, "npmax"_a, "data"_a,  
-             ETMODEL_DOC
+    nb::class_<ETVmodel>(m, "ETVmodel", "")
+        .def(nb::init<bool&, int&, ETVData&>(), "fix"_a, "npmax"_a, "data"_a,  
+             ETVMODEL_DOC
         )
         //
-        .def_rw("fix", &ETmodel_publicist::fix,
+        .def_rw("fix", &ETVmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &ETmodel_publicist::npmax,
+        .def_rw("npmax", &ETVmodel_publicist::npmax,
                 "maximum number of Keplerians")
-        .def_ro("data", &ETmodel_publicist::data,
+        .def_ro("data", &ETVmodel_publicist::data,
                 "the data")
 
         //
-        .def_rw("ephemeris", &ETmodel_publicist::ephemeris,
+        .def_rw("ephemeris", &ETVmodel_publicist::ephemeris,
                 "order of the ephemeris used")
 
-        .def_rw("studentt", &ETmodel_publicist::studentt,
+        .def_rw("studentt", &ETVmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
 
         // KO mode
-        .def_prop_ro("known_object", [](ETmodel &m) { return m.get_known_object(); },
+        .def_prop_ro("known_object", [](ETVmodel &m) { return m.get_known_object(); },
                      "whether the model includes (better) known extra Keplerian curve(s)")
-        .def_prop_ro("n_known_object", [](ETmodel &m) { return m.get_n_known_object(); },
+        .def_prop_ro("n_known_object", [](ETVmodel &m) { return m.get_n_known_object(); },
                      "how many known objects")
 
         //
-        .def_rw("star_mass", &ETmodel_publicist::star_mass,
+        .def_rw("star_mass", &ETVmodel_publicist::star_mass,
                 "stellar mass [Msun]")
 
 
         // priors
         .def_prop_rw("Jprior",
-            [](ETmodel &m) { return m.Jprior; },
-            [](ETmodel &m, distribution &d) { m.Jprior = d; },
+            [](ETVmodel &m) { return m.Jprior; },
+            [](ETVmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
 
         .def_prop_rw("ephem1_prior",
-            [](ETmodel &m) { return m.ephem1_prior; },
-            [](ETmodel &m, distribution &d) { m.ephem1_prior = d; },
+            [](ETVmodel &m) { return m.ephem1_prior; },
+            [](ETVmodel &m, distribution &d) { m.ephem1_prior = d; },
             "Prior for the linear ephemeris")
         .def_prop_rw("ephem2_prior",
-            [](ETmodel &m) { return m.ephem2_prior; },
-            [](ETmodel &m, distribution &d) { m.ephem2_prior = d; },
+            [](ETVmodel &m) { return m.ephem2_prior; },
+            [](ETVmodel &m, distribution &d) { m.ephem2_prior = d; },
             "Prior for the quadratic term of the ephemeris")
         .def_prop_rw("ephem3_prior",
-            [](ETmodel &m) { return m.ephem3_prior; },
-            [](ETmodel &m, distribution &d) { m.ephem3_prior = d; },
+            [](ETVmodel &m) { return m.ephem3_prior; },
+            [](ETVmodel &m, distribution &d) { m.ephem3_prior = d; },
             "Prior for the cubic term of the ephemeris")
 
         .def_prop_rw("nu_prior",
-            [](ETmodel &m) { return m.nu_prior; },
-            [](ETmodel &m, distribution &d) { m.nu_prior = d; },
+            [](ETVmodel &m) { return m.nu_prior; },
+            [](ETVmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
 
         // known object priors
         // ? should these setters check if known_object is true?
         .def_prop_rw("KO_Pprior",
-                     [](ETmodel &m) { return m.KO_Pprior; },
-                     [](ETmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
+                     [](ETVmodel &m) { return m.KO_Pprior; },
+                     [](ETVmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
                      "Prior for KO orbital period")
         .def_prop_rw("KO_Kprior",
-                     [](ETmodel &m) { return m.KO_Kprior; },
-                     [](ETmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+                     [](ETVmodel &m) { return m.KO_Kprior; },
+                     [](ETVmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
                      "Prior for KO semi-amplitude")
         .def_prop_rw("KO_eprior",
-                     [](ETmodel &m) { return m.KO_eprior; },
-                     [](ETmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
+                     [](ETVmodel &m) { return m.KO_eprior; },
+                     [](ETVmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
                      "Prior for KO eccentricity")
         .def_prop_rw("KO_wprior",
-                     [](ETmodel &m) { return m.KO_wprior; },
-                     [](ETmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
+                     [](ETVmodel &m) { return m.KO_wprior; },
+                     [](ETVmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
                      "Prior for KO argument of periastron")
         .def_prop_rw("KO_phiprior",
-                     [](ETmodel &m) { return m.KO_phiprior; },
-                     [](ETmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
+                     [](ETVmodel &m) { return m.KO_phiprior; },
+                     [](ETVmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
                      "Prior for KO mean anomaly(ies)")
 
         // conditional object
         .def_prop_rw("conditional",
-                     [](ETmodel &m) { return m.get_conditional_prior(); },
-                     [](ETmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](ETVmodel &m) { return m.get_conditional_prior(); },
+                     [](ETVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
 }

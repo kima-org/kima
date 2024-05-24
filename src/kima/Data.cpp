@@ -908,7 +908,7 @@ GAIAData::GAIAData() {};
 
 /*****************************************************************************/
 
-ETData::ETData() {};
+ETVData::ETVData() {};
     /**
       * @brief Load Gaia epoch astrometry data from a file.
       *
@@ -923,17 +923,17 @@ ETData::ETData() {};
       * @param skip       number of lines to skip in the beginning of the file (default = 2)
       */
 
-    void ETData::load(const string filename, const string units, int skip, int max_rows,
+    void ETVData::load(const string filename, const string units, int skip, int max_rows,
                         const string delimiter)
     {
         if (filename.empty()) {
-            std::string msg = "kima: ETData: no filename provided";
+            std::string msg = "kima: ETVData: no filename provided";
             throw std::invalid_argument(msg);
             // exit(1);
         }
 
         if (filename.size() == 1) {
-            std::string msg = "kima: ETData: filename with one character is probably an error";
+            std::string msg = "kima: ETVData: filename with one character is probably an error";
             throw std::runtime_error(msg);
         }
 
@@ -943,7 +943,7 @@ ETData::ETData() {};
                         .delimiter(delimiter)();
 
         if (data.size() < 3) {
-            std::string msg = "kima: ETData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+            std::string msg = "kima: ETVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
             throw std::runtime_error(msg);
         }
         
@@ -1105,15 +1105,15 @@ Args:
         .def_rw("M0_epoch", &GAIAData::M0_epoch, "reference epoch for the mean anomaly");
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
         
-    nb::class_<ETData>(m, "ETData", "docs")
+    nb::class_<ETVData>(m, "ETVData", "docs")
         // constructor
         .def(nb::init<const string&, const string& , int, int, const string&>(),
               "filename"_a, "units"_a="days", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
               "Load Eclipse timing data from a file")
         // properties
-        .def_prop_ro("epochs", [](ETData &d) { return d.get_epochs(); }, "The epoch (Nth eclipse since number 0)")
-        .def_prop_ro("et", [](ETData &d) { return d.get_et(); }, "The observed mid-eclipse times")
-        .def_prop_ro("etsig", [](ETData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times");
+        .def_prop_ro("epochs", [](ETVData &d) { return d.get_epochs(); }, "The epoch (Nth eclipse since number 0)")
+        .def_prop_ro("et", [](ETVData &d) { return d.get_et(); }, "The observed mid-eclipse times")
+        .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times");
 
         //
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
