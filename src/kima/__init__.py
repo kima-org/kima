@@ -1,5 +1,7 @@
 
-from .Data import RVData, PHOTdata, GAIAData, ETVData
+
+from .Data import RVData, PHOTdata, GAIAdata, ETVData
+
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 

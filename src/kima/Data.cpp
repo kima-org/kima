@@ -844,7 +844,7 @@ ostream& operator<<(ostream& os, const PHOTdata& d)
 
 /*****************************************************************************/
 
-GAIAData::GAIAData() {};
+GAIAdata::GAIAdata() {};
     /**
       * @brief Load Gaia epoch astrometry data from a file.
       *
@@ -859,17 +859,17 @@ GAIAData::GAIAData() {};
       * @param skip       number of lines to skip in the beginning of the file (default = 2)
       */
 
-    void GAIAData::load(const string filename, const string units, int skip, int max_rows,
+    void GAIAdata::load(const string filename, const string units, int skip, int max_rows,
                         const string delimiter)
     {
         if (filename.empty()) {
-            std::string msg = "kima: GAIAData: no filename provided";
+            std::string msg = "kima: GAIAdata: no filename provided";
             throw std::invalid_argument(msg);
             // exit(1);
         }
 
         if (filename.size() == 1) {
-            std::string msg = "kima: GAIAData: filename with one character is probably an error";
+            std::string msg = "kima: GAIAdata: filename with one character is probably an error";
             throw std::runtime_error(msg);
         }
 
@@ -879,7 +879,7 @@ GAIAData::GAIAData() {};
                         .delimiter(delimiter)();
 
         if (data.size() < 5) {
-            std::string msg = "kima: GAIAData: file (" + filename + ") contains less than 5 columns! (is skip correct?)";
+            std::string msg = "kima: GAIAdata: file (" + filename + ") contains less than 5 columns! (is skip correct?)";
             throw std::runtime_error(msg);
         }
         
@@ -1090,20 +1090,20 @@ Args:
         
     // 
 
-    nb::class_<GAIAData>(m, "GAIAData", "docs")
+    nb::class_<GAIAdata>(m, "GAIAdata", "docs")
         // constructor
         .def(nb::init<const string&, const string&, int, int, const string&>(),
               "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
               "Load astrometric data from a file")
         // properties
-        .def_prop_ro("t", [](GAIAData &d) { return d.get_t(); }, "The times of observations")
-        .def_prop_ro("w", [](GAIAData &d) { return d.get_w(); }, "The observed centroid positions")
-        .def_prop_ro("wsig", [](GAIAData &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
-        .def_prop_ro("psi", [](GAIAData &d) { return d.get_psi(); }, "The Gaia scan angles")
-        .def_prop_ro("pf", [](GAIAData &d) { return d.get_pf(); }, "the parallax factors")
+        .def_prop_ro("t", [](GAIAdata &d) { return d.get_t(); }, "The times of observations")
+        .def_prop_ro("w", [](GAIAdata &d) { return d.get_w(); }, "The observed centroid positions")
+        .def_prop_ro("wsig", [](GAIAdata &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
+        .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
+        .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors")
         //
-        .def_rw("M0_epoch", &GAIAData::M0_epoch, "reference epoch for the mean anomaly");
-        //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
+        .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly");
+        //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
         
     nb::class_<ETVData>(m, "ETVData", "docs")
         // constructor

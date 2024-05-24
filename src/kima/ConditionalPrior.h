@@ -129,7 +129,7 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
 		/// Use thiele_innes parameters
      	bool thiele_innes;
 
-		void set_default_priors(const GAIAData &data);
+		void set_default_priors(const GAIAdata &data);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -187,7 +187,7 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
  	public:
 		RVGAIAConditionalPrior();
 
-		void set_default_priors(const GAIAData &GAIAdata, RVData &RVdata);
+		void set_default_priors(const GAIAdata&, RVData&);
 		
 		// priors for all planet parameters
 		using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;

@@ -271,7 +271,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 }
 
 
-void GAIAConditionalPrior::set_default_priors(const GAIAData &data)
+void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
 {
     Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
 }
@@ -408,13 +408,13 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
 }
 
 
-void RVGAIAConditionalPrior::set_default_priors(const GAIAData &GAIAdata, RVData &RVdata)
+void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIA_data, RVData &RV_data)
 {
     double tmin1, tmin2, tmax1, tmax2;
-    tmin1 = RVdata.get_t_min();
-    tmax1 = RVdata.get_t_max();
-    tmin2 = GAIAdata.get_t_min();
-    tmax2 = GAIAdata.get_t_max();
+    tmin1 = RV_data.get_t_min();
+    tmax1 = RV_data.get_t_max();
+    tmin2 = GAIA_data.get_t_min();
+    tmax2 = GAIA_data.get_t_max();
     double tspan = max(tmax1,tmax2) - min(tmin1,tmin2);
     Pprior = make_shared<LogUniform>(1.0, max(1.1, tspan));
 }

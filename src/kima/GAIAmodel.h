@@ -45,7 +45,7 @@ class KIMA_API GAIAmodel
     
     private:
     
-        GAIAData data;
+        GAIAdata data;
         
 
         DNest4::RJObject<GAIAConditionalPrior> planets =
@@ -85,11 +85,11 @@ class KIMA_API GAIAmodel
 
     public:
         GAIAmodel() {};
-        GAIAmodel(bool fix, int npmax, GAIAData& data) : data(data), fix(fix), npmax(npmax) {
+        GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(GAIAData& data);
+        void initialize_from_data(GAIAdata& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;

@@ -273,7 +273,7 @@ class KIMA_API PHOTdata {
 
 };
 
-class KIMA_API GAIAData {
+class KIMA_API GAIAdata {
 
   friend class GAIAmodel;
   friend class RVGAIAmodel;
@@ -287,14 +287,14 @@ class KIMA_API GAIAData {
     string _units;
     int _skip;
 
-    GAIAData();
-    GAIAData(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
+    GAIAdata();
+    GAIAdata(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
             const string& delimiter=" ")
     {
       load(filename, units, skip, max_rows, delimiter);
     }
 
-    friend ostream& operator<<(ostream& os, const GAIAData& d);
+    friend ostream& operator<<(ostream& os, const GAIAdata& d);
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,
@@ -372,10 +372,6 @@ class ETVData {
 
     /// docs for M0_epoch
     double M0_epoch;
-
-    // to deprecate a function (C++14), put
-    // [[deprecated("Replaced by bar, which has an improved interface")]]
-    // before the definition
 
     /// Get the total number of data points
     int N() const { return epochs.size(); }
