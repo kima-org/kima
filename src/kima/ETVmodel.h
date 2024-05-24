@@ -41,8 +41,8 @@ class KIMA_API ETVmodel
     
     private:
 
-        DNest4::RJObject<ETConditionalPrior> planets =
-            DNest4::RJObject<ETConditionalPrior>(5, npmax, fix, ETConditionalPrior());
+        DNest4::RJObject<ETVConditionalPrior> planets =
+            DNest4::RJObject<ETVConditionalPrior>(5, npmax, fix, ETVConditionalPrior());
 
         double ephem1, ephem2=0.0, ephem3=0.0;
         double nu;
@@ -115,11 +115,11 @@ class KIMA_API ETVmodel
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;
         
-        ETConditionalPrior* get_conditional_prior() {
+        ETVConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const ETConditionalPrior &conditional) {
-            planets = DNest4::RJObject<ETConditionalPrior>(5, npmax, fix, conditional);
+        void set_conditional_prior(const ETVConditionalPrior &conditional) {
+            planets = DNest4::RJObject<ETVConditionalPrior>(5, npmax, fix, conditional);
         }
 
         /// @brief Generate a point from the prior.

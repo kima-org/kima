@@ -509,7 +509,7 @@ class ETVmodel_publicist : public ETVmodel
 
 
 NB_MODULE(ETVmodel, m) {
-    // bind ETconditionalPrior so it can be returned
+    // bind ETVconditionalPrior so it can be returned
     bind_ETVConditionalPrior(m);
 
     nb::class_<ETVmodel>(m, "ETVmodel", "")
