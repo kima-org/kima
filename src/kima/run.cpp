@@ -54,14 +54,15 @@ Args:
 
 
 #define RUN_SIGNATURE(name) \
-    [](name &m, int steps=100, unsigned int num_threads=1, unsigned int num_particles=1,                              \
-                unsigned int new_level_interval=2000, unsigned int save_interval=100, unsigned int thread_steps=10,   \
-                unsigned int max_num_levels=0, double lambda_=10.0, double beta=100.0,                                \
+    [](name &m, unsigned int steps=100, unsigned int num_threads=1, unsigned int num_particles=1, \
+                unsigned int new_level_interval=2000, unsigned int save_interval=100,             \
+                unsigned int thread_steps=10,                                                     \
+                unsigned int max_num_levels=0, double lambda_=10.0, double beta=100.0,            \
                 double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
 
 #define RUN_BODY(name) \
     const auto opt = Options(num_particles, new_level_interval, save_interval,          \
-                                thread_steps, max_num_levels, lambda_, beta, steps);    \
+                             thread_steps, max_num_levels, lambda_, beta, steps);       \
     Sampler<name> sampler(num_threads, compression, opt, true, false);                  \
     auto ns = static_cast<unsigned int>(sampler.size());                                \
     for (unsigned int i = 0; i < ns; i++)                                               \
