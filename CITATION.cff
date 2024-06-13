@@ -1,20 +1,43 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+title: 'kima: Exoplanet detection in radial velocities'
+type: software
 authors:
-- family-names: "Faria"
-  given-names: "J. P."
-  orcid: "https://orcid.org/0000-0002-6728-244X"
-- family-names: "Santos"
-  given-names: "N. C."
-  orcid: "https://orcid.org/0000-0003-4422-2919"
-- family-names: "Figueira"
-  given-names: "P."
-  orcid: "https://orcid.org/0000-0001-8504-283X"
-- family-names: "Brewer"
-  given-names: "B. J."
-  orcid: "https://orcid.org/0000-0002-6728-244X"
-title: "kima: Exoplanet detection in radial velocities"
-version: 1.0
+  - family-names: Faria
+    given-names: J. P.
+    orcid: 'https://orcid.org/0000-0002-6728-244X'
+    email: joao.faria@unige.ch
+  - family-names: Santos
+    given-names: N. C.
+    orcid: 'https://orcid.org/0000-0003-4422-2919'
+  - family-names: Figueira
+    given-names: P.
+    orcid: 'https://orcid.org/0000-0001-8504-283X'
+  - family-names: Brewer
+    given-names: B. J.
+    orcid: 'https://orcid.org/0000-0002-6728-244X'
+identifiers:
+  - type: doi
+    value: 10.21105/joss.00487
+    description: JOSS paper
+  - type: url
+    value: 'https://arxiv.org/abs/1806.08305'
+    description: ArXiv URL
+repository-code: 'https://github.com/kima-org/kima'
+url: 'https://kima.science'
+abstract: >-
+  The radial-velocity (RV) method is one of the most
+  successful in the detection of exoplanets, but is hindered
+  by the intrinsic RV variations of the star, which can
+  easily mimic or hide true planetary signals. kima is a
+  package for the detection and characterization of
+  exoplanets using RV data. It fits Keplerian curves to a
+  timeseries of RV measurements and calculates the evidence
+  for models with a fixed number Np of Keplerian signals, or
+  after marginalising over Np. Moreover, kima can use a GP
+  with a quasi-periodic kernel as a noise model, to deal
+  with activity-induced signals. The hyperparameters of the
+  GP are inferred together with the orbital parameters. The
+  code is written in C++, but includes easy-to-use Python
+  bindings which facilitates the analysis of the results.
+license: MIT
 doi: 10.21105/joss.00487
-date-released: 2018-06
-url: "https://github.com/kima-org-kima"
