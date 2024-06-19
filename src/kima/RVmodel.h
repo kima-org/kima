@@ -47,6 +47,10 @@ class KIMA_API RVmodel
         bool indicator_correlations = false;
 
         RVData data;
+
+        // internals
+        std::string directory = "";
+
     private:
 
         DNest4::RJObject<RVConditionalPrior> planets =

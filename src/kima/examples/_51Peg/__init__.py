@@ -32,6 +32,7 @@ def _51Peg(run=False, load=False, **kwargs):
     with chdir(here):
         if run:
             kima.run(model, **kwargs)
+            model.directory = os.getcwd()
         if load:
             res = kima.load_results(model)
             return model, res
