@@ -1,0 +1,50 @@
+name: pip-extensive
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build with pip
+    runs-on: ${{ matrix.platform }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-13, macos-latest, ubuntu-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        experimental: [false]
+        include:
+          - platform: windows-latest
+            experimental: true
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set min macOS version
+      if: runner.os == 'macOS'
+      run: |
+        echo "MACOS_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
+
+    - name: Dependencies
+      run: |
+        pip install pip -U
+        pip install pytest
+
+    - name: Check versions
+      run: |
+        python --version
+        pip --version
+        cmake --version
+
+    - name: Build and install kima
+      run: |
+        pip install --verbose .
+
+    - name: Test
+      run: |
+        python -m pytest -s tests/
