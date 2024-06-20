@@ -212,5 +212,8 @@ class  RVFWHMmodel
         // Return string with column information
         std::string description() const;
 
+        // Directory where the model runs
+        std::string directory = "";
+
 };
 

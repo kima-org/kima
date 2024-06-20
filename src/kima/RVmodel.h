@@ -48,9 +48,6 @@ class KIMA_API RVmodel
 
         RVData data;
 
-        // internals
-        std::string directory = "";
-
     private:
 
         DNest4::RJObject<RVConditionalPrior> planets =
@@ -207,6 +204,9 @@ class KIMA_API RVmodel
 
         // Return string with column information
         std::string description() const;
+
+        // Directory where the model runs
+        std::string directory = "";
 
 };
 
