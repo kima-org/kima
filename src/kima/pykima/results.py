@@ -104,7 +104,7 @@ class data_holder:
 
     @property
     def tmiddle(self):
-        return self.t.min() + 0.5 * self.t.ptp()
+        return self.t.min() + 0.5 * np.ptp(self.t)
 
 
 @dataclass
@@ -1835,8 +1835,8 @@ class KimaResults:
         Create array for model prediction plots. This simply returns N
         linearly-spaced times from t[0]-over*Tspan to t[-1]+over*Tspan.
         """
-        start = self.data.t.min() - over * self.data.t.ptp()
-        end = self.data.t.max() + over * self.data.t.ptp()
+        start = self.data.t.min() - over * np.ptp(self.data.t)
+        end = self.data.t.max() + over * np.ptp(self.data.t)
         return np.linspace(start, end, N)
 
     def _get_ttGP(self, N=1000, over=0.1):
@@ -1844,7 +1844,7 @@ class KimaResults:
         kde = gaussian_kde(self.data.t)
         ttGP = kde.resample(N - self.data.N).reshape(-1)
         # constrain ttGP within observed times, to not waste
-        ttGP = (ttGP + self.data.t[0]) % self.data.t.ptp() + self.data.t[0]
+        ttGP = (ttGP + self.data.t[0]) % np.ptp(self.data.t) + self.data.t[0]
         # add the observed times as well
         ttGP = np.r_[ttGP, self.data.t]
         ttGP.sort()  # in-place
@@ -2623,7 +2623,7 @@ class KimaResults:
     def data_properties(self):
         t = self.data.t
         prop = {
-            'time span': (t.ptp(), 'days', True),
+            'time span': (np.ptp(t), 'days', True),
             'mean time gap': (np.ediff1d(t).mean(), 'days', True),
             'median time gap': (np.median(np.ediff1d(t)), 'days', True),
             'shortest time gap': (np.ediff1d(t).min(), 'days', True),

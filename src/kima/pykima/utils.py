@@ -597,16 +597,16 @@ def priors_latex(results, title='Priors', label='tab:1'):
         2 * np.pi: r'$2\pi$',
         results.y.min(): r'$\min v$',
         results.y.max(): r'$\max v$',
-        results.t.ptp(): r'$\Delta t$',
-        results.y.ptp(): r'$\Delta RV$',
-        -results.y.ptp(): r'$-\Delta RV$'
+        np.ptp(results.t): r'$\Delta t$',
+        np.ptp(results.y): r'$\Delta RV$',
+        -np.ptp(results.y): r'$-\Delta RV$'
     }
     if results.model == 'RVFWHMmodel':
         translation.update({
             results.y2.min(): r'$\min$ FWHM',
             results.y2.max(): r'$\max$ FWHM',
-            results.y2.ptp(): r'$\Delta$ FWHM',
-            -results.y2.ptp(): r'$-\Delta$ FWHM'
+            np.ptp(results.y2): r'$\Delta$ FWHM',
+            -np.ptp(results.y2): r'$-\Delta$ FWHM'
         })
 
     def translate_value(value):

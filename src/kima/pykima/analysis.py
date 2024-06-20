@@ -302,7 +302,7 @@ def aliases(P):
     return alias_year, alias_solar_day, alias_sidereal_day
 
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
-    Tobs = results.t.ptp()
+    Tobs = np.ptp(results.t)
     Dw = 2 * np.pi / Tobs
     a, b = results.priors['Pprior'].support()
 
@@ -341,7 +341,7 @@ def FIP_count_detections(results, alpha=0.05, Ptrue=None):
         from interval import Interval
         bins, fip = FIP(results, plot=False)
         ftrue = 1 / Ptrue
-        Tobs = results.t.ptp()
+        Tobs = np.ptp(results.t)
         ffip = 1 / bins[fip.argmin()]
         return ftrue in Interval(ffip - 1 / Tobs, ffip + 1 / Tobs)
 
@@ -866,9 +866,9 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
             kwargs = dict(ls='--', lw=2, alpha=0.5, zorder=-1, color='C5')
             if isinstance(res, list):
                 for r in res:
-                    ax.axvline(r.data.t.ptp(), 0.5, 1, **kwargs)
+                    ax.axvline(np.ptp(r.data.t), 0.5, 1, **kwargs)
             else:
-                ax.axvline(res.data.t.ptp(), 0.5, 1, **kwargs)
+                ax.axvline(np.ptp(res.data.t), 0.5, 1, **kwargs)
 
         # ax.hlines(s.max, bins_start, bins_end, lw=2)
         # ax.loglog(s99.bins, s99.max * mjup2mearth)

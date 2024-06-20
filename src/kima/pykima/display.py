@@ -323,7 +323,7 @@ def plot_posterior_period(res,
         ax.axvline(x=year, color='r', label='1 year', **kwline)
 
     if show_timespan:  # mark the timespan of the data
-        ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
+        ax.axvline(x=np.ptp(res.data.t), color='k', label='time span', **kwline)
 
     if show_aliases is not None:  # mark daily and yearly aliases of top peak
         from .analysis import aliases
@@ -452,7 +452,7 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
             K = K.ravel()
             E = E.ravel()
 
-        if K.size > 1 and K.ptp() > Khdr_threshold:
+        if K.size > 1 and np.ptp(K) > Khdr_threshold:
             ax1.loglog(P, K, '.', **kw)
         else:
             ax1.semilogx(P, K, '.', **kw)
@@ -461,7 +461,7 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
 
 
     else:
-        if K.size > 1 and K.ptp() > 30:
+        if K.size > 1 and np.ptp(K) > 30:
             cm = ax1.hexbin(P[P != 0.0], K[P != 0.0], gridsize=gridsize, bins='log', xscale='log',
                             yscale='log', cmap=plt.get_cmap('coolwarm_r'))
         else:
@@ -1198,7 +1198,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
 
     # # set the parameter ranges to include everything
     # def r(x, over=0.2):
-    #     return x.min() - over * x.ptp(), x.max() + over * x.ptp()
+    #     return x.min() - over * np.ptp(x), x.max() + over * np.ptp(x)
 
 
 
@@ -2490,7 +2490,7 @@ def phase_plot(res,
         axp = fig.add_subplot(gs[:, -1])
         from astropy.timeseries import LombScargle
         gls = LombScargle(res.data.t, residuals, res.data.e)
-        freq, power = gls.autopower(maximum_frequency=1.0, minimum_frequency=1/res.data.t.ptp())
+        freq, power = gls.autopower(maximum_frequency=1.0, minimum_frequency=1/np.ptp(res.data.t))
         axp.semilogy(power, 1 / freq, 'k', alpha=0.6)
 
         kwl = dict(color='k', alpha=0.2, ls='--')
@@ -2798,7 +2798,7 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
         t -= 24e5
         M0_epoch -= 24e5
 
-    tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(), ntt + int(100 * over))
+    tt = np.linspace(t.min() - over * np.ptp(t), t.max() + over * np.ptp(t), ntt + int(100 * over))
 
     if res.has_gp:
         # let's be more reasonable for the number of GP prediction points
@@ -2808,7 +2808,7 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
         kde = gaussian_kde(t)
         ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
         # constrain ttGP within observed times, to not waste
-        ttGP = (ttGP + t[0]) % t.ptp() + t[0]
+        ttGP = (ttGP + t[0]) % np.ptp(t) + t[0]
         ttGP = np.r_[ttGP, t]
         ttGP.sort()  # in-place
 
@@ -2933,7 +2933,7 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
             for iko in range(res.nKO):
                 KOpl = res.eval_model(samples[i], tt,
                                       single_planet=-iko - 1)[0]
-                ax1.plot(tt, KOpl - y_offset + (iko + 1) * res.data.y.ptp(),
+                ax1.plot(tt, KOpl - y_offset + (iko + 1) * np.ptp(res.data.y),
                          color='g', alpha=alpha)
 
         if res.has_gp:
