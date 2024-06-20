@@ -785,7 +785,7 @@ def corner_all(res):
         post = np.c_[post, res.TRpars]
 
     post = np.c_[
-        post, res.posteriors.P, res.posteriors.K, res.posteriors.φ, res.posteriors.e, res.posteriors.ω
+        post, res.posteriors.P, res.posteriors.K, res.posteriors.φ, res.posteriors.e, res.posteriors.w
     ]
 
     if res.studentt:
@@ -1071,7 +1071,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 res.posteriors.K[:, i].copy(),
                 res.posteriors.e[:, i].copy(),
                 res.posteriors.φ[:, i].copy(),
-                res.posteriors.ω[:, i].copy(),
+                res.posteriors.w[:, i].copy(),
             ]
 
         if wrap_M0 and not replace_angles_with_mass:
@@ -2146,7 +2146,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         params[k]['K'] = K = sample[res.indices['planets.K']][i]
         params[k]['e'] = e = sample[res.indices['planets.e']][i]
         params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
-        params[k]['ω'] = ω = sample[res.indices['planets.ω']][i]
+        params[k]['w'] = w = sample[res.indices['planets.w']][i]
         params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
         params[k]['index'] = i + 1
 
@@ -2158,7 +2158,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
             ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
             ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
-            ko[k]['ω'] = ω = sample[res.indices['KOpars']][i + 4 * res.nKO]
+            ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['index'] = -i - 1
         params.update(ko)
@@ -2171,7 +2171,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             tr[k]['K'] = K = sample[res.indices['TRpars']][i + res.nTR]
             tr[k]['φ'] = φ = sample[res.indices['TRpars']][i + 2 * res.nTR]
             tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
-            tr[k]['ω'] = ω = sample[res.indices['TRpars']][i + 4 * res.nTR]
+            tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
             tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['index'] = -i - 1
         params.update(tr)
@@ -3232,21 +3232,21 @@ def orbit(res, sample=None, n=10, star_mass=1.0, sortP=False):
         nplanets = int(p[res.index_component])
         pars = p[res.indices['planets']]
         for i in range(nplanets):
-            P, K, φ, ecc, ω = pars[i::res.max_components]
-            # print(P, K, φ, ecc, ω)
+            P, K, φ, ecc, w = pars[i::res.max_components]
+            # print(P, K, φ, ecc, w)
             m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
             m *= mjup2msun
-            sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+            sim.add(P=P, m=m, e=ecc, omega=w, M=φ, inc=0)
             # res.move_to_com()
 
         if res.KO:
             pars = p[res.indices['KOpars']]
             for i in range(res.nKO):
-                P, K, φ, ecc, ω = pars[i::res.nKO]
-                # print(P, K, φ, ecc, ω)
+                P, K, φ, ecc, w = pars[i::res.nKO]
+                # print(P, K, φ, ecc, w)
                 m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
                 m *= mjup2msun
-                sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+                sim.add(P=P, m=m, e=ecc, omega=w, M=φ, inc=0)
                 # res.move_to_com()
 
         kw = dict(
@@ -3276,11 +3276,11 @@ def simulation(results, sample):
     nplanets = int(p[res.index_component])
     pars = p[res.indices['planets']]
     for i in range(nplanets):
-        P, K, φ, ecc, ω = pars[i::res.max_components]
-        # print(P, K, φ, ecc, ω)
+        P, K, φ, ecc, w = pars[i::res.max_components]
+        # print(P, K, φ, ecc, w)
         m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
         m *= mjup2msun
-        sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+        sim.add(P=P, m=m, e=ecc, omega=w, M=φ, inc=0)
 
         # periods.append(P)
         # eccentricities.append(ecc)
@@ -3290,11 +3290,11 @@ def simulation(results, sample):
     if res.KO:
         pars = p[res.indices['KOpars']]
         for i in range(res.nKO):
-            P, K, φ, ecc, ω = pars[i::res.nKO]
-            # print(P, K, φ, ecc, ω)
+            P, K, φ, ecc, w = pars[i::res.nKO]
+            # print(P, K, φ, ecc, w)
             m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
             m *= mjup2msun
-            sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+            sim.add(P=P, m=m, e=ecc, omega=w, M=φ, inc=0)
             # periods.append(P)
             # eccentricities.append(ecc)
 

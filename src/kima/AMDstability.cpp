@@ -22,7 +22,7 @@ namespace AMD
 
     int AMD_stable(const vector<vd>& components, double star_mass)
     {
-        //? order of parameters: P, K, φ, ecc, ω
+        //? order of parameters: P, K, φ, ecc, w
         size_t NP = components.size();
         int is_stable = 0; // system is stable if is_stable=0
     

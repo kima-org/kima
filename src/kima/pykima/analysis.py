@@ -470,7 +470,7 @@ def reorder_P(res, replace=False, passes=1):
     new_posterior.P = res.posteriors.P.copy()
     new_posterior.K = res.posteriors.K.copy()
     new_posterior.e = res.posteriors.e.copy()
-    new_posterior.ω = res.posteriors.ω.copy()
+    new_posterior.w = res.posteriors.w.copy()
     new_posterior.φ = res.posteriors.φ.copy()
 
     mask = res.Np > 1
@@ -483,7 +483,7 @@ def reorder_P(res, replace=False, passes=1):
         new_posterior.P[mask & maybe_wrong_order] = new_posterior.P[mask & maybe_wrong_order][:, ::-1]
         new_posterior.K[mask & maybe_wrong_order] = new_posterior.K[mask & maybe_wrong_order][:, ::-1]
         new_posterior.e[mask & maybe_wrong_order] = new_posterior.e[mask & maybe_wrong_order][:, ::-1]
-        new_posterior.ω[mask & maybe_wrong_order] = new_posterior.ω[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.w[mask & maybe_wrong_order] = new_posterior.w[mask & maybe_wrong_order][:, ::-1]
         new_posterior.φ[mask & maybe_wrong_order] = new_posterior.φ[mask & maybe_wrong_order][:, ::-1]
 
     if replace:
@@ -503,7 +503,7 @@ def reorder_P2(res, replace=False):
     new_posterior.P = res.posteriors.P.copy()
     new_posterior.K = res.posteriors.K.copy()
     new_posterior.e = res.posteriors.e.copy()
-    new_posterior.ω = res.posteriors.ω.copy()
+    new_posterior.w = res.posteriors.w.copy()
     new_posterior.φ = res.posteriors.φ.copy()
 
     mask = res.Np > 1
@@ -521,7 +521,7 @@ def reorder_P2(res, replace=False):
             if (_s < s)[j]:
                 new_posterior.K[i, j:j+2] = new_posterior.K[i, j:j+2][::-1]
                 new_posterior.e[i, j:j+2] = new_posterior.e[i, j:j+2][::-1]
-                new_posterior.ω[i, j:j+2] = new_posterior.ω[i, j:j+2][::-1]
+                new_posterior.w[i, j:j+2] = new_posterior.w[i, j:j+2][::-1]
                 new_posterior.φ[i, j:j+2] = new_posterior.φ[i, j:j+2][::-1]
                 s = _s
             else:
@@ -548,7 +548,7 @@ def sort_planet_samples(res, byP=True, replace=False):
         new_posterior.P = P[n, sortP]
         new_posterior.K = res.posteriors.K[n, sortP]
         new_posterior.e = res.posteriors.e[n, sortP]
-        new_posterior.ω = res.posteriors.ω[n, sortP]
+        new_posterior.w = res.posteriors.w[n, sortP]
         new_posterior.φ = res.posteriors.φ[n, sortP]
 
     if replace:

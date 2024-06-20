@@ -139,7 +139,7 @@ class posterior_holder:
         P (ndarray): Orbital period(s)
         K (ndarray): Semi-amplitude(s)
         e (ndarray): Orbital eccentricities(s)
-        ω (ndarray): Argument(s) of pericenter
+        w (ndarray): Argument(s) of pericenter
         φ (ndarray): Mean anomaly(ies) at the epoch
         jitter (ndarray): Per-instrument jitter(s)
         stellar_jitter (ndarray): Global jitter
@@ -151,7 +151,7 @@ class posterior_holder:
     P: np.ndarray = field(init=False)
     K: np.ndarray = field(init=False)
     e: np.ndarray = field(init=False)
-    ω: np.ndarray = field(init=False)
+    w: np.ndarray = field(init=False)
     φ: np.ndarray = field(init=False)
     # 
     jitter: np.ndarray = field(init=False)
@@ -878,12 +878,12 @@ class KimaResults:
         self.indices['planets'] = slice(istart, iend)
         
         if self.model == 'GAIAmodel':
-            for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'ω', 'cosi', 'W')):
+            for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
                 iend = istart + self.max_components
                 self.indices[f'planets.{p}'] = slice(istart, iend)
                 istart += self.max_components
         else:
-            for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω')):
+            for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'w')):
                 iend = istart + self.max_components
                 self.indices[f'planets.{p}'] = slice(istart, iend)
                 istart += self.max_components
@@ -1422,7 +1422,7 @@ class KimaResults:
         i1 = 4 * max_components + index_component + 1
         i2 = 4 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
-        self.posteriors.ω = self.posterior_sample[:, s]
+        self.posteriors.w = self.posterior_sample[:, s]
 
         # times of periastron
         self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
@@ -1670,7 +1670,7 @@ class KimaResults:
             if self.model == 'GAIAmodel':
                 pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
             else:
-                pars = ['P', 'K', 'M0', 'e', 'ω']
+                pars = ['P', 'K', 'M0', 'e', 'w']
 
             n = self.n_dimensions
 
@@ -1705,7 +1705,7 @@ class KimaResults:
                         planet_pars = p[self.indices['planets']][i::self.max_components]
 
                         if show_a or show_m:
-                            P, K, M0, ecc, ω = planet_pars
+                            P, K, M0, ecc, w = planet_pars
                             (m, _), a = get_planet_mass_and_semimajor_axis(
                                 P, K, ecc, star_mass)
 
@@ -1730,7 +1730,7 @@ class KimaResults:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'M0', 'e', 'ω')
+            pars = ('P', 'K', 'M0', 'e', 'w')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
@@ -1745,7 +1745,7 @@ class KimaResults:
             print('number of transiting planets: ', self.nTR)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'Tc', 'e', 'ω')
+            pars = ('P', 'K', 'Tc', 'e', 'w')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nTR):
@@ -2715,7 +2715,7 @@ class KimaResults:
         p = samples[:, self.indices['planets.P']]
         ind_sort_P = np.arange(p.shape[0])[:, np.newaxis], np.argsort(p)
 
-        for par in ('P', 'K', 'φ', 'e', 'ω'):
+        for par in ('P', 'K', 'φ', 'e', 'w'):
             sorted_samples[:, self.indices[f'planets.{par}']] = \
                 samples[:, self.indices[f'planets.{par}']][ind_sort_P]
 
