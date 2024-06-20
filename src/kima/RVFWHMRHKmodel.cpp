@@ -1277,6 +1277,9 @@ NB_MODULE(RVFWHMRHKmodel, m) {
     nb::class_<RVFWHMRHKmodel>(m, "RVFWHMRHKmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
         //
+        .def_rw("directory", &RVFWHMRHKmodel::directory,
+                "directory where the model ran")
+        // 
         .def_rw("fix", &RVFWHMRHKmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("npmax", &RVFWHMRHKmodel_publicist::npmax,

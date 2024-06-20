@@ -908,8 +908,6 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::star_mass;
         using RVmodel::enforce_stability;
         using RVmodel::indicator_correlations;
-
-        using RVmodel::directory;
 };
 
 
@@ -922,7 +920,7 @@ NB_MODULE(RVmodel, m) {
              RVMODEL_DOC
         )
         //
-        .def_rw("directory", &RVmodel_publicist::directory,
+        .def_rw("directory", &RVmodel::directory,
                 "directory where the model ran")
         // 
         .def_rw("fix", &RVmodel_publicist::fix,

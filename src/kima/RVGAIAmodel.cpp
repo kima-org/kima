@@ -970,9 +970,9 @@ NB_MODULE(RVGAIAmodel, m) {
     nb::class_<RVGAIAmodel>(m, "RVGAIAmodel")
         .def(nb::init<bool&, int&, GAIAdata&, RVData&>(), "fix"_a, "npmax"_a, "GAIAdata"_a, "RVData"_a, RVGAIAMODEL_DOC)
         //
-
-        .def_rw("studentt", &RVGAIAmodel_publicist::studentt,
-                "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        .def_rw("directory", &RVGAIAmodel::directory,
+                "directory where the model ran")
+        // 
         .def_rw("fix", &RVGAIAmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("npmax", &RVGAIAmodel_publicist::npmax,
@@ -987,6 +987,9 @@ NB_MODULE(RVGAIAmodel, m) {
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &RVGAIAmodel_publicist::degree,
                 "degree of the polynomial trend")
+
+        .def_rw("studentt", &RVGAIAmodel_publicist::studentt,
+                "use a Student-t distribution for the likelihood (instead of Gaussian)")
 
         // KO mode
         .def("set_known_object", &RVGAIAmodel::set_known_object)

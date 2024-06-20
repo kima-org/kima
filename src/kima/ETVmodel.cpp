@@ -517,6 +517,9 @@ NB_MODULE(ETVmodel, m) {
              ETVMODEL_DOC
         )
         //
+        .def_rw("directory", &ETVmodel::directory,
+                "directory where the model ran")
+        // 
         .def_rw("fix", &ETVmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("npmax", &ETVmodel_publicist::npmax,

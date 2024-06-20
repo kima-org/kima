@@ -1149,6 +1149,9 @@ NB_MODULE(BINARIESmodel, m) {
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, BINARIESMODEL_DOC)
         //
 
+        .def_rw("directory", &BINARIESmodel::directory,
+                "directory where the model ran")
+        // 
         .def_rw("fix", &BINARIESmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("trend", &BINARIESmodel_publicist::trend,

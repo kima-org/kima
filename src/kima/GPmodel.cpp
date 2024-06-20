@@ -982,6 +982,9 @@ NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel>(m, "GPmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
         //
+        .def_rw("directory", &GPmodel::directory,
+                "directory where the model ran")
+        // 
         .def_rw("fix", &GPmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("npmax", &GPmodel_publicist::npmax,
