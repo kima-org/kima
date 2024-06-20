@@ -1,6 +1,7 @@
 #include <ctime>
 #include <iostream>
 #include <chrono>
+#include <filesystem>
 
 #include <nanobind/nanobind.h>
 // #include <nanobind/stl/string.h>
@@ -72,6 +73,7 @@ Args:
     }                                                                                   \
     if (seed == 0)                                                                      \
         seed = static_cast<unsigned int>(time(NULL));                                   \
+    m.directory = std::filesystem::current_path().string();\
     sampler.initialise(seed);                                                           \
     auto start = std::chrono::high_resolution_clock::now();                             \
     sampler.run(print_thin);                                                            \
