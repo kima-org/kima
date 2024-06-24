@@ -19,7 +19,7 @@ def _51Peg(run=False, load=False, **kwargs):
         **kwargs: keyword arguments passed directly to `kima.run`
     """
     # load the right data file
-    data = RVData([os.path.join(here, '51Peg.rv')])
+    data = RVData(os.path.join(here, '51Peg.rv'))
     # create the model
     model = RVmodel(fix=False, npmax=1, data=data)
 
