@@ -1120,6 +1120,29 @@ NB_MODULE(GPmodel, m) {
                      [](GPmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
                      "Prior for KO mean anomaly(ies)")
 
+        // transiting planet priors
+        // ? should these setters check if transiting_planet is true?
+        .def_prop_rw("TR_Pprior",
+                     [](GPmodel &m) { return m.TR_Pprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.TR_Pprior = vd; },
+                     "Prior for TR orbital period")
+        .def_prop_rw("TR_Kprior",
+                     [](GPmodel &m) { return m.TR_Kprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.TR_Kprior = vd; },
+                     "Prior for TR semi-amplitude")
+        .def_prop_rw("TR_eprior",
+                     [](GPmodel &m) { return m.TR_eprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.TR_eprior = vd; },
+                     "Prior for TR eccentricity")
+        .def_prop_rw("TR_wprior",
+                     [](GPmodel &m) { return m.TR_wprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.TR_wprior = vd; },
+                     "Prior for TR argument of periastron")
+        .def_prop_rw("TR_Tcprior",
+                     [](GPmodel &m) { return m.TR_Tcprior; },
+                     [](GPmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
+                     "Prior for TR mean anomaly(ies)")
+
 
         // conditional object
         .def_prop_rw("conditional",
