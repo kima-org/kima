@@ -2240,7 +2240,7 @@ def phase_plot(res,
     """ Plot the phase curves given the solution in `sample` """
     # this is probably the most complicated function in the whole package!!
 
-    if res.max_components == 0 and not res.KO:
+    if res.max_components == 0 and not res.KO and not res.TR:
         print('Model has no planets! phase_plot() doing nothing...')
         return
 
