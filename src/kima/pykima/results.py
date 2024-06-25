@@ -24,7 +24,7 @@ from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
 
 from .analysis import get_planet_mass_and_semimajor_axis
 from .utils import (read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
-                    get_star_name, mjup2mearth, get_prior, get_instrument_name,
+                    get_star_name, mjup2mearth, get_instrument_name, SimpleTimer, get_timestamp,
                     _show_kima_setup, read_big_file, rms, wrms, chdir)
 
 from .import display
@@ -444,7 +444,11 @@ class KimaResults:
         self.evidence = evidence
         self.information = H
 
-        self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+        with SimpleTimer() as timer:
+            self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+        if self._debug:
+            print(f'Loading "posterior_sample.txt" took {timer.interval:.2f} seconds')
+
         self._ESS = self.posterior_sample.shape[0]
 
         #self.priors = {}
@@ -493,10 +497,16 @@ class KimaResults:
                   'log-likelihoods will not be available.')
 
         try:
-            t1 = time.time()
-            self.sample = np.atleast_2d(read_big_file('sample.txt'))
-            t2 = time.time()
-            self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
+            with SimpleTimer() as timer:
+                self.sample = np.atleast_2d(read_big_file('sample.txt'))
+            if self._debug:
+                print(f'Loading "sample.txt" took {timer.interval:.2f} seconds')
+
+            with SimpleTimer() as timer:
+                self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
+            if self._debug:
+                print(f'Loading "sample_info.txt" took {timer.interval:.2f} seconds')
+
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
@@ -534,6 +544,14 @@ class KimaResults:
             self.n_jitters *= 2
         if self.model == 'RVFWHMRHKmodel':
             self.n_jitters *= 3
+        
+        try:
+            self.jitter_propto_indicator = model.jitter_propto_indicator
+            if model.jitter_propto_indicator:
+                self.n_jitters += 1
+        except AttributeError:
+            self.jitter_propto_indicator = False
+
         self._read_jitters()
 
         # read limb-darkening coefficients
@@ -866,6 +884,8 @@ class KimaResults:
 
         if not self.fix:
             self.priors['np_prior'] = discrete_uniform(0, self.npmax + 1)
+            self.priors['np_prior'].logpdf = self.priors['np_prior'].logpmf
+
 
         self.indices['np'] = self.index_component
         self._current_column += 1
@@ -1289,10 +1309,7 @@ class KimaResults:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f, encoding='latin1')
 
-            if hasattr(res, 'studentT'):
-                res.studentt = res.studentT
-                del res.studentT
-
+            res._update()
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
@@ -1301,19 +1318,53 @@ class KimaResults:
         res._set_plots()
         return res
 
+    def _update(self):
+        if hasattr(self, 'studentT'):
+            self.studentt = self.studentT
+            del self.studentT
+
+        if not hasattr(self, '_ESS'):
+            self._ESS = self.posterior_sample.shape[0]
+        
+        try:
+            if not hasattr(self.posteriors, 'η1'):
+                for i, eta in enumerate(self.etas.T):
+                    setattr(self.posteriors, f'η{i+1}', eta)
+        except AttributeError:
+            pass
+
 
     def show_kima_setup(self):
         return _show_kima_setup()
 
-    def save_pickle(self, filename: str, verbose=True):
+    def save_pickle(self, filename: str=None, verbose=True):
         """ Pickle this KimaResults object into a file.
 
         Args:
-            filename (str): The name of the file where to save the model
-            verbose (bool, optional): Print a message. Defaults to True.
+            filename (str, optional):
+                The name of the file where to save the model. If not given, a
+                unique name will be generated from the properties of the model.
+            verbose (bool, optional):
+                Print a message. Defaults to True.
         """
+        if filename is None:
+            filename = self.star + '_'
+            filename += f'k{self.npmax}_' if self.fix else f'k0{self.npmax}_'
+            filename += f'd{self.trend_degree}_' if self.trend else ''
+            filename += f'studentt_' if self.studentt else ''
+            filename += 'GP_' if self.model == 'GPmodel' else ''
+            filename += 'RVFWHM_' if self.model == 'RVFWHMmodel' else ''
+            filename += 'RVFWHMRHK_' if self.model == 'RVFWHMRHKmodel' else ''
+            filename += f'KO{self.nKO}_' if self.KO else ''
+            filename += f'TR{self.nTR}_' if self.TR else ''
+            filename += get_timestamp()
+
+        if not filename.endswith('.pkl'):
+            filename = filename + '.pkl'
+
         with open(filename, 'wb') as f:
             pickle.dump(self, f, protocol=2)
+
         if verbose:
             print('Wrote to file "%s"' % f.name)
 

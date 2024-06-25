@@ -1,6 +1,7 @@
 """ Small (but sometimes important) utility functions """
 
 from datetime import datetime
+import time
 import os
 import re
 import contextlib
@@ -674,7 +675,7 @@ def get_instrument_name(data_file):
             # 'ESPRESSO',
             # 'ESPRESSO*[\d+]*',
             r'ESPRESSO*[\d+_\w+]*',
-            r'HARPS[^\W_]*[\d+]*',
+            r'HARPS*[\d+_\w+]*',
             r'HIRES[^\W_]*[\d+]*',
             r'APF',
             r'CORALIE[\d+]*',
@@ -724,6 +725,10 @@ def read_big_file(filename):
     except (ImportError, ValueError):  # no pandas or some other issue, use np.genfromtxt
         return np.genfromtxt(filename)
 
+
+
+def get_timestamp():
+    return datetime.now().strftime('%Y_%m_%dT%H_%M_%S')
 
 # covert dates to/from Julian days and MJD
 # originally from https://gist.github.com/jiffyclub/1294443
@@ -952,7 +957,6 @@ def datetime_to_jd(date: datetime):
 #             return func(*args, **kwargs)
 #     return wrapper
 
-
 def show_kima_setup(lang: str = 'cpp', output: str = 'html', prefix: str = ''):
     from textwrap import indent
     try:
@@ -986,3 +990,15 @@ def show_kima_setup(lang: str = 'cpp', output: str = 'html', prefix: str = ''):
 # )
 # print(
 #     pass
+
+
+
+class SimpleTimer:    
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.interval = self.end - self.start
+
