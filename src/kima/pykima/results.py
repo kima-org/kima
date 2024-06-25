@@ -1355,13 +1355,15 @@ class KimaResults:
     def show_kima_setup(self):
         return _show_kima_setup()
 
-    def save_pickle(self, filename: str=None, verbose=True):
+    def save_pickle(self, filename: str=None, postfix: str=None, verbose: bool=True):
         """ Pickle this KimaResults object into a file.
 
         Args:
             filename (str, optional):
                 The name of the file where to save the model. If not given, a
                 unique name will be generated from the properties of the model.
+            postfix (str, optional):
+                A string to add to the filename, after the timestamp.
             verbose (bool, optional):
                 Print a message. Defaults to True.
         """
@@ -1377,6 +1379,9 @@ class KimaResults:
             filename += f'TR{self.nTR}_' if self.TR else ''
             filename += get_timestamp()
 
+        if postfix is not None:
+            filename += '_' + postfix
+
         if not filename.endswith('.pkl'):
             filename = filename + '.pkl'
 
@@ -1384,7 +1389,9 @@ class KimaResults:
             pickle.dump(self, f, protocol=2)
 
         if verbose:
-            print('Wrote to file "%s"' % f.name)
+            print('Wrote to file "%s"' % filename)
+
+        return filename
 
     def save_zip(self, filename: str, verbose=True):
         """ Save this KimaResults object and the text files into a zip.
