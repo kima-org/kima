@@ -59,9 +59,18 @@ def _read_priors(res, setup=None):
                 prior_names += list(setup[section].keys())
             except KeyError:
                 continue
+    except KeyError:
+        pass
 
+    try:
         priors += list(setup['priors.known_object'].values())
         prior_names += ['KO_' + k for k in setup['priors.known_object'].keys()]
+    except KeyError:
+        pass
+
+    try:
+        priors += list(setup['priors.transiting_planet'].values())
+        prior_names += ['TR_' + k for k in setup['priors.transiting_planet'].keys()]
     except KeyError:
         pass
 
@@ -1181,6 +1190,15 @@ class KimaResults:
             KO_priors += [self.priors[f'KO_eprior_{i}'] for i in range(self.nKO)]
             KO_priors += [self.priors[f'KO_wprior_{i}'] for i in range(self.nKO)]
             priors[self.indices['KOpars']] = KO_priors
+
+        if self.TR:
+            TR_priors = []
+            TR_priors += [self.priors[f'TR_Pprior_{i}'] for i in range(self.nTR)]
+            TR_priors += [self.priors[f'TR_Kprior_{i}'] for i in range(self.nTR)]
+            TR_priors += [self.priors[f'TR_phiprior_{i}'] for i in range(self.nTR)]
+            TR_priors += [self.priors[f'TR_eprior_{i}'] for i in range(self.nTR)]
+            TR_priors += [self.priors[f'TR_wprior_{i}'] for i in range(self.nTR)]
+            priors[self.indices['TRpars']] = TR_priors
 
         if self.fix:
             priors[self.indices['np']] = distributions.Fixed(self.npmax)
