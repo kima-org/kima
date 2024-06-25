@@ -158,6 +158,7 @@ def plot_posterior_period(res,
                           show_timespan=True,
                           show_aliases=False,
                           include_known_object=False,
+                          include_transiting_planet=False,
                           separate_colors=False,
                           return_bins=False,
                           mark_periods=None,
@@ -201,10 +202,21 @@ def plot_posterior_period(res,
 
     Returns:
         fig (matplotlib.figure.Figure): The matplotlib figure with the plot
-    """    
-    if res.max_components == 0:
-        print('Model has no planets! make_plot2() doing nothing...')
-        return
+    """
+    # if no known_object or not showing known_object periods
+    cond = not res.KO or not include_known_object
+    # and if no transiting_planet or not showing transiting_planet periods
+    cond &= not res.TR or not include_transiting_planet
+    # there might be no planet periods to show
+    if cond:
+        if res.max_components == 0:
+            print('Model has no planets! plot_posterior_period() doing nothing...')
+            return
+
+        if res.posteriors.P.size == 0:
+            print('None of the posterior samples have planets!', end=' ')
+            print('plot_posterior_period() doing nothing...')
+            return
 
     # if res.log_period:
     #     T = np.exp(res.T)
@@ -279,18 +291,24 @@ def plot_posterior_period(res,
             if separate_colors:
                 color = None
             else:
-                color = 'C0'
+                color = kwargs.pop('color', 'C0')
 
-            ax.bar(x=bin_edges[:-1],
-                   height=counts / res.ESS,
-                   width=np.ediff1d(bin_edges),
-                   bottom=bottoms[:-1],
-                   align='edge',
-                   alpha=0.8,
-                   color=color,
-                   )
+            ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
+                   bottom=bottoms[:-1], align='edge', alpha=0.8, color=color)
 
             bottoms += np.append(counts / res.ESS, 0)
+
+        if include_known_object and res.KO:
+            for i in range(res.nKO):
+                counts, bin_edges = np.histogram(res.KOpars[:, i], bins=bins)
+                ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
+                       align='edge', alpha=0.8, color='k')
+        
+        if include_transiting_planet and res.TR:
+            for i in range(res.nTR):
+                counts, bin_edges = np.histogram(res.TRpars[:, i], bins=bins)
+                ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
+                       align='edge', alpha=0.8, color='k')
 
         # save maximum peak(s)
         peaki = np.argsort(bottoms)[-10:][::-1]
@@ -373,16 +391,20 @@ def plot_posterior_period(res,
             return fig
 
 
-def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
-             show_aliases=None, reorder_P=False, sort_by_increasing_P=False,
+def plot_PKE(res, mask=None, include_known_object=False, include_transiting_planet=False,
+             show_prior=False, show_aliases=None, reorder_P=False, sort_by_increasing_P=False,
              points=True, colors_np=True, gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
     period and for eccentricity and orbital period. If `points` is True, plot
     each posterior sample, else plot hexbins
     """
-
-    if not res.KO or not include_known_object:
+    # if no known_object or not showing known_object periods
+    cond = not res.KO or not include_known_object
+    # and if no transiting_planet or not showing transiting_planet periods
+    cond &= not res.TR or not include_transiting_planet
+    # there might be no planet periods to show
+    if cond:
         if res.max_components == 0:
             print('Model has no planets! plot_PKE() doing nothing...')
             return
@@ -425,6 +447,17 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
         K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
         E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
 
+    include_transiting_planet = include_transiting_planet and res.TR
+
+    if include_transiting_planet:
+        if mask is None:
+            TRpars = res.posterior_sample[:, res.indices['TRpars']]
+        else:
+            TRpars = res.posterior_sample[mask, res.indices['TRpars']]
+        P_TR = np.hstack(TRpars[:, 0 * res.nTR:1 * res.nTR])
+        K_TR = np.hstack(TRpars[:, 1 * res.nTR:2 * res.nTR])
+        E_TR = np.hstack(TRpars[:, 3 * res.nTR:4 * res.nTR])
+
     if res.log_period:
         P = np.exp(P)
 
@@ -439,13 +472,18 @@ def plot_PKE(res, mask=None, include_known_object=False, show_prior=False,
     Khdr_threshold = 30
 
     if points:
-        kw = dict(markersize=2, zorder=2, alpha=0.1)
-        kw = {**kwargs, **kw}
+        kw = dict(markersize=2, zorder=2, alpha=0.1, picker=5)
+        kw = {**kw, **kwargs}
 
         # plot known_object first so it always has the same color
         if include_known_object:
             ax1.semilogx(P_KO, K_KO, '.', markersize=2, zorder=2)
             ax2.semilogx(P_KO, E_KO, '.', markersize=2, zorder=2)
+
+        # plot transiting_planet first so it always has the same color
+        if include_transiting_planet:
+            ax1.semilogx(P_TR, K_TR, '.', markersize=2, zorder=2)
+            ax2.semilogx(P_TR, E_TR, '.', markersize=2, zorder=2)
 
         if not colors_np:
             P = P.ravel()

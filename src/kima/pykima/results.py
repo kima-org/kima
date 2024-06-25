@@ -1958,7 +1958,7 @@ class KimaResults:
                     f = np.pi/2 - w # true anomaly at conjunction
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
-                    if self.model != 'RVmodel':
+                    if self.model not in ('RVmodel', 'GPmodel'):
                         v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
                         v += keplerian(t, P, K, ecc, w, M, Tc)
