@@ -60,6 +60,10 @@ void GPmodel::set_transiting_planet(size_t n)
     TR_w.resize(n);
 }
 
+void GPmodel::eta2_larger_eta3() {
+    _eta2_larger_eta3 = true;
+}
+
 /* set default priors if the user didn't change them */
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
@@ -204,8 +208,15 @@ void GPmodel::from_prior(RNG& rng)
 
     // GP
     eta1 = eta1_prior->generate(rng);  // m/s
-    eta2 = eta2_prior->generate(rng); // days
-    eta3 = eta3_prior->generate(rng); // days
+    if (_eta2_larger_eta3) {
+        eta3 = eta3_prior->generate(rng); // days
+        double p = rng.rand(); // random number U(0,1)
+        double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
+        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(eta3) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(eta3)));
+    } else {
+        eta2 = eta2_prior->generate(rng); // days
+        eta3 = eta3_prior->generate(rng); // days
+    }
     eta4 = eta4_prior->generate(rng);
 
     if (magnetic_cycle_kernel) {
@@ -471,10 +482,23 @@ double GPmodel::perturb(RNG& rng)
         else if(rng.rand() <= 0.33330)
         {
             eta3_prior->perturb(eta3, rng);
+            if (_eta2_larger_eta3 && eta2 < eta3) {
+                do {
+                    eta2_prior->perturb(eta2, rng);    
+                }
+                while (eta2 < eta3);
+            }
         }
         else if(rng.rand() <= 0.5)
         {
-            eta2_prior->perturb(eta2, rng);
+            if (_eta2_larger_eta3) {
+                do {
+                    eta2_prior->perturb(eta2, rng);    
+                }
+                while (eta2 < eta3);
+            } else {
+                eta2_prior->perturb(eta2, rng);
+            }
         }
         else
         {
@@ -1081,6 +1105,8 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.eta4_prior; },
             [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
+
+        .def("eta2_larger_eta3", &GPmodel::eta2_larger_eta3, "Constrain η2 to be larger than η3")
 
         // hyperparameters of the magnetic cycle kernel
         .def_prop_rw("eta5_prior",
