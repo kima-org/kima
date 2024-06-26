@@ -86,6 +86,7 @@ class  GPmodel
         double eta1, eta2, eta3, eta4;
         double log_eta1, log_eta2, log_eta3, log_eta4;
         bool _eta2_larger_eta3 = false;
+        double _eta2_larger_eta3_factor = 1.0;
 
         double eta5, eta6, eta7;
         double log_eta5, log_eta6, log_eta7;
@@ -114,13 +115,6 @@ class  GPmodel
         };
 
         void initialize_from_data(RVData& data);
-
-        // getter and setter for trend
-        bool get_trend() const { return trend; };
-        void set_trend(bool t) { trend = t; };
-        // getter and setter for degree
-        double get_degree() const { return degree; };
-        void set_degree(double d) { degree = d; };
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
@@ -206,7 +200,7 @@ class  GPmodel
         distribution eta7_prior;
 
         /// Constrain $\eta_2$ to be larger than $\eta_3$
-        void eta2_larger_eta3();
+        void eta2_larger_eta3(double factor=1.0);
 
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }
