@@ -60,8 +60,9 @@ void GPmodel::set_transiting_planet(size_t n)
     TR_w.resize(n);
 }
 
-void GPmodel::eta2_larger_eta3() {
+void GPmodel::eta2_larger_eta3(double factor) {
     _eta2_larger_eta3 = true;
+    _eta2_larger_eta3_factor = factor;
 }
 
 /* set default priors if the user didn't change them */
@@ -210,9 +211,11 @@ void GPmodel::from_prior(RNG& rng)
     eta1 = eta1_prior->generate(rng);  // m/s
     if (_eta2_larger_eta3) {
         eta3 = eta3_prior->generate(rng); // days
+        // eta 2 will be constrained to be above a
+        double a = _eta2_larger_eta3_factor * eta3;
         double p = rng.rand(); // random number U(0,1)
         double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
-        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(eta3) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(eta3)));
+        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(a) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(a)));
     } else {
         eta2 = eta2_prior->generate(rng); // days
         eta3 = eta3_prior->generate(rng); // days
@@ -302,8 +305,7 @@ void GPmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         if(false) //hyperpriors
@@ -378,7 +380,6 @@ void GPmodel::calculate_C()
 
 void GPmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
     for (int j = 0; j < n_known_object; j++) {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
         for (size_t i = 0; i < data.N(); i++) {
@@ -482,11 +483,11 @@ double GPmodel::perturb(RNG& rng)
         else if(rng.rand() <= 0.33330)
         {
             eta3_prior->perturb(eta3, rng);
-            if (_eta2_larger_eta3 && eta2 < eta3) {
+            if (_eta2_larger_eta3 && eta2 < _eta2_larger_eta3_factor * eta3) {
                 do {
                     eta2_prior->perturb(eta2, rng);    
                 }
-                while (eta2 < eta3);
+                while (eta2 < _eta2_larger_eta3_factor * eta3);
             }
         }
         else if(rng.rand() <= 0.5)
@@ -495,7 +496,7 @@ double GPmodel::perturb(RNG& rng)
                 do {
                     eta2_prior->perturb(eta2, rng);    
                 }
-                while (eta2 < eta3);
+                while (eta2 < _eta2_larger_eta3_factor * eta3);
             } else {
                 eta2_prior->perturb(eta2, rng);
             }
@@ -1106,7 +1107,8 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
 
-        .def("eta2_larger_eta3", &GPmodel::eta2_larger_eta3, "Constrain η2 to be larger than η3")
+        .def("eta2_larger_eta3", &GPmodel::eta2_larger_eta3, 
+             "Constrain η2 to be larger than factor * η3", "factor"_a)
 
         // hyperparameters of the magnetic cycle kernel
         .def_prop_rw("eta5_prior",
