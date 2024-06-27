@@ -6,7 +6,8 @@ from copy import deepcopy
 import os
 import sys
 import pickle
-from typing import List, Union
+from typing import List, Union, Any
+from typing_extensions import Self
 import zipfile
 import time
 import tempfile
@@ -186,8 +187,8 @@ class posterior_holder:
     η5: np.ndarray = field(init=False)
     η6: np.ndarray = field(init=False)
     # 
-    tr = field(init=False)
-    ko = field(init=False)
+    tr: Self = field(init=False)
+    ko: Self = field(init=False)
 
     def __repr__(self):
         fields = list(self.__dataclass_fields__.keys())
