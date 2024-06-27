@@ -27,6 +27,29 @@ def get_kima_dir():
     here = os.path.dirname(os.path.dirname(__file__))
     return here
 
+def get_model_id(model, star=None, add_timestamp=True):
+    from .. import RVmodel, GPmodel, RVFWHMmodel, RVFWHMRHKmodel
+    if star is None:
+        id = 'kima_'
+    else: 
+        id = star + '_'
+
+    id += f'k{model.npmax}_' if model.fix else f'k0{model.npmax}_'
+    id += f'd{model.trend_degree}_' if model.trend else ''
+    try:
+        id += f'studentt_' if model.studentt else ''
+    except AttributeError:
+        pass
+    id += 'GP_' if isinstance(model, GPmodel) else ''
+    id += 'RVFWHM_' if isinstance(model, RVFWHMmodel) else ''
+    id += 'RVFWHMRHK_' if isinstance(model, RVFWHMRHKmodel) else ''
+    id += f'KO{model.n_known_object}_' if model.known_object else ''
+    id += f'TR{model.n_transiting_planet}_' if model.transiting_planet else ''
+    if add_timestamp:
+        id += get_timestamp()
+    if id.endswith('_'):
+        id = id[:-1]
+    return id
 
 def read_model_setup(filename='kima_model_setup.txt'):
     setup = configparser.ConfigParser()

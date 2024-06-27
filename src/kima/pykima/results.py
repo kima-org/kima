@@ -6,7 +6,7 @@ from copy import deepcopy
 import os
 import sys
 import pickle
-from typing import List, Union
+from typing import List, Union, Any, Self
 import zipfile
 import time
 import tempfile
@@ -14,6 +14,7 @@ from string import ascii_lowercase
 from dataclasses import dataclass, field
 from io import StringIO
 from contextlib import redirect_stdout
+
 
 from .. import __models__
 from kima.kepler import keplerian as kepleriancpp
@@ -150,11 +151,16 @@ class posterior_holder:
         e (ndarray): Orbital eccentricities(s)
         w (ndarray): Argument(s) of pericenter
         φ (ndarray): Mean anomaly(ies) at the epoch
+        --
         jitter (ndarray): Per-instrument jitter(s)
         stellar_jitter (ndarray): Global jitter
         offset (ndarray): Between-instrument offset(s)
         vsys (ndarray): Systemic velocity
-
+        --
+        η1 - η6 (ndarray): GP hyperparameters
+        --
+        tr: Transiting planet parameters
+        ko: Known Object parameters
     """
     Np: np.ndarray = field(init=False)
     P: np.ndarray = field(init=False)
@@ -162,6 +168,7 @@ class posterior_holder:
     e: np.ndarray = field(init=False)
     w: np.ndarray = field(init=False)
     φ: np.ndarray = field(init=False)
+    Tc: np.ndarray = field(init=False)
     # 
     jitter: np.ndarray = field(init=False)
     stellar_jitter: np.ndarray = field(init=False)
@@ -178,10 +185,16 @@ class posterior_holder:
     η4: np.ndarray = field(init=False)
     η5: np.ndarray = field(init=False)
     η6: np.ndarray = field(init=False)
+    # 
+    tr: Self = field(init=False)
+    ko: Self = field(init=False)
 
     def __repr__(self):
         fields = list(self.__dataclass_fields__.keys())
-        fields = [f for f in fields if hasattr(self, f) and getattr(self, f).size > 0]
+        fields = [
+            f for f in fields 
+            if hasattr(self, f) and (isinstance(getattr(self, f), posterior_holder) or getattr(self, f).size > 0)
+        ]
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
 
@@ -1355,6 +1368,24 @@ class KimaResults:
     def show_kima_setup(self):
         return _show_kima_setup()
 
+    def get_model_id(self, add_timestamp=True):
+        if self.star == 'unknown':
+            id = 'kima_'
+        else: 
+            id = self.star + '_'
+
+        id += f'k{self.npmax}_' if self.fix else f'k0{self.npmax}_'
+        id += f'd{self.trend_degree}_' if self.trend else ''
+        id += f'studentt_' if self.studentt else ''
+        id += 'GP_' if self.model == 'GPmodel' else ''
+        id += 'RVFWHM_' if self.model == 'RVFWHMmodel' else ''
+        id += 'RVFWHMRHK_' if self.model == 'RVFWHMRHKmodel' else ''
+        id += f'KO{self.nKO}_' if self.KO else ''
+        id += f'TR{self.nTR}_' if self.TR else ''
+        if add_timestamp:
+            id += get_timestamp()
+        return id
+
     def save_pickle(self, filename: str=None, postfix: str=None, verbose: bool=True):
         """ Pickle this KimaResults object into a file.
 
@@ -1368,16 +1399,7 @@ class KimaResults:
                 Print a message. Defaults to True.
         """
         if filename is None:
-            filename = self.star + '_'
-            filename += f'k{self.npmax}_' if self.fix else f'k0{self.npmax}_'
-            filename += f'd{self.trend_degree}_' if self.trend else ''
-            filename += f'studentt_' if self.studentt else ''
-            filename += 'GP_' if self.model == 'GPmodel' else ''
-            filename += 'RVFWHM_' if self.model == 'RVFWHMmodel' else ''
-            filename += 'RVFWHMRHK_' if self.model == 'RVFWHMRHKmodel' else ''
-            filename += f'KO{self.nKO}_' if self.KO else ''
-            filename += f'TR{self.nTR}_' if self.TR else ''
-            filename += get_timestamp()
+            filename = self.get_model_id(add_timestamp=True)
 
         if postfix is not None:
             filename += '_' + postfix
@@ -1502,6 +1524,25 @@ class KimaResults:
 
         # times of periastron
         self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+
+        if self.KO:
+            self.posteriors.KO = posterior_holder()
+            self.posteriors.KO.__doc__ = 'Known object parameters'
+            self.posteriors.KO.P = self.KOpars[:, range(0*self.nKO, 1*self.nKO)]
+            self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
+            self.posteriors.KO.Tc = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+            self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+            self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+
+        if self.TR:
+            self.posteriors.tr = posterior_holder()
+            self.posteriors.tr.__doc__ = 'Transiting planet parameters'
+            self.posteriors.tr.P = self.TRpars[:, range(0*self.nTR, 1*self.nTR)]
+            self.posteriors.tr.K = self.TRpars[:, range(1*self.nTR, 2*self.nTR)]
+            self.posteriors.tr.Tc = self.TRpars[:, range(2*self.nTR, 3*self.nTR)]
+            self.posteriors.tr.e = self.TRpars[:, range(3*self.nTR, 4*self.nTR)]
+            self.posteriors.tr.w = self.TRpars[:, range(4*self.nTR, 5*self.nTR)]
+
 
         # # times of inferior conjunction (transit, if the planet transits)
         # f = np.pi / 2 - self.Omega
