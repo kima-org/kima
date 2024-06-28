@@ -34,8 +34,12 @@ find_package(Python 3.8
 # import nanobind
 find_package(nanobind CONFIG REQUIRED)
 
+
 # compile the extension modules
 # this will make them available as kima.module
+
+nanobind_add_module(math STABLE_ABI NB_STATIC NB_DOMAIN kima 
+                    src/kima/math.cpp)
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp 
@@ -62,7 +66,8 @@ nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
 
 nanobind_add_module(GPmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/GPmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/GP.cpp)
+
 
 nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
@@ -104,7 +109,8 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/ETVmodel.cpp
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/postkepler.cpp 
-                    src/kima/transits.cpp src/kima/AMDstability.cpp)
+                    src/kima/transits.cpp src/kima/AMDstability.cpp
+                    src/kima/GP.cpp)
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
