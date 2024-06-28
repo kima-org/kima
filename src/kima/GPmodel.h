@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
+#include "GP.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -50,6 +51,8 @@ class  GPmodel
         RVData data;// = RVData::get_instance();
 
     private:
+        Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
+
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
@@ -182,6 +185,9 @@ class  GPmodel
         std::vector<distribution> TR_wprior;
 
 
+        enum KernelType { qp, per };
+        KernelType kernel {qp};
+
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"
         distribution eta1_prior;
@@ -199,7 +205,7 @@ class  GPmodel
         /// Prior for $\eta_7$, the recurrence timescale of the magnetic cycle kernel
         distribution eta7_prior;
 
-        /// Constrain $\eta_2$ to be larger than $\eta_3$
+        /// Constrain $\eta_2$ to be larger than factor * $\eta_3$
         void eta2_larger_eta3(double factor=1.0);
 
         // /// @brief an alias for RVData::get_instance()

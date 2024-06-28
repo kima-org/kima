@@ -18,6 +18,9 @@ void GPmodel::initialize_from_data(RVData& data)
     mu.resize(data.N());
     // resize covariance matrix
     C.resize(data.N(), data.N());
+    // copy uncertainties
+    sig_copy = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(data.sig.data(), data.sig.size());
+
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
@@ -334,48 +337,73 @@ void GPmodel::calculate_mu()
 /// @brief Fill the GP covariance matrix
 void GPmodel::calculate_C()
 {
-    size_t N = data.N();
-
-    #if TIMING
-    auto begin = std::chrono::high_resolution_clock::now();  // start timing
-    #endif
-
-    /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    for(size_t i=0; i<N; i++)
+    switch (kernel)
     {
-        for(size_t j=i; j<N; j++)
-        {
-            double r = data.t[i] - data.t[j];
-            C(i, j) = eta1*eta1 * exp(-0.5*pow(r/eta2, 2) - 2.0*pow(sin(M_PI*r/eta3)/eta4, 2));
-            if (magnetic_cycle_kernel)
-                C(i, j) += eta5*eta5 * exp(- 2.0*pow(sin(M_PI*r/eta6)/eta7, 2));
-
-            if(i==j)
-            {
-                double sig = data.sig[i];
-                if (data._multi)
-                {
-                    double jit = jitters[data.obsi[i]-1];
-                    C(i, j) += sig*sig + jit*jit;
-                }
-                else
-                {
-                    C(i, j) += sig*sig + extra_sigma*extra_sigma;
-                }
-            }
-            else
-            {
-                C(j, i) = C(i, j);
-            }
-        }
+    case qp:
+        C = QP(data.t, eta1, eta2, eta3, eta4);
+        break;
+    case per:
+        C = PER(data.t, eta1, eta3, eta4);
+        break;
+    default:
+        break;
     }
 
-    #if TIMING
-    auto end = std::chrono::high_resolution_clock::now();
-    cout << "GP build matrix: ";
-    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-    cout << " ns" << "\t"; // << std::endl;
-    #endif
+    if (data._multi)
+    {
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            double jit = jitters[data.obsi[i] - 1];
+            C(i, i) += data.sig[i] * data.sig[i] + jit * jit;
+        }
+    }
+    else
+    {
+        C.diagonal().array() += sig_copy.array().square() + extra_sigma * extra_sigma;
+    }
+
+    // size_t N = data.N();
+
+    // #if TIMING
+    // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    // #endif
+
+    // /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+    // for(size_t i=0; i<N; i++)
+    // {
+    //     for(size_t j=i; j<N; j++)
+    //     {
+    //         double r = data.t[i] - data.t[j];
+    //         C(i, j) = eta1*eta1 * exp(-0.5*pow(r/eta2, 2) - 2.0*pow(sin(M_PI*r/eta3)/eta4, 2));
+    //         if (magnetic_cycle_kernel)
+    //             C(i, j) += eta5*eta5 * exp(- 2.0*pow(sin(M_PI*r/eta6)/eta7, 2));
+
+    //         if(i==j)
+    //         {
+    //             double sig = data.sig[i];
+    //             if (data._multi)
+    //             {
+    //                 double jit = jitters[data.obsi[i]-1];
+    //                 C(i, j) += sig*sig + jit*jit;
+    //             }
+    //             else
+    //             {
+    //                 C(i, j) += sig*sig + extra_sigma*extra_sigma;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             C(j, i) = C(i, j);
+    //         }
+    //     }
+    // }
+
+    // #if TIMING
+    // auto end = std::chrono::high_resolution_clock::now();
+    // cout << "GP build matrix: ";
+    // cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    // cout << " ns" << "\t"; // << std::endl;
+    // #endif
 }
 
 void GPmodel::remove_known_object()
@@ -740,7 +768,17 @@ void GPmodel::print(std::ostream& out) const
     }
 
     // write GP parameters
-    out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
+    switch (kernel)
+    {
+    case qp:
+        out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
+        break;
+    case per:
+        out << eta1 << '\t' << eta3 << '\t' << eta4 << '\t';
+        break;
+    default:
+        break;
+    }
 
     if (magnetic_cycle_kernel)
         out << eta5 << '\t' << eta6 << '\t' << eta7 << '\t';
@@ -804,7 +842,17 @@ string GPmodel::description() const
     }
 
     // GP parameters
-    desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
+    switch (kernel)
+    {
+        case qp:
+            desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
+            break;
+        case per:
+            desc += "eta1" + sep + "eta3" + sep + "eta4" + sep;
+            break;
+        default:
+            break;
+    }
 
     if (magnetic_cycle_kernel)
         desc += "eta5" + sep + "eta6" + sep + "eta7" + sep;
@@ -884,6 +932,7 @@ void GPmodel::save_setup() {
     fout << "transiting_planet: " << transiting_planet << endl;
     fout << "n_transiting_planet: " << n_transiting_planet << endl;
     fout << "indicator_correlations: " << indicator_correlations << endl;
+    fout << "kernel: " << kernel << endl;
     fout << "magnetic_cycle_kernel: " << magnetic_cycle_kernel << endl;
     fout << endl;
 
@@ -1004,8 +1053,9 @@ class GPmodel_publicist : public GPmodel
 };
 
 NB_MODULE(GPmodel, m) {
-    nb::class_<GPmodel>(m, "GPmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+    nb::class_<GPmodel> model(m, "GPmodel");
+    
+    model.def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
         //
         .def_rw("directory", &GPmodel::directory,
                 "directory where the model ran")
@@ -1043,6 +1093,11 @@ NB_MODULE(GPmodel, m) {
                 "stellar mass [Msun]")
         .def_rw("enforce_stability", &GPmodel_publicist::enforce_stability, 
                 "whether to enforce AMD-stability")
+
+        .def_prop_rw("kernel",
+            [](GPmodel &m) { return m.kernel; },
+            [](GPmodel &m, GPmodel::KernelType k) { m.kernel = k; },
+            "GP kernel to use")
         
         .def_rw("magnetic_cycle_kernel", &GPmodel_publicist::magnetic_cycle_kernel, 
                 "whether to consider a (periodic) GP kernel for a magnetic cycle")
@@ -1108,7 +1163,7 @@ NB_MODULE(GPmodel, m) {
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
 
         .def("eta2_larger_eta3", &GPmodel::eta2_larger_eta3, 
-             "Constrain η2 to be larger than factor * η3", "factor"_a)
+             "Constrain η2 to be larger than factor * η3", "factor"_a=1.0)
 
         // hyperparameters of the magnetic cycle kernel
         .def_prop_rw("eta5_prior",
@@ -1176,4 +1231,10 @@ NB_MODULE(GPmodel, m) {
         .def_prop_rw("conditional",
                      [](GPmodel &m) { return m.get_conditional_prior(); },
                      [](GPmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+
+    nb::enum_<GPmodel::KernelType>(model, "KernelType")
+        .value("qp", GPmodel::KernelType::qp)
+        .value("per", GPmodel::KernelType::per)
+        .export_values();
+
 }
