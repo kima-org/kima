@@ -115,6 +115,10 @@ nanobind_add_module(postkepler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/postkepler.cpp src/kima/kepler.cpp)
 target_compile_features(postkepler PRIVATE cxx_std_17)
 
+nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima 
+                    src/kima/GP.cpp)
+target_compile_features(GP PRIVATE cxx_std_17)
+
 nanobind_add_module(transits STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/transits.cpp src/kima/kepler.cpp)
 target_compile_features(transits PRIVATE cxx_std_17)
@@ -139,6 +143,10 @@ foreach(targ GPmodel RVFWHMmodel RVFWHMRHKmodel)
   target_include_directories(${targ} PRIVATE ${INCLUDES_EIGEN})
   target_link_libraries(${targ} PRIVATE dnest4)
 endforeach()
+# and for GP module too
+target_include_directories(GP PRIVATE ${INCLUDES_EIGEN})
+
+endforeach()
 
 
 # compilation settings for Sampler
@@ -148,7 +156,7 @@ target_link_libraries(Sampler PRIVATE dnest4)
 
 
 # install directives for scikit-build-core
-foreach(module distributions kepler transits)
+foreach(module math distributions kepler GP transits)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
