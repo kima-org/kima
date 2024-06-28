@@ -2663,13 +2663,10 @@ class KimaResults:
     #     return r
     @property
     def ratios(self):
-        bins = np.arange(self.max_components + 2)
+        bins = np.arange(self.max_components + 2) - 0.5
         n, _ = np.histogram(self.Np, bins=bins)
-        a = np.pad(n[:-1] / n[1:], (0, 1))
-        b = np.pad(n[1:] / n[:-1], (1, 0))
-        return n[1:] / n[:-1]
-        # resNp = np.where(n == np.max(n[(a > 150) | (b > 150)]))[0][0]
-
+        with np.errstate(divide='ignore'):
+            return n[1:] / n[:-1]
 
     @property
     def _error_ratios(self):
@@ -2742,7 +2739,6 @@ class KimaResults:
             _2 = self.data.t[np.ediff1d(self.data.obs, None, 0) != 0]
             return np.mean((_1, _2), axis=0)
 
-    @property
     def data_properties(self):
         t = self.data.t
         prop = {
