@@ -146,7 +146,6 @@ endforeach()
 # and for GP module too
 target_include_directories(GP PRIVATE ${INCLUDES_EIGEN})
 
-endforeach()
 
 
 # compilation settings for Sampler
