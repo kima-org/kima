@@ -962,31 +962,36 @@ class KimaResults:
         return i
 
     def _read_GP(self):
+        from .. import GPmodel
         if self.model not in ('GPmodel', 'RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
             self.has_gp = False
             self.n_hyperparameters = 0
             return
         
         self.has_gp = True
-        self.GPkernel = 'standard'
+        try:
+            self.kernel = GPmodel.KernelType(int(self.setup['kima']['kernel']))
+        except KeyError:
+            self.kernel = GPmodel.KernelType(0)
 
         try:
             self.magnetic_cycle_kernel = self.setup['kima']['magnetic_cycle_kernel'] == 'true'
             if self.magnetic_cycle_kernel:
-                self.GPkernel = 'standard+magcycle'
+                self.kernel = 'standard+magcycle'
         except KeyError:
             pass
 
         if self.model == 'GPmodel':
             try:
                 n_hyperparameters = {
-                    'standard': 4,
+                    GPmodel.KernelType.qp: 4,
+                    GPmodel.KernelType.per: 3,
                     'standard+magcycle': 7,
                 }
-                n_hyperparameters = n_hyperparameters[self.GPkernel]
+                n_hyperparameters = n_hyperparameters[self.kernel]
             except KeyError:
                 raise ValueError(
-                    f'GP kernel = {self.GPkernel} not recognized')
+                    f'GP kernel = {self.kernel} not recognized')
 
             self.n_hyperparameters = n_hyperparameters
 
@@ -1038,22 +1043,22 @@ class KimaResults:
 
         t, e = self.data.t, self.data.e
         kernels = {
-            'standard': QPkernel(1, 1, 1, 1),
+           GPmodel.KernelType.qp: QPkernel(1, 1, 1, 1),
             'standard+magcycle': QPpMAGCYCLEkernel(1, 1, 1, 1, 1, 1, 1),
-            #'periodic': PERkernel(1, 1, 1),
+            GPmodel.KernelType.per: PERkernel(1, 1, 1),
             #'qpc': QPCkernel(1, 1, 1, 1, 1),
             #'RBF': RBFkernel(1, 1),
             #'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
         }
 
         if self.model == 'RVFWHMmodel':
-            self.GP1 = GP(deepcopy(kernels[self.GPkernel]), t, e, white_noise=0.0)
-            self.GP2 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e2, white_noise=0.0)
+            self.GP1 = GP(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
+            self.GP2 = GP(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
 
         if self.model == 'RVFWHMRHKmodel':
-            self.GP1 = GP(deepcopy(kernels[self.GPkernel]), t, e, white_noise=0.0)
-            self.GP2 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e2, white_noise=0.0)
-            self.GP3 = GP(deepcopy(kernels[self.GPkernel]), t, self.data.e3, white_noise=0.0)
+            self.GP1 = GP(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
+            self.GP2 = GP(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
+            self.GP3 = GP(deepcopy(kernels[self.kernel]), t, self.data.e3, white_noise=0.0)
 
         elif self.model == 'GPmodel_systematics':
             X = np.c_[self.data.t, self._extra_data[:, 3]]
@@ -1062,7 +1067,7 @@ class KimaResults:
         elif self.model == 'SPLEAFmodel':
             pass
         else:
-            self.GP = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
+            self.GP = GP(kernels[self.kernel], t, e, white_noise=0.0)
 
     def _read_MA(self):
         # find MA in the compiled model
