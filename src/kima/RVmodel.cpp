@@ -267,14 +267,14 @@ void RVmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         if(false) //hyperpriors
             P = exp(components[j][0]);
         else
             P = components[j][0];
+        //cout << "P: " << P << endl;
 
         K = components[j][1];
         phi = components[j][2];
@@ -297,7 +297,6 @@ void RVmodel::calculate_mu()
 
 void RVmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
     for (int j = 0; j < n_known_object; j++) {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
         for (size_t i = 0; i < data.N(); i++) {
@@ -405,17 +404,17 @@ double RVmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
-            stellar_jitter_prior->perturb(stellar_jitter, rng);
+            logH += stellar_jitter_prior->perturb(stellar_jitter, rng);
             for (int i = 0; i < jitters.size(); i++)
-                Jprior->perturb(jitters[i], rng);
+                logH += Jprior->perturb(jitters[i], rng);
         }
         else
         {
-            Jprior->perturb(jitter, rng);
+            logH += Jprior->perturb(jitter, rng);
         }
 
         if (studentt)
-            nu_prior->perturb(nu, rng);
+            logH += nu_prior->perturb(nu, rng);
 
 
         if (known_object)
@@ -424,11 +423,11 @@ double RVmodel::perturb(RNG& rng)
 
             for (int i = 0; i < n_known_object; i++)
             {
-                KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_Kprior[i]->perturb(KO_K[i], rng);
-                KO_eprior[i]->perturb(KO_e[i], rng);
-                KO_phiprior[i]->perturb(KO_phi[i], rng);
-                KO_wprior[i]->perturb(KO_w[i], rng);
+                logH += KO_Pprior[i]->perturb(KO_P[i], rng);
+                logH += KO_Kprior[i]->perturb(KO_K[i], rng);
+                logH += KO_eprior[i]->perturb(KO_e[i], rng);
+                logH += KO_phiprior[i]->perturb(KO_phi[i], rng);
+                logH += KO_wprior[i]->perturb(KO_w[i], rng);
             }
 
             add_known_object();
@@ -440,11 +439,11 @@ double RVmodel::perturb(RNG& rng)
 
             for (int i = 0; i < n_transiting_planet; i++)
             {
-                TR_Pprior[i]->perturb(TR_P[i], rng);
-                TR_Kprior[i]->perturb(TR_K[i], rng);
-                TR_eprior[i]->perturb(TR_e[i], rng);
-                TR_Tcprior[i]->perturb(TR_Tc[i], rng);
-                TR_wprior[i]->perturb(TR_w[i], rng);
+                logH += TR_Pprior[i]->perturb(TR_P[i], rng);
+                logH += TR_Kprior[i]->perturb(TR_K[i], rng);
+                logH += TR_eprior[i]->perturb(TR_e[i], rng);
+                logH += TR_Tcprior[i]->perturb(TR_Tc[i], rng);
+                logH += TR_wprior[i]->perturb(TR_w[i], rng);
             }
 
             add_transiting_planet();
@@ -475,28 +474,28 @@ double RVmodel::perturb(RNG& rng)
         }
 
         // propose new vsys
-        Cprior->perturb(background, rng);
+        logH += Cprior->perturb(background, rng);
 
         // propose new instrument offsets
         if (data._multi)
         {
             for (size_t j = 0; j < offsets.size(); j++)
             {
-                individual_offset_prior[j]->perturb(offsets[j], rng);
+                logH += individual_offset_prior[j]->perturb(offsets[j], rng);
             }
         }
 
         // propose new slope
         if(trend) {
-            if (degree >= 1) slope_prior->perturb(slope, rng);
-            if (degree >= 2) quadr_prior->perturb(quadr, rng);
-            if (degree == 3) cubic_prior->perturb(cubic, rng);
+            if (degree >= 1) logH += slope_prior->perturb(slope, rng);
+            if (degree >= 2) logH += quadr_prior->perturb(quadr, rng);
+            if (degree == 3) logH += cubic_prior->perturb(cubic, rng);
         }
 
         // propose new indicator correlations
         if(indicator_correlations){
             for(size_t j = 0; j < data.number_indicators; j++){
-                beta_prior->perturb(betas[j], rng);
+                logH += beta_prior->perturb(betas[j], rng);
             }
         }
 
@@ -564,13 +563,16 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(data._multi)
+            if(data._multi) 
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
             }
             else
+            {
                 var = sig[i]*sig[i] + jitter*jitter;
+            }
+
 
             logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                     - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -590,8 +592,10 @@ double RVmodel::log_likelihood() const
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
             }
-            else
+            else {
                 var = sig[i]*sig[i] + jitter*jitter;
+            }
+
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
