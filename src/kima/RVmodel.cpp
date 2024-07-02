@@ -356,10 +356,25 @@ int RVmodel::is_stable() const
     
     int stable_planets = 0;
     int stable_known_object = 0;
-    int stable_transiting_planet = 0;
+    // int stable_transiting_planet = 0;
 
-    if (components.size() != 0)
-        stable_planets = AMD::AMD_stable(components, star_mass);
+    if (components.size() != 0) {
+        if (known_object) {
+            vector<vector<double>> all_components;
+            all_components.insert(all_components.end(), components.begin(), components.end());
+            all_components.resize(components.size() + n_known_object);
+            size_t i = 0;
+            for (size_t j = components.size(); j < components.size() + n_known_object; j++) {
+                all_components[j] = {KO_P[i], KO_K[i], KO_phi[i], KO_e[i], KO_w[i]};
+                i++;
+            }
+            stable_planets = AMD::AMD_stable(all_components, star_mass);
+        }
+        else {
+            stable_planets = AMD::AMD_stable(components, star_mass);
+        }
+        return stable_planets;
+    }
 
     if (known_object) {
         vector<vector<double>> ko_components;
@@ -368,6 +383,7 @@ int RVmodel::is_stable() const
             ko_components[j] = {KO_P[j], KO_K[j], KO_phi[j], KO_e[j], KO_w[j]};
         }
         stable_known_object = AMD::AMD_stable(ko_components, star_mass);
+        return stable_known_object;
     }
 
     // if (transiting_planet) {
@@ -379,7 +395,8 @@ int RVmodel::is_stable() const
     //     stable_transiting_planet = AMD::AMD_stable(tr_components, star_mass);
     // }
 
-    return stable_planets + stable_known_object + stable_transiting_planet;
+    // should never get here
+    return 0;
 }
 
 
