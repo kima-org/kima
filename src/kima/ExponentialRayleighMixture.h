@@ -49,8 +49,8 @@ double brenth(Functor f, double xa, double xb,
     double stry, dpre, dblk;
     int i;
 
-    fpre = f(xpre);
-    fcur = f(xcur);
+    fpre = static_cast<double>(f(xpre));
+    fcur = static_cast<double>(f(xcur));
     // solver_stats->funcalls = 2;
     if (fpre == 0) {
         // solver_stats->error_num = CONVERGED;
