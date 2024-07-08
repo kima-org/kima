@@ -376,4 +376,25 @@ NB_MODULE(distributions, m)
             }
         );
 
+    // ExponentialRayleighMixture
+    nb::class_<DNest4::ExponentialRayleighMixture, DNest4::ContinuousDistribution>(m, "ExponentialRayleighMixture", "docs")
+        .def(nb::init<double, double, double>(), "weight"_a, "scale"_a, "sigma"_a, "docs")
+        .def_rw("weight", &DNest4::ExponentialRayleighMixture::weight, "")
+        .def_rw("scale", &DNest4::ExponentialRayleighMixture::scale, "")
+        .def_rw("sigma", &DNest4::ExponentialRayleighMixture::sigma, "")
+        .def("__repr__", [](const DNest4::ExponentialRayleighMixture &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::ExponentialRayleighMixture::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::ExponentialRayleighMixture::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::ExponentialRayleighMixture::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
+        // // for pickling
+        // .def("__getstate__",
+        //      [](const DNest4::ExponentialRayleighMixture &d) { 
+        //         return std::make_tuple(d.alpha, d.beta, 0.0, 0.0); 
+        // })
+        // .def("__setstate__",
+        //      [](DNest4::ExponentialRayleighMixture &d, const _state_type &state) {
+        //         new (&d) DNest4::ExponentialRayleighMixture(std::get<0>(state), std::get<1>(state));
+        //     }
+        // );
+
 }

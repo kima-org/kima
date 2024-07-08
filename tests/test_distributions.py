@@ -192,3 +192,25 @@ def test_logpdf(loc_scale, number, positive):
 
     # is UniformAngle the same as Uniform(0, 2pi) ?
     assert_equal(UniformAngle().logpdf(1.0), Uniform(0.0, 2*np.pi).logpdf(1.0))
+
+
+def test_mixture():
+    from kima.distributions import ExponentialRayleighMixture as ERM
+    scale = np.random.uniform(0.1, 2)
+    sigma = np.random.uniform(0.1, 2)
+    C1exp = expon(scale=scale).cdf(1.0)
+    C1ray = rayleigh(scale=sigma).cdf(1.0)
+    # pdf
+    x = np.random.rand()
+    assert_allclose(ERM(1.0, scale, sigma).logpdf(x), np.log(expon(scale=scale).pdf(x) / C1exp))
+    assert_allclose(ERM(0.0, scale, sigma).logpdf(x), np.log(rayleigh(scale=sigma).pdf(x) / C1ray))
+    # cdf
+    x = np.random.rand()
+    assert_allclose(ERM(1.0, scale, sigma).cdf(x), expon(scale=scale).cdf(x) / C1exp)
+    assert_allclose(ERM(0.0, scale, sigma).cdf(x), rayleigh(scale=sigma).cdf(x) / C1ray)
+    # 
+    assert_allclose(ERM(0.1, scale, sigma).cdf(x), 
+                    0.1 * expon(scale=scale).cdf(x) / C1exp + 0.9 * rayleigh(scale=sigma).cdf(x) / C1ray)
+
+
+
