@@ -49,8 +49,8 @@ double brenth(Functor f, double xa, double xb,
     double stry, dpre, dblk;
     int i;
 
-    fpre = static_cast<double>(f(xpre));
-    fcur = static_cast<double>(f(xcur));
+    fpre = f(xpre);
+    fcur = f(xcur);
     // solver_stats->funcalls = 2;
     if (fpre == 0) {
         // solver_stats->error_num = CONVERGED;
@@ -60,7 +60,7 @@ double brenth(Functor f, double xa, double xb,
         // solver_stats->error_num = CONVERGED;
         return xcur;
     }
-    if (signbit(fpre)==signbit(fcur)) {
+    if (std::signbit(fpre) == std::signbit(fcur)) {
         // solver_stats->error_num = SIGNERR;
         return 0.;
     }
@@ -68,7 +68,7 @@ double brenth(Functor f, double xa, double xb,
     for (i = 0; i < maxiter; i++) {
         // solver_stats->iterations++;
         if (fpre != 0 && fcur != 0 &&
-	    (signbit(fpre) != signbit(fcur))) {
+	    (std::signbit(fpre) != std::signbit(fcur))) {
             xblk = xpre;
             fblk = fpre;
             spre = scur = xcur - xpre;
