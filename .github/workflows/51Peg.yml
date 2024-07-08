@@ -38,7 +38,7 @@ jobs:
 
     - name: Update pip
       run: |
-        pip install pip -U
+        python -m pip install pip -U
 
     - name: Build and install
       run: |
