@@ -23,7 +23,7 @@ void TRANSITmodel::setPriors()  // BUG: should be done by only one thread!
         Cprior = make_prior<Gaussian>(0, 0.1);
 
     if (!Jprior)
-        Jprior = make_prior<Uniform>(0, 2 * data.get_flux_std());
+        Jprior = make_prior<Uniform>(0, 0.1);
 
     if (trend){
         if (degree == 0)
@@ -154,7 +154,7 @@ void TRANSITmodel::calculate_mu()
         ecc = components[j][5];
         omega = components[j][6];
         // cout << t0 << " " << P << " " << a << " " << inc << " " << ecc << " " << omega << endl;
-        auto ds = rsky(data.t, tmid + t0, P, a, inc, ecc, omega);
+        auto ds = rsky(data.t, t0, P, a, inc, ecc, omega);
         auto f = quadratic_ld(ds, 0.5, 0.1, Rp);
         for (size_t i = 0; i < N; i++)
             mu[i] += f[i];
@@ -170,10 +170,11 @@ void TRANSITmodel::calculate_mu()
 
 void TRANSITmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] -= v[i];
         }
     }
@@ -181,9 +182,11 @@ void TRANSITmodel::remove_known_object()
 
 void TRANSITmodel::add_known_object()
 {
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] += v[i];
         }
     }
@@ -226,7 +229,7 @@ double TRANSITmodel::perturb(RNG& rng)
     double tmid = data.get_t_middle();
 
 
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(npmax > 0 && rng.rand() <= 0.75) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
@@ -328,7 +331,7 @@ double TRANSITmodel::log_likelihood() const
     if (studentt){
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
-        double var, jit;
+        double var;
         for(size_t i=0; i<N; i++)
         {
             var = sig[i]*sig[i] + extra_sigma*extra_sigma;
@@ -343,13 +346,12 @@ double TRANSITmodel::log_likelihood() const
     else{
         // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
-        double var, jit;
-        for(size_t i=0; i<N; i++)
+        double var;
+        for (size_t i = 0; i < N; i++)
         {
-            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            var = sig[i] * sig[i] + extra_sigma * extra_sigma;
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+            logL += -halflog2pi - 0.5 * log(var) - 0.5 * (pow(y[i] - mu[i], 2) / var);
         }
     }
 
@@ -472,9 +474,7 @@ void TRANSITmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

@@ -226,8 +226,7 @@ void BINARIESmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         //if(hyperpriors)
@@ -401,8 +400,7 @@ void BINARIESmodel::calculate_mus()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
 
@@ -433,13 +431,12 @@ void BINARIESmodel::calculate_mus()
 
 void BINARIESmodel::remove_known_object()
 {   
-    double f, v, ti, Tp, w_t, P_anom;
-    // cout << "in remove_known_obj: " << KO_P[1] << endl;
-    for(int j=0; j<n_known_object; j++)
+    double P_anom;
+    for (int j = 0; j < n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-        for(size_t i=0; i<data.t.size(); i++)
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
+        for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] -= v[i];
         }
@@ -448,55 +445,50 @@ void BINARIESmodel::remove_known_object()
 
 void BINARIESmodel::remove_known_object_sb2()
 {
-    
-    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2;
-    // cout << "in remove_known_obj: " << KO_P[1] << endl;
-    for(int j=0; j<n_known_object; j++)
+
+    double P_anom;
+    for (int j = 0; j < n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
-        
-        for(size_t i=0; i<data.t.size(); i++)
+        auto [v1, v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_radius, binary_radius, relativistic_correction, tidal_correction);
+
+        for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] -= v1[i];
             mu_2[i] -= v2[i];
-        }        
-
+        }
     }
 }
 
 void BINARIESmodel::add_known_object()
 {
     
-    double f, v, ti, Tp, w_t, P_anom;
+    double P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
-        for(size_t i=0; i<data.t.size(); i++)
+        for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] += v[i];
-        }        
-
+        }
     }
 }
 
 void BINARIESmodel::add_known_object_sb2()
 {
     
-    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2;
-    for(int j=0; j<n_known_object; j++)
+    double P_anom;
+    for (int j = 0; j < n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
         auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
-        
 
-        for(size_t i=0; i<data.t.size(); i++)
+        for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] += v1[i];
             mu_2[i] += v2[i];
-        }        
-
+        }
     }
 }
 
@@ -1023,9 +1015,7 @@ void BINARIESmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

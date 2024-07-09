@@ -130,7 +130,7 @@ class  KIMA_API RVData {
     // bool check_data(bool check_for_indicator_errors = true) const;
 
     /// Get the total number of RV points
-    int N() const { return t.size(); }
+    int N() const { return static_cast<int>(t.size()); }
 
     /// Get the array of times
     const vector<double>& get_t() const { return t; }
@@ -188,7 +188,7 @@ class  KIMA_API RVData {
     int Ninstruments() const
     {
         set<int> s(obsi.begin(), obsi.end());
-        return s.size();
+        return static_cast<int>(s.size());
     }
 
   //  private:
@@ -234,7 +234,7 @@ class KIMA_API PHOTdata {
     double M0_epoch;
 
     /// Get the total number of RV points
-    int N() const { return t.size(); }
+    int N() const { return static_cast<int>(t.size()); }
 
     /// Get the array of times
     const vector<double>& get_t() const { return t; }
@@ -313,7 +313,7 @@ class KIMA_API GAIAdata {
     // bool check_data(bool check_for_indicator_errors = true) const;
 
     /// Get the total number of Gaia points
-    int N() const { return t.size(); }
+    int N() const { return static_cast<int>(t.size()); }
 
     /// Get the array of times
     const vector<double>& get_t() const { return t; }
@@ -374,7 +374,7 @@ class ETVData {
     double M0_epoch;
 
     /// Get the total number of data points
-    int N() const { return epochs.size(); }
+    int N() const { return static_cast<int>(epochs.size()); }
 
     /// @brief Get the array of epoch @return const vector<double>&
     const vector<double>& get_epochs() const { return epochs; }

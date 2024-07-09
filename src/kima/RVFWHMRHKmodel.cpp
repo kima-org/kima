@@ -391,11 +391,10 @@ void RVFWHMRHKmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
-    for(size_t j=0; j<components.size(); j++)
+    double P, K, phi, ecc, omega;
+    for (size_t j = 0; j < components.size(); j++)
     {
-        if(false) //hyperpriors
+        if (false) // hyperpriors
             P = exp(components[j][0]);
         else
             P = components[j][0];
@@ -406,7 +405,7 @@ void RVFWHMRHKmodel::calculate_mu()
         omega = components[j][4];
 
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
             mu[i] += v[i];
     }
 
@@ -613,10 +612,11 @@ void RVFWHMRHKmodel::calculate_C_rhk()
 
 void RVFWHMRHKmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] -= v[i];
         }
     }
@@ -624,9 +624,11 @@ void RVFWHMRHKmodel::remove_known_object()
 
 void RVFWHMRHKmodel::add_known_object()
 {
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] += v[i];
         }
     }
@@ -739,15 +741,15 @@ double RVFWHMRHKmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
-            for (int i = 0; i < jitters.size() / 3; i++)
+            for (size_t i = 0; i < jitters.size() / 3; i++)
             {
                 Jprior->perturb(jitters[i], rng);
             }
-            for (int i = jitters.size() / 3; i < 2 * jitters.size() / 3; i++)
+            for (size_t i = jitters.size() / 3; i < 2 * jitters.size() / 3; i++)
             {
                 J2prior->perturb(jitters[i], rng);
             }
-            for (int i = 2 * jitters.size() / 3; i < jitters.size(); i++)
+            for (size_t i = 2 * jitters.size() / 3; i < jitters.size(); i++)
             {
                 J3prior->perturb(jitters[i], rng);
             }
@@ -1126,9 +1128,7 @@ void RVFWHMRHKmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl;
 
     fout << "[kima]" << endl;
 

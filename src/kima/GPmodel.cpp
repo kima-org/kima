@@ -913,9 +913,7 @@ void GPmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

@@ -115,7 +115,7 @@ RVData::RVData(const vector<vector<double>> _t,
         medians.push_back(median(_y[i]));
 
         for (size_t n = 0; n < _t[i].size(); n++)
-            obsi.push_back(i + 1);
+            obsi.push_back(static_cast<int>(i) + 1);
     }
     actind.clear();
 
@@ -126,7 +126,7 @@ RVData::RVData(const vector<vector<double>> _t,
     _multi = true;
     _indicator_names = {};
     number_indicators = 0;
-    number_instruments = _t.size();
+    number_instruments = static_cast<int>(_t.size());
     _instrument = "";
     _instruments = instruments;
 
@@ -154,8 +154,8 @@ RVData::RVData(const vector<vector<double>> _t,
     if (number_instruments > 1) {
         size_t N = t.size();
         vector<double> tt(N), yy(N);
-        vector<double> sigsig(N), obsiobsi(N);
-        vector<int> order(N);
+        vector<double> sigsig(N);
+        vector<int> order(N), obsiobsi(N);
 
         // order = argsort(t)
         int x = 0;
@@ -239,8 +239,8 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     }
 
     // check for indicator correlations and store stuff
-    int nempty = count(indicators.begin(), indicators.end(), "");
-    number_indicators = indicators.size() - nempty;
+    int nempty = static_cast<int>( count(indicators.begin(), indicators.end(), "") );
+    number_indicators = static_cast<int>(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
 
     _indicator_names = indicators;
@@ -251,9 +251,13 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 
     // empty and resize the indicator vectors
     actind.clear();
+    normalized_actind.clear();
     actind.resize(number_indicators);
-    for (int n = 0; n < number_indicators; n++)
+    normalized_actind.resize(number_indicators);
+    for (int n = 0; n < number_indicators; n++) {
         actind[n].clear();
+        normalized_actind[n].clear();
+    }
 
     // set the indicator vectors to the right columns
     if (indicator_correlations)

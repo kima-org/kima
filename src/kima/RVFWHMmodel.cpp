@@ -43,6 +43,11 @@ void RVFWHMmodel::set_known_object(size_t n)
     KO_wprior.resize(n);
 }
 
+void RVFWHMmodel::eta2_larger_eta3(double factor) {
+    _eta2_larger_eta3 = true;
+    _eta2_larger_eta3_factor = factor;
+}
+
 /// set default priors if the user didn't change them
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -205,13 +210,23 @@ void RVFWHMmodel::from_prior(RNG& rng)
     eta1 = eta1_prior->generate(rng);  // m/s
     eta1_fw = eta1_fwhm_prior->generate(rng);  // m/s
 
-    eta3 = eta3_prior->generate(rng); // days
-    if (!share_eta3)
-        eta3_fw = eta3_fwhm_prior->generate(rng); // days
+    if (_eta2_larger_eta3) {
+        eta3 = eta3_prior->generate(rng); // days
+        // eta 2 will be constrained to be above a
+        double a = _eta2_larger_eta3_factor * eta3;
+        double p = rng.rand(); // random number U(0,1)
+        double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
+        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(a) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(a)));
+        // if (!share_eta3)      
+    } else {
+        eta3 = eta3_prior->generate(rng); // days
+        if (!share_eta3)
+            eta3_fw = eta3_fwhm_prior->generate(rng); // days
 
-    eta2 = eta2_prior->generate(rng); // days
-    if (!share_eta2)
-        eta2_fw = eta2_fwhm_prior->generate(rng); // days
+        eta2 = eta2_prior->generate(rng); // days
+        if (!share_eta2)
+            eta2_fw = eta2_fwhm_prior->generate(rng); // days
+    }
 
     eta4 = exp(eta4_prior->generate(rng));
     if (!share_eta4)
@@ -280,9 +295,8 @@ void RVFWHMmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
-    for(size_t j=0; j<components.size(); j++)
+    double P, K, phi, ecc, omega;
+    for (size_t j = 0; j < components.size(); j++)
     {
         if(false) //hyperpriors
             P = exp(components[j][0]);
@@ -295,8 +309,10 @@ void RVFWHMmodel::calculate_mu()
         omega = components[j][4];
 
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
+        {
             mu[i] += v[i];
+        }
     }
 
 
@@ -425,10 +441,11 @@ void RVFWHMmodel::calculate_C_fwhm()
 
 void RVFWHMmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] -= v[i];
         }
     }
@@ -436,9 +453,11 @@ void RVFWHMmodel::remove_known_object()
 
 void RVFWHMmodel::add_known_object()
 {
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] += v[i];
         }
     }
@@ -530,11 +549,11 @@ double RVFWHMmodel::perturb(RNG& rng)
     {
         if(data._multi)
         {
-            for (int i = 0; i < jitters.size() / 2; i++)
+            for (size_t i = 0; i < jitters.size() / 2; i++)
             {
                 Jprior->perturb(jitters[i], rng);
             }
-            for (int i = jitters.size() / 2; i < jitters.size(); i++)
+            for (size_t i = jitters.size() / 2; i < jitters.size(); i++)
             {
                 J2prior->perturb(jitters[i], rng);
             }
@@ -873,9 +892,7 @@ void RVFWHMmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

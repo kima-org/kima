@@ -25,6 +25,8 @@ void RVmodel::set_known_object(size_t n)
 {
     known_object = true;
     n_known_object = n;
+    // planet_perturb_prob = 0.5;
+    // jitKO_perturb_prob = 0.3;
 
     KO_Pprior.resize(n);
     KO_Kprior.resize(n);
@@ -43,6 +45,8 @@ void RVmodel::set_transiting_planet(size_t n)
 {
     transiting_planet = true;
     n_transiting_planet = n;
+    // planet_perturb_prob = 0.5;
+    // jitKO_perturb_prob = 0.3;
 
     TR_Pprior.resize(n);
     TR_Kprior.resize(n);
@@ -74,6 +78,9 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     // stellar jitter is zero by default
     if (data._multi && !stellar_jitter_prior)
         stellar_jitter_prior = make_prior<Fixed>(0.0);
+
+    if (jitter_propto_indicator && !jitter_slope_prior)
+        jitter_slope_prior = make_prior<Uniform>(0, 50);
 
     if (trend){
         if (degree == 0)
@@ -137,6 +144,8 @@ void RVmodel::from_prior(RNG& rng)
 
     planets.from_prior(rng);
     planets.consolidate_diff();
+    if (remove_label_switching_degeneracy && planets.components_changed())
+        solve_label_switching();
 
     background = Cprior->generate(rng);
 
@@ -152,6 +161,9 @@ void RVmodel::from_prior(RNG& rng)
     {
         jitter = Jprior->generate(rng);
     }
+
+    if (jitter_propto_indicator)
+        jitter_propto_indicator_slope = jitter_slope_prior->generate(rng);
 
     if(trend)
     {
@@ -346,7 +358,66 @@ void RVmodel::add_transiting_planet()
 }
 
 
-// TODO: compute stability for transiting planet(s)
+void RVmodel::solve_label_switching()
+{
+    if (npmax <= 1) // nothing to do
+        return;
+
+    auto components = planets.get_components();
+    auto K = components.size();
+
+    if (K <= 1) // nothing to do
+        return;
+
+    cout << staleness << endl;
+    cout << "P: " << components[0][0] << '\t' << components[1][0] << endl;
+    return;
+
+
+    auto conditional = planets.get_conditional_prior();
+
+    // map periods to the hypertriangle
+    vector<double> store_Pnew(K);
+    //double x_im1 = 0.0;
+
+    double P1 = components[0][0];
+    double x1 = conditional->Pprior->cdf(P1);
+    double X1 = 1.0 - pow(1.0 - x1, 1.0 / K);
+    double P2 = components[1][0];
+    double x2 = conditional->Pprior->cdf(P2);
+    double X2 = 1.0 - pow(1.0 - x2, 1.0) * (1.0 - X1);
+    components[0][0] = conditional->Pprior->cdf_inverse(X1);
+    components[1][0] = conditional->Pprior->cdf_inverse(X2);
+    // cout << "P1: " << P1 << '\t' << "--> " << X1 << endl;
+    // cout << "P2: " << P2 << '\t' << "--> " << X2 << endl;
+
+    // for (size_t i = 0; i < K; i++)
+    // {
+    //     double P = components[i][0];
+    //     double x = conditional->Pprior->cdf(P);
+    //     double xnew = 1.0 - pow(1 - x, 1.0/(K+1.0-i-1.0)) * (1.0 - x_im1);
+    //     double Pnew = conditional->Pprior->cdf_inverse(xnew);
+    //     components[i][0] = Pnew;
+    //     store_Pnew[i] = Pnew;
+    //     x_im1 = xnew;
+    // }
+
+    // auto indices = argsort(store_Pnew);
+    // for (size_t i = 0; i < K - 1; i++)
+    // {
+    //     if (indices[i] > indices[i+1])
+    //     {
+    //         std::swap(components[i][1], components[i+1][1]);
+    //         std::swap(components[i][2], components[i+1][2]);
+    //         std::swap(components[i][3], components[i+1][3]);
+    //         std::swap(components[i][4], components[i+1][4]);
+    //     }
+    // }
+
+    planets.set_components(components);
+    cout << "out of solve_label_switching" << endl;
+}
+
 int RVmodel::is_stable() const
 {
     // Get the components
@@ -410,11 +481,13 @@ double RVmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(npmax > 0 && rng.rand() <= planet_perturb_prob) // perturb planet parameters
     {
-        logH += planets.perturb(rng);
+        logH += planets.perturb(rng, false);
         planets.consolidate_diff();
+        if (remove_label_switching_degeneracy && planets.components_changed())
+            solve_label_switching();
+
         calculate_mu();
     }
     else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
@@ -429,6 +502,9 @@ double RVmodel::perturb(RNG& rng)
         {
             logH += Jprior->perturb(jitter, rng);
         }
+
+        if (jitter_propto_indicator)
+            logH += jitter_slope_prior->perturb(jitter_propto_indicator_slope, rng);
 
         if (studentt)
             logH += nu_prior->perturb(nu, rng);
@@ -560,6 +636,7 @@ double RVmodel::log_likelihood() const
     const auto& y = data.get_y();
     const auto& sig = data.get_sig();
     const auto& obsi = data.get_obsi();
+    const auto& normalized_actind = data.get_normalized_actind();
 
     double logL = 0.;
 
@@ -590,6 +667,8 @@ double RVmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jitter*jitter;
             }
 
+            if (jitter_propto_indicator)
+                var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
             logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                     - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -613,6 +692,8 @@ double RVmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jitter*jitter;
             }
 
+            if (jitter_propto_indicator)
+                var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -646,6 +727,9 @@ void RVmodel::print(std::ostream& out) const
     }
     else
         out << jitter << '\t';
+
+    if (jitter_propto_indicator)
+        out << jitter_propto_indicator_slope << '\t';
 
     if(trend)
     {
@@ -709,6 +793,9 @@ string RVmodel::description() const
     }
     else
         desc += "jitter" + sep;
+
+    if (jitter_propto_indicator)
+        desc += "jitter_slope" + sep;
 
     if(trend)
     {
@@ -789,9 +876,7 @@ void RVmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 
@@ -809,6 +894,8 @@ void RVmodel::save_setup() {
     fout << "n_transiting_planet: " << n_transiting_planet << endl;
     fout << "studentt: " << studentt << endl;
     fout << "indicator_correlations: " << indicator_correlations << endl;
+    fout << "jitter_propto_indicator: " << jitter_propto_indicator << endl;
+    fout << "jitter_propto_indicator_index: " << jitter_propto_indicator_index << endl;
     fout << endl;
 
     fout << endl;
@@ -840,6 +927,8 @@ void RVmodel::save_setup() {
     fout << "Jprior: " << *Jprior << endl;
     if (data._multi)
         fout << "stellar_jitter_prior: " << *stellar_jitter_prior << endl;
+    if (jitter_propto_indicator)
+        fout << "jitter_slope_prior: " << *jitter_slope_prior << endl;
 
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
@@ -928,7 +1017,10 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::studentt;
         using RVmodel::star_mass;
         using RVmodel::enforce_stability;
+        using RVmodel::remove_label_switching_degeneracy;
         using RVmodel::indicator_correlations;
+        using RVmodel::jitter_propto_indicator;
+        using RVmodel::jitter_propto_indicator_index;
 };
 
 
@@ -983,8 +1075,37 @@ NB_MODULE(RVmodel, m) {
                 "whether to enforce AMD-stability")
         
         //
+        .def_rw("remove_label_switching_degeneracy", &RVmodel_publicist::remove_label_switching_degeneracy, 
+                "docs")
+        
+        //
         .def_rw("indicator_correlations", &RVmodel_publicist::indicator_correlations, 
                 "include in the model linear correlations with indicators")
+        
+        // 
+        .def_rw("jitter_propto_indicator", &RVmodel_publicist::jitter_propto_indicator, 
+                "docs")
+        .def_rw("jitter_propto_indicator_index", &RVmodel_publicist::jitter_propto_indicator_index, 
+                "docs")
+
+        // // to un/pickle RVmodel
+        // .def("__getstate__", [](const RVmodel &m)
+        //     {
+        //         return std::make_tuple(m.fix, m.d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
+        //     })
+        // .def("__setstate__", [](RVmodel &d, const _state_type &state)
+        //     {
+        //         bool _multi = std::get<5>(state);
+        //         if (_multi) {
+        //             new (&d) RVmodel(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+        //             //              filename,           units,              skip   
+        //         } else {
+        //             new (&d) RVmodel(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+        //             //              filenames,          units,              skip   
+        //         }
+        //     })
+        // //
+
 
         // priors
         .def_prop_rw("Cprior",
@@ -1078,6 +1199,8 @@ NB_MODULE(RVmodel, m) {
                      [](RVmodel &m) { return m.TR_Tcprior; },
                      [](RVmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
                      "Prior for TR mean anomaly(ies)")
+
+        .def("set_loguniform_prior_Np", &RVmodel::set_loguniform_prior_Np)
 
         // conditional object
         .def_prop_rw("conditional",

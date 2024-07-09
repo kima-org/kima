@@ -139,8 +139,7 @@ void ETVmodel::calculate_mu()
 
 
     auto epochs = data.get_epochs();
-    double f, tau;
-    double P, K, phi, ecc, omega, Tp;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         P = components[j][0];
@@ -165,13 +164,12 @@ void ETVmodel::calculate_mu()
 void ETVmodel::remove_known_object()
 {
     auto epochs = data.get_epochs();
-    double f, tau, ti, Tp;
-    // cout << "in remove_known_obj: " << KO_P[1] << endl;
-    for(int j=0; j<n_known_object; j++)
+    for (int j = 0; j < n_known_object; j++)
     {
         auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++) {
-            mu[i] -= tau[i]/(24*3600);
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            mu[i] -= tau[i] / (24 * 3600);
         }
     }
 }
@@ -180,13 +178,13 @@ void ETVmodel::remove_known_object()
 void ETVmodel::add_known_object()
 {
     auto epochs = data.get_epochs();
-    double f, tau, ti, Tp;
     std::vector<double> ts;
-    for(int j=0; j<n_known_object; j++)
+    for (int j = 0; j < n_known_object; j++)
     {
         auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++) {
-            mu[i] += tau[i]/(24*3600);
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            mu[i] += tau[i] / (24 * 3600);
         }
     }
 }
@@ -415,9 +413,7 @@ void ETVmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

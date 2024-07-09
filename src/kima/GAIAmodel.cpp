@@ -169,9 +169,8 @@ void GAIAmodel::calculate_mu()
     #endif
 
 
-    double wk, ti;
-    double P, a0, phi, ecc, omega, Omega, cosi, Tp;
-    double A, B, F, G, X, Y;
+    double P, a0, phi, ecc, omega, Omega, cosi;
+    double A, B, F, G; // X, Y;
     for(size_t j=0; j<components.size(); j++)
     {
         P = components[j][0];
@@ -532,9 +531,7 @@ void GAIAmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 

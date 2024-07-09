@@ -77,7 +77,7 @@ void OutlierRVmodel::setPriors()  // BUG: should be done by only one thread!
     if (!outlier_mean_prior)
         outlier_mean_prior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
     if (!outlier_sigma_prior)
-        outlier_sigma_prior = make_prior<Uniform>(0, 10);
+        outlier_sigma_prior = make_prior<Uniform>(0, data.get_max_RV_span());
     if (!outlier_Q_prior)
         outlier_Q_prior = make_prior<Uniform>(0, 1);
 
@@ -117,7 +117,7 @@ void OutlierRVmodel::from_prior(RNG& rng)
 
     if (data.indicator_correlations)
     {
-        for (unsigned i=0; i<data.number_indicators; i++)
+        for (int i = 0; i < data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
     }
 
@@ -216,9 +216,8 @@ void OutlierRVmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K, phi, ecc, omega, Tp;
-    for(size_t j=0; j<components.size(); j++)
+    double P, K, phi, ecc, omega;
+    for (size_t j = 0; j < components.size(); j++)
     {
         if(false) //hyperpriors
             P = exp(components[j][0]);
@@ -231,8 +230,10 @@ void OutlierRVmodel::calculate_mu()
         omega = components[j][4];
 
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
+        {
             mu[i] += v[i];
+        }
     }
 
 
@@ -246,10 +247,11 @@ void OutlierRVmodel::calculate_mu()
 
 void OutlierRVmodel::remove_known_object()
 {
-    double f, v, ti, Tp;
-    for (int j = 0; j < n_known_object; j++) {
+    for (int j = 0; j < n_known_object; j++)
+    {
         auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++) {
+        for (size_t i = 0; i < data.N(); i++)
+        {
             mu[i] -= v[i];
         }
     }
@@ -670,9 +672,7 @@ void OutlierRVmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 
@@ -763,6 +763,10 @@ Args:
 class OutlierRVmodel_publicist : public OutlierRVmodel
 {
     public:
+        using OutlierRVmodel::fix;
+        using OutlierRVmodel::npmax;
+        using OutlierRVmodel::data;
+        //
         using OutlierRVmodel::trend;
         using OutlierRVmodel::degree;
         using OutlierRVmodel::studentt;
@@ -777,6 +781,11 @@ NB_MODULE(OutlierRVmodel, m) {
     nb::class_<OutlierRVmodel>(m, "OutlierRVmodel")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, OutlierRVMODEL_DOC)
         //
+        .def_rw("fix", &OutlierRVmodel_publicist::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &OutlierRVmodel_publicist::npmax, "maximum number of Keplerians")
+        .def_ro("data", &OutlierRVmodel_publicist::data, "the data")
+        //
+
         .def_rw("trend", &OutlierRVmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &OutlierRVmodel_publicist::degree,

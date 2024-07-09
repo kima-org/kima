@@ -156,7 +156,7 @@ void RVGAIAmodel::from_prior(RNG& rng)
     
     if (indicator_correlations)
     {
-        for (unsigned i=0; i<RV_data.number_indicators; i++)
+        for (int i = 0; i < RV_data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
     }
     
@@ -272,9 +272,8 @@ void RVGAIAmodel::calculate_mu()
     #endif
 
 
-    double wk, ti;
-    double P, M, phi, ecc, omega, Omega, cosi, Tp, a0, K;
-    double A, B, F, G, X, Y;
+    double P, M, phi, ecc, omega, Omega, cosi, a0, K;
+    double A, B, F, G; //, X, Y;
     for(size_t j=0; j<components.size(); j++)
     {
         P = components[j][0];
@@ -312,12 +311,10 @@ void RVGAIAmodel::calculate_mu()
 
 void RVGAIAmodel::remove_known_object()
 {
-    double wk, a0, K;
-    double A, B, F, G, X, Y;
-    // cout << "in remove_known_obj: " << KO_P[1] << endl;
-    for(int j=0; j<n_known_object; j++)
+    double a0, K;
+    double A, B, F, G; //, X, Y;
+    for (int j = 0; j < n_known_object; j++)
     {
-        
         K = MassConv::SemiAmp(KO_P[j],KO_e[j],star_mass,KO_M[j],KO_cosi[j]);
         a0 = MassConv::SemiPhotPl(KO_P[j],star_mass,KO_M[j],plx);
         
@@ -325,18 +322,19 @@ void RVGAIAmodel::remove_known_object()
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        
+
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
-        for (size_t i = 0; i < GAIA_data.N(); i++) {
+        for (size_t i = 0; i < GAIA_data.N(); i++)
+        {
             mu_GAIA[i] -= wk[i];
         }
-        
+
         auto v = brandt::keplerian(RV_data.t, KO_P[j], K, KO_e[j], KO_omega[j], KO_phi[j], GAIA_data.M0_epoch);
-        for (size_t i = 0; i < RV_data.N(); i++) {
+        for (size_t i = 0; i < RV_data.N(); i++)
+        {
             mu_RV[i] -= v[i];
         }
-        
-        
+
 //         for(size_t i=0; i<data.N(); i++)
 //         {
 //             ti = data.t[i];
@@ -359,25 +357,27 @@ void RVGAIAmodel::remove_known_object()
 
 void RVGAIAmodel::add_known_object()
 {
-    double wk, a0, K;
-    double A, B, F, G, X, Y;
-    for(int j=0; j<n_known_object; j++)
+    double a0, K;
+    double A, B, F, G; //, X, Y;
+    for (int j = 0; j < n_known_object; j++)
     {
-        K = MassConv::SemiAmp(KO_P[j],KO_e[j],star_mass,KO_M[j],KO_cosi[j]);
-        a0 = MassConv::SemiPhotPl(KO_P[j],star_mass,KO_M[j],plx);
-        
+        K = MassConv::SemiAmp(KO_P[j], KO_e[j], star_mass, KO_M[j], KO_cosi[j]);
+        a0 = MassConv::SemiPhotPl(KO_P[j], star_mass, KO_M[j], plx);
+
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
-        for (size_t i = 0; i < GAIA_data.N(); i++) {
+        for (size_t i = 0; i < GAIA_data.N(); i++)
+        {
             mu_GAIA[i] += wk[i];
         }
-        
+
         auto v = brandt::keplerian(RV_data.t, KO_P[j], K, KO_e[j], KO_omega[j], KO_phi[j], GAIA_data.M0_epoch);
-        for (size_t i = 0; i < RV_data.N(); i++) {
+        for (size_t i = 0; i < RV_data.N(); i++)
+        {
             mu_RV[i] += v[i];
         }
 //         
@@ -821,9 +821,7 @@ void RVGAIAmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
-    time_t rawtime;
-    time (&rawtime);
-    fout << ";" << ctime(&rawtime) << endl;
+    fout << "; " << timestamp() << endl << endl;
 
     fout << "[kima]" << endl;
 
