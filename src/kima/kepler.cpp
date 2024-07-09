@@ -927,7 +927,7 @@ namespace contour
                             const double &M, const double &ecc) {
 
         double E;
-        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, center;
+        double ft_gx2, ft_gx1, zR, zI, cosC, sinC, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
 
         // Define contour radius
@@ -1013,7 +1013,7 @@ namespace contour
     double solver(double M, double ecc)
     {
         double E;
-        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
+        double ft_gx2, ft_gx1, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
 
         int N_fft = (N_it - 1) * 2;
