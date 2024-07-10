@@ -1,4 +1,6 @@
 import pytest
+from common import cleanup_after_running
+
 import kima
 from kima import RVData, RVmodel
 from kima.distributions import Uniform
@@ -12,7 +14,7 @@ def test_get_KO():
     assert m.n_known_object == 0, 'm.n_known_object should be 0'
     assert len(m.KO_Pprior) == 0, 'm.KO_Pprior should be empty'
 
-def test_set_KO():
+def test_set_KO(cleanup_after_running):
     D = RVData('tests/simulated1.txt')
     m = RVmodel(True, 0, D)
 

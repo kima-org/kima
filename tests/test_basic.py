@@ -1,4 +1,6 @@
 import pytest
+from common import cleanup_after_running
+
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 
@@ -99,7 +101,5 @@ def test_run():
     kima.run(m, steps=1)
     m = kima.RVFWHMmodel(True, 0, kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
     kima.run(m, steps=1)
-    from kima.pykima.cli import cli_clean
-    cli_clean(check=False, output=True)
 
 

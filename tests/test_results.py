@@ -1,9 +1,8 @@
-# import pytest
-# import numpy as np
+from common import cleanup_after_running
 
 import kima
 
-def test_trend_degree_issues():
+def test_trend_degree_issues(cleanup_after_running):
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
     m.trend = True
     m.degree = 2
@@ -11,9 +10,7 @@ def test_trend_degree_issues():
 
     res = kima.load_results(m)
     res.plot_random_samples()
-
-    from kima.pykima.cli import cli_clean
-    cli_clean(check=False, output=True)
+    res.hist_trend(show_prior=True, show_title=False)
 
 
 def test_moved_datafile():
