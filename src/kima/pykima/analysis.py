@@ -483,7 +483,7 @@ def reorder_P(res, replace=False, passes=1):
     return new_posterior
 
 
-def reorder_P2(res, replace=False):
+def reorder_P2(res, replace=False, passes=1):
     from tqdm import trange, tqdm
     from .results import posterior_holder
 
@@ -502,25 +502,31 @@ def reorder_P2(res, replace=False):
     s = np.std(new_posterior.P, axis=0)
     # print(s)
 
-    for i in tqdm(np.where(mask)[0]):
-        for j in range(int(res.Np[i]) - 1):
-            # print(new_posterior.P[i])
-            new_posterior.P[i, j:j+2] = new_posterior.P[i, j:j+2][::-1]
-            # print(new_posterior.P[i])
-            _s = np.std(new_posterior.P, axis=0)
-            # print(_s, (_s < s)[j])
-            if (_s < s)[j]:
-                new_posterior.K[i, j:j+2] = new_posterior.K[i, j:j+2][::-1]
-                new_posterior.e[i, j:j+2] = new_posterior.e[i, j:j+2][::-1]
-                new_posterior.w[i, j:j+2] = new_posterior.w[i, j:j+2][::-1]
-                new_posterior.φ[i, j:j+2] = new_posterior.φ[i, j:j+2][::-1]
-                s = _s
-            else:
-                new_posterior.P[i, j:j+2] = new_posterior.P[i, j:j+2][::-1]
-            # input()
+    for _ in range(passes):
+        for i in tqdm(np.where(mask)[0]):
+            for j in range(int(res.Np[i]) - 1):
+                ind = [j, j+1]
+                # print(new_posterior.P[i])
+                new_posterior.P[i, ind] = new_posterior.P[i, ind][::-1]
+                # print(new_posterior.P[i])
+                _s = np.std(new_posterior.P, axis=0)
+                # print(_s, (_s < s)[j])
+                if (_s < s)[j]:
+                    new_posterior.K[i, ind] = new_posterior.K[i, ind][::-1]
+                    new_posterior.e[i, ind] = new_posterior.e[i, ind][::-1]
+                    new_posterior.w[i, ind] = new_posterior.w[i, ind][::-1]
+                    new_posterior.φ[i, ind] = new_posterior.φ[i, ind][::-1]
+                    s = _s
+                else:
+                    new_posterior.P[i, ind] = new_posterior.P[i, ind][::-1]
+                # input()
 
     if replace:
-        res.posteriors = new_posterior
+        res.posteriors.P = new_posterior.P
+        res.posteriors.K = new_posterior.K
+        res.posteriors.e = new_posterior.e
+        res.posteriors.w = new_posterior.w
+        res.posteriors.φ = new_posterior.φ
 
     return new_posterior
 
