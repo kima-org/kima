@@ -43,6 +43,9 @@ class KIMA_API RVmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
+        // /// whether to remove the label switching degeneracy on the period
+        // bool remove_label_switching_degeneracy = false;
+
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
 
@@ -88,12 +91,19 @@ class KIMA_API RVmodel
 
         // The signal
         std::vector<double> mu;
+        double planet_perturb_prob = 0.75;
+        double jitKO_perturb_prob = 0.5;
 
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
         void add_transiting_planet();
         void remove_transiting_planet();
+
+        // // Solve the label switching degeneracy by mapping
+		// // the orbital period P to the hypertriangle where
+		// // P(K) >= P(K−1) >= ... >= P(1)
+		// void solve_label_switching();
 
         int is_stable() const;
 
@@ -126,7 +136,9 @@ class KIMA_API RVmodel
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
+
         /// Prior for the systemic velocity.
+        [[deprecated("Use vsys_prior instead.")]]
         distribution Cprior;
         /// Prior for the extra white noise (jitter).
         distribution Jprior;

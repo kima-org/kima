@@ -144,8 +144,8 @@ void RVmodel::from_prior(RNG& rng)
 
     planets.from_prior(rng);
     planets.consolidate_diff();
-    if (remove_label_switching_degeneracy && planets.components_changed())
-        solve_label_switching();
+    // if (remove_label_switching_degeneracy && planets.components_changed())
+    //     solve_label_switching();
 
     background = Cprior->generate(rng);
 
@@ -358,65 +358,65 @@ void RVmodel::add_transiting_planet()
 }
 
 
-void RVmodel::solve_label_switching()
-{
-    if (npmax <= 1) // nothing to do
-        return;
+// void RVmodel::solve_label_switching()
+// {
+//     if (npmax <= 1) // nothing to do
+//         return;
 
-    auto components = planets.get_components();
-    auto K = components.size();
+//     auto components = planets.get_components();
+//     auto K = components.size();
 
-    if (K <= 1) // nothing to do
-        return;
+//     if (K <= 1) // nothing to do
+//         return;
 
-    cout << staleness << endl;
-    cout << "P: " << components[0][0] << '\t' << components[1][0] << endl;
-    return;
+//     cout << staleness << endl;
+//     cout << "P: " << components[0][0] << '\t' << components[1][0] << endl;
+//     return;
 
 
-    auto conditional = planets.get_conditional_prior();
+//     auto conditional = planets.get_conditional_prior();
 
-    // map periods to the hypertriangle
-    vector<double> store_Pnew(K);
-    //double x_im1 = 0.0;
+//     // map periods to the hypertriangle
+//     vector<double> store_Pnew(K);
+//     //double x_im1 = 0.0;
 
-    double P1 = components[0][0];
-    double x1 = conditional->Pprior->cdf(P1);
-    double X1 = 1.0 - pow(1.0 - x1, 1.0 / K);
-    double P2 = components[1][0];
-    double x2 = conditional->Pprior->cdf(P2);
-    double X2 = 1.0 - pow(1.0 - x2, 1.0) * (1.0 - X1);
-    components[0][0] = conditional->Pprior->cdf_inverse(X1);
-    components[1][0] = conditional->Pprior->cdf_inverse(X2);
-    // cout << "P1: " << P1 << '\t' << "--> " << X1 << endl;
-    // cout << "P2: " << P2 << '\t' << "--> " << X2 << endl;
+//     double P1 = components[0][0];
+//     double x1 = conditional->Pprior->cdf(P1);
+//     double X1 = 1.0 - pow(1.0 - x1, 1.0 / K);
+//     double P2 = components[1][0];
+//     double x2 = conditional->Pprior->cdf(P2);
+//     double X2 = 1.0 - pow(1.0 - x2, 1.0) * (1.0 - X1);
+//     components[0][0] = conditional->Pprior->cdf_inverse(X1);
+//     components[1][0] = conditional->Pprior->cdf_inverse(X2);
+//     // cout << "P1: " << P1 << '\t' << "--> " << X1 << endl;
+//     // cout << "P2: " << P2 << '\t' << "--> " << X2 << endl;
 
-    // for (size_t i = 0; i < K; i++)
-    // {
-    //     double P = components[i][0];
-    //     double x = conditional->Pprior->cdf(P);
-    //     double xnew = 1.0 - pow(1 - x, 1.0/(K+1.0-i-1.0)) * (1.0 - x_im1);
-    //     double Pnew = conditional->Pprior->cdf_inverse(xnew);
-    //     components[i][0] = Pnew;
-    //     store_Pnew[i] = Pnew;
-    //     x_im1 = xnew;
-    // }
+//     // for (size_t i = 0; i < K; i++)
+//     // {
+//     //     double P = components[i][0];
+//     //     double x = conditional->Pprior->cdf(P);
+//     //     double xnew = 1.0 - pow(1 - x, 1.0/(K+1.0-i-1.0)) * (1.0 - x_im1);
+//     //     double Pnew = conditional->Pprior->cdf_inverse(xnew);
+//     //     components[i][0] = Pnew;
+//     //     store_Pnew[i] = Pnew;
+//     //     x_im1 = xnew;
+//     // }
 
-    // auto indices = argsort(store_Pnew);
-    // for (size_t i = 0; i < K - 1; i++)
-    // {
-    //     if (indices[i] > indices[i+1])
-    //     {
-    //         std::swap(components[i][1], components[i+1][1]);
-    //         std::swap(components[i][2], components[i+1][2]);
-    //         std::swap(components[i][3], components[i+1][3]);
-    //         std::swap(components[i][4], components[i+1][4]);
-    //     }
-    // }
+//     // auto indices = argsort(store_Pnew);
+//     // for (size_t i = 0; i < K - 1; i++)
+//     // {
+//     //     if (indices[i] > indices[i+1])
+//     //     {
+//     //         std::swap(components[i][1], components[i+1][1]);
+//     //         std::swap(components[i][2], components[i+1][2]);
+//     //         std::swap(components[i][3], components[i+1][3]);
+//     //         std::swap(components[i][4], components[i+1][4]);
+//     //     }
+//     // }
 
-    planets.set_components(components);
-    cout << "out of solve_label_switching" << endl;
-}
+//     planets.set_components(components);
+//     cout << "out of solve_label_switching" << endl;
+// }
 
 int RVmodel::is_stable() const
 {
@@ -485,12 +485,12 @@ double RVmodel::perturb(RNG& rng)
     {
         logH += planets.perturb(rng, false);
         planets.consolidate_diff();
-        if (remove_label_switching_degeneracy && planets.components_changed())
-            solve_label_switching();
+        // if (remove_label_switching_degeneracy && planets.components_changed())
+        //     solve_label_switching();
 
         calculate_mu();
     }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
+    else if(rng.rand() <= jitKO_perturb_prob) // perturb jitter(s) + known_object
     {
         if(data._multi)
         {
@@ -1017,7 +1017,7 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::studentt;
         using RVmodel::star_mass;
         using RVmodel::enforce_stability;
-        using RVmodel::remove_label_switching_degeneracy;
+        // using RVmodel::remove_label_switching_degeneracy;
         using RVmodel::indicator_correlations;
         using RVmodel::jitter_propto_indicator;
         using RVmodel::jitter_propto_indicator_index;
@@ -1075,8 +1075,8 @@ NB_MODULE(RVmodel, m) {
                 "whether to enforce AMD-stability")
         
         //
-        .def_rw("remove_label_switching_degeneracy", &RVmodel_publicist::remove_label_switching_degeneracy, 
-                "docs")
+        // .def_rw("remove_label_switching_degeneracy", &RVmodel_publicist::remove_label_switching_degeneracy, 
+        //         "docs")
         
         //
         .def_rw("indicator_correlations", &RVmodel_publicist::indicator_correlations, 
