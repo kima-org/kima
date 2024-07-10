@@ -361,8 +361,8 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     }
 
     // check for indicator correlations and store stuff
-    int nempty = count(indicators.begin(), indicators.end(), "");
-    number_indicators = indicators.size() - nempty;
+    int nempty = (int) count(indicators.begin(), indicators.end(), "");
+    number_indicators = (int)(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
     _indicator_names = indicators;
     // indicator_names.erase(
@@ -407,18 +407,18 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     // this is to make sure the obsi vector always starts at 1, to avoid
     // segmentation faults later
     vector<int> inst_id;
-    inst_id.push_back(data[Ncol - 1][0]);
+    inst_id.push_back(static_cast<int>(data[Ncol - 1][0]));
 
     for (size_t n = 1; n < N; n++) {
         if (data[Ncol - 1][n] != inst_id.back()) {
-            inst_id.push_back(data[Ncol - 1][n]);
+            inst_id.push_back(static_cast<int>(data[Ncol - 1][n]));
         }
     }
     int id_offset = *min_element(inst_id.begin(), inst_id.end());
 
     obsi.clear();
-    for (unsigned n = 0; n < N; n++) {
-        obsi.push_back(data[Ncol - 1][n] - id_offset + 1);
+    for (size_t n = 0; n < N; n++) {
+        obsi.push_back(static_cast<int>(data[Ncol - 1][n]) - id_offset + 1);
     }
 
     // How many points did we read?
@@ -432,7 +432,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
         _instruments.push_back(std::to_string(inst));
     }
 
-    number_instruments = s.size();
+    number_instruments = (int) s.size();
     if (VERBOSE)
         printf("# RVs come from %zu different instruments.\n", s.size());
 
@@ -474,8 +474,8 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     obsi.clear();
     medians.clear();
     // check for indicator correlations and store stuff
-    int nempty = count(indicators.begin(), indicators.end(), "");
-    number_indicators = indicators.size() - nempty;
+    int nempty = (int) count(indicators.begin(), indicators.end(), "");
+    number_indicators = (int)(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
     _indicator_names = indicators;
     // indicator_names.erase(
@@ -572,7 +572,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     if (VERBOSE)
         printf("# RVs come from %zu different instruments.\n", s.size());
 
-    number_instruments = s.size();
+    number_instruments = (int) s.size();
 
     if (VERBOSE && units == "kms")
         cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
@@ -581,7 +581,8 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         // We need to sort t because it comes from different instruments
         size_t N = t.size();
         vector<double> tt(N), yy(N);
-        vector<double> sigsig(N), obsiobsi(N);
+        vector<double> sigsig(N);
+        vector<int> obsiobsi(N);
         vector<int> order(N);
 
         // order = argsort(t)
@@ -590,14 +591,14 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
         sort(order.begin(), order.end(),
             [&](int i, int j) { return t[i] < t[j]; });
 
-        for (unsigned i = 0; i < N; i++) {
+        for (size_t i = 0; i < N; i++) {
             tt[i] = t[order[i]];
             yy[i] = y[order[i]];
             sigsig[i] = sig[order[i]];
             obsiobsi[i] = obsi[order[i]];
         }
 
-        for (unsigned i = 0; i < N; i++) {
+        for (size_t i = 0; i < N; i++) {
             t[i] = tt[i];
             y[i] = yy[i];
             sig[i] = sigsig[i];
