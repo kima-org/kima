@@ -81,9 +81,6 @@ class  RVFWHMmodel
         double eta1, eta2, eta3, eta4;
         double eta1_fw, eta2_fw, eta3_fw, eta4_fw;
 
-        bool _eta2_larger_eta3 = false;
-        double _eta2_larger_eta3_factor = 1.0;
-
         // The signal
         std::vector<double> mu; // = std::vector<double>(data.N());
         std::vector<double> mu_fwhm; // = std::vector<double>(data.N());

@@ -43,11 +43,6 @@ void RVFWHMmodel::set_known_object(size_t n)
     KO_wprior.resize(n);
 }
 
-void RVFWHMmodel::eta2_larger_eta3(double factor) {
-    _eta2_larger_eta3 = true;
-    _eta2_larger_eta3_factor = factor;
-}
-
 /// set default priors if the user didn't change them
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -210,23 +205,13 @@ void RVFWHMmodel::from_prior(RNG& rng)
     eta1 = eta1_prior->generate(rng);  // m/s
     eta1_fw = eta1_fwhm_prior->generate(rng);  // m/s
 
-    if (_eta2_larger_eta3) {
-        eta3 = eta3_prior->generate(rng); // days
-        // eta 2 will be constrained to be above a
-        double a = _eta2_larger_eta3_factor * eta3;
-        double p = rng.rand(); // random number U(0,1)
-        double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
-        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(a) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(a)));
-        // if (!share_eta3)      
-    } else {
-        eta3 = eta3_prior->generate(rng); // days
-        if (!share_eta3)
-            eta3_fw = eta3_fwhm_prior->generate(rng); // days
+    eta3 = eta3_prior->generate(rng); // days
+    if (!share_eta3)
+        eta3_fw = eta3_fwhm_prior->generate(rng); // days
 
-        eta2 = eta2_prior->generate(rng); // days
-        if (!share_eta2)
-            eta2_fw = eta2_fwhm_prior->generate(rng); // days
-    }
+    eta2 = eta2_prior->generate(rng); // days
+    if (!share_eta2)
+        eta2_fw = eta2_fwhm_prior->generate(rng); // days
 
     eta4 = exp(eta4_prior->generate(rng));
     if (!share_eta4)
