@@ -46,6 +46,9 @@ class KIMA_API RVmodel
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
 
+        bool jitter_propto_indicator = false;
+        int jitter_propto_indicator_index = 0;
+
         RVData data;
 
     private:
@@ -65,7 +68,7 @@ class KIMA_API RVmodel
             //   std::vector<double>(data.number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
-        double jitter, stellar_jitter;
+        double jitter, stellar_jitter, jitter_propto_indicator_slope;
         double nu;
 
         // Parameters for the known object, if set
@@ -96,6 +99,22 @@ class KIMA_API RVmodel
 
         unsigned int staleness;
 
+        /**
+         * Returns the indices that would sort an array.
+         * @param array input array
+         * @return indices w.r.t sorted array
+        */
+        vector<size_t> argsort(const vector<double> &array) {
+            vector<size_t> indices(array.size());
+            iota(indices.begin(), indices.end(), 0);
+            sort(indices.begin(), indices.end(),
+                    [&array](size_t left, size_t right) -> bool {
+                        // sort indices according to corresponding array element
+                        return array[left] < array[right];
+                    });
+            return indices;
+        }
+
 
     public:
         RVmodel() {};
@@ -113,6 +132,8 @@ class KIMA_API RVmodel
         distribution Jprior;
         /// Prior for the stellar jitter (common to all instruments)
         distribution stellar_jitter_prior;
+        /// Prior for ...
+        distribution jitter_slope_prior;
         /// Prior for the slope
         distribution slope_prior;
         /// Prior for the quadratic coefficient of the trend
@@ -183,6 +204,12 @@ class KIMA_API RVmodel
         void set_conditional_prior(const RVConditionalPrior &conditional) {
             planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
         }
+
+        void set_loguniform_prior_Np() {
+            auto conditional = planets.get_conditional_prior();
+            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, *conditional,
+                                                           DNest4::PriorType::log_uniform);
+        };
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
