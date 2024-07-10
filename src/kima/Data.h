@@ -63,6 +63,7 @@ class  KIMA_API RVData {
     vector<double> t, y, sig, y2, sig2;
     vector<int> obsi;
     vector<vector<double>> actind;
+    vector<vector<double>> normalized_actind;
 
   public:
     string _datafile;
@@ -180,6 +181,12 @@ class  KIMA_API RVData {
 
     /// Get the array of activity indictators
     const vector<vector<double>>& get_actind() const { return actind; }
+
+    /// Normalize the activity indicators from 0 to 1
+    void normalize_actind();
+
+    /// Get the array of normalized activity indictators
+    const vector<vector<double>>& get_normalized_actind() const { return normalized_actind; }
 
     /// Get the array of instrument identifiers
     const vector<int>& get_obsi() const { return obsi; }

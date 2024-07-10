@@ -118,13 +118,6 @@ class  RVFWHMRHKmodel
 
         void initialize_from_data(RVData& data);
 
-        // getter and setter for trend
-        bool get_trend() const { return trend; };
-        void set_trend(bool t) { trend = t; };
-        // getter and setter for degree
-        double get_degree() const { return degree; };
-        void set_degree(double d) { degree = d; };
-
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 

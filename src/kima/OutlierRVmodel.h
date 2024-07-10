@@ -23,6 +23,13 @@ using namespace nb::literals;
 class  OutlierRVmodel
 {
     protected:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+
+
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -42,15 +49,9 @@ class  OutlierRVmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
+        RVData data;
+
     private:
-        RVData data;// = RVData::get_instance();
-
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
-
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
