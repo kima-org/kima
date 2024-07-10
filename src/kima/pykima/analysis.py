@@ -301,39 +301,30 @@ def aliases(P):
     alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
     return alias_year, alias_solar_day, alias_sidereal_day
 
-def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
-    Tobs = np.ptp(results.t)
-    Dw = 2 * np.pi / Tobs
-    a, b = results.priors['Pprior'].support()
+def FIP(results, oversampling=5):
+    import matplotlib.pyplot as plt
+    bins = get_bins(results, nbins=2000)
+    # limits, in frequency
+    Dw = 1 / np.ptp(results.data.t) / oversampling
+    a, b = 1/bins - Dw, 1/bins + Dw
 
-    tip = np.array([np.inf])
-    while (tip > 1.0).any():
-        wstep = Dw / oversampling
-        bins = 1 / np.arange(1 / b, 1 / a - wstep, wstep)
-        bins = bins[::-1]
-        n, _ = np.histogram(results.T, bins=bins)
+    # # alias limits, in frequency
+    # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
+    # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
 
-        bins = bins[1:]
-        tip = n / results.ESS
-        if not adjust_oversampling:
-            break
+    c = np.logical_and(a[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b[:,None,None])\
+        .any(axis=2).sum(axis=1)
 
-        if (tip > 1.0).any():
-            print('TIP > 1.0 for some bins, doubling oversampling')
-            oversampling *= 2
+    # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
+    # _21 = np.logical_and(a_alias_year1[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year1[:,None,None])
+    # _22 = np.logical_and(a_alias_year2[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year2[:,None,None])
+    # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
 
-    fip = 1 - tip
-
-    if plot:
-        import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(nrows=2, sharex=True, constrained_layout=True)
-        axs[0].semilogx(bins, tip)
-        axs[0].set(xlabel='Period [days]', ylabel='TIP')
-        axs[1].semilogx(bins, fip)
-        axs[1].set(xlabel='Period [days]', ylabel='FIP')
-        return bins, fip, fig, axs
-
-    return bins, fip
+    fig, ax = plt.subplots(1, 1, constrained_layout=True)
+    ax.semilogx(bins, c / results.ESS)
+    # ax.axhline(1.0, color='k', ls='--', alpha=0.3)
+    # ax.axhline(0.5, color='k', ls='--', alpha=0.3)
+    ax.set(xlabel='Period [days]', ylabel='TIP')
 
 
 def FIP_count_detections(results, alpha=0.05, Ptrue=None):
