@@ -2,7 +2,6 @@
 This module defines the `KimaResults` class to hold results from a run.
 """
 
-from copy import deepcopy
 import os
 import sys
 import pickle
@@ -15,6 +14,7 @@ from string import ascii_lowercase
 from dataclasses import dataclass, field
 from io import StringIO
 from contextlib import redirect_stdout
+from copy import copy, deepcopy
 
 
 from .. import __models__
@@ -33,7 +33,10 @@ from .import display
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.stats import (norm, gaussian_kde, randint as discrete_uniform)
+from scipy.stats import (
+    norm, t as students_t, gaussian_kde, randint as discrete_uniform, 
+    multivariate_normal, multivariate_t
+)
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -202,6 +205,32 @@ class posterior_holder:
 
 def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
                  moreSamples=1):
+    """ Load the results from a kima run 
+
+    Args:
+        model_or_file (str or Model):
+            If a string, load results from a pickle or zip file. If a model
+            (e.g. `kima.RVmodel`), load results from that particular model and
+            from the directory where it ran
+        data (kima.RVData, optional):
+            An instance of `kima.RVData` to use instead of `model.data`
+            Warning: untested!
+        diagnostic (bool, optional):
+            Show the diagnostic plots
+        verbose (bool, optional):
+            Print some information about the results
+        moreSamples (int, optional):
+            The total number of posterior samples will be equal to ESS *
+            moreSamples
+
+    Raises:
+        FileNotFoundError:
+            If `model_or_file` is a string and the file does not exist
+
+    Returns:
+        res (KimaResults):
+            An instance of `KimaResults` holding the results of the run
+    """
     # load from a pickle or zip file
     if isinstance(model_or_file, str):
         if not os.path.exists(model_or_file):
@@ -218,26 +247,6 @@ def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
                               diagnostic=diagnostic, verbose=verbose)
 
     return res
-
-    # # load from current directory (latest results)
-    # elif model_or_file is None:
-    #     # cannot do it if there is no data information
-    #     setup = read_model_setup()
-    #     if setup['data']['file'] == '' and setup['data']['files'] == '':
-    #         msg = 'no data information saved in kima_model_setup.txt '
-    #         msg += '(RVData was probably created with list/array arguments) \n'
-    #         msg += 'provide the `model` to load_results()'
-    #         raise ValueError(msg)
-
-        
-    #     res = KimaResults()
-    
-    # # load from a model object
-    # elif isinstance(model_or_file, __models__):
-    #     return KimaResults.from_model(model_or_file, diagnostic, verbose)
-    # else:
-    #     raise NotImplementedError
-    # return res
 
 
 class KimaResults:
@@ -441,7 +450,7 @@ class KimaResults:
 
     # @classmethod
     # def from_model(cls, model, diagnostic=False, verbose=True):
-    def __init__(self, model, data=None, diagnostic=False, 
+    def __init__(self, model, data=None, diagnostic=False, moreSamples=1,
                  save_plots=False, return_figs=True, verbose=False):
         self.save_plots = save_plots
         self.return_figs = return_figs
@@ -454,7 +463,7 @@ class KimaResults:
 
         with redirect_stdout(stdout):
             try:
-                evidence, H, logx_samples = postprocess(plot=diagnostic, numResampleLogX=1, moreSamples=1)
+                evidence, H, logx_samples = postprocess(plot=diagnostic, moreSamples=moreSamples)
             except FileNotFoundError as e:
                 if e.filename == 'levels.txt':
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
@@ -1364,6 +1373,17 @@ class KimaResults:
             self._ESS = self.posterior_sample.shape[0]
         
         try:
+            from .. import GPmodel
+            if self.model == 'GPmodel':
+                if not hasattr(self, 'kernel'):
+                    self.kernel = {
+                        'standard': GPmodel.KernelType.qp
+                    }[self.GPkernel]
+                del self.GPkernel
+        except AttributeError:
+            pass
+
+        try:
             if not hasattr(self.posteriors, 'η1'):
                 for i, eta in enumerate(self.etas.T):
                     setattr(self.posteriors, f'η{i+1}', eta)
@@ -1567,17 +1587,21 @@ class KimaResults:
         self.means = np.mean(self.posterior_sample, axis=0)
         return self.medians, self.means
 
-    def _select_posterior_samples(self, Np=None, mask=None):
+    def _select_posterior_samples(self, Np=None, mask=None, return_indices=False):
         if mask is None:
             mask = np.ones(self.ESS, dtype=bool)
 
         if Np is None:
+            if return_indices:
+                return np.where(mask)[0]
             return self.posterior_sample[mask].copy()
         else:
             mask_Np = self.posterior_sample[:, self.index_component] == Np
+            if return_indices:
+                return np.where(mask & mask_Np)[0]
             return self.posterior_sample[mask & mask_Np].copy()
 
-    def log_prior(self, sample):
+    def log_prior(self, sample, debug=False):
         """ Calculate the log prior for a given sample
 
         Args:
@@ -1597,7 +1621,22 @@ class KimaResults:
         #         except AttributeError:
         #             logp.append(p.logpmf(v))
 
-        logp = [p.logpdf(v) if p else 0.0 for p, v in zip(self.parameter_priors, sample)]
+        if debug:
+            parameters = copy(self.parameters)
+            for i, p in enumerate(self.parameter_priors):
+                if p is None:
+                    parameters.insert(i, None)
+
+            for par, p, v in zip(parameters, self.parameter_priors, sample):
+                print(f'{par:10s}' if par else '-', p, v, end='\t')
+                if p:
+                    print(p.logpdf(v), end='')
+                print()
+
+        logp = [
+            p.logpdf(v) if p and v != 0.0 else 0.0
+            for p, v in zip(self.parameter_priors, sample)
+        ]
 
         # _np = int(sample[self.indices['np']])
         # st = self.indices['planets'].start
@@ -1609,6 +1648,24 @@ class KimaResults:
         # return logp
         return np.sum(logp)
 
+    def log_likelihood(self, sample, separate_instruments=False):
+        stellar_jitter = sample[self.indices['jitter']][0]
+        jitter = sample[self.indices['jitter']][self.data.obs]
+        var = self.data.e**2 + stellar_jitter**2 + jitter**2
+        model = self.full_model(sample)
+        if self.studentt:
+            nu = sample[self.indices['nu']]
+            return students_t.logpdf(self.data.y, df=nu, loc=model, scale=np.sqrt(var)).sum()
+            # TODO: why not the multivariate below?
+            # return multivariate_t.logpdf(self.data.y, loc=model, shape=var, df=nu)
+        else:
+            if separate_instruments:
+                like = norm(loc=model, scale=np.sqrt(var)).logpdf(self.data.y)
+                return np.array([like[self.data.obs == i].sum() for i in np.unique(self.data.obs)])
+            else:
+                return norm(loc=model, scale=np.sqrt(var)).logpdf(self.data.y).sum()
+                # return multivariate_normal.logpdf(self.data.y, mean=model, cov=var)
+
     def log_posterior(self, sample, separate=False):
         logp = self.log_prior(sample)
         index = (self.posterior_sample == sample).sum(axis=1).argmax()
@@ -1618,16 +1675,38 @@ class KimaResults:
         return logp + logl
 
     def map_sample(self, Np=None, mask=None, printit=True, cache=True):
+        """
+        Get the maximum a posteriori (MAP) sample.
+
+        Note:
+            This requires recalculation of the prior for all samples, so it can
+            be a bit slow, depending on the number of posteriro samples.
+
+        Args:
+            Np (int, optional):
+                If given, select only samples with that number of planets.
+            printit (bool, optional):
+                Whether to print the sample.
+            cache (bool, optional):
+                Whether to cache the sample.
+        """
         from tqdm import tqdm
 
         if cache and hasattr(self, '_map_sample'):
             map_sample = self._map_sample
         else:
             samples = self._select_posterior_samples(Np, mask)
-            logpost = []
-            for sample in tqdm(samples):
-                logpost.append(self.log_posterior(sample))
-            logpost = np.array(logpost)
+            #! slow...
+            # logpost = []
+            # for sample in tqdm(samples):
+            #     logpost.append(self.log_posterior(sample))
+            # logpost = np.array(logpost)
+            print('Calculating prior...')
+            logprior = np.apply_along_axis(self.log_prior, 1, samples)
+            print('Getting likelihoods...')
+            ind = self._select_posterior_samples(Np, mask, return_indices=True)
+            loglike = self.posterior_lnlike[ind, 1]
+            logpost = logprior + loglike
             ind = logpost.argmax()
             self._map_sample = map_sample = samples[ind]
 
@@ -1654,12 +1733,23 @@ class KimaResults:
     def maximum_likelihood_sample(self, from_posterior=False, Np=None,
                                   printit=True, mask=None):
         """
-        Get the maximum likelihood sample. By default, this is the highest
-        likelihood sample found by DNest4. If `from_posterior` is True, this
-        returns instead the highest likelihood sample *from those that represent
-        the posterior*. The latter may change, due to random choices, between
-        different calls to "showresults". If `Np` is given, select only samples
-        with that number of planets.
+        Get the maximum likelihood sample. 
+        
+        By default, this is the highest likelihood sample found by DNest4.
+        
+        Note:
+            If `from_posterior=True`, the returned sample may change, due to
+            random choices, between different calls to `load_results`.
+
+
+        Args:
+            from_posterior (bool, optional): 
+                If True, return the highest likelihood sample *from those that
+                represent the posterior*. 
+            Np (int, optional):
+                If given, select only samples with that number of planets.
+            printit (bool, optional):
+                Whether to print the sample
         """
         if self.sample_info is None and not self._lnlike_available:
             print('log-likelihoods are not available! '
@@ -1721,8 +1811,17 @@ class KimaResults:
 
     def median_sample(self, Np=None, printit=True):
         """
-        Get the median posterior sample. If `Np` is given, select only from
-        posterior samples with that number of planets.
+        Get the median posterior sample.
+
+        Warning:
+            Unless *all* posteriors are Gaussian or otherwise well-behaved, the
+            median sample is usually not the appropriate choice for plots, etc. 
+
+        Args:
+            Np (int, optional):
+                If given, select only samples with that number of planets.
+            printit (bool, optional):
+                Whether to print the sample
         """
 
         if Np is None:
@@ -1983,9 +2082,11 @@ class KimaResults:
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
+
             np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
 
-        Note: this function does *not* evaluate the GP component of the model.
+        Note:
+            This function does *not* evaluate the GP component of the model.
 
         Arguments:
             sample (array): One posterior sample, with shape (npar,)
@@ -2174,8 +2275,8 @@ class KimaResults:
             np.apply_along_axis(self.planet_model, 1, self.posterior_sample)
 
         Note:
-            this function does *not* evaluate the GP component of the model
-            nor the systemic velocity and instrument offsets.
+            This function does *not* evaluate the GP component of the model nor
+            the systemic velocity and instrument offsets.
 
         Arguments:
             sample (array):
@@ -2276,17 +2377,21 @@ class KimaResults:
                          include_jitters=True, **kwargs):
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
+        
         If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added.
-        To evaluate at all posterior samples, consider using
+        added if `t` is None, but the systemic velocity is always added. To
+        evaluate at all posterior samples, consider using
 
-            np.apply_along_axis(self.stochastic_model, 1, self.posterior_sample)
+        ```py
+        res = ...
+        np.apply_along_axis(res.stochastic_model, 1, res.posterior_sample)
+        ```
 
         Arguments:
             sample (array):
                 One posterior sample, with shape (npar,)
             t (ndarray, optional):
-                Times at which to evaluate the model, or None to use observed
+                Times at which to evaluate the model, or `None` to use observed
                 times
             return_std (bool, optional):
                 Whether to return the standard deviation of the predictive.
@@ -2459,7 +2564,7 @@ class KimaResults:
         computed RV into `n_instruments` individual arrays. This is mostly
         useful for plotting the RV model together with the original data.
 
-        Arguments:
+        Args:
             sample (array): One posterior sample, with shape (npar,)
             t (array): Times at which to evaluate the model
             v (array): Pre-computed RVs. If `None`, calls `self.eval_model`
