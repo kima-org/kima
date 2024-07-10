@@ -749,6 +749,23 @@ def read_big_file(filename):
         return np.genfromtxt(filename)
 
 
+def kima_to_george_GP(η1, η2, η3, η4, η5=None, η6=None, η7=None, build_kernel=True):
+    _1, _2, _3, _4 = η1**2, η2**2, np.log(η3), 2/η4**2
+    if η5 is not None:
+        _5, _6, _7 = η5, np.log(η6), 2/η7**2
+
+    if build_kernel:
+        from george.kernels import ExpSquaredKernel, ExpSine2Kernel
+        if η5 is None:
+            return _1 * ExpSquaredKernel(_2) * ExpSine2Kernel(_4, _3)
+        else:
+            return _1 * ExpSquaredKernel(_2) * ExpSine2Kernel(_4, _3) + _5 * ExpSine2Kernel(_7, _6)
+    else:
+        if η5 is None:
+            return _1, _2, _3, _4
+        else:
+            return _1, _2, _3, _4, _5, _6, _7
+
 
 def get_timestamp():
     return datetime.now().strftime('%Y_%m_%dT%H_%M_%S')

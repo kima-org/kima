@@ -11,7 +11,7 @@ from corner import corner
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
-from .analysis import get_planet_mass_and_semimajor_axis
+from .analysis import get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, get_instrument_name)
 from .utils import mjup2msun, mjup2mearth
@@ -71,7 +71,7 @@ def make_plots(res, options, save_plots=False):
 
 
 def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
-                      show_title=True):
+                      show_title=True, **kwargs):
     """ Plot the histogram of the posterior for Np
 
     Args:
@@ -83,6 +83,10 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
             Whether to estimate and display errors on the Np posterior.
         show_ESS (bool, optional):
             Display the effective sample size on the plot.
+        show_title (bool, optional):
+            Display the title on the plot
+        **kwargs:
+            Keyword arguments to pass to the `ax.bar` method
 
     Returns:
         fig (matplotlib.figure.Figure): The matplotlib figure with the plot
@@ -99,7 +103,7 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
     bins = np.arange(res.max_components + 2)
     nplanets = res.posterior_sample[:, res.index_component]
     n, _ = np.histogram(nplanets, bins=bins)
-    ax.bar(bins[:-1], n / res.ESS, zorder=2)
+    ax.bar(bins[:-1], n / res.ESS, zorder=2, **kwargs)
     if show_ESS:
         ax.text(0.05, 0.9, f'ESS: {res.ESS}', transform=ax.transAxes)
 
@@ -280,7 +284,11 @@ def plot_posterior_period(res,
             else:
                 bins = get_bins(res, *plims, nbins=nbins)
 
-        bottoms = np.zeros_like(bins)
+        if 'bottom' in kwargs:
+            bottoms = np.full_like(bins, kwargs.pop('bottom'))
+        else:
+            bottoms =  np.zeros_like(bins)
+
         for i in range(res.max_components):
             m = res.posterior_sample[:, res.indices['np']] == i + 1
             T = res.posterior_sample[m, res.indices['planets.P']]
@@ -291,7 +299,7 @@ def plot_posterior_period(res,
             if separate_colors:
                 color = None
             else:
-                color = kwargs.pop('color', 'C0')
+                color = kwargs.get('color', 'C0')
 
             ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
                    bottom=bottoms[:-1], align='edge', alpha=0.8, color=color)
@@ -595,7 +603,7 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
         return fig
 
 
-def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
+def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None, axs=None,
                **hist_kwargs):
     """
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
@@ -619,11 +627,17 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None,
         m = res.posterior_sample[:, res.index_component] == Np
 
     nplots = int(np.ceil(n / 2))
-    if fig is None:
-        fig, axes = plt.subplots(2, nplots, constrained_layout=True)
+    if axs is None:
+        if fig is None:
+            fig, axes = plt.subplots(2, nplots, constrained_layout=True)
+        else:
+            axes = fig.axes
     else:
-        axes = fig.axes
-        assert len(axes) == 2 * nplots, 'figure has wrong number of axes!'
+        axes = axs
+        print(len(axes))
+        fig = axes.ravel()[0].figure
+    assert len(axes.ravel()) >= 2 * nplots, 'figure has too few axes!'
+
 
     hist_kwargs.setdefault('density', True)
 
@@ -682,14 +696,14 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
                 ['η1FW', 'η4'],
                 ['η1FW', 'η4'],
             ],
-        constrained_layout=True)
+        figsize=(8, 6), constrained_layout=True)
     elif res.model == 'RVFWHMRHKmodel':
         fig, axs = plt.subplot_mosaic(
             [
                 ['η1RV', 'η1FW', 'η1RHK'], 
                 ['η2', 'η3', 'η4']
             ],
-        constrained_layout=True)
+        figsize=(8, 6), constrained_layout=True)
 
     histkw = dict(density=True, bins='doane')
     histkw2 = {**histkw, **{'histtype':'step'}}
@@ -1275,12 +1289,20 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
 def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
               **kwargs):
     """
-    Plot the histogram of the posterior for the systemic velocity and for
-    the between-instrument offsets (if `show_offsets` is True and the model
-    has multiple instruments). If `specific` is not None, it should be a
-    tuple with the name of the datafiles for two instruments (matching
-    `res.data_file`). In that case, this function works out the RV offset
-    between the `specific[0]` and `specific[1]` instruments.
+    Plot the histogram of the posterior for the systemic velocity and for the
+    between-instrument offsets. (if the model has multiple instruments).
+
+    Args:
+        res (kima.KimaResults):
+            The `KimaResults` instance
+        show_offsets (bool, optional):
+            Whether to plot the histograms for the between-instrument offsets
+        specific (tuple, optional):
+            If not None, it should be a tuple with two instrument names
+            (matching `res.instrument`). In that case, this function works out
+            (and plots) the RV offset between those two instruments.
+        show_prior (bool, optional):
+            Whether to plot the histogram of the prior distribution
     """
     figures = []
 
@@ -1397,35 +1419,62 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
         if specific is not None:
             assert isinstance(specific, tuple), '`specific` should be a tuple'
             assert len(specific) == 2, '`specific` should have size 2'
-            assert specific[
-                0] in res.data_file, 'first element is not in res.data_file'
-            assert specific[
-                1] in res.data_file, 'second element is not in res.data_file'
+
+            first = specific[0]
+            found_first = any([first in f for f in res.data_file]) or first in res.instruments
+            assert found_first, 'first element is not in res.data_file or res.instruments'
+
+            second = specific[1]
+            found_second = any([second in f for f in res.data_file]) or second in res.instruments
+            assert found_second, 'second element is not in res.data_file or res.instruments'
 
             # all RV offsets are with respect to the last data file
-            if res.data_file[-1] in specific:
-                i = specific.index(res.data_file[-1])
-                # toggle: if i is 0 it becomes 1, if it's 1 it becomes 0
-                i ^= 1
-                # wrt = get_instrument_name(res.data_file[-1])
-                # this = get_instrument_name(specific[i])
-                wrt = res.instruments[-1]
-                this = res.instruments[i]
+            # so if the second element is that last one, we don't have to do much
+            if second in res.data_file[-1] or second in res.instruments[-1]:
+                # find the first
+                if first in res.instruments:
+                    i = res.instruments.index(second)
+                else:
+                    i = [_i for _i, f in enumerate(res.instruments) if first in f][0]
+                wrt, this = res.instruments[-1], res.instruments[i]
                 label = 'offset\n%s rel. to %s' % (this, wrt)
-                offset = res.inst_offsets[:, res.data_file.index(specific[i])]
+                offset = res.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(offset) + units
                 fig, ax = plt.subplots(1, 1, constrained_layout=True)
                 ax.hist(offset)
-                ax.set(xlabel=label, title=estimate,
-                       ylabel='posterior samples')
-            else:
-                # wrt = get_instrument_name(specific[1])
-                # this = get_instrument_name(specific[0])
-                wrt = res.instruments[specific[1]]
-                this = res.instruments[specific[0]]
+                ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
+            # if, instead, the first element is the last instrument,
+            # we just need a sign change
+            elif first in res.data_file[-1] or first in res.instruments[-1]:
+                # find the second
+                if second in res.instruments:
+                    i = res.instruments.index(second)
+                else:
+                    i = [_i for _i, f in enumerate(res.instruments) if second in f][0]
+                wrt, this = res.instruments[i], res.instruments[-1]
                 label = 'offset\n%s rel. to %s' % (this, wrt)
-                of1 = res.inst_offsets[:, res.data_file.index(specific[0])]
-                of2 = res.inst_offsets[:, res.data_file.index(specific[1])]
+                offset = res.inst_offsets[:, i] * -1
+                estimate = percentile68_ranges_latex(offset) + units
+                fig, ax = plt.subplots(1, 1, constrained_layout=True)
+                ax.hist(offset)
+                ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
+            # otherwise, we have to do a little more work
+            else:
+                if second in res.instruments:
+                    i = res.instruments.index(second)
+                else:
+                    i = [_i for _i, f in enumerate(res.instruments) if second in f][0]
+                wrt = res.instruments[i]
+
+                if first in res.instruments:
+                    j = res.instruments.index(second)
+                else:
+                    j = [_i for _i, f in enumerate(res.instruments) if first in f][0]
+                this = res.instruments[j]
+
+                label = 'offset\n%s rel. to %s' % (this, wrt)
+                of1 = res.inst_offsets[:, j]
+                of2 = res.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(of1 - of2) + units
                 fig, ax = plt.subplots(1, 1, constrained_layout=True)
                 ax.hist(of1 - of2)
@@ -1439,7 +1488,8 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
         return figures
 
 
-def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwargs):
+def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
+                ax=None, **kwargs):
     """
     Plot the histogram of the posterior for the additional white noise
     """
@@ -1451,14 +1501,10 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
     RVFWHM = res.model == 'RVFWHMmodel'
     RVFWHMRHK = res.model == 'RVFWHMRHKmodel'
 
-    if 'fig' in kwargs:
-        fig = kwargs.pop('fig')
-        axs = fig.axes
-        axs = np.array(axs).reshape(-1, res.n_jitters)
-    else:
+    if ax is None:
         kw = dict(constrained_layout=True, sharey=False)
         if RVFWHM:
-            fig, axs = plt.subplots(2, res.n_jitters, 
+            fig, axs = plt.subplots(2, res.n_jitters // 2, 
                                     figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
         elif RVFWHMRHK:
             fig, axs = plt.subplots(3, res.n_jitters // 3, 
@@ -1467,9 +1513,18 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True, **kwar
             nrows = 2 if res.n_jitters >= 6 else 1
             fig, axs = plt.subplots(nrows, res.n_jitters // nrows, 
                                     figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
+        axs = np.atleast_1d(axs)
+    else:
+        axs = np.atleast_1d(ax)
+        assert len(axs) == res.n_jitters, \
+            f'length of ax should be same as number of jitters ({res.n_jitters})'
+        fig = axs[0].figure
 
     if show_title:
-        fig.suptitle('Posterior distribution for extra white noise')
+        if len(axs) > 1:
+            fig.suptitle('Posterior distribution for extra white noise')
+        else:
+            axs[0].set_title('Posterior distribution for extra white noise')
 
     if isinstance(axs, np.ndarray) and res.multi:
         if RVFWHM or RVFWHMRHK:
@@ -2463,7 +2518,8 @@ def phase_plot(res,
         y = y - res.eval_model(sample)
 
         _, y_offset = plot_data(res, y=y, ax=axGP, ignore_y2=True, legend=False,
-                                time_offset=time_offset, **ekwargs)
+                                highlight=highlight, only=only, time_offset=time_offset,
+                                **ekwargs)
         axGP.set(xlabel=time_label, ylabel="GP [m/s]")
 
         tt = np.linspace(t[0], t[-1], 3000)
@@ -2510,7 +2566,8 @@ def phase_plot(res,
 
     # legend in the residual plot?
     hand, lab = ax.get_legend_handles_labels()
-    leg = ax.legend(hand, lab, loc='upper left', ncol=4, borderaxespad=0.,
+    ncol = 2 if res.n_instruments % 2 == 0 else 3
+    leg = ax.legend(hand, lab, loc='upper left', ncol=ncol, borderaxespad=0.,
                     borderpad=0.3, bbox_to_anchor=(0.0, 1.3), handletextpad=0,
                     columnspacing=0.1)
 
