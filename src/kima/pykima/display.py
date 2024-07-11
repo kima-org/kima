@@ -2243,6 +2243,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
         params[k]['index'] = i + 1
 
+    pj = 0
     if res.KO:
         nplanets += res.nKO
         ko = {ascii_lowercase[i]: {} for i in range(nplanets, nplanets + res.nKO)}
@@ -2253,7 +2254,8 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
             ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
-            ko[k]['index'] = -i - 1
+            ko[k]['index'] = -pj - 1
+            pj += 1
         params.update(ko)
 
     if res.TR:
@@ -2266,7 +2268,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
             tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
             tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
-            tr[k]['index'] = -i - 1
+            tr[k]['index'] = -pj - 1
         params.update(tr)
 
     keys = list(params.keys())
@@ -2498,8 +2500,13 @@ def phase_plot(res,
             ax.set_title(title, loc='right', **title_kwargs)
 
     if sharey:
+        ymin, ymax = axs[0].get_ylim()
         for ax in axs:
+            _ymin, _ymax = ax.get_ylim()
+            ymin = min(ymin, _ymin)
+            ymax = max(ymax, _ymax)
             ax.sharey(axs[0])
+        axs[0].set_ylim(ymin, ymax)
 
     end = -1 if show_gls_residuals else None
 
@@ -2838,14 +2845,23 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
             else:
                 ax.plot(tt, offset_model - y_offset, **kw)
 
+        pj = 0
         if res.KO and isolate_known_object:
-            for k in range(1, res.nKO + 1):
-                kepKO = res.eval_model(res.posterior_sample[i], tt, single_planet=-k)
-                ax.plot(tt, kepKO - y_offset, 'k-', alpha=alpha)
+            for _ in range(1, res.nKO + 1):
+                kepKO = res.eval_model(sample, tt, single_planet=-(pj+1))
+                ax.plot(tt, kepKO - y_offset, alpha=alpha,
+                        label='known object' if icurve == 0 else None)
+                pj += 1
+
         if hasattr(res, 'TR') and res.TR and isolate_transiting_planet:
-            for k in range(1, res.nTR + 1):
-                kepTR = res.eval_model(res.posterior_sample[i], tt, single_planet=-k)
-                ax.plot(tt, kepTR - y_offset, 'k-', alpha=alpha)
+            for _ in range(1, res.nTR + 1):
+                kepTR = res.eval_model(sample, tt, single_planet=-(pj+1))
+                ax.plot(tt, kepTR - y_offset, alpha=alpha,
+                        label='transiting planet' if icurve == 0 else None)
+                pj += 1
+
+    if kwargs.get('legend', True):
+        ax.legend()
 
     if full_plot:
         r = res.residuals(sample, full=True)
