@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "kima"
-version = "6.0.20"
+version = "6.0.21"
 description = "A data analysis framework for exoplanet detection"
 authors = [
   {name = "João Faria", email = "joao.faria@unige.ch"}
