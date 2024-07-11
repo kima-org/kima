@@ -2072,8 +2072,8 @@ class KimaResults:
         ttGP.sort()  # in-place
         return ttGP
 
-    def eval_model(self, sample, t=None,
-                   include_planets=True, include_known_object=True,
+    def eval_model(self, sample, t=None, include_planets=True, 
+                   include_known_object=True, include_transiting_planet=True,
                    include_indicator_correlations=True,
                    include_trend=True, single_planet: int = None,
                    except_planet: Union[int, List] = None):
@@ -2097,7 +2097,10 @@ class KimaResults:
                 Whether to include the contribution from the planets
             include_known_object (bool):
                 Whether to include the contribution from the known object
-                planets
+                planet(s)
+            include_transiting_planet (bool):
+                Whether to include the contribution from the transiting
+                planet(s)
             include_indicator_correlations (bool):
                 Whether to include the indicator correlation model
             include_trend (bool):
@@ -2105,12 +2108,13 @@ class KimaResults:
             single_planet (int):
                 Index of a single planet to *include* in the model, starting at
                 1. Use positive values (1, 2, ...) for the Np planets and
-                negative values (-1, -2, ...) for the known object planets.
+                negative values (-1, -2, ...) for the known object and
+                transiting planets.
             except_planet (Union[int, List]):
                 Index (or list of indices) of a single planet to *exclude* from
                 the model, starting at 1. Use positive values (1, 2, ...) for
                 the Np planets and negative values (-1, -2, ...) for the known
-                object planets.
+                object and transiting planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -2134,21 +2138,26 @@ class KimaResults:
             if single_planet and except_planet:
                 raise ValueError("'single_planet' and 'except_planet' "
                                  "cannot be used together")
+            if single_planet == 0:
+                raise ValueError("'single_planet' should not be 0")
 
             # except_planet should be a list to exclude more than one planet
             if except_planet is not None:
                 if isinstance(except_planet, int):
+                    if except_planet == 0:
+                        raise ValueError("'except_planet' should not be 0")
                     except_planet = [except_planet]
 
             # known_object ?
+            pj = 0
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
                 for j in range(self.nKO):
                     if single_planet is not None:
-                        if j + 1 != -single_planet:
+                        if pj + 1 != -single_planet:
                             continue
                     if except_planet is not None:
-                        if j + 1 in except_planet:
+                        if -(pj + 1) in except_planet:
                             continue
 
                     P = pars[j + 0 * self.nKO]
@@ -2161,16 +2170,19 @@ class KimaResults:
                         v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
                         v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
-            
+                else:
+                    pj += self.nKO
+
+
             # transiting planet ?
-            if hasattr(self, 'TR') and self.TR:
+            if hasattr(self, 'TR') and self.TR and include_transiting_planet:
                 pars = sample[self.indices['TRpars']].copy()
                 for j in range(self.nTR):
                     if single_planet is not None:
-                        if j + 1 != -single_planet:
+                        if pj + 1 != -single_planet:
                             continue
                     if except_planet is not None:
-                        if j + 1 in except_planet:
+                        if -(pj + 1) in except_planet:
                             continue
 
                     P = pars[j + 0 * self.nTR]
@@ -2186,6 +2198,8 @@ class KimaResults:
                         v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
                         v += keplerian(t, P, K, ecc, w, M, Tc)
+                else:
+                    pj += self.nTR
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -2264,9 +2278,9 @@ class KimaResults:
 
         return v
 
-    def planet_model(self, sample, t=None, include_known_object=True,
-                     single_planet: int = None,
-                     except_planet: Union[int, List, np.ndarray] = None):
+    def planet_model(self, sample, t=None, 
+                     include_known_object=True, include_transiting_planet=True,
+                     single_planet=None, except_planet=None):
         """
         Evaluate the planet part of the model at one posterior `sample`. If `t`
         is None, use the observed times. To evaluate at all posterior samples,
@@ -2286,16 +2300,20 @@ class KimaResults:
                 times
             include_known_object (bool):
                 Whether to include the contribution from the known object
-                planets
+                planet(s)
+            include_transiting_planet (bool):
+                Whether to include the contribution from the transiting
+                planet(s)
             single_planet (int):
                 Index of a single planet to *include* in the model, starting at
                 1. Use positive values (1, 2, ...) for the Np planets and
-                negative values (-1, -2, ...) for the known object planets.
+                negative values (-1, -2, ...) for the known object and
+                transiting planets.
             except_planet (Union[int, List]):
                 Index (or list of indices) of a single planet to *exclude* from
                 the model, starting at 1. Use positive values (1, 2, ...) for
                 the Np planets and negative values (-1, -2, ...) for the known
-                object planets.
+                object and transiting planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -2322,15 +2340,16 @@ class KimaResults:
         if except_planet is not None:
             except_planet = np.atleast_1d(except_planet)
 
+        pj = 0
         # known_object ?
         if self.KO and include_known_object:
             pars = sample[self.indices['KOpars']].copy()
             for j in range(self.nKO):
                 if single_planet is not None:
-                    if j + 1 != -single_planet:
+                    if pj + 1 != -single_planet:
                         continue
                 if except_planet is not None:
-                    if j + 1 in -except_planet:
+                    if -(pj + 1) in except_planet:
                         continue
 
                 P = pars[j + 0 * self.nKO]
@@ -2340,6 +2359,33 @@ class KimaResults:
                 ecc = pars[j + 3 * self.nKO]
                 w = pars[j + 4 * self.nKO]
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+            else:
+                pj += self.nKO
+
+        # transiting planet ?
+        if hasattr(self, 'TR') and self.TR and include_transiting_planet:
+            pars = sample[self.indices['TRpars']].copy()
+            for j in range(self.nTR):
+                if single_planet is not None:
+                    if pj + 1 != -single_planet:
+                        continue
+                if except_planet is not None:
+                    if -(pj + 1) in except_planet:
+                        continue
+
+                P = pars[j + 0 * self.nTR]
+                K = pars[j + 1 * self.nTR]
+                Tc = pars[j + 2 * self.nTR]
+                ecc = pars[j + 3 * self.nTR]
+                w = pars[j + 4 * self.nTR]
+                
+                f = np.pi/2 - w # true anomaly at conjunction
+                E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
+                M = E - ecc * np.sin(E) # mean anomaly at conjunction
+                v += keplerian(t, P, K, ecc, w, M, Tc)
+                pj += 1
+            else:
+                pj += self.nTR
 
         # get the planet parameters for this sample
         pars = sample[self.indices['planets']].copy()
