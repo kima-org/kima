@@ -1666,7 +1666,7 @@ class KimaResults:
             # TODO: why not the multivariate below?
             # return multivariate_t.logpdf(self.data.y, loc=model, shape=var, df=nu)
         else:
-            if separate_instruments:
+            if self.multi and separate_instruments:
                 like = norm(loc=model, scale=np.sqrt(var)).logpdf(self.data.y)
                 return np.array([like[self.data.obs == i].sum() for i in np.unique(self.data.obs)])
             else:
@@ -1697,8 +1697,6 @@ class KimaResults:
             cache (bool, optional):
                 Whether to cache the sample.
         """
-        from tqdm import tqdm
-
         if cache and hasattr(self, '_map_sample'):
             map_sample = self._map_sample
         else:
@@ -1717,8 +1715,7 @@ class KimaResults:
             ind = logpost.argmax()
             self._map_sample = map_sample = samples[ind]
 
-        logpost, loglike, logprior = self.log_posterior(
-            map_sample, separate=True)
+        logpost, loglike, logprior = self.log_posterior(map_sample, separate=True)
 
         if printit:
             print('Sample with the highest posterior value')
