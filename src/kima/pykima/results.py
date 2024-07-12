@@ -1156,7 +1156,7 @@ class KimaResults:
                 priors[i] = self.priors['J2prior']
         else:
             priors[self.indices['jitter']] = self.priors['Jprior']
-            if self.model == 'RVmodel':
+            if self.model == 'RVmodel' and self.multi:
                 priors[0] = self.priors['stellar_jitter_prior']
 
         if self.trend:
@@ -1649,9 +1649,16 @@ class KimaResults:
         return np.sum(logp)
 
     def log_likelihood(self, sample, separate_instruments=False):
-        stellar_jitter = sample[self.indices['jitter']][0]
-        jitter = sample[self.indices['jitter']][self.data.obs]
-        var = self.data.e**2 + stellar_jitter**2 + jitter**2
+        if self.model != 'RVmodel':
+            raise NotImplementedError('only implemented for RVmodel')
+        if self.multi:
+            stellar_jitter = sample[self.indices['jitter']][0]
+            jitter = sample[self.indices['jitter']][self.data.obs]
+            var = self.data.e**2 + stellar_jitter**2 + jitter**2
+        else:
+            jitter = sample[self.indices['jitter']][0]
+            var = self.data.e**2 + jitter**2
+
         model = self.full_model(sample)
         if self.studentt:
             nu = sample[self.indices['nu']]
