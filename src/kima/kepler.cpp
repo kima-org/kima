@@ -1,6 +1,5 @@
 #include "kepler.h"
 
-const double TWO_PI = M_PI * 2;
 const double PI_D_2 = M_PI / 2;
 
 const double ONE_D_24 = 1.0 / 24.0;
@@ -78,7 +77,7 @@ namespace murison
     */
     double ecc_anomaly(double t, double period, double ecc, double time_peri)
     {
-        double n = 2. * M_PI / period;  // mean motion
+        double n = TWO_PI / period;  // mean motion
         double M = n * (t - time_peri); // mean anomaly
         return solver(M, ecc);
     }
@@ -152,7 +151,7 @@ namespace murison
       std::vector<double> rv(t.size());
 
       // mean motion, once per orbit
-      double n = 2. * M_PI / P;
+      double n = TWO_PI / P;
       // sin and cos of argument of periastron, once per orbit
       double sinw, cosw;
       sincos(w, &sinw, &cosw);
@@ -302,7 +301,7 @@ namespace nijenhuis
     */
     double true_anomaly(double t, double period, double ecc, double t_peri)
     {
-        double n = 2. * M_PI / period; // mean motion
+        double n = TWO_PI / period; // mean motion
         double M = n * (t - t_peri);   // mean anomaly
 
         // Solve Kepler's equation
@@ -321,7 +320,7 @@ namespace nijenhuis
     
     std::tuple <double,double> ellip_rectang(double t, double period, double ecc, double t_peri)
     {
-        double n = 2. * M_PI / period; // mean motion
+        double n = TWO_PI / period; // mean motion
         double M = n * (t - t_peri);   // mean anomaly
 
         // Solve Kepler's equation
@@ -698,7 +697,7 @@ namespace brandt
 
     double true_anomaly(double t, double period, double ecc, double t_peri)
     {
-        double n = 2. * M_PI / period; // mean motion
+        double n = TWO_PI / period; // mean motion
         double M = n * (t - t_peri);   // mean anomaly
 
         // Solve Kepler's equation
@@ -722,7 +721,7 @@ namespace brandt
         std::vector<double> rv(t.size());
 
         // mean motion, once per orbit
-        double n = 2. * M_PI / P;
+        double n = TWO_PI / P;
         // sin and cos of argument of periastron, once per orbit
         double sinw, cosw;
         sincos(w, &sinw, &cosw);
@@ -760,7 +759,7 @@ namespace brandt
         std::vector<double> ets(epochs.size());
 
         // mean motion, once per orbit
-        double n = 2. * M_PI / P;
+        double n = TWO_PI / P;
         // sin and cos of argument of periastron, once per orbit
         double sinw, cosw;
         sincos(w, &sinw, &cosw);
@@ -799,7 +798,7 @@ namespace brandt
         std::vector<double> wk(t.size());
         
         // mean motion, once per orbit
-        double n = 2. * M_PI / P;
+        double n = TWO_PI / P;
 
         // brandt solver calculations, once per orbit
         double bounds[13];
@@ -837,7 +836,7 @@ namespace brandt
         std::vector<double> rv(t.size());
 
         // mean motion, once per orbit
-        double n = 2. * M_PI / P;
+        double n = TWO_PI / P;
         // sin and cos of argument of periastron, once per orbit
         double sinw, cosw;
         sincos(w, &sinw, &cosw);

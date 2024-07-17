@@ -2,7 +2,6 @@
 
 using namespace brandt;
 
-const double TWO_PI = M_PI * 2;
 const double c_light = 299792458;//m/s
 const double G = 6.6743 * pow(10.0,-11.0);
 const double Msun = 1.988409870698051 * pow(10.0,30.0);

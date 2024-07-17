@@ -12,6 +12,7 @@
 namespace nb = nanobind;
 using namespace nb::literals;
 
+const double TWO_PI = 2 * M_PI;
 
 // sincos on apple
 #ifdef __APPLE__
