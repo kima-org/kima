@@ -18,7 +18,7 @@ from copy import copy, deepcopy
 
 
 from .. import __models__
-from kima import keplerian
+from kima.kepler import keplerian
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
