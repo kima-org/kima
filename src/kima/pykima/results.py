@@ -5,7 +5,7 @@ This module defines the `KimaResults` class to hold results from a run.
 import os
 import sys
 import pickle
-from typing import List, Union, Any
+from typing import List, Tuple, Union, Any
 from typing_extensions import Self
 import zipfile
 import time
@@ -18,7 +18,7 @@ from copy import copy, deepcopy
 
 
 from .. import __models__
-from kima.kepler import keplerian as kepleriancpp
+from kima import keplerian
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
@@ -163,8 +163,8 @@ class posterior_holder:
         --
         η1 - η6 (ndarray): GP hyperparameters
         --
-        tr: Transiting planet parameters
-        ko: Known Object parameters
+        TR: TRansiting planet parameters
+        KO: Known Object parameters
     """
     Np: np.ndarray = field(init=False)
     P: np.ndarray = field(init=False)
@@ -190,14 +190,17 @@ class posterior_holder:
     η5: np.ndarray = field(init=False)
     η6: np.ndarray = field(init=False)
     # 
-    tr: Self = field(init=False)
-    ko: Self = field(init=False)
+    TR: Self = field(init=False)
+    KO: Self = field(init=False)
 
     def __repr__(self):
         fields = list(self.__dataclass_fields__.keys())
+        check_hasattr = lambda f: hasattr(self, f)
+        check_isph = lambda f: isinstance(getattr(self, f), posterior_holder)
+        check_size = lambda f: getattr(self, f).size > 0
         fields = [
             f for f in fields 
-            if hasattr(self, f) and (isinstance(getattr(self, f), posterior_holder) or getattr(self, f).size > 0)
+            if check_hasattr(f) and (check_isph(f) or check_size(f))
         ]
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
@@ -358,7 +361,6 @@ class KimaResults:
     #         print(f'(took {t2 - t1:.1f} seconds)')
 
     #     self.indices = {}
-    #     self.total_parameters = 0
 
     #     self._current_column = 0
         
@@ -560,8 +562,6 @@ class KimaResults:
             self.parameters = []
 
         self.indices = {}
-        self.total_parameters = 0
-
         self._current_column = 0
 
         # read jitters
@@ -664,131 +664,6 @@ class KimaResults:
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
 
-    # def _read_data(self):
-    #     setup = self.setup
-    #     section = 'data' if 'data' in setup else 'kima'
-
-    #     try:
-    #         self.multi = setup[section]['multi'] == 'true'
-    #     except KeyError:
-    #         self.multi = False
-
-    #     if self.model == 'HierarchicalRVmodel':
-    #         self.multi = True
-
-    #     if self.multi:
-    #         if setup[section]['files'] == '':
-    #             # multi is true but in only one file
-    #             data_file = setup[section]['file']
-    #             self.multi_onefile = True
-    #         else:
-    #             data_file = setup[section]['files'].split(',')[:-1]
-    #             self.multi_onefile = False
-    #             # raise NotImplementedError('TO DO')
-    #     else:
-    #         data_file = setup[section]['file']
-
-    #     if self.verbose:
-    #         print('Loading data file %s' % data_file)
-
-    #     if data_file == '':
-    #         raise ValueError('no data information in kima_model_setup.txt')
-
-    #     self.data_file = data_file
-
-    #     self.data_skip = int(setup[section]['skip'])
-    #     self.units = setup[section]['units']
-    #     self.M0_epoch = float(setup[section]['M0_epoch'])
-
-    #     if self.multi:
-    #         if self.model == 'RVFWHMmodel':
-    #             data, obs = read_datafile_rvfwhm(self.data_file, self.data_skip)
-    #         if self.model == 'RVFWHMRHKmodel':
-    #             data, obs = read_datafile_rvfwhmrhk(self.data_file, self.data_skip)
-    #         else:
-    #             data, obs = read_datafile(self.data_file, self.data_skip)
-            
-    #         if self.multi_onefile:
-    #             self.instruments = list(np.unique(obs).astype(str))
-
-    #         if obs.min() == 0:
-    #             obs += 1
-
-    #         # make sure the times are sorted when coming from multiple
-    #         # instruments
-    #         ind = data[:, 0].argsort()
-    #         data = data[ind]
-    #         obs = obs[ind]
-    #         self.n_instruments = np.unique(obs).size
-    #         if self.model == 'RVFWHMmodel':
-    #             self.n_jitters = 2 * self.n_instruments
-    #         elif self.model == 'RVFWHMRHKmodel':
-    #             self.n_jitters = 3 * self.n_instruments
-    #         elif self.model == 'HierarchicalRVmodel':
-    #             self.n_instruments = 1
-    #             self.n_jitters = 1
-    #         else:
-    #             self.n_jitters = self.n_instruments
-
-    #         if self.model == 'RVmodel':
-    #             # for stellar jitter
-    #             self.n_jitters += 1
-
-    #     else:
-    #         if self.model == 'RVFWHMmodel':
-    #             cols = range(5)
-    #             self.n_jitters = 2
-    #         elif self.model == 'RVFWHMRHKmodel':
-    #             cols = range(7)
-    #             self.n_jitters = 3
-    #         else:
-    #             cols = range(3)
-    #             self.n_jitters = 1
-    #         self.n_instruments = 1
-
-    #         data = np.loadtxt(self.data_file, skiprows=self.data_skip, usecols=cols)
-    #         obs = np.ones_like(data[:, 0], dtype=int)
-    #         self._extra_data = np.loadtxt(self.data_file, skiprows=self.data_skip)
-
-    #     # to m/s
-    #     if self.units == 'kms':
-    #         data[:, 1] *= 1e3
-    #         data[:, 2] *= 1e3
-    #         if self.model == 'RVFWHMmodel':
-    #             data[:, 3] *= 1e3
-    #             data[:, 4] *= 1e3
-
-    #     # arbitrary units?
-    #     if 'arb' in self.units:
-    #         self.arbitrary_units = True
-    #     else:
-    #         self.arbitrary_units = False
-
-    #     self.data = data_holder()
-    #     self.data.t = data[:, 0].copy()
-    #     self.data.y = data[:, 1].copy()
-    #     self.data.e = data[:, 2].copy()
-    #     self.data.obs = obs.copy()
-    #     self.data.N = self.data.t.size
-
-    #     if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-    #         self.data.y2 = data[:, 3].copy()
-    #         self.data.e2 = data[:, 4].copy()
-    #     if self.model in ('RVFWHMRHKmodel'):
-    #         self.data.y3 = data[:, 5].copy()
-    #         self.data.e3 = data[:, 6].copy()
-
-    #     if self.model == 'GAIAmodel':
-    #         self.astrometric_data = astrometric_data_holder()
-    #         data = np.genfromtxt(self.data_file, names=True, comments='--')
-    #         self.astrometric_data.t = data['mjd']
-    #         self.astrometric_data.w = data['w']
-    #         self.astrometric_data.sigw = data['sigw']
-    #         self.astrometric_data.psi = data['psi']
-    #         self.astrometric_data.pf = data['pf']
-    #         self.astrometric_data.N = data['mjd'].size
-            
-
     def _read_jitters(self):
         i1, i2 = self._current_column, self._current_column + self.n_jitters
         self.jitter = self.posterior_sample[:, i1:i2]
@@ -831,7 +706,6 @@ class KimaResults:
             self.indices['trend'] = slice(i1, i2)
         else:
             n_trend = 0
-        self.total_parameters += n_trend
 
         if self._debug:
             print('finished reading trend, trend =', self.trend)
@@ -856,7 +730,6 @@ class KimaResults:
             self.indices['inst_offsets'] = slice(istart, iend)
         else:
             n_inst_offsets = 0
-        self.total_parameters += n_inst_offsets
 
         if self._debug:
             print('finished reading multiple instruments')
@@ -883,7 +756,6 @@ class KimaResults:
             self.indices['betas'] = slice(istart, iend)
         else:
             n_act_ind = 0
-        self.total_parameters += n_act_ind
 
     def _read_components(self):
         # how many parameters per component
@@ -945,7 +817,6 @@ class KimaResults:
             self.nu = self.posterior_sample[:, self._current_column]
             self.indices['nu'] = self._current_column
             self._current_column += 1
-            self.total_parameters += 1
 
     @property
     def _GP_par_indices(self):
@@ -1093,7 +964,6 @@ class KimaResults:
             self._current_column += n_MAparameters
         else:
             n_MAparameters = 0
-        self.total_parameters += n_MAparameters
 
     def _read_KO(self):
         if self.KO:
@@ -1108,7 +978,6 @@ class KimaResults:
             self.indices['KOpars'] = koinds
         else:
             n_KOparameters = 0
-        self.total_parameters += n_KOparameters
 
     def _read_TR(self):
         if self.TR:
@@ -1123,7 +992,6 @@ class KimaResults:
             self.indices['TRpars'] = TRinds
         else:
             n_TRparameters = 0
-        self.total_parameters += n_TRparameters
 
     def _read_outlier(self):
         n_outlier_parameters = 3
@@ -1132,7 +1000,6 @@ class KimaResults:
         self.outlier_pars = self.posterior_sample[:, outlier_inds]
         self._current_column += n_outlier_parameters
         self.indices['outlier'] = outlier_inds
-        self.total_parameters += n_outlier_parameters
 
     @property
     def _mc(self):
@@ -1143,6 +1010,10 @@ class KimaResults:
     def _nd(self):
         """ Number of parameters per Keplerian """
         return self.n_dimensions
+
+    @property
+    def total_parameters(self):
+        return len(self.parameters)
 
     @property
     def parameter_priors(self):
@@ -1556,18 +1427,18 @@ class KimaResults:
             self.posteriors.KO.__doc__ = 'Known object parameters'
             self.posteriors.KO.P = self.KOpars[:, range(0*self.nKO, 1*self.nKO)]
             self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
-            self.posteriors.KO.Tc = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+            self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
             self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
             self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
 
         if self.TR:
-            self.posteriors.tr = posterior_holder()
-            self.posteriors.tr.__doc__ = 'Transiting planet parameters'
-            self.posteriors.tr.P = self.TRpars[:, range(0*self.nTR, 1*self.nTR)]
-            self.posteriors.tr.K = self.TRpars[:, range(1*self.nTR, 2*self.nTR)]
-            self.posteriors.tr.Tc = self.TRpars[:, range(2*self.nTR, 3*self.nTR)]
-            self.posteriors.tr.e = self.TRpars[:, range(3*self.nTR, 4*self.nTR)]
-            self.posteriors.tr.w = self.TRpars[:, range(4*self.nTR, 5*self.nTR)]
+            self.posteriors.TR = posterior_holder()
+            self.posteriors.TR.__doc__ = 'Transiting planet parameters'
+            self.posteriors.TR.P = self.TRpars[:, range(0*self.nTR, 1*self.nTR)]
+            self.posteriors.TR.K = self.TRpars[:, range(1*self.nTR, 2*self.nTR)]
+            self.posteriors.TR.Tc = self.TRpars[:, range(2*self.nTR, 3*self.nTR)]
+            self.posteriors.TR.e = self.TRpars[:, range(3*self.nTR, 4*self.nTR)]
+            self.posteriors.TR.w = self.TRpars[:, range(4*self.nTR, 5*self.nTR)]
 
 
         # # times of inferior conjunction (transit, if the planet transits)
@@ -2120,9 +1991,9 @@ class KimaResults:
                 the Np planets and negative values (-1, -2, ...) for the known
                 object and transiting planets.
         """
-        if sample.shape[0] != self.posterior_sample.shape[1]:
+        if sample.shape[0] != self.total_parameters + 3:
             n1 = sample.shape[0]
-            n2 = self.posterior_sample.shape[1]
+            n2 = self.total_parameters + 3
             msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
@@ -2319,11 +2190,10 @@ class KimaResults:
                 the Np planets and negative values (-1, -2, ...) for the known
                 object and transiting planets.
         """
-        if sample.shape[0] != self.posterior_sample.shape[1]:
+        if sample.shape[0] != self.total_parameters + 3:
             n1 = sample.shape[0]
-            n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2,
-                                                                         n1)
+            n2 = self.total_parameters + 3
+            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
         if t is None or t is self.data.t:
@@ -2452,9 +2322,9 @@ class KimaResults:
                 Whether to include the jitter values in `sample` in the prediction
         """
 
-        if sample.shape[0] != self.posterior_sample.shape[1]:
+        if sample.shape[0] != self.total_parameters + 3:
             n1 = sample.shape[0]
-            n2 = self.posterior_sample.shape[1]
+            n2 = self.total_parameters + 3
             msg = '`sample` has wrong dimensions, should be %d got %d' % (n2, n1)
             raise ValueError(msg)
 
