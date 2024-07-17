@@ -155,8 +155,6 @@ namespace murison
       // sin and cos of argument of periastron, once per orbit
       double sinw, cosw;
       sincos(w, &sinw, &cosw);
-      // ecentricity factor for g, once per orbit
-      double g_e = sqrt((1 + ecc) / (1 - ecc));
 
       for (size_t i = 0; i < t.size(); i++) {
         double E, cosE;
@@ -703,7 +701,6 @@ namespace brandt
         // Solve Kepler's equation
         double sinE, cosE;
         double E = solver(M, ecc, &sinE, &cosE);
-        // std::cout << "brandt E:" << E << std::endl;
 
         // Calculate true anomaly
         double f = acos((cosE - ecc) / (1 - ecc * cosE));
