@@ -146,6 +146,7 @@ def test_phase_plot(include, KO, nKO, TR, nTR, nP):
     res.KO, res.nKO = KO, nKO
     res.TR, res.nTR = TR, nTR
     res.total_parameters = 2 + res.nKO*5 + res.nTR*5 + 1 + 2*5 + 1
+    res.posterior_sample = np.empty((1, res.total_parameters + 3))
     res.data = d
     res.M0_epoch = d.t[0]
     res.indices = {
@@ -208,5 +209,5 @@ def test_phase_plot(include, KO, nKO, TR, nTR, nP):
     p = np.r_[p, [0,         trend[1]]]
 
     fig = phase_plot(res, p)
-    plt.show()
+    # plt.show()
     return fig

@@ -56,4 +56,4 @@ def test_speed():
         equality_check=None,
         n_range=[2**k for k in range(2, 10)],
     )
-    plt.show()
+    # plt.show()
