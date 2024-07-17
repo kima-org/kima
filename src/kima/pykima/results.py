@@ -46,10 +46,6 @@ pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
 
-def keplerian(*args, **kwargs):
-    return np.array(kepleriancpp(*args, **kwargs))
-
-
 
 def _read_priors(res, setup=None):
     if setup is None:
