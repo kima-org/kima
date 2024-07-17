@@ -2964,8 +2964,131 @@ class KimaResults:
         else:
             return samples
 
+    def print_results(self, show_prior=False):
+        """
+        Print a summary of the results, showing the posterior estimates for each
+        parameter.
 
-    #
+        Args:
+            show_prior (bool, optional):
+                Whether to show the prior distribution.
+        
+        Note:
+            This function is heavily inspired by a similar implementation in
+            [UltraNest](https://johannesbuchner.github.io/UltraNest/index.html).
+        """
+        # part of this code from UltraNest:
+        # https://github.com/JohannesBuchner/UltraNest/
+        # 
+        def print_header():
+            print('    ', end='')
+            print('%-15s' % 'parameter', end=': ')
+            print('%-20s' % 'median ± std', end=' ')
+            print('Ͱ', end=' ')
+            if show_prior:
+                print('%-24s' % 'prior', end=' ')
+            print(' distribution '.center(60), end=' ')
+            print()
+
+        def print_line(p, v, prior=None, show_prior=False):
+            if isinstance(prior, distributions.Fixed):
+                print(f'    {p:<15s}: {v[0]:<20.3f} Ͱ', end=' ')
+                if show_prior:
+                    print(f'{str(prior):<24s}')
+                else:
+                    print('%10s' % 'Fixed')
+                return
+
+            sigma, med = np.std(v), np.median(v)
+            j = 3 if sigma == 0 else max(0, int(-np.floor(np.log10(sigma))) + 1)
+            fmt = '%%.%df' % j
+
+            med_sigma = '%s ± %s' % (fmt % med, fmt % sigma)
+
+            H, edges = np.histogram(v, bins=40)
+            lo, hi = edges[0], edges[-1]
+            step = edges[1] - lo
+            if prior is not None:
+                lower = prior.ppf(1e-6)
+                if np.isfinite(lower):
+                    lo = max(lower, lo - 2 * step)
+                upper = prior.ppf(1.0 - 1e-6)
+                if np.isfinite(upper):
+                    hi = min(upper, hi + 2 * step)
+            H, edges = np.histogram(v, bins=np.linspace(lo, hi, 40))
+            lo, hi = edges[0], edges[-1]
+            dist = ''.join([' ▁▂▃▄▅▆▇██'[i] for i in np.ceil(H * 7 / H.max()).astype(int)])
+
+            range_dist = '%10s│%s│%-10s' % (fmt % lo, dist, fmt % hi)
+
+            if show_prior:
+                prior_short = str(prior)
+                prior_short = prior_short.replace('ModifiedLogUniform', 'MLU')
+                prior_short = prior_short.replace('LogUniform', 'LU')
+                prior_short = prior_short.replace('Uniform', 'U')
+                prior_short = prior_short.replace('Kumaraswamy', 'Kuma')
+                prior_short = prior_short.replace('Gaussian', 'G')
+                print('    %-15s: %-20s Ͱ %-24s %60s' % (p, med_sigma, prior_short, range_dist))
+            else:
+                print('    %-15s: %-20s Ͱ %60s' % (p, med_sigma, range_dist))
+
+        ########
+
+        print(f'    logZ: {self.evidence:.2f}', end='\n\n')
+        print_header()
+
+        if self.posteriors.jitter.ndim == 1:
+            J = self.posteriors.jitter.reshape(-1, 1)
+            number = False
+        else:
+            J = self.posteriors.jitter
+            number = True
+
+        for i, v in enumerate(J.T):
+            if self.model == 'RVmodel' and self.multi and i == 0:
+                print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
+            else:
+                print_line(f'jitter{i+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
+        
+        print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
+
+        if self.multi:
+            for i, v in enumerate(self.posteriors.offset.T):
+                print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
+
+        if self.max_components > 0:
+            print('    - planets')
+            for i in range(self.max_components):
+                print_line(f'{i+1}: P', self.posteriors.P[:, i], self.priors['Pprior'], show_prior)
+                print_line(f'{i+1}: K', self.posteriors.K[:, i], self.priors['Kprior'], show_prior)
+                print_line(f'{i+1}: M0', self.posteriors.φ[:, i], self.priors['phiprior'], show_prior)
+                print_line(f'{i+1}: e', self.posteriors.e[:, i], self.priors['eprior'], show_prior)
+                print_line(f'{i+1}: w', self.posteriors.w[:, i], self.priors['wprior'], show_prior)
+        
+        if self.has_gp:
+            print('    - GP')
+            for i in range(self.n_hyperparameters):
+                print_line(f'eta{i+1}', getattr(self.posteriors, f'η{i+1}'), self.priors[f'eta{i+1}_prior'], show_prior)
+
+        if self.KO:
+            print('    - KO')
+            for i in range(self.nKO):
+                print_line(f'{i+1}: P', self.posteriors.KO.P[:, i], self.priors[f'KO_Pprior_{i}'], show_prior)
+                print_line(f'{i+1}: K', self.posteriors.KO.K[:, i], self.priors[f'KO_Kprior_{i}'], show_prior)
+                print_line(f'{i+1}: M0', self.posteriors.KO.φ[:, i], self.priors[f'KO_phiprior_{i}'], show_prior)
+                print_line(f'{i+1}: e', self.posteriors.KO.e[:, i], self.priors[f'KO_eprior_{i}'], show_prior)
+                print_line(f'{i+1}: w', self.posteriors.KO.w[:, i], self.priors[f'KO_wprior_{i}'], show_prior)
+
+        if self.TR:
+            print('    - TR')
+            for i in range(self.nTR):
+                print_line(f'{i+1}: P', self.posteriors.TR.P[:, i], self.priors[f'TR_Pprior_{i}'], show_prior)
+                print_line(f'{i+1}: K', self.posteriors.TR.K[:, i], self.priors[f'TR_Kprior_{i}'], show_prior)
+                print_line(f'{i+1}: Tc', self.posteriors.TR.Tc[:, i], self.priors[f'TR_Tcprior_{i}'], show_prior)
+                print_line(f'{i+1}: e', self.posteriors.TR.e[:, i], self.priors[f'TR_eprior_{i}'], show_prior)
+                print_line(f'{i+1}: w', self.posteriors.TR.w[:, i], self.priors[f'TR_wprior_{i}'], show_prior)
+
+
     def _set_plots(self):
         from functools import partial
         if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
