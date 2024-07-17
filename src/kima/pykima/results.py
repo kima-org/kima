@@ -2004,9 +2004,9 @@ class KimaResults:
             np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
             ```
         """
-        if sample.shape[0] != self.total_parameters + 3:
+        if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
-            n2 = self.total_parameters + 3
+            n2 = self.posterior_sample.shape[1]
             msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
@@ -2226,9 +2226,9 @@ class KimaResults:
             ```
 
         """
-        if sample.shape[0] != self.total_parameters + 3:
+        if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
-            n2 = self.total_parameters + 3
+            n2 = self.posterior_sample.shape[1]
             msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
@@ -2362,9 +2362,9 @@ class KimaResults:
             ```
         """
 
-        if sample.shape[0] != self.total_parameters + 3:
+        if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
-            n2 = self.total_parameters + 3
+            n2 = self.posterior_sample.shape[1]
             msg = '`sample` has wrong dimensions, should be %d got %d' % (n2, n1)
             raise ValueError(msg)
 
