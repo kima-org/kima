@@ -961,7 +961,7 @@ ETVData::ETVData() {};
         et = data[1];
         etsig = data[2];
 
-        // epoch for the mean anomaly, by default the gaia reference time
+        // epoch for the mean anomaly, by default the first epoch
         M0_epoch = et[0];
 
         // How many points did we read?
