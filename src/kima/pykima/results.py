@@ -1478,8 +1478,12 @@ class KimaResults:
         Args:
             sample (array): sample for which to calculate the log prior
         
-        To evaluate at all posterior samples, consider using
+        Tip:
+            To evaluate at all posterior samples, consider using
+            
+            ```python
             np.apply_along_axis(self.log_prior, 1, self.posterior_sample)
+            ```
         """
         # logp = []
         # for p, v in zip(self.parameter_priors, sample):
@@ -1558,7 +1562,7 @@ class KimaResults:
 
         Note:
             This requires recalculation of the prior for all samples, so it can
-            be a bit slow, depending on the number of posteriro samples.
+            be a bit slow, depending on the number of posterior samples.
 
         Args:
             Np (int, optional):
@@ -1615,7 +1619,6 @@ class KimaResults:
         Note:
             If `from_posterior=True`, the returned sample may change, due to
             random choices, between different calls to `load_results`.
-
 
         Args:
             from_posterior (bool, optional): 
@@ -1954,17 +1957,19 @@ class KimaResults:
                    except_planet: Union[int, List] = None):
         """
         Evaluate the deterministic part of the model at one posterior `sample`.
-        If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added.
-        To evaluate at all posterior samples, consider using
 
-            np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
+        If `t` is None, use the observed times.
+        
+        Note:
+            Instrument offsets are only added if `t` is None, but the systemic
+            velocity is always added.
 
         Note:
             This function does *not* evaluate the GP component of the model.
 
-        Arguments:
-            sample (array): One posterior sample, with shape (npar,)
+        Args:
+            sample (array): 
+                One posterior sample, with shape (npar,)
             t (array):
                 Times at which to evaluate the model, or None to use observed
                 times
@@ -1990,6 +1995,13 @@ class KimaResults:
                 the model, starting at 1. Use positive values (1, 2, ...) for
                 the Np planets and negative values (-1, -2, ...) for the known
                 object and transiting planets.
+
+        Tip:
+            To evaluate at all posterior samples, consider using
+
+            ```python
+            np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
+            ```
         """
         if sample.shape[0] != self.total_parameters + 3:
             n1 = sample.shape[0]
@@ -2157,17 +2169,15 @@ class KimaResults:
                      include_known_object=True, include_transiting_planet=True,
                      single_planet=None, except_planet=None):
         """
-        Evaluate the planet part of the model at one posterior `sample`. If `t`
-        is None, use the observed times. To evaluate at all posterior samples,
-        consider using
-
-            np.apply_along_axis(self.planet_model, 1, self.posterior_sample)
-
+        Evaluate the planet part of the model at one posterior `sample`.
+        
+        If `t` is None, use the observed times. 
+        
         Note:
             This function does *not* evaluate the GP component of the model nor
             the systemic velocity and instrument offsets.
 
-        Arguments:
+        Args:
             sample (array):
                 One posterior sample, with shape (npar,)
             t (array):
@@ -2189,6 +2199,34 @@ class KimaResults:
                 the model, starting at 1. Use positive values (1, 2, ...) for
                 the Np planets and negative values (-1, -2, ...) for the known
                 object and transiting planets.
+
+        Tip:
+            To evaluate at all posterior samples, consider using
+
+            ```python
+            np.apply_along_axis(self.planet_model, 1, self.posterior_sample)
+            ```
+        
+        Examples:
+            To get the Keplerian contribution from the first planet in a
+            posterior sample `p` use:
+
+            ```python
+            res.planet_model(p, single_planet=1)
+            ```
+
+            For, e.g., the second known object in the model, use:
+
+            ```python
+            res.planet_model(p, single_planet=-2)
+            ```
+
+            or to get the contributions from all planets _except_ that one
+
+            ```python
+            res.planet_model(p, except_planet=-2)
+            ```
+
         """
         if sample.shape[0] != self.total_parameters + 3:
             n1 = sample.shape[0]
@@ -2298,16 +2336,13 @@ class KimaResults:
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
         
-        If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added. To
-        evaluate at all posterior samples, consider using
+        If `t` is None, use the observed times.  
 
-        ```py
-        res = ...
-        np.apply_along_axis(res.stochastic_model, 1, res.posterior_sample)
-        ```
+        Note:
+            Instrument offsets are only added if `t` is None, but the systemic
+            velocity is always added.
 
-        Arguments:
+        Args:
             sample (array):
                 One posterior sample, with shape (npar,)
             t (ndarray, optional):
@@ -2319,7 +2354,15 @@ class KimaResults:
             derivative (bool, optional):
                 Return the first time derivative of the GP prediction instead
             include_jitters (bool, optional):
-                Whether to include the jitter values in `sample` in the prediction
+                Whether to include the jitter values in `sample` in the
+                prediction
+
+        Tip:
+            To evaluate at all posterior samples, consider using
+
+            ```python
+            np.apply_along_axis(res.stochastic_model, 1, res.posterior_sample)
+            ```
         """
 
         if sample.shape[0] != self.total_parameters + 3:
@@ -2462,10 +2505,13 @@ class KimaResults:
         """
         Evaluate the full model at one posterior sample, including the GP. If
         `t` is `None`, use the observed times. Instrument offsets are only added
-        if `t` is `None`, but the systemic velocity is always added. To evaluate
-        at all posterior samples, consider using
+        if `t` is `None`, but the systemic velocity is always added.
         
-            np.apply_along_axis(self.full_model, 1, self.posterior_sample)
+        To evaluate at all posterior samples, consider using
+        
+        ```python
+        np.apply_along_axis(self.full_model, 1, self.posterior_sample)
+        ```
 
         Arguments:
             sample (array): One posterior sample, with shape (npar,)
