@@ -2040,11 +2040,12 @@ class KimaResults:
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
                 for j in range(self.nKO):
+                    pj += 1
                     if single_planet is not None:
-                        if pj + 1 != -single_planet:
+                        if pj != -single_planet:
                             continue
                     if except_planet is not None:
-                        if -(pj + 1) in except_planet:
+                        if -pj in except_planet:
                             continue
 
                     P = pars[j + 0 * self.nKO]
@@ -2057,19 +2058,17 @@ class KimaResults:
                         v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
                         v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
-                else:
-                    pj += self.nKO
-
 
             # transiting planet ?
             if hasattr(self, 'TR') and self.TR and include_transiting_planet:
                 pars = sample[self.indices['TRpars']].copy()
                 for j in range(self.nTR):
+                    pj += 1
                     if single_planet is not None:
-                        if pj + 1 != -single_planet:
+                        if pj != -single_planet:
                             continue
                     if except_planet is not None:
-                        if -(pj + 1) in except_planet:
+                        if -pj in except_planet:
                             continue
 
                     P = pars[j + 0 * self.nTR]
@@ -2085,8 +2084,6 @@ class KimaResults:
                         v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
                         v += keplerian(t, P, K, ecc, w, M, Tc)
-                else:
-                    pj += self.nTR
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -2247,6 +2244,8 @@ class KimaResults:
         if single_planet and except_planet:
             raise ValueError("'single_planet' and 'except_planet' "
                              "cannot be used together")
+        if single_planet == 0:
+            raise ValueError("'single_planet' should not be 0")
 
         # except_planet should be a list to exclude more than one planet
         if except_planet is not None:
@@ -2257,11 +2256,12 @@ class KimaResults:
         if self.KO and include_known_object:
             pars = sample[self.indices['KOpars']].copy()
             for j in range(self.nKO):
+                pj += 1
                 if single_planet is not None:
-                    if pj + 1 != -single_planet:
+                    if pj != -single_planet:
                         continue
                 if except_planet is not None:
-                    if -(pj + 1) in except_planet:
+                    if -pj in except_planet:
                         continue
 
                 P = pars[j + 0 * self.nKO]
@@ -2271,18 +2271,17 @@ class KimaResults:
                 ecc = pars[j + 3 * self.nKO]
                 w = pars[j + 4 * self.nKO]
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
-            else:
-                pj += self.nKO
 
         # transiting planet ?
         if hasattr(self, 'TR') and self.TR and include_transiting_planet:
             pars = sample[self.indices['TRpars']].copy()
             for j in range(self.nTR):
+                pj += 1
                 if single_planet is not None:
-                    if pj + 1 != -single_planet:
+                    if pj != -single_planet:
                         continue
                 if except_planet is not None:
-                    if -(pj + 1) in except_planet:
+                    if -pj in except_planet:
                         continue
 
                 P = pars[j + 0 * self.nTR]
@@ -2295,9 +2294,6 @@ class KimaResults:
                 E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                 M = E - ecc * np.sin(E) # mean anomaly at conjunction
                 v += keplerian(t, P, K, ecc, w, M, Tc)
-                pj += 1
-            else:
-                pj += self.nTR
 
         # get the planet parameters for this sample
         pars = sample[self.indices['planets']].copy()
