@@ -726,28 +726,21 @@ namespace brandt
         double sinw, cosw;
         sincos(w, &sinw, &cosw);
 
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
-
         // brandt solver calculations, once per orbit
         double bounds[13];
         double EA_tab[6 * 13];
         get_bounds(bounds, EA_tab, ecc);
 
-        // std::cout << std::endl;
         for (size_t i = 0; i < t.size(); i++)
         {
-            double sinE, cosE;
+            double sinEf, cosEf;
             double M = n * (t[i] - M0_epoch) + M0;
-            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-            double g = g_e * ((1 - cosE) / sinE);
-            double g2 = g * g;
-            // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
-            // std::cout << '\t' << g << '\t' << g2 << std::endl;
-            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
-      }
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
+            to_f(ecc, 1 - ecc, &sinEf, &cosEf);
+            rv[i] = K * (cosw * cosEf - sinw * sinEf + ecc * cosw);
+        }
 
-      return rv;
+        return rv;
     }
     
     std::vector<double> keplerian_et(const std::vector<double> &epochs, const double &P,
@@ -1169,6 +1162,7 @@ NB_MODULE(kepler, m) {
             return murison::solver(_M, ecc);
           }, 
           "M"_a, "ecc"_a);
+    m.def("murison_keplerian", &murison::keplerian);
 
     m.def("nijenhuis_solver", 
           [](double M, double ecc) { return nijenhuis::solver(M, ecc); },
@@ -1191,39 +1185,15 @@ NB_MODULE(kepler, m) {
     m.def("contour_solver", [](double M, double ecc) { return contour::solver(M, ecc); }, "M"_a, "ecc"_a);
 
 
-    m.def("keplerian", &brandt::keplerian,
+    m.def("keplerian2", &brandt::keplerian,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a,
           KEPLERIAN_DOC);
-    m.def("keplerian2", &brandt::keplerian2,
-          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
-        //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
-        //      const double &P, const double &K, const double &ecc,
-        //      const double &w, const double &M0, const double &M0_epoch) 
-        //      {
-        //         using array_type = nb::ndarray<nb::numpy, double, nb::shape<1, nb::any>>;
-        //         std::vector<double> rv(t.size());
-        //         // mean motion, once per orbit
-        //         double n = 2. * M_PI / P;
-        //         // sin and cos of argument of periastron, once per orbit
-        //         double sinw, cosw;
-        //         sincos(w, &sinw, &cosw);
-        //         // ecentricity factor for g, once per orbit
-        //         double g_e = sqrt((1 + ecc) / (1 - ecc));
 
-        //         // brandt solver calculations, once per orbit
-        //         double bounds[13];
-        //         double EA_tab[6 * 13];
-        //         brandt::get_bounds(bounds, EA_tab, ecc);
-
-        //         for (size_t i = 0; i < t.size(); i++) {
-        //             double sinE, cosE;
-        //             double M = n * (t(i) - M0_epoch) - M0;
-        //             brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-        //             double g = g_e * ((1 - cosE) / sinE);
-        //             double g2 = g * g;
-        //             rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
-        //         }
-        //         return rv;
-        //         // return nb::ndarray<nb::numpy, double, nb::shape<nb::any>>(rv.data(), 1, shape);
-        //   }, "keplerian function");
+    m.def("keplerian", [](const std::vector<double> &t, 
+                           const double &P, const double &K, const double &ecc, 
+                           const double &w, const double &M0, const double &M0_epoch) {
+        size_t size = t.size();
+        auto v = brandt::keplerian(t, P, K, ecc, w, M0, M0_epoch);
+        return nb::ndarray<nb::numpy, double>(v.data(), {size}, nb::handle());
+    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_DOC);
 }
