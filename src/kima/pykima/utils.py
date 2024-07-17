@@ -120,7 +120,16 @@ def read_datafile_rvfwhmrhk(datafile, skip):
 
 @contextlib.contextmanager
 def hide_stdout():
-    """ A simple context manager to hide stdout temporarily """
+    """
+    A simple context manager to hide stdout temporarily
+
+    Examples:
+        ```python
+        with hide_stdout():
+            print('hello') # no output
+        ```
+    
+    """
     from io import StringIO
     hidden = StringIO()
     try:
@@ -207,6 +216,22 @@ def apply_argsort(arr1, arr2, axis=-1):
 
 
 def percentile68_ranges(a, min=None, max=None):
+    """
+    Calculate the 16th and 84th percentiles of values in `a`, clipped between
+    `min` and `max`.
+
+             minus     median    plus     
+        -------==========|==========------
+        16%    |        68%        |    16%
+
+    Returns:
+        median (float):
+            Median value of `a`.
+        plus (float):
+            The 84th percentile minus the median.
+        minus (float):
+            The median minus the 16th percentile.
+    """
     if min is None and max is None:
         mask = np.ones_like(a, dtype=bool)
     elif min is None:
@@ -219,12 +244,44 @@ def percentile68_ranges(a, min=None, max=None):
     return (median, up - median, median - lp)
 
 
-def percentile68_ranges_latex(a, min=None, max=None):
+def percentile68_ranges_latex(a, min=None, max=None, collapse=True,
+                              include_dollar=True):
+    r"""
+    Return a LaTeX-formatted string of the 68% range of values in `a`, clipped
+    between `a` and `b`, in the form
+
+    $ median ^{+ plus} _{- minus} $
+    
+    Args:
+        collapse (bool, optional):
+            If True and plus=minus, return $ median \pm plus $
+        include_dollar (bool, optional):
+            Whether to include dollar signs in the output, so it's a valid LaTeX
+            math mode string
+    """
     median, plus, minus = percentile68_ranges(a, min, max)
-    return '$' + urepr.core.uformatul(median, plus, minus, 'L') + '$'
+    dollar = '$' if include_dollar else ''
+    if collapse:
+        high = urepr.uformat(median, plus, 'L').split(r'\pm')[1]
+        low = urepr.uformat(median, minus, 'L').split(r'\pm')[1]
+        if high == low:
+            return dollar + urepr.uformat(median, plus, 'L') + dollar
+    return dollar + urepr.uformatul(median, plus, minus, 'L') + dollar
 
 
 def percentile_ranges(a, percentile=68, min=None, max=None):
+    """
+    Calculate the given percentile range of values in `a`, clipped between `min`
+    and `max`.
+
+    Returns:
+        median (float):
+            Median value of `a`.
+        plus (float):
+            The 84th percentile minus the median.
+        minus (float):
+            The median minus the 16th percentile.
+    """
     if min is None and max is None:
         mask = np.ones_like(a, dtype=bool)
     elif min is None:
@@ -256,6 +313,15 @@ def clipped_std(arr, min, max):
 
 
 def distribution_rvs(dist, size=1):
+    """
+    Generate random samples from a distribution.
+    
+    Args:
+        dist (kima.distributions.Distribution or scipy.stats.rv_continuous):
+            The distribution to sample from
+        size (int, optional):
+            Number of samples to generate
+    """
     if hasattr(dist, 'rvs'):
         try:
             return dist.rvs(size)
@@ -266,10 +332,30 @@ def distribution_rvs(dist, size=1):
 
 
 def distribution_support(dist):
+    """ Return the support of a distribution """
     return dist.ppf(0.0), dist.ppf(1.0)
 
 
 def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
+    """
+    Get an informative Gaussian prior for the systemic velocity using the data.
+
+    Args:
+        data (kima.RVData): 
+            The RV dataset 
+        use_ptp (bool, optional):
+            Width of the prior is the range of the data.
+        use_std (bool, optional):
+            Width of the prior is the standard deviation of the data.
+
+    Returns:
+        prior (kima.distributions.Gaussian):
+            A Gaussian prior for the systemic velocity
+
+    Raises:
+        ValueError:
+            If _both_ `use_ptp` and `use_std` are True
+    """
     from kima.distributions import Gaussian
     obsi = np.array(data.obsi)
     u_obsi = np.unique(obsi)
@@ -283,6 +369,27 @@ def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
 
 
 def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
+    """
+    Get a informative Gaussian priors for the between-instrument offsets using
+    the data.
+
+    Args:
+        data (kima.RVData): 
+            The RV dataset (must have multiple instruments)
+        use_ptp (bool, optional):
+            Width of the prior is the range of the data.
+        use_std (bool, optional):
+            Width of the prior is the standard deviation of the data.
+
+    Returns:
+        prior (kima.distributions.Gaussian):
+            Gaussian priors appropriate for the between-instrument offsets
+
+    Raises:
+        ValueError:
+            - If `data.multi` is False
+            - If _both_ `use_ptp` and `use_std` are True
+    """
     from kima.distributions import Gaussian
     if not data.multi:
         raise ValueError('data is not from multiple instruments')
@@ -296,6 +403,8 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
             loc_scale.append((np.median(y) - np.median(y_last), np.ptp(y)))
         elif use_std:
             loc_scale.append((np.median(y) - np.median(y_last), np.std(y)))
+        else:
+            raise ValueError('either `use_ptp` or `use_std` should be True')
     return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
                         
 
@@ -381,9 +490,11 @@ def lighten_color(color, amount=0.5):
     `amount`. Input can be a matplotlib color string, hex string, or RGB tuple.
 
     Examples:
-    >>> lighten_color('g', 0.3)
-    >>> lighten_color('#F034A3', 0.6)
-    >>> lighten_color((.3, .55, .1), 0.5)
+        ```python
+        lighten_color('g', 0.3)
+        lighten_color('#F034A3', 0.6)
+        lighten_color((.3, .55, .1), 0.5)
+        ```
     """
     import matplotlib.colors as mc
     import colorsys
@@ -691,7 +802,7 @@ def get_star_name(data_file):
 
 
 def get_instrument_name(data_file):
-    """ Find instrument name """
+    """ Try to find the instrument name from a filename """
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
@@ -775,7 +886,7 @@ def get_timestamp():
 # author: Matt Davis (http://github.com/jiffyclub)
 
 
-def mjd_to_jd(mjd):
+def date_mjd_to_jd(mjd):
     """ Convert Modified Julian Day to Julian Day.
 
     Args:
@@ -787,7 +898,7 @@ def mjd_to_jd(mjd):
     return mjd + 2400000.5
 
 
-def jd_to_mjd(jd):
+def date_jd_to_mjd(jd):
     """ Convert Julian Day to Modified Julian Day
 
     Args:
@@ -799,7 +910,7 @@ def jd_to_mjd(jd):
     return jd - 2400000.5
 
 
-def date_to_jd(year, month, day):
+def date_date_to_jd(year, month, day):
     """ Convert a date (year, month, day) to Julian Day.
 
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
@@ -850,7 +961,7 @@ def date_to_jd(year, month, day):
     return jd
 
 
-def jd_to_date(jd):
+def date_jd_to_date(jd):
     """ Convert Julian Day to date.
 
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
@@ -906,7 +1017,7 @@ def jd_to_date(jd):
     return year, month, day
 
 
-def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
+def date_hmsm_to_days(hour=0, min=0, sec=0, micro=0):
     """
     Convert hours, minutes, seconds, and microseconds to fractional days.
 
@@ -932,7 +1043,7 @@ def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
     return days / 24.
 
 
-def days_to_hmsm(days):
+def date_days_to_hmsm(days):
     """
     Convert fractional days to hours, minutes, seconds, and microseconds.
     Precision beyond microseconds is rounded to the nearest microsecond.
@@ -967,7 +1078,7 @@ def days_to_hmsm(days):
     return int(hour), int(min), int(sec), int(micro)
 
 
-def datetime_to_jd(date: datetime):
+def date_datetime_to_jd(date: datetime):
     """ Convert a `datetime.datetime` object to Julian day.
 
     Args:
@@ -983,10 +1094,10 @@ def datetime_to_jd(date: datetime):
         >>> jdutil.datetime_to_jd(d)
         2446113.75
     """
-    days = date.day + hmsm_to_days(date.hour, date.minute, date.second,
-                                   date.microsecond)
+    days = date.day + date_hmsm_to_days(date.hour, date.minute, date.second,
+                                        date.microsecond)
 
-    return date_to_jd(date.year, date.month, days)
+    return date_date_to_jd(date.year, date.month, days)
 
 
 # def styleit(func):
