@@ -71,6 +71,7 @@ def make_plots(res, options, save_plots=False):
 
 
 def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
+                      show_detected=True, show_probabilities=False,
                       show_title=True, **kwargs):
     """ Plot the histogram of the posterior for Np
 
@@ -83,6 +84,11 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
             Whether to estimate and display errors on the Np posterior.
         show_ESS (bool, optional):
             Display the effective sample size on the plot.
+        show_detected (bool, optional):
+            Highlight the detected Np in the plot (from
+            `np_bayes_factor_threshold`).
+        show_probabilities (bool, optional):
+            Display the probabilities on top of the histogram bars.
         show_title (bool, optional):
             Display the title on the plot
         **kwargs:
@@ -104,6 +110,12 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
     nplanets = res.posterior_sample[:, res.index_component]
     n, _ = np.histogram(nplanets, bins=bins)
     ax.bar(bins[:-1], n / res.ESS, zorder=2, **kwargs)
+
+    if show_probabilities:
+        for i, nn in enumerate(n):
+            ax.text(bins[i], 0.08 + (nn / res.ESS), str(round(nn/res.ESS, 2)), 
+                    rotation=0, ha='center', va='center', fontsize=8)
+
     if show_ESS:
         ax.text(0.05, 0.9, f'ESS: {res.ESS}', transform=ax.transAxes)
 
@@ -120,8 +132,9 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
                     capsize=3,
                     color='k')
 
-    pt_Np = np_bayes_factor_threshold(res)
-    ax.bar(pt_Np, n[pt_Np] / res.ESS, color='C1', zorder=2)
+    if show_detected:
+        pt_Np = np_bayes_factor_threshold(res)
+        ax.bar(pt_Np, n[pt_Np] / res.ESS, color='C1', zorder=2)
 
     xlim = (-0.5, res.max_components + 0.5)
     xticks = np.arange(res.max_components + 1)
