@@ -138,7 +138,7 @@ class KIMA_API RVmodel
         // priors for parameters *not* belonging to the planets
 
         /// Prior for the systemic velocity.
-        [[deprecated("Use vsys_prior instead.")]]
+        // [[deprecated("Use vsys_prior instead.")]]
         distribution Cprior;
         /// Prior for the extra white noise (jitter).
         distribution Jprior;
