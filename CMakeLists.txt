@@ -8,6 +8,12 @@ if(WIN32)
   add_compile_definitions(_USE_MATH_DEFINES)
 endif()
 
+if(MSVC)
+  add_compile_options(/W4)
+else()
+  add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+endif()
+
 # add_compile_options(-Wall -Wextra -Wpedantic)
 
 # DNest4 library
