@@ -25,7 +25,7 @@ from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  QPpMAGCYCLEkernel, mixtureGP)
 
 from .analysis import get_planet_mass_and_semimajor_axis
-from .utils import (read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
+from .utils import (distribution_rvs, read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
                     get_star_name, mjup2mearth, get_instrument_name, SimpleTimer, get_timestamp,
                     _show_kima_setup, read_big_file, rms, wrms, chdir)
 
@@ -545,6 +545,7 @@ class KimaResults:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
                 self.parameters = [p for p in header.split(' ') if p != '']
+                self._parameters = copy(self.parameters)
                 self.parameters.pop(self.parameters.index('ndim'))
                 self.parameters.pop(self.parameters.index('maxNp'))
                 self.parameters.pop(self.parameters.index('staleness'))
@@ -1094,7 +1095,7 @@ class KimaResults:
             TR_priors = []
             TR_priors += [self.priors[f'TR_Pprior_{i}'] for i in range(self.nTR)]
             TR_priors += [self.priors[f'TR_Kprior_{i}'] for i in range(self.nTR)]
-            TR_priors += [self.priors[f'TR_phiprior_{i}'] for i in range(self.nTR)]
+            TR_priors += [self.priors[f'TR_Tcprior_{i}'] for i in range(self.nTR)]
             TR_priors += [self.priors[f'TR_eprior_{i}'] for i in range(self.nTR)]
             TR_priors += [self.priors[f'TR_wprior_{i}'] for i in range(self.nTR)]
             priors[self.indices['TRpars']] = TR_priors
@@ -2629,18 +2630,32 @@ class KimaResults:
 
         return np.array(vals)
 
+    def _planet_i_indices(self, i):
+        start, stop, _ = self.indices['planets'].indices(self.posterior_sample.shape[1])
+        return np.arange(start + i, stop, self.max_components)
+
     def from_prior(self, n=1):
         """ Generate `n` samples from the priors for all parameters. """
         prior_samples = []
-        for i in range(n):
+        for _ in range(n):
             prior = []
-            for p in self.parameter_priors:
-                if p is None:
-                    prior.append(None)
+            for par, pr in zip(self._parameters, self.parameter_priors):
+                if par == 'ndim':
+                    prior.append(self.n_dimensions)
+                elif par == 'maxNp':
+                    prior.append(self.max_components)
+                elif par == 'staleness':
+                    prior.append(0)
                 else:
-                    prior.append(p.rvs())
-            prior_samples.append(np.array(prior))
-        return np.array(prior_samples)
+                    prior.append(distribution_rvs(pr)[0])
+
+            prior = np.array(prior)
+            # set to 0 the planet parameters > Np
+            for j in range(int(prior[self.index_component]), self.max_components):
+                prior[self._planet_i_indices(j)] = 0
+
+            prior_samples.append(prior)
+        return np.array(prior_samples).squeeze()
 
     def simulate_from_sample(self, sample, times, add_noise=True, errors=True,
                              append_to_file=False):
