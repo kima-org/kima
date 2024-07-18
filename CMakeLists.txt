@@ -8,13 +8,13 @@ if(WIN32)
   add_compile_definitions(_USE_MATH_DEFINES)
 endif()
 
-if (MSVC)
-    # warning level 3
-    add_compile_options(/W3)
-else()
-    # additional warnings
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
+# if (MSVC)
+#     # warning level 3
+#     add_compile_options(/W3)
+# else()
+#     # additional warnings
+#     add_compile_options(-Wall -Wextra -Wpedantic)
+# endif()
 
 # add_compile_options(-Wall -Wextra -Wpedantic)
 

@@ -681,8 +681,8 @@ namespace brandt
         else
         {
             // If cos(E) = -1, E = pi and tan(0.5*E) -> inf and f = E = pi
-            *sinf = 0;
-            *cosf = -1;
+            *sinf = 0.0;
+            *cosf = -1.0;
         }
     }
 
@@ -1190,7 +1190,12 @@ NB_MODULE(kepler, m) {
                            const double &P, const double &K, const double &ecc, 
                            const double &w, const double &M0, const double &M0_epoch) {
         size_t size = t.size();
-        auto v = brandt::keplerian(t, P, K, ecc, w, M0, M0_epoch);
-        return nb::ndarray<nb::numpy, double>(v.data(), {size}, nb::handle());
-    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_DOC);
+        struct Temp { std::vector<double> v; };
+        Temp *temp = new Temp();
+        temp->v = brandt::keplerian(t, P, K, ecc, w, M0, M0_epoch);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
+    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_DOC
+    // nb::rv_policy::copy
+    );
 }

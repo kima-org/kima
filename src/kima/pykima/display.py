@@ -2244,9 +2244,11 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
 
 def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing_P=False):
     from string import ascii_lowercase
+    letters = ascii_lowercase[1:]
+
     nplanets = int(sample[res.indices['np']])
 
-    params = {ascii_lowercase[1+i]: {} for i in range(nplanets)}
+    params = {letters[i]: {} for i in range(nplanets)}
     for i, k in enumerate(params.keys()):
         params[k]['P'] = P = sample[res.indices['planets.P']][i]
         params[k]['K'] = K = sample[res.indices['planets.K']][i]
@@ -2258,8 +2260,8 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     pj = 0
     if res.KO:
+        ko = {letters[i]: {} for i in range(nplanets, nplanets + res.nKO)}
         nplanets += res.nKO
-        ko = {ascii_lowercase[i]: {} for i in range(nplanets, nplanets + res.nKO)}
         for i, k in enumerate(ko.keys()):
             ko[k]['P'] = P = sample[res.indices['KOpars']][i]
             ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
@@ -2272,16 +2274,17 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         params.update(ko)
 
     if res.TR:
+        tr = {letters[i]: {} for i in range(nplanets, nplanets + res.nTR)}
         nplanets += res.nTR
-        tr = {ascii_lowercase[i]: {} for i in range(nplanets, nplanets + res.nTR)}
         for i, k in enumerate(tr.keys()):
             tr[k]['P'] = P = sample[res.indices['TRpars']][i]
             tr[k]['K'] = K = sample[res.indices['TRpars']][i + res.nTR]
-            tr[k]['φ'] = φ = sample[res.indices['TRpars']][i + 2 * res.nTR]
+            tr[k]['Tc'] = Tc = sample[res.indices['TRpars']][i + 2 * res.nTR]
             tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
             tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
-            tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            # tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['index'] = -pj - 1
+            pj += 1
         params.update(tr)
 
     keys = list(params.keys())
@@ -2295,20 +2298,44 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
     return nplanets, params, keys
 
 
-def phase_plot(res,
-               sample,
-               highlight=None,
-               only=None,
-               phase_axs=None,
-               add_titles=True,
-               sharey=False,
-               highlight_points=None,
-               sort_by_increasing_P=False,
-               sort_by_decreasing_K=True,
-               show_gls_residuals=False,
+def phase_plot(res, sample, phase_axs=None,
+               sort_by_increasing_P=False, sort_by_decreasing_K=True,
+               highlight=None, highlight_points=None, only=None,
+               add_titles=True, sharey=False, show_gls_residuals=False,
                **kwargs):
-    """ Plot the phase curves given the solution in `sample` """
-    # this is probably the most complicated function in the whole package!!
+    """
+    Plot the planet phase curves, GP, and residuals, for a given `sample`.
+    
+    Args:
+        res (kima.KimaResults):
+            The `KimaResults` instance
+        sample (array):
+            Array with one posterior sample
+        phase_axs (list[matplotlib.axes.Axes]):
+            One or more axes for the phase plot(s)
+        sort_by_increasing_P (bool):
+            Sort the planets by increasing period
+        sort_by_decreasing_K (bool):
+            Sort the planets by decreasing semi-amplitude
+        highlight (list):
+            Highlight all data points from a specific instrument
+        highlight_points (list):
+            Highlight specific data points by index
+        only (list):
+            Only show data from specific instrument(s)
+        add_titles (bool):
+            Add titles to each phase plot
+        sharey (bool):
+            Share the y-axis of the phase plots
+        show_gls_residuals (bool):
+            Add a panel with the Lomb-Scargle periodogram of the residuals
+        **kwargs (dict):
+            Keyword arguments passed to `plt.errorbar`
+    
+    Warning:
+        This is probably the most complicated function in the whole package! For
+        one, the layout of the axes in the figure may not always be optimal.
+    """
 
     if res.max_components == 0 and not res.KO and not res.TR:
         print('Model has no planets! phase_plot() doing nothing...')
@@ -2373,24 +2400,29 @@ def phase_plot(res,
     if show_gls_residuals:
         fs[0] += 2
 
+    # axes layout:
+    # up to 3 planets: 1 row
+    # up to 6 planets: 2 rows
+
+
     fig = plt.figure(constrained_layout=True, figsize=fs)
     nrows = {
-        1: 2,
-        2: 2,
-        3: 2,
-        4: 4,
-        5: 4,
-        6: 4,
-        7: 5,
-        8: 5,
-        9: 5,
-        10: 5
+        1: 1, 2: 1, 3: 1,
+        4: 2, 5: 2, 6: 2,
+        7: 4, 8: 4, 9: 4,
     }[nplanets]
+
+    # at least the residuals plot
+    nrows += 1
 
     if res.has_gp:
         nrows += 1
 
-    ncols = nplanets if nplanets <= 3 else 3
+    ncols = {
+        1: 1, 2: 2, 3: 3,
+        4: 2,
+        5: 3, 6: 3, 7: 3, 8: 3, 9: 3
+    }[nplanets]
     hr = [2] * (nrows - 1) + [1]
     wr = None
 
@@ -2399,32 +2431,58 @@ def phase_plot(res,
         ncols += 1
         # fig.set_size_inches(fs[0], fs[1])
 
-    gs = gridspec.GridSpec(nrows, ncols, figure=fig, height_ratios=hr,
-                           width_ratios=wr)
-    gs_indices = {i: (i // 3, i % 3) for i in range(50)}
-    axs = []
+    gs = gridspec.GridSpec(nrows, ncols, figure=fig,
+                           height_ratios=hr, width_ratios=wr)
+    # gs_indices = {i: (i // 3, i % 3) for i in range(50)}
+
+    if phase_axs is None:
+        if nplanets == 1:
+            axs = [fig.add_subplot(gs[0, 0])]
+        elif nplanets == 2:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])]
+        elif nplanets == 3:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+        elif nplanets == 4:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]),
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]
+        elif nplanets == 5:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]), 
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]
+        elif nplanets == 6:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2])]
+        elif nplanets == 7:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2]),
+                   fig.add_subplot(gs[2, 0])]
+        elif nplanets == 8:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2]),
+                   fig.add_subplot(gs[2, 0]), fig.add_subplot(gs[2, 1])]
+        elif nplanets == 9:
+            axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                   fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2]),
+                   fig.add_subplot(gs[2, 0]), fig.add_subplot(gs[2, 1]), fig.add_subplot(gs[2, 2])]
+        else:
+            raise NotImplementedError
+    else:
+        axs = phase_axs
+
+    colors = kwargs.get('colors', None)
 
     # for each planet in this sample
     for i, letter in enumerate(keys):
-        if phase_axs is None:
-            ax = fig.add_subplot(gs[gs_indices[i]])
-        else:
-            try:
-                ax = phase_axs[i]
-            except IndexError:
-                continue
-
-        axs.append(ax)
+        ax = axs[i]
 
         ax.axvline(0.5, ls='--', color='k', alpha=0.2, zorder=-5)
         ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
 
         P = params[letter]['P']
-        Tp = params[letter]['Tp']
+        # Tp = params[letter]['Tp']
 
         # plot the keplerian curve in phase (3 times)
         phase = np.linspace(0, 1, 200)
-        tt = phase * P + Tp
+        tt = phase * P + res.M0_epoch
 
         # keplerian for this planet
         planet_index = params[letter]['index']
@@ -2454,13 +2512,16 @@ def phase_plot(res,
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = obs == k
-                phase = ((t[m] - Tp) / P) % 1.0
+                phase = ((t[m] - res.M0_epoch) / P) % 1.0
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
 
-                # one color for each instrument
-                color = f'C{k-1}'
+                if colors is None:
+                    # one color for each instrument
+                    color = f'C{k-1}'
+                else:
+                    color = colors[k - 1]
 
                 for j in (-1, 0, 1):
                     label = res.instruments[k - 1] if j == 0 else ''
@@ -2492,7 +2553,7 @@ def phase_plot(res,
                                     alpha=alpha, **hlkw)
 
         else:
-            phase = ((t - Tp) / P) % 1.0
+            phase = ((t - res.M0_epoch) / P) % 1.0
             yy = y - vv
 
             for j in (-1, 0, 1):
