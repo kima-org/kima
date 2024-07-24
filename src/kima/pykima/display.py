@@ -2401,8 +2401,11 @@ def phase_plot(res, sample, phase_axs=None,
         fs[0] += 2
 
     # axes layout:
-    # up to 3 planets: 1 row
-    # up to 6 planets: 2 rows
+    # # up to 3 planets: 1 row, up to 3 cols
+    # # 4 planets: 2 rows, 2 cols
+    # # up to 6 planets: 2 rows, 3 cols
+    # GP panel ?
+    # residuals panel
 
 
     fig = plt.figure(constrained_layout=True, figsize=fs)
