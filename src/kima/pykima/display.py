@@ -2593,7 +2593,7 @@ def phase_plot(res, sample, phase_axs=None,
     ###########
     if res.has_gp:
         # grab the first row after the one that is attributed to the planets
-        axGP = fig.add_subplot(gs[gs_indices[nplanets][0] + 1, :end])
+        axGP = fig.add_subplot(gs[-2, :end])
 
         y = res.data.y.copy()
         y = y - res.eval_model(sample)
