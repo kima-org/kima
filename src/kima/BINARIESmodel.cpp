@@ -408,8 +408,7 @@ void BINARIESmodel::calculate_mus()
     #endif
 
 
-    double f, v, ti;
-    double P, K,opphi, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+    double P, K,opphi, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
 
@@ -442,7 +441,7 @@ void BINARIESmodel::calculate_mus()
 
 void BINARIESmodel::remove_known_object()
 {   
-    double f, v, ti, Tp, w_t, P_anom, phi;
+    double P_anom, phi;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
@@ -459,7 +458,7 @@ void BINARIESmodel::remove_known_object()
 void BINARIESmodel::remove_known_object_sb2()
 {
     
-    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2, phi;
+    double P_anom, phi;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
@@ -478,7 +477,7 @@ void BINARIESmodel::remove_known_object_sb2()
 void BINARIESmodel::add_known_object()
 {
     
-    double f, v, ti, Tp, w_t, P_anom, phi;
+    double P_anom, phi;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
@@ -494,7 +493,7 @@ void BINARIESmodel::add_known_object()
 void BINARIESmodel::add_known_object_sb2()
 {
     
-    double f, v1,v2, ti, Tp, w, w_t, P_anom, K2, phi;
+    double P_anom, phi;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
