@@ -242,11 +242,12 @@ void BINARIESmodel::calculate_mu()
             
         P = components[j][0];
         K = components[j][1];
-        opphi = components[j][2];
+        //opphi = components[j][2];
+        phi = components[j][2];
         ecc = components[j][3];
         omega = components[j][4];
         
-        phi = opphi - omega;
+        //phi = opphi - omega;
 
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
@@ -413,11 +414,12 @@ void BINARIESmodel::calculate_mus()
 
         P = components[j][0];
         K = components[j][1];
-        opphi = components[j][2];
+        //opphi = components[j][2];
+        phi = components[j][2];
         ecc = components[j][3];
         omega = components[j][4];
 
-        phi = opphi - omega;
+        //phi = opphi - omega;
         
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
@@ -445,8 +447,8 @@ void BINARIESmodel::remove_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        phi = KO_phi[j] - KO_w[j];
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
+        //phi = KO_phi[j] - KO_w[j];
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
         for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] -= v[i];
@@ -462,8 +464,8 @@ void BINARIESmodel::remove_known_object_sb2()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        phi = KO_phi[j] - KO_w[j];
-        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        //phi = KO_phi[j] - KO_w[j];
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
         
         for(size_t i=0; i<data.t.size(); i++)
         {
@@ -480,8 +482,8 @@ void BINARIESmodel::add_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        phi = KO_phi[j] - KO_w[j];
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
+        //phi = KO_phi[j] - KO_w[j];
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
@@ -496,8 +498,8 @@ void BINARIESmodel::add_known_object_sb2()
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        phi = KO_phi[j] - KO_w[j];
-        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        //phi = KO_phi[j] - KO_w[j];
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], KO_phi[j], data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
         
 
         for(size_t i=0; i<data.t.size(); i++)
