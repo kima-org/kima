@@ -1185,17 +1185,40 @@ NB_MODULE(kepler, m) {
     m.def("keplerian2", &brandt::keplerian,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a,
           KEPLERIAN_DOC);
+    m.def("keplerian2", &brandt::keplerian2,
+          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
 
-    m.def("keplerian", [](const std::vector<double> &t, 
-                           const double &P, const double &K, const double &ecc, 
-                           const double &w, const double &M0, const double &M0_epoch) {
-        size_t size = t.size();
-        struct Temp { std::vector<double> v; };
-        Temp *temp = new Temp();
-        temp->v = brandt::keplerian(t, P, K, ecc, w, M0, M0_epoch);
-        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
-        return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
-    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_DOC
-    // nb::rv_policy::copy
-    );
+    m.def("keplerian_etv", &brandt::keplerian_et,
+          "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a);
+
+        //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
+        //      const double &P, const double &K, const double &ecc,
+        //      const double &w, const double &M0, const double &M0_epoch) 
+        //      {
+        //         using array_type = nb::ndarray<nb::numpy, double, nb::shape<1, nb::any>>;
+        //         std::vector<double> rv(t.size());
+        //         // mean motion, once per orbit
+        //         double n = 2. * M_PI / P;
+        //         // sin and cos of argument of periastron, once per orbit
+        //         double sinw, cosw;
+        //         sincos(w, &sinw, &cosw);
+        //         // ecentricity factor for g, once per orbit
+        //         double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        //         // brandt solver calculations, once per orbit
+        //         double bounds[13];
+        //         double EA_tab[6 * 13];
+        //         brandt::get_bounds(bounds, EA_tab, ecc);
+
+        //         for (size_t i = 0; i < t.size(); i++) {
+        //             double sinE, cosE;
+        //             double M = n * (t(i) - M0_epoch) - M0;
+        //             brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+        //             double g = g_e * ((1 - cosE) / sinE);
+        //             double g2 = g * g;
+        //             rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
+        //         }
+        //         return rv;
+        //         // return nb::ndarray<nb::numpy, double, nb::shape<nb::any>>(rv.data(), 1, shape);
+        //   }, "keplerian function");
 }

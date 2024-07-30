@@ -166,10 +166,9 @@ void ETVmodel::remove_known_object()
     auto epochs = data.get_epochs();
     for (int j = 0; j < n_known_object; j++)
     {
-        auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] -= tau[i] / (24 * 3600);
+        auto tau = brandt::keplerian_et(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] -= tau[i]/(24*3600);
         }
     }
 }
@@ -182,9 +181,8 @@ void ETVmodel::add_known_object()
     for (int j = 0; j < n_known_object; j++)
     {
         auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] += tau[i] / (24 * 3600);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] += tau[i]/(24*3600);
         }
     }
 }

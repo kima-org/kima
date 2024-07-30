@@ -1120,6 +1120,8 @@ Args:
         .def_prop_ro("et", [](ETVData &d) { return d.get_et(); }, "The observed mid-eclipse times")
         .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times");
 
+        .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly")
+
         //
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
 }
