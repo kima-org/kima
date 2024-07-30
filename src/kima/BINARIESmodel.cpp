@@ -232,8 +232,7 @@ void BINARIESmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    double P, K,opphi, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+    double P, K,opphi, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         //if(hyperpriors)
