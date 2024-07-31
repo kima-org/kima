@@ -1182,7 +1182,7 @@ NB_MODULE(kepler, m) {
     m.def("contour_solver", [](double M, double ecc) { return contour::solver(M, ecc); }, "M"_a, "ecc"_a);
 
 
-    m.def("keplerian2", &brandt::keplerian,
+    m.def("keplerian", &brandt::keplerian,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a,
           KEPLERIAN_DOC);
     m.def("keplerian2", &brandt::keplerian2,

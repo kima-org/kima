@@ -45,6 +45,7 @@ class KIMA_API ETVmodel
             DNest4::RJObject<ETVConditionalPrior>(5, npmax, fix, ETVConditionalPrior());
 
         double ephem1, ephem2=0.0, ephem3=0.0;
+        double M0_epoch;
         double nu;
         double jitter;
 
@@ -81,6 +82,8 @@ class KIMA_API ETVmodel
         distribution Jprior;
         /// Prior for the stellar jitter (common to all instruments)
         distribution stellar_jitter_prior;
+        ///Prior for the reference time
+        distribution ref_time_prior;
         /// Prior for the slope
         distribution ephem1_prior;
         /// Prior for the quadratic coefficient of the trend
