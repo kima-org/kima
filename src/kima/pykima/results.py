@@ -3039,11 +3039,13 @@ class KimaResults:
             J = self.posteriors.jitter
             number = True
 
+        k = 0
         for i, v in enumerate(J.T):
             if self.model == 'RVmodel' and self.multi and i == 0:
                 print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
             else:
-                print_line(f'jitter{i+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
+                print_line(f'jitter{k+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
+                k += 1
         
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
 
