@@ -1042,8 +1042,9 @@ class KimaResults:
                 offset_priors = no * [prior1] + no * [prior2]
                 priors[self.indices['inst_offsets']] = np.array(offset_priors)
             else:
-                prior = self.priors['offsets_prior']
-                priors[self.indices['inst_offsets']] = np.array(no * [prior])
+                for i in range(no):
+                    prior = self.priors[f'individual_offset_prior[{i}]']
+                    priors[self.indices['inst_offsets']][i] = prior
 
         if self.has_gp:
             if self.model == 'GPmodel':
