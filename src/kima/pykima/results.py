@@ -467,6 +467,8 @@ class KimaResults:
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
                     raise FileNotFoundError(msg)
                 raise e
+            except IndexError:
+                raise ValueError('Something went wrong reading the posterior samples. Try again')
 
         self.model = model.__class__.__name__
         self.fix = model.fix
