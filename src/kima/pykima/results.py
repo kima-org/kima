@@ -1458,6 +1458,20 @@ class KimaResults:
         self.means = np.mean(self.posterior_sample, axis=0)
         return self.medians, self.means
 
+    def _select_samples(self, Np=None, mask=None, return_indices=False):
+        if mask is None:
+            mask = np.ones(self.sample.shape[0], dtype=bool)
+
+        if Np is None:
+            if return_indices:
+                return np.where(mask)[0]
+            return self.sample[mask].copy()
+        else:
+            mask_Np = self.sample[:, self.index_component] == Np
+            if return_indices:
+                return np.where(mask & mask_Np)[0]
+            return self.sample[mask & mask_Np].copy()
+
     def _select_posterior_samples(self, Np=None, mask=None, return_indices=False):
         if mask is None:
             mask = np.ones(self.ESS, dtype=bool)
@@ -1468,6 +1482,8 @@ class KimaResults:
             return self.posterior_sample[mask].copy()
         else:
             mask_Np = self.posterior_sample[:, self.index_component] == Np
+            if not mask_Np.any():
+                raise ValueError(f'No samples with {Np} Keplerians')
             if return_indices:
                 return np.where(mask & mask_Np)[0]
             return self.posterior_sample[mask & mask_Np].copy()
@@ -1556,7 +1572,8 @@ class KimaResults:
             return logp + logl, logl, logp
         return logp + logl
 
-    def map_sample(self, Np=None, mask=None, printit=True, cache=True):
+    def map_sample(self, Np=None, mask=None, printit=True,
+                   from_posterior=False):
         """
         Get the maximum a posteriori (MAP) sample.
 
@@ -1569,48 +1586,48 @@ class KimaResults:
                 If given, select only samples with that number of planets.
             printit (bool, optional):
                 Whether to print the sample.
-            cache (bool, optional):
-                Whether to cache the sample.
+            from_posterior (bool, optional): 
+                If True, return the highest likelihood sample *from those that
+                represent the posterior*. 
         """
-        if cache and hasattr(self, '_map_sample'):
-            map_sample = self._map_sample
-        else:
+        if from_posterior:
             samples = self._select_posterior_samples(Np, mask)
-            #! slow...
-            # logpost = []
-            # for sample in tqdm(samples):
-            #     logpost.append(self.log_posterior(sample))
-            # logpost = np.array(logpost)
-            print('Calculating prior...')
-            logprior = np.apply_along_axis(self.log_prior, 1, samples)
-            print('Getting likelihoods...')
             ind = self._select_posterior_samples(Np, mask, return_indices=True)
-            loglike = self.posterior_lnlike[ind, 1]
-            logpost = logprior + loglike
-            ind = logpost.argmax()
-            self._map_sample = map_sample = samples[ind]
+            loglikes = self.posterior_lnlike[ind, 1]
+        else:
+            samples = self._select_samples(Np, mask)
+            ind = self._select_samples(Np, mask, return_indices=True)
+            loglikes = self.sample_info[ind, 1]
 
-        logpost, loglike, logprior = self.log_posterior(map_sample, separate=True)
+        logpriors = np.apply_along_axis(self.log_prior, 1, samples)
+        logposts = logpriors + loglikes
+        ind_map = logposts.argmax()
+        self._map_sample = map_sample = samples[ind_map]
+        logprior = logpriors[ind_map]
+        loglike = loglikes[ind_map]
+        logpost = logposts[ind_map]
 
         if printit:
-            print('Sample with the highest posterior value')
-            print(f'(logLike = {loglike:.2f}, logPrior = {logprior:.2f},',
-                  end=' ')
+            if from_posterior:
+                print('Posterior sample with the highest posterior value')
+            else:
+                print('Sample with the highest posterior value')
+
+            print(f'(logLike = {loglike:.2f}, logPrior = {logprior:.2f},', end=' ')
             print(f'logPost = {logpost:.2f})')
 
             if Np is not None:
                 print(f'from samples with {Np} Keplerians only')
 
-            msg = '-> might not be representative '\
-                  'of the full posterior distribution\n'
+            msg = '-> might not be representative of the full posterior distribution\n'
             print(msg)
 
             self.print_sample(map_sample)
 
         return map_sample
 
-    def maximum_likelihood_sample(self, from_posterior=False, Np=None,
-                                  printit=True, mask=None):
+    def maximum_likelihood_sample(self, Np=None, printit=True, mask=None,
+                                  from_posterior=False):
         """
         Get the maximum likelihood sample. 
         
@@ -1621,13 +1638,13 @@ class KimaResults:
             random choices, between different calls to `load_results`.
 
         Args:
-            from_posterior (bool, optional): 
-                If True, return the highest likelihood sample *from those that
-                represent the posterior*. 
             Np (int, optional):
                 If given, select only samples with that number of planets.
             printit (bool, optional):
                 Whether to print the sample
+            from_posterior (bool, optional): 
+                If True, return the highest likelihood sample *from those that
+                represent the posterior*. 
         """
         if self.sample_info is None and not self._lnlike_available:
             print('log-likelihoods are not available! '
@@ -1635,42 +1652,21 @@ class KimaResults:
             return
 
         if from_posterior:
-            if mask is None:
-                mask = np.ones(self.ESS, dtype=bool)
-
-            if Np is None:
-                ind = np.argmax(self.posterior_lnlike[:, 1])
-                maxlike = self.posterior_lnlike[ind, 1]
-                pars = self.posterior_sample[ind]
-            else:
-                mask = self.posterior_sample[:, self.index_component] == Np
-                if not mask.any():
-                    raise ValueError(f'No samples with {Np} Keplerians')
-
-                ind = np.argmax(self.posterior_lnlike[mask, 1])
-                maxlike = self.posterior_lnlike[mask][ind, 1]
-                pars = self.posterior_sample[mask][ind]
+            ind = self._select_posterior_samples(Np, mask, return_indices=True)
+            loglike = self.posterior_lnlike[ind, 1]
+            ind_maxlike = loglike.argmax()
+            maxlike = loglike[ind_maxlike]
+            pars = self.posterior_sample[ind][ind_maxlike]
         else:
-            if mask is None:
-                mask = np.ones(self.sample.shape[0], dtype=bool)
-
-            if Np is None:
-                ind = np.argmax(self.sample_info[mask, 1])
-                maxlike = self.sample_info[mask][ind, 1]
-                pars = self.sample[mask][ind]
-            else:
-                mask = self.sample[:, self.index_component] == Np
-                if not mask.any():
-                    raise ValueError(f'No samples with {Np} Keplerians')
-
-                ind = np.argmax(self.sample_info[mask, 1])
-                maxlike = self.sample_info[mask][ind, 1]
-                pars = self.sample[mask][ind]
+            ind = self._select_samples(Np, mask, return_indices=True)
+            loglike = self.sample_info[ind, 1]
+            ind_maxlike = loglike.argmax()
+            maxlike = loglike[ind_maxlike]
+            pars = self.sample[ind][ind_maxlike]
 
         if printit:
             if from_posterior:
-                print('Posterior sample with the highest likelihood value',
-                      end=' ')
+                print('Posterior sample with the highest likelihood value', end=' ')
             else:
                 print('Sample with the highest likelihood value', end=' ')
 
