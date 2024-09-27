@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <array>
 #include "DNest4.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
@@ -48,9 +49,10 @@ class  GPmodel
         /// whether to consider a (periodic) GP kernel for a magnetic cycle
         bool magnetic_cycle_kernel = false;
 
-        RVData data;// = RVData::get_instance();
+        RVData data;
 
     private:
+        Eigen::VectorXd v_t, v_dt;  // store t and dt for SPLEAF kernels
         Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
 
 
@@ -91,6 +93,7 @@ class  GPmodel
         bool _eta2_larger_eta3 = false;
         double _eta2_larger_eta3_factor = 1.0;
 
+        double Q;
         double eta5, eta6, eta7;
         double log_eta5, log_eta6, log_eta7;
 
@@ -185,7 +188,6 @@ class  GPmodel
         std::vector<distribution> TR_wprior;
 
 
-        enum KernelType { qp, per };
         KernelType kernel {qp};
 
         // priors for the GP hyperparameters
@@ -197,6 +199,8 @@ class  GPmodel
         distribution eta3_prior;
         /// Prior for $\eta_4$, the recurrence timescale
         distribution eta4_prior;
+        /// Prior for $Q$, the quality factor in a SHO kernel
+        distribution Q_prior;
 
         /// Prior for $\eta_5$, the "amplitude" of the magnetic cycle kernel
         distribution eta5_prior;

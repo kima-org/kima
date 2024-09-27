@@ -14,13 +14,17 @@ void GPmodel::initialize_from_data(RVData& data)
     betas.resize(data.number_indicators);
     individual_offset_prior.resize(data.number_instruments - 1);
 
+    size_t N = data.N();
     // resize RV model vector
-    mu.resize(data.N());
+    mu.resize(N);
     // resize covariance matrix
-    C.resize(data.N(), data.N());
-    // copy uncertainties
-    sig_copy = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(data.sig.data(), data.sig.size());
+    C.resize(N, N);
 
+    v_t = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(data.t.data(), N);
+    // store dt (= t[1:] - t[:-1])
+    v_dt = v_t.segment(1, N-1).array() - v_t.segment(0, N-1).array();
+    // copy uncertainties
+    sig_copy = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(data.sig.data(), N);
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
@@ -130,14 +134,48 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     /* GP parameters */
-    if (!eta1_prior)
-        eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
-    if (!eta2_prior)
-        eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
-    if (!eta3_prior)
-        eta3_prior = make_prior<Uniform>(10, 40);
-    if (!eta4_prior)
-        eta4_prior = make_prior<Uniform>(0.2, 5);
+    switch (kernel)
+    {
+    case qp:
+        if (!eta1_prior)
+            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+        if (!eta2_prior)
+            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+        if (!eta3_prior)
+            eta3_prior = make_prior<Uniform>(10, 40);
+        if (!eta4_prior)
+            eta4_prior = make_prior<Uniform>(0.2, 5);
+        break;
+
+    case per:
+        if (!eta1_prior)
+            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+        if (!eta3_prior)
+            eta3_prior = make_prior<Uniform>(10, 40);
+        if (!eta4_prior)
+            eta4_prior = make_prior<Uniform>(0.2, 5);
+        break;
+
+    case spleaf_exp:
+    case spleaf_matern32:
+        if (!eta1_prior)
+            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+        if (!eta2_prior)
+            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+        break;
+
+    case spleaf_sho:
+        if (!eta1_prior)
+            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+        if (!eta3_prior)
+            eta3_prior = make_prior<Uniform>(10, 40);
+        if (!Q_prior)
+            Q_prior = make_prior<Uniform>(0.2, 5);
+        break;
+
+    default:
+        break;
+    }
 
     if (magnetic_cycle_kernel) {
         if (!eta5_prior)
@@ -211,19 +249,46 @@ void GPmodel::from_prior(RNG& rng)
     }
 
     // GP
-    eta1 = eta1_prior->generate(rng);  // m/s
-    if (_eta2_larger_eta3) {
+    switch (kernel)
+    {
+    case qp:
+        eta1 = eta1_prior->generate(rng);  // m/s
+        if (_eta2_larger_eta3) {
+            eta3 = eta3_prior->generate(rng); // days
+            // eta 2 will be constrained to be above a
+            double a = _eta2_larger_eta3_factor * eta3;
+            double p = rng.rand(); // random number U(0,1)
+            double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
+            eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(a) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(a)));
+        } else {
+            eta2 = eta2_prior->generate(rng); // days
+            eta3 = eta3_prior->generate(rng); // days
+        }
+        eta4 = eta4_prior->generate(rng);
+        break;
+
+    case per:
+        eta1 = eta1_prior->generate(rng);  // m/s
         eta3 = eta3_prior->generate(rng); // days
-        // eta 2 will be constrained to be above a
-        double a = _eta2_larger_eta3_factor * eta3;
-        double p = rng.rand(); // random number U(0,1)
-        double b = eta2_prior->cdf_inverse(1.0); // upper limit of eta2's prior support
-        eta2 = eta2_prior->cdf_inverse(eta2_prior->cdf(a) + p*(eta2_prior->cdf(b) - eta2_prior->cdf(a)));
-    } else {
+        eta4 = eta4_prior->generate(rng);
+        break;
+
+    case spleaf_exp:
+    case spleaf_matern32:
+        eta1 = eta1_prior->generate(rng);  // m/s
         eta2 = eta2_prior->generate(rng); // days
+        break;
+
+    case spleaf_sho:
+        eta1 = eta1_prior->generate(rng);  // m/s
         eta3 = eta3_prior->generate(rng); // days
+        Q = Q_prior->generate(rng);
+        break;
+
+    default:
+        break;
     }
-    eta4 = eta4_prior->generate(rng);
+    
 
     if (magnetic_cycle_kernel) {
         eta5 = eta5_prior->generate(rng);  // m/s
@@ -339,6 +404,10 @@ void GPmodel::calculate_C()
 {
     switch (kernel)
     {
+    case spleaf_exp:
+    case spleaf_matern32:
+        return; // do nothing
+
     case qp:
         C = QP(data.t, eta1, eta2, eta3, eta4);
         break;
@@ -504,35 +573,86 @@ double GPmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb GP parameters
     {
-        if (rng.rand() <= 0.25)
+        switch (kernel)
         {
-            eta1_prior->perturb(eta1, rng);
-        }
-        else if(rng.rand() <= 0.33330)
-        {
-            eta3_prior->perturb(eta3, rng);
-            if (_eta2_larger_eta3 && eta2 < _eta2_larger_eta3_factor * eta3) {
-                do {
-                    eta2_prior->perturb(eta2, rng);    
-                }
-                while (eta2 < _eta2_larger_eta3_factor * eta3);
+        case qp:
+            if (rng.rand() <= 0.25)
+            {
+                eta1_prior->perturb(eta1, rng);
             }
-        }
-        else if(rng.rand() <= 0.5)
-        {
-            if (_eta2_larger_eta3) {
-                do {
-                    eta2_prior->perturb(eta2, rng);    
+            else if(rng.rand() <= 0.33330)
+            {
+                eta3_prior->perturb(eta3, rng);
+                if (_eta2_larger_eta3 && eta2 < _eta2_larger_eta3_factor * eta3) {
+                    do {
+                        eta2_prior->perturb(eta2, rng);    
+                    }
+                    while (eta2 < _eta2_larger_eta3_factor * eta3);
                 }
-                while (eta2 < _eta2_larger_eta3_factor * eta3);
-            } else {
+            }
+            else if(rng.rand() <= 0.5)
+            {
+                if (_eta2_larger_eta3) {
+                    do {
+                        eta2_prior->perturb(eta2, rng);    
+                    }
+                    while (eta2 < _eta2_larger_eta3_factor * eta3);
+                } else {
+                    eta2_prior->perturb(eta2, rng);
+                }
+            }
+            else
+            {
+                eta4_prior->perturb(eta4, rng);
+            }
+            break;
+
+        case per:
+            if (rng.rand() <= 0.33330)
+            {
+                eta1_prior->perturb(eta1, rng);
+            }
+            else if(rng.rand() <= 0.5)
+            {
+                eta3_prior->perturb(eta3, rng);
+            }
+            else
+            {
+                eta4_prior->perturb(eta4, rng);
+            }
+            break;
+        
+        case spleaf_exp:
+        case spleaf_matern32:
+            if (rng.rand() <= 0.5)
+            {
+                eta1_prior->perturb(eta1, rng);
+            }
+            else
+            {
                 eta2_prior->perturb(eta2, rng);
             }
+            break;
+
+        case spleaf_sho:
+            if (rng.rand() <= 0.33330)
+            {
+                eta1_prior->perturb(eta1, rng);
+            }
+            else if (rng.rand() <= 0.5)
+            {
+                eta3_prior->perturb(eta3, rng);
+            }
+            else
+            {
+                Q_prior->perturb(Q, rng);
+            }
+            break;
+
+        default:
+            break;
         }
-        else
-        {
-            eta4_prior->perturb(eta4, rng);
-        }
+
         
         if (magnetic_cycle_kernel) {
             eta5_prior->perturb(eta5, rng);
@@ -694,29 +814,64 @@ double GPmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    /** The following code calculates the log likelihood of a GP model */
-    // residual vector (observed y minus model y)
-    VectorXd residual(y.size());
-    for (size_t i = 0; i < y.size(); i++)
+    VectorXd residual(N);  // residual vector (observed y minus model y)
+    VectorXd diagonal(N);  // diagonal of covariance matrix, including RV errors and jitters
+    for (size_t i = 0; i < N; i++)
         residual(i) = y[i] - mu[i];
 
-    // perform the cholesky decomposition of C
-    Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-    // get the lower triangular matrix L
-    MatrixXd L = cholesky.matrixL();
+    diagonal = sig_copy.array().square();
+    if (data._multi)
+    {
+        for (size_t i = 0; i < N; i++)
+        {
+            double jit = jitters[obsi[i] - 1];
+            diagonal(i) += jit * jit;
+        }
+    }
+    else
+    {
+        diagonal.array() += extra_sigma * extra_sigma;
+    }
 
-    double logDeterminant = 0.;
-    for (size_t i = 0; i < y.size(); i++)
-        logDeterminant += 2. * log(L(i, i));
+    switch (kernel)
+    {
+    case spleaf_exp:
+        logL += spleaf_loglike<spleaf_ExponentialKernel, 2>(residual, v_t, diagonal, v_dt, N,
+                                                            {eta1, eta2});
+        break;
 
-    VectorXd solution = cholesky.solve(residual);
+    case spleaf_matern32:
+        logL += spleaf_loglike<spleaf_Matern32Kernel, 2>(residual, v_t, diagonal, v_dt, N,
+                                                         {eta1, eta2});
+        break;
+    
+    case spleaf_sho:
+        logL += spleaf_loglike<spleaf_SHOKernel, 3>(residual, v_t, diagonal, v_dt, N,
+                                                    {eta1, eta3, Q});
+        break;
+    
+    default:
+        /** The following code calculates the log likelihood of a GP model */
 
-    // y*solution
-    double exponent = 0.;
-    for (size_t i = 0; i < y.size(); i++)
-        exponent += residual(i) * solution(i);
+        // perform the cholesky decomposition of C
+        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+        // get the lower triangular matrix L
+        Eigen::MatrixXd L = cholesky.matrixL();
 
-    logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+        double logDeterminant = 0.;
+        for (size_t i = 0; i < y.size(); i++)
+            logDeterminant += 2. * log(L(i, i));
+
+        Eigen::VectorXd solution = cholesky.solve(residual);
+
+        // y*solution
+        double exponent = 0.;
+        for (size_t i = 0; i < y.size(); i++)
+            exponent += residual(i) * solution(i);
+
+        logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+        break;
+    }
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -775,6 +930,13 @@ void GPmodel::print(std::ostream& out) const
         break;
     case per:
         out << eta1 << '\t' << eta3 << '\t' << eta4 << '\t';
+        break;
+    case spleaf_exp:
+    case spleaf_matern32:
+        out << eta1 << '\t' << eta2 << '\t';
+        break;
+    case spleaf_sho:
+        out << eta1 << '\t' << eta3 << '\t' << Q << '\t';
         break;
     default:
         break;
@@ -849,6 +1011,13 @@ string GPmodel::description() const
             break;
         case per:
             desc += "eta1" + sep + "eta3" + sep + "eta4" + sep;
+            break;
+        case spleaf_exp:
+        case spleaf_matern32:
+            desc += "eta1" + sep + "eta2" + sep;
+            break;
+        case spleaf_sho:
+            desc += "eta1" + sep + "eta3" + sep + "Q" + sep;
             break;
         default:
             break;
@@ -982,10 +1151,32 @@ void GPmodel::save_setup() {
 
 
     fout << endl << "[priors.GP]" << endl;
-    fout << "eta1_prior: " << *eta1_prior << endl;
-    fout << "eta2_prior: " << *eta2_prior << endl;
-    fout << "eta3_prior: " << *eta3_prior << endl;
-    fout << "eta4_prior: " << *eta4_prior << endl;
+    switch (kernel)
+    {
+    case qp:
+        fout << "eta1_prior: " << *eta1_prior << endl;
+        fout << "eta2_prior: " << *eta2_prior << endl;
+        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "eta4_prior: " << *eta4_prior << endl;
+        break;
+    case per:
+        fout << "eta1_prior: " << *eta1_prior << endl;
+        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "eta4_prior: " << *eta4_prior << endl;
+        break;
+    case spleaf_exp:
+    case spleaf_matern32:
+        fout << "eta1_prior: " << *eta1_prior << endl;
+        fout << "eta2_prior: " << *eta2_prior << endl;
+        break;
+    case spleaf_sho:
+        fout << "eta1_prior: " << *eta1_prior << endl;
+        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "Q_prior: " << *Q_prior << endl;
+    default:
+        break;
+    }
+
     if (magnetic_cycle_kernel) {
         fout << "eta5_prior: " << *eta5_prior << endl;
         fout << "eta6_prior: " << *eta6_prior << endl;
@@ -1094,7 +1285,7 @@ NB_MODULE(GPmodel, m) {
 
         .def_prop_rw("kernel",
             [](GPmodel &m) { return m.kernel; },
-            [](GPmodel &m, GPmodel::KernelType k) { m.kernel = k; },
+            [](GPmodel &m, KernelType k) { m.kernel = k; },
             "GP kernel to use")
         
         .def_rw("magnetic_cycle_kernel", &GPmodel_publicist::magnetic_cycle_kernel, 
@@ -1159,6 +1350,10 @@ NB_MODULE(GPmodel, m) {
             [](GPmodel &m) { return m.eta4_prior; },
             [](GPmodel &m, distribution &d) { m.eta4_prior = d; },
             "Prior for η4, the recurrence timescale or (inverse) harmonic complexity")
+        .def_prop_rw("Q_prior",
+            [](GPmodel &m) { return m.Q_prior; },
+            [](GPmodel &m, distribution &d) { m.Q_prior = d; },
+            "Prior for Q, the quality factor in SHO kernels")
 
         .def("eta2_larger_eta3", &GPmodel::eta2_larger_eta3, 
              "Constrain η2 to be larger than factor * η3", "factor"_a=1.0)
@@ -1229,10 +1424,5 @@ NB_MODULE(GPmodel, m) {
         .def_prop_rw("conditional",
                      [](GPmodel &m) { return m.get_conditional_prior(); },
                      [](GPmodel &m, RVConditionalPrior& c) { /* does nothing */ });
-
-    nb::enum_<GPmodel::KernelType>(model, "KernelType")
-        .value("qp", GPmodel::KernelType::qp)
-        .value("per", GPmodel::KernelType::per)
-        .export_values();
 
 }
