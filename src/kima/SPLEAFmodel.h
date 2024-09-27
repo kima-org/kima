@@ -2,13 +2,14 @@
 
 #include <vector>
 #include <memory>
+#include <exception>
 #include "DNest4.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
-#include "spleaf.h"
+#include "GP.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -24,16 +25,16 @@ namespace nb = nanobind;
 using namespace nb::literals;
 #include "nb_shared.h"
 
-class  SPLEAFmodel
+class SPLEAFmodel
 {
-    private:
-        RVData data;// = RVData::get_instance();
-
+    protected:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
 
         /// Maximum number of planets (by default 1)
         int npmax {1};
+
+        RVData data;
 
         /// Whether the model is for multiple timeseries (or just RVs)
         bool multi_series {false};
@@ -41,31 +42,30 @@ class  SPLEAFmodel
         /// Number of time series
         size_t nseries {0};
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
-
-        double background;
-
         /// whether the model includes a linear trend
         bool trend {false};
         /// and its degree
         int degree {0};
 
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        int n_known_object {0};
+        /// stellar mass (in units of Msun)
+        double star_mass = 1.0;
 
-        std::vector<double> offsets; // between instruments
-            //   std::vector<double>(0, data.number_instruments - 1);
-        std::vector<double> jitters; // for each instrument
-            //   std::vector<double>(data.number_instruments);
+        /// whether to enforce AMD-stability
+        bool enforce_stability = false;
 
-        // std::vector<double> betas; // "slopes" for each indicator
-        //     //   std::vector<double>(data.number_indicators);
+    private:
+        DNest4::RJObject<RVConditionalPrior> planets =
+            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
-        double slope, quadr=0.0, cubic=0.0;
-        double extra_sigma;
-        double nu;
+        double background=0.0;  // RV, systemic RV
+        std::vector<double> zero_points; // for each activity time series, TODO: and each instrument
+
+        std::vector<double> offsets; // between instruments, RV
+        std::vector<double> jitters; // for each instrument, RV
+        std::vector<double> series_jitters; // for each activity time series, TODO: and each instrument
+
+        double slope=0.0, quadr=0.0, cubic=0.0;
+        double extra_sigma=0.0;
 
         // Parameters for the known object, if set
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
@@ -75,91 +75,130 @@ class  SPLEAFmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
 
+        // Parameters for the transiting planet, if set
+        std::vector<double> TR_P;
+        std::vector<double> TR_K;
+        std::vector<double> TR_e;
+        std::vector<double> TR_Tc;
+        std::vector<double> TR_w;
+
+        // GP hyperparameters
+        double eta1, eta2, eta3, eta4;
+        double Q;
+
         // the RV Keplerian signal
-        std::vector<double> mu; // = std::vector<double>(data.N());
-        // residuals
-        VectorXd residuals;
-        // the SPLEAF covariance model
-        // Error* err;
-        Term* _kernel;
-        MultiSeriesKernel ms;
-        Cov cov;
+        std::vector<double> mu;
 
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
+        void add_transiting_planet();
+        void remove_transiting_planet();
 
-        double star_mass = 1.0;  // [Msun]
         int is_stable() const;
-        bool enforce_stability = false;
 
         unsigned int staleness;
+
+        VectorXd t_full, yerr_full, dt;
+        std::vector<Eigen::ArrayXi> series_index;
+        std::vector<double> alpha, beta;
 
 
     public:
         SPLEAFmodel() {};
-        SPLEAFmodel(bool fix, int npmax, RVData& data, Term& kernel, bool multi_series)
-            : data(data), fix(fix), npmax(npmax), multi_series(multi_series)
+        SPLEAFmodel(bool fix, int npmax, RVData& data)
+            : data(data), fix(fix), npmax(npmax)
         {
-            _kernel = &kernel;
-            initialize_from_data(data, *_kernel);
+            initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data, Term& kernel);
+        void initialize_from_data(RVData& data);
 
-        // getter and setter for trend
-        bool get_trend() const { return trend; };
-        void set_trend(bool t) { trend = t; };
-        // getter and setter for degree
-        double get_degree() const { return degree; };
-        void set_degree(double d) { degree = d; };
+        using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+        // priors for parameters *not* belonging to the planets
 
         // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
-        std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
+        distribution Cprior;
         /// Prior for the extra white noise (jitter).
-        std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        distribution Jprior;
         /// Prior for the slope
-        std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
+        distribution slope_prior;
         /// Prior for the quadratic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> quadr_prior;
+        distribution quadr_prior;
         /// Prior for the cubic coefficient of the trend
-        std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
+        distribution cubic_prior;
         /// (Common) prior for the between-instruments offsets.
-        std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior;
-        // { (size_t) data.number_instruments - 1 };
-        /// no doc.
-        // std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        distribution offsets_prior;
+        std::vector<distribution> individual_offset_prior;
+        /// Priors for the activity indicator zero points
+        std::vector<distribution> zero_points_prior;
+        /// Priors for the activity indicator jitters
+        std::vector<distribution> series_jitters_prior;
 
-        // priors for KO mode!
+        /* KO mode! */
+
+        /// include (better) known extra Keplerian curve(s)?
+        bool known_object {false};
+        bool get_known_object() { return known_object; }
+
+        /// how many known objects
+        size_t n_known_object {0};
+        size_t get_n_known_object() { return n_known_object; }
+
+        void set_known_object(size_t known_object);
+
         /// Prior for the KO orbital period(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Pprior;
         /// Prior for the KO semi-amplitude(s)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
+        std::vector<distribution> KO_Kprior;
         /// Prior for the KO eccentricity(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
+        std::vector<distribution> KO_eprior;
         /// Prior for the KO mean anomaly(ies)
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
+        std::vector<distribution> KO_phiprior;
         /// Prior for the KO argument(s) of pericenter
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
+        std::vector<distribution> KO_wprior;
+
+        /* Transiting planets! */
+
+        /// include known extra Keplerian curve(s) for transiting planet(s)?
+        bool transiting_planet {false};
+        bool get_transiting_planet() { return transiting_planet; }
+
+        /// how many known objects
+        size_t n_transiting_planet {0};
+        size_t get_n_transiting_planet() { return n_transiting_planet; }
+
+        void set_transiting_planet(size_t transiting_planet);
+
+        /// Prior for the TR orbital period(s)
+        std::vector<distribution> TR_Pprior;
+        /// Prior for the TR semi-amplitude(s)
+        std::vector<distribution> TR_Kprior;
+        /// Prior for the TR eccentricity(ies)
+        std::vector<distribution> TR_eprior;
+        /// Prior for the TR time(s) of transit
+        std::vector<distribution> TR_Tcprior;
+        /// Prior for the TR argument(s) of pericenter
+        std::vector<distribution> TR_wprior;
+
+
+        KernelType kernel {spleaf_matern32};
 
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"
-        std::shared_ptr<DNest4::ContinuousDistribution> eta1_prior;
+        distribution eta1_prior;
         /// Prior for $\eta_2$, the GP correlation timescale
-        std::shared_ptr<DNest4::ContinuousDistribution> eta2_prior;
+        distribution eta2_prior;
         /// Prior for $\eta_3$, the GP period
-        std::shared_ptr<DNest4::ContinuousDistribution> eta3_prior;
+        distribution eta3_prior;
         /// Prior for $\eta_4$, the recurrence timescale
-        std::shared_ptr<DNest4::ContinuousDistribution> eta4_prior;
+        distribution eta4_prior;
+        /// Prior for $Q$, the quality factor in a SHO kernel
+        distribution Q_prior;
 
-
-        // /// @brief an alias for RVData::get_instance()
-        // static RVData& get_data() { return RVData::get_instance(); }
-        // Term* get_kernel() {
-        //     return kernel;
-        // }
+        distribution alpha0_prior, alpha_prior;
+        distribution beta_prior;
 
 
         RVConditionalPrior* get_conditional_prior() {
