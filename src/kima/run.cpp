@@ -3,6 +3,16 @@
 #include <chrono>
 #include <filesystem>
 
+#include <algorithm>
+#include <cstring>
+#include <iterator>
+#include <memory>
+#include <ostream>
+#include <streambuf>
+#include <string>
+// #include <utility>
+#include <csignal>
+
 #include <nanobind/nanobind.h>
 // #include <nanobind/stl/string.h>
 // #include <nanobind/stl/vector.h>
@@ -21,6 +31,15 @@ using namespace nb::literals;
 #include "ETVmodel.h"
 #include "SPLEAFmodel.h"
 
+void catch_signals() {
+    auto handler = [](int code) {
+        PyErr_SetString(PyExc_KeyboardInterrupt, "Error: Keyboard interrupt");
+        throw nb::python_error();
+    };
+    signal(SIGINT, handler);
+    // signal(SIGTERM, handler);
+    // signal(SIGKILL, handler);
+}
 
 
 auto RUN_DOC = R"D(
