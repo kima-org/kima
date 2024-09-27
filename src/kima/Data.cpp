@@ -244,10 +244,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     indicator_correlations = number_indicators > 0;
 
     _indicator_names = indicators;
-    // _indicator_names.erase(
-    //     std::remove(_indicator_names.begin(), _indicator_names.end(), ""),
-    //     _indicator_names.end()
-    // );
+    _indicator_names.erase(std::remove(_indicator_names.begin(), _indicator_names.end(), ""), _indicator_names.end());
 
     // empty and resize the indicator vectors
     actind.clear();
@@ -365,9 +362,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     number_indicators = (int)(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
     _indicator_names = indicators;
-    // indicator_names.erase(
-    //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
-    //     indicator_names.end());
+    _indicator_names.erase(std::remove(_indicator_names.begin(), _indicator_names.end(), ""), _indicator_names.end());
 
     // empty and resize the indicator vectors
     actind.clear();
@@ -478,9 +473,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     number_indicators = (int)(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
     _indicator_names = indicators;
-    // indicator_names.erase(
-    //     std::remove(indicator_names.begin(), indicator_names.end(), ""),
-    //     indicator_names.end());
+    _indicator_names.erase(std::remove(_indicator_names.begin(), _indicator_names.end(), ""), _indicator_names.end());
 
     // empty and resize the indicator vectors
     actind.clear();
@@ -1037,6 +1030,7 @@ NB_MODULE(Data, m) {
         .def_ro("skip", &RVData::_skip, "Lines skipped when reading data")
         .def_rw("instrument", &RVData::_instrument, "instrument name")
         .def_rw("instruments", &RVData::_instruments, "instrument names")
+        .def_rw("indicator_names", &RVData::_indicator_names, "names of activity indicators")
         //
         .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
         .def_rw("double_lined", &RVData::sb2, "if the data is for a double-lined binary")
