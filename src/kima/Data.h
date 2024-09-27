@@ -182,6 +182,14 @@ class  KIMA_API RVData {
     /// Get the array of activity indictators
     const vector<vector<double>>& get_actind() const { return actind; }
 
+    /// Get the mininum value of Activity Indicator i
+    double get_actind_min(size_t i) const { return *min_element(actind[i].begin(), actind[i].end()); }
+    /// Get the maximum value of Activity Indicator i
+    double get_actind_max(size_t i) const { return *max_element(actind[i].begin(), actind[i].end()); }
+    /// Get the span of Activity Indicator i
+    double get_actind_span(size_t i) const { return get_actind_max(i) - get_actind_min(i); }
+
+
     /// Normalize the activity indicators from 0 to 1
     void normalize_actind();
 
