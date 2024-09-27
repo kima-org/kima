@@ -19,6 +19,8 @@ using namespace nb::literals;
 #include "RVGAIAmodel.h"
 #include "RVFWHMRHKmodel.h"
 #include "ETVmodel.h"
+#include "SPLEAFmodel.h"
+
 
 
 auto RUN_DOC = R"D(
@@ -74,39 +76,52 @@ Args:
     if (seed == 0)                                                                      \
         seed = static_cast<unsigned int>(time(NULL));                                   \
     m.directory = std::filesystem::current_path().string();\
+    catch_signals();                                                                    \
     sampler.initialise(seed);                                                           \
+    std::cout << "# Sampling..." << std::endl;                                          \
     auto start = std::chrono::high_resolution_clock::now();                             \
-    sampler.run(print_thin);                                                            \
+    sampler.run(print_thin, progress_bar);                                              \
     auto stop = std::chrono::high_resolution_clock::now();                              \
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);  \
     std::cout << "# Took " << duration.count() / 1000.0 << " seconds" << std::endl;
+
+// this should work, but doesn't...
+// for (;;) {                                                                          
+//     if (PyErr_CheckSignals() != 0)                                                  
+//         throw nb::python_error();                                                   
+//     sampler.run(print_thin);                                                        
+// }                                                                                   
 
 #define RUN_ARGS \
     "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,               \
     "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,    \
     "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,                     \
-    "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50
+    "compression"_a=exp(1.0), "seed"_a=0,                                       \
+    "print_thin"_a=50, "progress_bar"_a=false
+
 
 
 NB_MODULE(Sampler, m)
 {
     m.def("run", RUN_SIGNATURE(RVmodel) { RUN_BODY(RVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(RVFWHMmodel) { RUN_BODY(RVFWHMmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(RVFWHMmodel) { RUN_BODY(RVFWHMmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(TRANSITmodel) { RUN_BODY(TRANSITmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(TRANSITmodel) { RUN_BODY(TRANSITmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(OutlierRVmodel) { RUN_BODY(OutlierRVmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(OutlierRVmodel) { RUN_BODY(OutlierRVmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(BINARIESmodel) { RUN_BODY(BINARIESmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(BINARIESmodel) { RUN_BODY(BINARIESmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS);
     
-    m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS);
 
-    m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS);
     
-    m.def("run", RUN_SIGNATURE(ETVmodel) { RUN_BODY(ETVmodel) }, RUN_ARGS, RUN_DOC);
+    m.def("run", RUN_SIGNATURE(ETVmodel) { RUN_BODY(ETVmodel) }, RUN_ARGS);
+
+    m.def("run", RUN_SIGNATURE(SPLEAFmodel) { RUN_BODY(SPLEAFmodel) }, RUN_ARGS);
 }
