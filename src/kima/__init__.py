@@ -1,4 +1,12 @@
 
+__all__ = [
+    'RVData', 'PHOTdata', 'GAIAdata', 'ETVData',
+    'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 'BINARIESmodel',
+    'GAIAmodel', 'RVGAIAmodel',
+    '__models__',
+    'keplerian', 'distributions',
+    'run', 'load_results',
+]
 
 from .Data import RVData, PHOTdata, GAIAdata, ETVData
 
@@ -6,11 +14,14 @@ from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 
 from .RVFWHMmodel import RVFWHMmodel
+from .SPLEAFmodel import SPLEAFmodel
+
 from .TRANSITmodel import TRANSITmodel
 from .RVFWHMRHKmodel import RVFWHMRHKmodel
 
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
+
 from .GAIAmodel import GAIAmodel
 from .RVGAIAmodel import RVGAIAmodel
 from .ETVmodel import ETVmodel
@@ -20,6 +31,7 @@ __models__ = (
     GPmodel,
     RVFWHMmodel,
     RVFWHMRHKmodel,
+    SPLEAFmodel,
     TRANSITmodel,
     OutlierRVmodel,
     BINARIESmodel,
