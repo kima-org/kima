@@ -80,7 +80,7 @@ Args:
     sampler.initialise(seed);                                                           \
     std::cout << "# Sampling..." << std::endl;                                          \
     auto start = std::chrono::high_resolution_clock::now();                             \
-    sampler.run(print_thin, progress_bar);                                              \
+    sampler.run(print_thin);                                                            \
     auto stop = std::chrono::high_resolution_clock::now();                              \
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);  \
     std::cout << "# Took " << duration.count() / 1000.0 << " seconds" << std::endl;
@@ -97,7 +97,7 @@ Args:
     "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,    \
     "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,                     \
     "compression"_a=exp(1.0), "seed"_a=0,                                       \
-    "print_thin"_a=50, "progress_bar"_a=false
+    "print_thin"_a=50
 
 
 
