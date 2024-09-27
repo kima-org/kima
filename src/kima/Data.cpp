@@ -954,7 +954,7 @@ ETVData::ETVData() {};
         et = data[1];
         etsig = data[2];
 
-        // epoch for the mean anomaly, by default the gaia reference time
+        // epoch for the mean anomaly, by default the first epoch
         M0_epoch = et[0];
 
         // How many points did we read?
@@ -1112,7 +1112,9 @@ Args:
         // properties
         .def_prop_ro("epochs", [](ETVData &d) { return d.get_epochs(); }, "The epoch (Nth eclipse since number 0)")
         .def_prop_ro("et", [](ETVData &d) { return d.get_et(); }, "The observed mid-eclipse times")
-        .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times");
+        .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times")
+
+        .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly");
 
         //
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)

@@ -36,6 +36,12 @@ void ETVmodel::setPriors()  // BUG: should be done by only one thread!
         ephem2_prior = make_prior<Gaussian>(0.0,pow(10,-10.));
     if (ephemeris >= 3 && !ephem3_prior)
         ephem3_prior = make_prior<Gaussian>(0.0,pow(10,-12.));
+
+    if (!ref_time_prior)
+    {
+        ref_time_prior = make_prior<Gaussian>(data.M0_epoch,0.1);
+        printf("# No prior on reference time specified, taken as Gaussian with range of 0.1 days\n");
+    }
         
     if (known_object) { // KO mode!
         for (size_t i = 0; i < n_known_object; i++)
@@ -64,6 +70,7 @@ void ETVmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
     
     jitter = Jprior->generate(rng);
+    M0_epoch = ref_time_prior->generate(rng);
     
     
     if (ephemeris >= 1) ephem1 = ephem1_prior->generate(rng);
@@ -116,7 +123,7 @@ void ETVmodel::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), data.M0_epoch);
+        mu.assign(mu.size(), M0_epoch);
         
         staleness = 0;
         
@@ -166,10 +173,9 @@ void ETVmodel::remove_known_object()
     auto epochs = data.get_epochs();
     for (int j = 0; j < n_known_object; j++)
     {
-        auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] -= tau[i] / (24 * 3600);
+        auto tau = brandt::keplerian_et(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] -= tau[i]/(24*3600);
         }
     }
 }
@@ -182,9 +188,8 @@ void ETVmodel::add_known_object()
     for (int j = 0; j < n_known_object; j++)
     {
         auto tau = brandt::keplerian(epochs, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], ephem1);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] += tau[i] / (24 * 3600);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] += tau[i]/(24*3600);
         }
     }
 }
@@ -236,7 +241,7 @@ double ETVmodel::perturb(RNG& rng)
         //subtract ephemeris
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += -data.M0_epoch - ephem1*data.epochs[i]- 0.5*ephem2*ephem1*pow(data.epochs[i],2.0) - ephem3*pow(ephem1,2.0)*pow(data.epochs[i],3.0)/6.0;
+            mu[i] += -M0_epoch - ephem1*data.epochs[i]- 0.5*ephem2*ephem1*pow(data.epochs[i],2.0) - ephem3*pow(ephem1,2.0)*pow(data.epochs[i],3.0)/6.0;
         }
         
         // propose new ephemeris
@@ -244,10 +249,12 @@ double ETVmodel::perturb(RNG& rng)
         if (ephemeris >= 2) ephem2_prior->perturb(ephem2, rng);
         if (ephemeris == 3) ephem3_prior->perturb(ephem3, rng);
 
+        ref_time_prior->perturb(M0_epoch, rng);
+
         //add ephemeris back in
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += data.M0_epoch + ephem1*data.epochs[i]+ 0.5*ephem2*ephem1*pow(data.epochs[i],2.0) + ephem3*pow(ephem1,2.0)*pow(data.epochs[i],3.0)/6.0;
+            mu[i] += M0_epoch + ephem1*data.epochs[i]+ 0.5*ephem2*ephem1*pow(data.epochs[i],2.0) + ephem3*pow(ephem1,2.0)*pow(data.epochs[i],3.0)/6.0;
         }
     }
 
@@ -332,7 +339,11 @@ void ETVmodel::print(std::ostream& out) const
     out<<jitter<<'\t';
 
 
+
     out.precision(24);
+
+    out << M0_epoch << '\t';
+
     if (ephemeris >= 1) out << ephem1 << '\t';
     if (ephemeris >= 2) out << ephem2 << '\t';
     if (ephemeris == 3) out << ephem3 << '\t';
@@ -363,7 +374,9 @@ string ETVmodel::description() const
     string desc;
     string sep = "   ";
 
-    desc += "jitter   ";
+    desc += "jitter" + sep;
+
+    desc += "ref_time" + sep;
 
     if (ephemeris >= 1) desc += "ephem1" + sep;
     if (ephemeris >= 2) desc += "ephem2" + sep;
@@ -434,14 +447,13 @@ void ETVmodel::save_setup() {
     fout << "skip: " << data._skip << endl;
 
 
-    fout.precision(15);
-    fout << "M0_epoch: " << data.M0_epoch << endl;
-    fout.precision(6);
+    fout.precision(12);
 
     fout << endl;
 
     fout << "[priors.general]" << endl;
     fout << "Jprior: " << *Jprior << endl;
+    fout << "ref_time_prior: " << *ref_time_prior << endl;
 
     if (ephemeris >= 1) fout << "ephem1_prior: " << *ephem1_prior << endl;
     if (ephemeris >= 2) fout << "ephem2_prior: " << *ephem2_prior << endl;
@@ -546,6 +558,11 @@ NB_MODULE(ETVmodel, m) {
             [](ETVmodel &m) { return m.Jprior; },
             [](ETVmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
+
+        .def_prop_rw("ref_time_prior",
+            [](ETVmodel &m) { return m.ref_time_prior; },
+            [](ETVmodel &m, distribution &d) { m.ref_time_prior = d; },
+            "Prior for the reference time (where epoch = 0)")
 
         .def_prop_rw("ephem1_prior",
             [](ETVmodel &m) { return m.ephem1_prior; },
