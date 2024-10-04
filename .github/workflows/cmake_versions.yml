@@ -13,14 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cmake-version: ["3.17", "3.18", "3.19", "3.21", "3.23", "3.25", "3.27"]
+        cmake-version: ["3.17", "3.18", "3.19", "3.21", "3.23", "3.25", "3.27", "3.28"]
 
     steps:
 
     - uses: actions/checkout@v3
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: ${{ matrix.cmake-version }}
 
