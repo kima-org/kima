@@ -7,8 +7,10 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void SPLEAFmodel::initialize_from_data(RVData& data)
 {
-    if (data.number_instruments > 1)
-        throw std::exception("SPLEAFmodel currently only supports one instrument");
+    if (data.number_instruments > 1) {
+        std::string msg = "SPLEAFmodel currently only supports one instrument";
+        throw std::runtime_error(msg);
+    }
 
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
