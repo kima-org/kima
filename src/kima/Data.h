@@ -188,6 +188,10 @@ class  KIMA_API RVData {
     double get_actind_max(size_t i) const { return *max_element(actind[i].begin(), actind[i].end()); }
     /// Get the span of Activity Indicator i
     double get_actind_span(size_t i) const { return get_actind_max(i) - get_actind_min(i); }
+    /// Get the variance of Activity Indicator i
+    double get_actind_var(size_t i) const;
+    /// Get the standard deviation of Activity Indicator i
+    double get_actind_std(size_t i) const { return sqrt(get_actind_var(i)); }
 
 
     /// Normalize the activity indicators from 0 to 1

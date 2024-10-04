@@ -80,6 +80,20 @@ def test_RVData():
     assert_equal(np.unique(D.obsi), [1, 2])
 
 
+def test_RVData_missing_indicators():
+    # test the issue described in https://github.com/kima-org/kima/issues/22
+
+    # simulated2.txt is missing the 7th column
+    with pytest.raises(RuntimeError):
+        _ = kima.RVData('tests/simulated2.txt',
+                        indicators=['i', 'j', 'n', 'missing'])
+
+    # simulated1.txt is missing the 3rd column
+    with pytest.raises(RuntimeError):
+        _ = kima.RVData(['tests/simulated2.txt', 'tests/simulated1.txt'],
+                        indicators=['i', 'j'])
+
+
 def test_RVmodel():
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
 

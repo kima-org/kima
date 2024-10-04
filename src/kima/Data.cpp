@@ -234,6 +234,10 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     
     if (sb2)
     {
+        if (data.size() < 5) {
+            std::string msg = "kima: RVData: sb2 is true but file (" + filename + ") contains less than 5 columns!";
+            throw std::runtime_error(msg);
+        }
         y2 = data[3];
         sig2 = data[4];
     }
@@ -242,6 +246,11 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     int nempty = static_cast<int>( count(indicators.begin(), indicators.end(), "") );
     number_indicators = static_cast<int>(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
+
+    if (data.size() < 3 + number_indicators + nempty) {
+        std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
+        throw std::runtime_error(msg);
+    }
 
     _indicator_names = indicators;
     _indicator_names.erase(std::remove(_indicator_names.begin(), _indicator_names.end(), ""), _indicator_names.end());
@@ -361,6 +370,12 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     int nempty = (int) count(indicators.begin(), indicators.end(), "");
     number_indicators = (int)(indicators.size()) - nempty;
     indicator_correlations = number_indicators > 0;
+
+    if (data.size() < 3 + number_indicators + nempty) {
+        std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
+        throw std::runtime_error(msg);
+    }
+
     _indicator_names = indicators;
     _indicator_names.erase(std::remove(_indicator_names.begin(), _indicator_names.end(), ""), _indicator_names.end());
 
@@ -484,10 +499,17 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
 
     int filecount = 1;
     for (auto& filename : filenames) {
-        auto data = loadtxt(filename).skiprows(skip)();
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .max_rows(max_rows)();
 
         if (data.size() < 3) {
             std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+            throw std::runtime_error(msg);
+        }
+
+        if (data.size() < 3 + number_indicators + nempty) {
+            std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
             throw std::runtime_error(msg);
         }
 
@@ -515,9 +537,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
                     continue; // skip column
                 else
                 {
-                    actind[j].insert(actind[j].end(), 
-                                        data[3 + i].begin(), 
-                                        data[3 + i].end());
+                    actind[j].insert(actind[j].end(), data[3 + i].begin(), data[3 + i].end());
                     j++;
                 }
             }
@@ -614,10 +634,8 @@ double RVData::get_RV_var() const
 {
     double sum = accumulate(begin(y), end(y), 0.0);
     double mean = sum / y.size();
-
     double accum = 0.0;
-    for_each(begin(y), end(y),
-            [&](const double d) { accum += (d - mean) * (d - mean); });
+    for_each(begin(y), end(y), [&](const double d) { accum += (d - mean) * (d - mean); });
     return accum / (y.size() - 1);
 }
 
@@ -727,6 +745,15 @@ double RVData::get_adjusted_RV_var() const
 int RVData::get_trend_magnitude(int degree) const
 {
     return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+}
+
+double RVData::get_actind_var(size_t i) const
+{
+    double sum = accumulate(begin(actind[i]), end(actind[i]), 0.0);
+    double mean = sum / actind[i].size();
+    double accum = 0.0;
+    for_each(begin(actind[i]), end(actind[i]), [&](const double d) { accum += (d - mean) * (d - mean); });
+    return accum / (actind[i].size() - 1);
 }
 
 
