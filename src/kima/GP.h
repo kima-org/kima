@@ -46,7 +46,7 @@ Eigen::MatrixXd PER(std::vector<double> &t, double eta1, double eta3, double eta
 
 class spleaf_ExponentialKernel {
     public:
-        static const size_t r = 1; // rank of the kernel
+        static constexpr size_t r = 1; // rank of the kernel
         size_t offset = 0;
         double sig; // variance
         double la; // inverse lengthscale
@@ -62,7 +62,7 @@ class spleaf_ExponentialKernel {
 
 class spleaf_Matern32Kernel {
     public:
-        static const size_t r = 2; // rank of the kernel
+        static constexpr size_t r = 2; // rank of the kernel
         size_t offset = 0;
         double sig; // standard deviation
         double rho; // lengthscale
@@ -79,7 +79,7 @@ class spleaf_Matern32Kernel {
 
 class spleaf_SHOKernel {
     public:
-        static const size_t r = 2; // rank of the kernel
+        static constexpr size_t r = 2; // rank of the kernel
         size_t offset = 0;
         double sig; // standard deviation
         double P0; // (un-damped) period
@@ -100,7 +100,7 @@ class spleaf_SHOKernel {
 
 class spleaf_QuasiPeriodicKernel {
     public:
-        static const size_t r = 2; // rank of the kernel
+        static constexpr size_t r = 2; // rank of the kernel
         size_t offset = 0;
         double a; // variance of the cos term
         double b; // variance of the sin term
@@ -118,7 +118,7 @@ class spleaf_QuasiPeriodicKernel {
 
 class spleaf_MEPKernel {
     public:
-        static const size_t r = 6; // rank of the kernel
+        static constexpr size_t r = 6; // rank of the kernel
         size_t offset = 0;
         double sig; // standard deviation
         double rho; // lengthscale
