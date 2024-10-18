@@ -1080,10 +1080,20 @@ NB_MODULE(Data, m) {
             })
         //
 
-        .def("get_timespan", &RVData::get_timespan, "Get the timespan of the data")
-        .def("get_RV_span", &RVData::get_RV_span, "Get the RV span of the data")
+        .def("get_t_min", &RVData::get_t_min, "Get the minimum time")
+        .def("get_t_max", &RVData::get_t_max, "Get the maximum time")
+        .def("get_timespan", &RVData::get_timespan, "Get the timespan")
+        .def("get_t_middle", &RVData::get_t_middle, "Get the middle time")
+        // 
+        .def("get_RV_min", &RVData::get_RV_min, "Get the minimum RV")
+        .def("get_RV_max", &RVData::get_RV_max, "Get the maximum RV")
+        .def("get_RV_span", &RVData::get_RV_span, "Get the RV span")
         .def("get_max_RV_span", &RVData::get_max_RV_span, "Get the maximum RV span of individual instruments")
+        .def("get_RV_mean", &RVData::get_RV_mean, "Get the mean RV")
+        .def("get_RV_var", &RVData::get_RV_var, "Get the variance of RVs")
+        .def("get_RV_std", &RVData::get_RV_std, "Get the standard deviation of RVs")
         .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
+        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "Order of magnitude of trend coefficient (of degree) given the data")
         // ...
         .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
