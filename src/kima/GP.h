@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <array>
+#include <numeric>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -18,6 +19,7 @@ extern "C"
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/array.h>
+#include <nanobind/stl/tuple.h>
 // #include <nanobind/ndarray.h>
 #include <nanobind/eigen/dense.h>
 namespace nb = nanobind;
@@ -32,7 +34,7 @@ typedef Eigen::Matrix<double, -1, -1, Eigen::RowMajor> MatrixXd_RM;
 
 
 // kernel types
-enum KernelType { qp, per, spleaf_exp, spleaf_matern32, spleaf_sho, spleaf_mep };
+enum KernelType { qp, per, spleaf_exp, spleaf_matern32, spleaf_sho, spleaf_mep, spleaf_es, spleaf_esp };
 
 
 /* The "standard" quasi-periodic kernel, see R&W2006 */
@@ -134,6 +136,67 @@ class spleaf_MEPKernel {
         void operator()(const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi);
         void deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV);
 };
+
+class spleaf_ESKernel {
+    public:
+        static constexpr size_t r = 3; // rank of the kernel
+        size_t offset = 0;
+        double sig; // standard deviation
+        double rho; // lengthscale
+        double coef_la = 1.0907260149419182;
+        double mu = 1.326644517327145;
+        // local variables
+        double coef_b, coef_a0, coef_a, a0, a, b, la, nu;
+        // delegating constructor
+        spleaf_ESKernel(const VectorXd &t, std::array<double, 2> params) : spleaf_ESKernel(t, params, 0) {};
+        // constructor with offset
+        spleaf_ESKernel(const VectorXd &t, std::array<double, 2> params, size_t offset);
+        void operator()(const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi);
+        void deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV);
+};
+
+
+// WARNING: not a valid kernel by itself, only used in spleaf_ESPKernel
+template <int nharm=2>
+class _spleaf_ESP_PKernel { 
+    public:
+        static constexpr size_t r = 1 + 2 * nharm; // rank of the kernel
+        size_t offset = 0;
+        double P;
+        double eta;
+        // local variables
+        std::array<double, nharm + 1> a;
+        double eta2, f, deno, nu;
+        // delegating constructor
+        _spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2> params) : _spleaf_ESP_PKernel(t, params, 0) {};
+        // constructor with offset
+        _spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2> params, size_t offset);
+        void operator()(const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi);
+        void deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV);
+};
+
+
+template <int nharm=2>
+class spleaf_ESPKernel {
+    public:
+        static constexpr size_t r = 3 + 6 * nharm; // rank of the kernel
+        size_t offset = 0;
+        double sig; // standard deviation
+        double rho; // lengthscale
+        double P; // period
+        double eta; // scale of oscillations
+        // local variables
+        VectorXd _A1, _A2;
+        MatrixXd_RM _U1, _U2, _V1, _V2, _phi1, _phi2;
+        // delegating constructor
+        spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> params) : spleaf_ESPKernel(t, params, 0) {};
+        // constructor with offset
+        spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> params, size_t offset);
+        void operator()(const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi);
+        void deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV);
+};
+
+
 
 double logdet(VectorXd &D);
 

@@ -225,7 +225,7 @@ void spleaf_MEPKernel::operator()(
     const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
 {
     size_t r = 0;
-    auto mat = spleaf_Matern32Kernel(t, {sig0, rho});
+    auto mat = spleaf_Matern32Kernel(t, {sig0, rho}, r);
     r += mat.r;
     auto qp1 = spleaf_QuasiPeriodicKernel(t, {a1, b1, la, nu}, r);
     r += qp1.r;
@@ -234,7 +234,6 @@ void spleaf_MEPKernel::operator()(
     mat(t, dt, A, U, V, phi);
     qp1(t, dt, A, U, V, phi);
     qp2(t, dt, A, U, V, phi);
-
 }
 
 void spleaf_MEPKernel::deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
@@ -258,6 +257,169 @@ void spleaf_MEPKernel::deriv(const VectorXd &t, const VectorXd &dt, MatrixXd_RM 
     qp2.deriv(t, dt, dU, dV);
     // std::cout << "dU: " << dU.transpose() << std::endl << std::endl;
 }
+
+
+spleaf_ESKernel::spleaf_ESKernel(const VectorXd &t, std::array<double, 2> params, size_t offset)
+: sig(params[0]), rho(params[1]), offset(offset)
+{
+    coef_b = 1.0 / mu;
+    coef_a0 = 2.0 / 3.0 * (1.0 + coef_b * coef_b);
+    coef_a = 1.0 - coef_a0;
+
+    la = coef_la / rho;
+    nu = mu * la;
+    double var = sig * sig;
+    a0 = coef_a0 * var;
+    a = coef_a * var;
+    b = coef_b * var;
+};
+
+void spleaf_ESKernel::operator()(
+    const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
+{
+    size_t r = 0;
+    auto exp = spleaf_ExponentialKernel(t, {a0, la}, r);
+    r += exp.r;
+    auto qp = spleaf_QuasiPeriodicKernel(t, {a, b, la, nu}, r);
+    
+    exp(t, dt, A, U, V, phi);
+    qp(t, dt, A, U, V, phi);
+}
+
+void spleaf_ESKernel::deriv(
+    const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
+{
+    size_t r = 0;
+    auto exp = spleaf_ExponentialKernel(t, {a0, la}, r);
+    r += exp.r;
+    auto qp = spleaf_QuasiPeriodicKernel(t, {a, b, la, nu}, r);
+    
+    exp.deriv(t, dt, dU, dV);
+    qp.deriv(t, dt, dU, dV);
+}
+
+
+template <int nharm>
+_spleaf_ESP_PKernel<nharm>::_spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2> params, size_t offset)
+: P(params[0]), eta(params[1]), offset(offset)
+{
+    eta2 = eta * eta;
+    f = 1.0 / (4 * eta2);
+
+    for (int i = 0; i <= nharm; i++)
+        a[i] = std::cyl_bessel_i(i, f) * exp(-abs(f));
+
+    a[0] /= 2.0;
+
+    deno = std::accumulate(a.begin(), a.end(), 0.0);
+
+    for (int i = 0; i <= nharm; i++)
+        a[i] /= deno;
+
+    nu = 2 * M_PI / P;
+};
+
+template <int nharm>
+void _spleaf_ESP_PKernel<nharm>::operator()(
+    const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
+{
+    size_t r = 0;
+    auto exp = spleaf_ExponentialKernel(t, {a[0], 0.0}, r);
+    exp(t, dt, A, U, V, phi);
+    r += exp.r;
+    for (int i = 1; i <= nharm; i++)
+    {
+        auto qp = spleaf_QuasiPeriodicKernel(t, {a[i], 0.0, 0.0, i * nu}, r);
+        qp(t, dt, A, U, V, phi);
+        r += qp.r;
+    }
+}
+
+template <int nharm>
+void _spleaf_ESP_PKernel<nharm>::deriv(
+    const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
+{
+    size_t r = 0;
+    auto exp = spleaf_ExponentialKernel(t, {a[0], 0.0}, r);
+    exp.deriv(t, dt, dU, dV);
+    r += exp.r;
+    for (int i = 1; i <= nharm; i++)
+    {
+        auto qp = spleaf_QuasiPeriodicKernel(t, {a[i], 0.0, 0.0, i * nu}, r);
+        qp.deriv(t, dt, dU, dV);
+        r += qp.r;
+    }
+}
+
+
+template <int nharm>
+spleaf_ESPKernel<nharm>::spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> params, size_t offset) 
+ : sig(params[0]), rho(params[1]), P(params[2]), eta(params[3]), offset(offset)
+{
+    size_t r = 0;
+    size_t es_r = spleaf_ESKernel::r;
+    size_t esp_p_r = _spleaf_ESP_PKernel<nharm>::r;
+
+    size_t N = t.size();
+    _A1 = VectorXd::Zero(N);
+    _A2 = VectorXd::Zero(N);
+    _U1 = MatrixXd_RM(N, es_r);
+    _U2 = MatrixXd_RM(N, esp_p_r);
+    _V1 = MatrixXd_RM(N, es_r);
+    _V2 = MatrixXd_RM(N, esp_p_r);
+    _phi1 = MatrixXd_RM(N, es_r);
+    _phi2 = MatrixXd_RM(N, esp_p_r);
+}
+
+template <int nharm>
+void spleaf_ESPKernel<nharm>::operator()(
+    const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
+{
+    size_t r = 0;
+    spleaf_ESKernel es = spleaf_ESKernel(t, {sig, rho}, r);
+    r += es.r;
+    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel<nharm>(t, {P, eta}, r);
+
+    es(t, dt, _A1, _U1, _V1, _phi1);
+    esp_p(t, dt, _A2, _U2, _V2, _phi2);
+
+    A.array() += _A1.array() * _A2.array();
+
+    for (size_t i = 0; i < es.r; i++)
+    {
+        for (size_t j = 0; j < esp_p.r; j++) {
+            U.col(offset + i*esp_p.r + j) = _U1.col(i).array() * _U2.col(j).array();
+            V.col(offset + i*esp_p.r + j) = _V1.col(i).array() * _V2.col(j).array();
+            phi.col(offset + i*esp_p.r + j) = _phi1.col(i).array() * _phi2.col(j).array();
+        }
+    }
+}
+
+template <int nharm>
+void spleaf_ESPKernel<nharm>::deriv(
+    const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
+{
+    size_t r = 0;
+    spleaf_ESKernel es = spleaf_ESKernel(t, {sig, rho}, r);
+    r += es.r;
+    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel<nharm>(t, {P, eta}, r);
+
+    size_t N = t.size();
+    MatrixXd_RM _dU1 = MatrixXd_RM(N, es.r), _dU2 = MatrixXd_RM(N, esp_p.r);
+    MatrixXd_RM _dV1 = MatrixXd_RM(N, es.r), _dV2 = MatrixXd_RM(N, esp_p.r);
+
+    es.deriv(t, dt, _dU1, _dV1);
+    esp_p.deriv(t, dt, _dU2, _dV2);
+
+    for (size_t i = 0; i < es.r; i++)
+    {
+        for (size_t j = 0; j < esp_p.r; j++) {
+            dU.col(offset + i*esp_p.r + j) = _dU1.col(i).array() * _U2.col(j).array() + _U1.col(i).array() * _dU2.col(j).array();
+            dV.col(offset + i*esp_p.r + j) = _dV1.col(i).array() * _V2.col(j).array() + _V1.col(i).array() * _dV2.col(j).array();
+        }
+    }
+}
+
 
 
 double logdet(VectorXd &D)
@@ -286,6 +448,42 @@ double loglike(VectorXd &y, size_t n, size_t r, VectorXl &offsetrow, VectorXl &b
 
 
 
+// Macro to define a kernel binding
+#define KERNEL_BIND(CPPNAME, PYNAME, NPARAMS)                                                                                    \
+    nb::class_<CPPNAME>(m, PYNAME)                                                                                               \
+        .def(nb::init<const VectorXd&, std::array<double, NPARAMS>>())                                                           \
+        .def_ro_static("r", &CPPNAME::r)                                                                                         \
+        .def("__call__", [](CPPNAME &k, const VectorXd &t, const VectorXd &dt,                                                   \
+                            nb::DRef<VectorXd> A, nb::DRef<MatrixXd_RM> U, nb::DRef<MatrixXd_RM> V, nb::DRef<MatrixXd_RM> phi)   \
+            {                                                                                                                    \
+                VectorXd cA = A;                                                                                                 \
+                MatrixXd_RM cU = U, cV = V, cphi=phi;                                                                            \
+                k(t, dt, cA, cU, cV, cphi);                                                                                      \
+                A = cA; U = cU; V = cV; phi = cphi;                                                                              \
+            }                                                                                                                    \
+        )                                                                                                                        \
+        .def("__call__", [](CPPNAME &k, const VectorXd &t)   \
+            {                                                                                                                    \
+                size_t N = t.size();                                                                                             \
+                VectorXd dt = t.segment(1, N-1).array() - t.segment(0, N-1).array();                                             \
+                VectorXd A = VectorXd::Zero(N);                                                                                  \
+                MatrixXd_RM U = MatrixXd_RM(N, k.r);                                                                             \
+                MatrixXd_RM V = MatrixXd_RM(N, k.r);                                                                             \
+                MatrixXd_RM phi = MatrixXd_RM(N - 1, k.r);                                                                       \
+                k(t, dt, A, U, V, phi);                                                                                          \
+                return std::make_tuple(A, U, V, phi);                                                                            \
+            }                                                                                                                    \
+        )                                                                                                                        \
+        .def("deriv", [](CPPNAME &k, const VectorXd &t, const VectorXd &dt,                                                      \
+                            nb::DRef<MatrixXd_RM> dU, nb::DRef<MatrixXd_RM> dV)                                                  \
+            {                                                                                                                    \
+                MatrixXd_RM cdU = dU, cdV = dV;                                                                                  \
+                k.deriv(t, dt, cdU, cdV);                                                                                        \
+                dU = cdU, dV = cdV;                                                                                              \
+            }                                                                                                                    \
+        );
+
+
 NB_MODULE(GP, m) {
     m.def("QP", &QP);
     m.def("PER", &PER);
@@ -297,97 +495,16 @@ NB_MODULE(GP, m) {
         .value("spleaf_matern32", KernelType::spleaf_matern32)
         .value("spleaf_sho", KernelType::spleaf_sho)
         .value("spleaf_mep", KernelType::spleaf_mep)
+        .value("spleaf_es", KernelType::spleaf_es)
+        .value("spleaf_esp", KernelType::spleaf_esp)
         .export_values();
 
-    nb::class_<spleaf_ExponentialKernel>(m, "ExponentialKernel")
-        .def(nb::init<const VectorXd&, std::array<double, 2>>())
-        .def_ro_static("r", &spleaf_ExponentialKernel::r)
-        .def("__call__", [](spleaf_ExponentialKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<VectorXd> A, nb::DRef<MatrixXd_RM> U, nb::DRef<MatrixXd_RM> V, nb::DRef<MatrixXd_RM> phi)
-            {
-                VectorXd cA = A;
-                MatrixXd_RM cU = U, cV = V, cphi=phi;
-                k(t, dt, cA, cU, cV, cphi);
-                A = cA; U = cU; V = cV; phi = cphi;
-            }
-        )
-        .def("deriv", [](spleaf_ExponentialKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<MatrixXd_RM> dU, nb::DRef<MatrixXd_RM> dV)
-            {
-                MatrixXd_RM cdU = dU, cdV = dV;
-                k.deriv(t, dt, cdU, cdV);
-                dU = cdU, dV = cdV;
-            }
-        );
+    KERNEL_BIND(spleaf_ExponentialKernel, "ExponentialKernel", 2);
+    KERNEL_BIND(spleaf_Matern32Kernel, "Matern32Kernel", 2);
+    KERNEL_BIND(spleaf_SHOKernel, "SHOKernel", 3);
+    KERNEL_BIND(spleaf_MEPKernel, "MEPKernel", 4);
+    KERNEL_BIND(spleaf_ESKernel, "ESKernel", 2);
 
-    nb::class_<spleaf_Matern32Kernel>(m, "Matern32Kernel")
-        .def(nb::init<const VectorXd&, std::array<double, 2>>())
-        .def_ro_static("r", &spleaf_Matern32Kernel::r)
-        .def("__call__", [](spleaf_Matern32Kernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<VectorXd> A, nb::DRef<MatrixXd_RM> U, nb::DRef<MatrixXd_RM> V, nb::DRef<MatrixXd_RM> phi)
-            {
-                VectorXd cA = A;
-                MatrixXd_RM cU = U, cV = V, cphi=phi;
-                k(t, dt, cA, cU, cV, cphi);
-                A = cA; U = cU; V = cV; phi = cphi;
-            }
-        )
-        .def("deriv", [](spleaf_Matern32Kernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<MatrixXd_RM> dU, nb::DRef<MatrixXd_RM> dV)
-            {
-                MatrixXd_RM cdU = dU, cdV = dV;
-                k.deriv(t, dt, cdU, cdV);
-                dU = cdU, dV = cdV;
-            }
-        );
-
-    nb::class_<spleaf_SHOKernel>(m, "SHOKernel")
-        .def(nb::init<const VectorXd&, std::array<double, 3>>())
-        .def_ro_static("r", &spleaf_SHOKernel::r)
-        .def("__call__", [](spleaf_SHOKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<VectorXd> A, nb::DRef<MatrixXd_RM> U, nb::DRef<MatrixXd_RM> V, nb::DRef<MatrixXd_RM> phi)
-            {
-                VectorXd cA = A;
-                MatrixXd_RM cU = U, cV = V, cphi=phi;
-                k(t, dt, cA, cU, cV, cphi);
-                A = cA; U = cU; V = cV; phi = cphi;
-            }
-        )
-        .def("deriv", [](spleaf_SHOKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<MatrixXd_RM> dU, nb::DRef<MatrixXd_RM> dV)
-            {
-                MatrixXd_RM cdU = dU, cdV = dV;
-                k.deriv(t, dt, cdU, cdV);
-                dU = cdU, dV = cdV;
-            }
-        );
-
-    nb::class_<spleaf_MEPKernel>(m, "MEPKernel")
-        .def(nb::init<const VectorXd&, std::array<double, 4>>())
-        .def_ro_static("r", &spleaf_MEPKernel::r)
-        .def("__call__", [](spleaf_MEPKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<VectorXd> A, nb::DRef<MatrixXd_RM> U, nb::DRef<MatrixXd_RM> V, nb::DRef<MatrixXd_RM> phi)
-            {
-                VectorXd cA = A;
-                MatrixXd_RM cU = U, cV = V, cphi=phi;
-                k(t, dt, cA, cU, cV, cphi);
-                A = cA; U = cU; V = cV; phi = cphi;
-            }
-        )
-        .def("deriv", [](spleaf_MEPKernel &k, 
-                            const VectorXd &t, const VectorXd &dt, 
-                            nb::DRef<MatrixXd_RM> dU, nb::DRef<MatrixXd_RM> dV)
-            {
-                MatrixXd_RM cdU = dU, cdV = dV;
-                k.deriv(t, dt, cdU, cdV);
-                dU = cdU, dV = cdV;
-            }
-        );
+    KERNEL_BIND(_spleaf_ESP_PKernel<2>, "_ESP_PKernel", 2);
+    KERNEL_BIND(spleaf_ESPKernel<2>, "ESPKernel", 4);
 }
