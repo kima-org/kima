@@ -137,6 +137,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     switch (kernel)
     {
     case qp:
+    case spleaf_esp:
         if (!eta1_prior)
             eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
         if (!eta2_prior)
@@ -158,6 +159,7 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
 
     case spleaf_exp:
     case spleaf_matern32:
+    case spleaf_es:
         if (!eta1_prior)
             eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
         if (!eta2_prior)
@@ -252,6 +254,7 @@ void GPmodel::from_prior(RNG& rng)
     switch (kernel)
     {
     case qp:
+    case spleaf_esp:
         eta1 = eta1_prior->generate(rng);  // m/s
         if (_eta2_larger_eta3) {
             eta3 = eta3_prior->generate(rng); // days
@@ -275,6 +278,7 @@ void GPmodel::from_prior(RNG& rng)
 
     case spleaf_exp:
     case spleaf_matern32:
+    case spleaf_es:
         eta1 = eta1_prior->generate(rng);  // m/s
         eta2 = eta2_prior->generate(rng); // days
         break;
@@ -406,6 +410,8 @@ void GPmodel::calculate_C()
     {
     case spleaf_exp:
     case spleaf_matern32:
+    case spleaf_es:
+    case spleaf_sho:
         return; // do nothing
 
     case qp:
@@ -576,6 +582,7 @@ double GPmodel::perturb(RNG& rng)
         switch (kernel)
         {
         case qp:
+        case spleaf_esp:
             if (rng.rand() <= 0.25)
             {
                 eta1_prior->perturb(eta1, rng);
@@ -624,6 +631,7 @@ double GPmodel::perturb(RNG& rng)
         
         case spleaf_exp:
         case spleaf_matern32:
+        case spleaf_es:
             if (rng.rand() <= 0.5)
             {
                 eta1_prior->perturb(eta1, rng);
@@ -849,6 +857,17 @@ double GPmodel::log_likelihood() const
         logL += spleaf_loglike<spleaf_SHOKernel, 3>(residual, v_t, diagonal, v_dt, N,
                                                     {eta1, eta3, Q});
         break;
+
+    case spleaf_es:
+        logL += spleaf_loglike<spleaf_ESKernel, 2>(residual, v_t, diagonal, v_dt, N,
+                                                   {eta1, eta2});
+        break;
+    
+    case spleaf_esp:
+        logL += spleaf_loglike<spleaf_ESPKernel<2>, 4>(residual, v_t, diagonal, v_dt, N,
+                                                       {eta1, eta2, eta3, 0.5 * eta4});
+        break;
+
     
     default:
         /** The following code calculates the log likelihood of a GP model */
@@ -926,6 +945,7 @@ void GPmodel::print(std::ostream& out) const
     switch (kernel)
     {
     case qp:
+    case spleaf_esp:
         out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
         break;
     case per:
@@ -933,6 +953,7 @@ void GPmodel::print(std::ostream& out) const
         break;
     case spleaf_exp:
     case spleaf_matern32:
+    case spleaf_es:
         out << eta1 << '\t' << eta2 << '\t';
         break;
     case spleaf_sho:
@@ -1007,6 +1028,7 @@ string GPmodel::description() const
     switch (kernel)
     {
         case qp:
+        case spleaf_esp:
             desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
             break;
         case per:
@@ -1014,6 +1036,7 @@ string GPmodel::description() const
             break;
         case spleaf_exp:
         case spleaf_matern32:
+        case spleaf_es:
             desc += "eta1" + sep + "eta2" + sep;
             break;
         case spleaf_sho:
@@ -1154,6 +1177,7 @@ void GPmodel::save_setup() {
     switch (kernel)
     {
     case qp:
+    case spleaf_esp:
         fout << "eta1_prior: " << *eta1_prior << endl;
         fout << "eta2_prior: " << *eta2_prior << endl;
         fout << "eta3_prior: " << *eta3_prior << endl;
@@ -1166,6 +1190,7 @@ void GPmodel::save_setup() {
         break;
     case spleaf_exp:
     case spleaf_matern32:
+    case spleaf_es:
         fout << "eta1_prior: " << *eta1_prior << endl;
         fout << "eta2_prior: " << *eta2_prior << endl;
         break;
