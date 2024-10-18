@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
+#include "GP.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -160,6 +161,7 @@ class  RVFWHMmodel
         /// Prior for the KO argument(s) of pericenter
         std::vector<distribution> KO_wprior;
 
+        KernelType kernel {qp};
 
         // priors for the GP hyperparameters
         /// Prior for $\eta_1$, the GP "amplitude"

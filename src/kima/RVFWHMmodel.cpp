@@ -115,25 +115,38 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     /* GP parameters */
-    if (!eta1_prior)
-        eta1_prior = make_prior<LogUniform>(0.1, 100);
-    if (!eta1_fwhm_prior)
-        eta1_fwhm_prior = make_prior<LogUniform>(0.1, 100);
+    if (kernel != qp) {
+        std::string msg = "kima: RVFWHMmodel: only the QP kernel is currently supported";
+        throw std::runtime_error(msg);
+    }
 
-    if (!eta2_prior)
-        eta2_prior = make_prior<LogUniform>(1, 100);
-    if (!eta2_fwhm_prior)
-        eta2_fwhm_prior = make_prior<LogUniform>(1, 100);
+    switch (kernel)
+    {
+    case qp:
+        if (!eta1_prior)
+            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+        if (!eta1_fwhm_prior)
+            eta1_fwhm_prior = make_prior<LogUniform>(0.1, data.get_actind_span(0));
 
-    if (!eta3_prior)
-        eta3_prior = make_prior<Uniform>(10, 40);
-    if (!eta3_fwhm_prior)
-        eta3_fwhm_prior = make_prior<Uniform>(10, 40);
+        if (!eta2_prior)
+            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+        if (!eta2_fwhm_prior)
+            eta2_fwhm_prior = make_prior<LogUniform>(1, data.get_timespan());
 
-    if (!eta4_prior)
-        eta4_prior = make_prior<Uniform>(0.2, 5);
-    if (!eta4_fwhm_prior)
-        eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
+        if (!eta3_prior)
+            eta3_prior = make_prior<Uniform>(10, 40);
+        if (!eta3_fwhm_prior)
+            eta3_fwhm_prior = make_prior<Uniform>(10, 40);
+
+        if (!eta4_prior)
+            eta4_prior = make_prior<Uniform>(0.2, 5);
+        if (!eta4_fwhm_prior)
+            eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
+        break;
+    
+    default:
+        break;
+    }
 }
 
 
@@ -201,21 +214,28 @@ void RVFWHMmodel::from_prior(RNG& rng)
     }
 
     // GP
+    switch (kernel)
+    {
+    case qp:
+        eta1 = eta1_prior->generate(rng);  // m/s
+        eta1_fw = eta1_fwhm_prior->generate(rng);  // m/s
 
-    eta1 = eta1_prior->generate(rng);  // m/s
-    eta1_fw = eta1_fwhm_prior->generate(rng);  // m/s
+        eta3 = eta3_prior->generate(rng); // days
+        if (!share_eta3)
+            eta3_fw = eta3_fwhm_prior->generate(rng); // days
 
-    eta3 = eta3_prior->generate(rng); // days
-    if (!share_eta3)
-        eta3_fw = eta3_fwhm_prior->generate(rng); // days
+        eta2 = eta2_prior->generate(rng); // days
+        if (!share_eta2)
+            eta2_fw = eta2_fwhm_prior->generate(rng); // days
 
-    eta2 = eta2_prior->generate(rng); // days
-    if (!share_eta2)
-        eta2_fw = eta2_fwhm_prior->generate(rng); // days
-
-    eta4 = exp(eta4_prior->generate(rng));
-    if (!share_eta4)
-        eta4_fw = eta4_fwhm_prior->generate(rng);
+        eta4 = exp(eta4_prior->generate(rng));
+        if (!share_eta4)
+            eta4_fw = eta4_fwhm_prior->generate(rng);
+        break;
+    
+    default:
+        break;
+    }
 
     calculate_mu();
     calculate_mu_fwhm();
@@ -495,36 +515,43 @@ double RVFWHMmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5) // perturb GP parameters
     {
-        if(rng.rand() <= 0.25)
+        switch (kernel)
         {
-            eta1_prior->perturb(eta1, rng);
-            eta1_fwhm_prior->perturb(eta1_fw, rng);
-        }
-        else if(rng.rand() <= 0.33330)
-        {
-            eta3_prior->perturb(eta3, rng);
-            if (share_eta3)
-                eta3_fw = eta3;
+        case qp:
+            if(rng.rand() <= 0.25)
+            {
+                eta1_prior->perturb(eta1, rng);
+                eta1_fwhm_prior->perturb(eta1_fw, rng);
+            }
+            else if(rng.rand() <= 0.33330)
+            {
+                eta3_prior->perturb(eta3, rng);
+                if (share_eta3)
+                    eta3_fw = eta3;
+                else
+                    eta3_fwhm_prior->perturb(eta3_fw, rng);
+            }
+            else if(rng.rand() <= 0.5)
+            {
+                eta2_prior->perturb(eta2, rng);
+                if (share_eta2)
+                    eta2_fw = eta2;
+                else
+                    eta2_fwhm_prior->perturb(eta2_fw, rng);
+            }
             else
-                eta3_fwhm_prior->perturb(eta3_fw, rng);
-        }
-        else if(rng.rand() <= 0.5)
-        {
-            eta2_prior->perturb(eta2, rng);
-            if (share_eta2)
-                eta2_fw = eta2;
-            else
-                eta2_fwhm_prior->perturb(eta2_fw, rng);
-        }
-        else
-        {
-            eta4_prior->perturb(eta4, rng);
-            if (share_eta4)
-                eta4_fw = eta4;
-            else
-                eta4_fwhm_prior->perturb(eta4_fw, rng);
-        }
+            {
+                eta4_prior->perturb(eta4, rng);
+                if (share_eta4)
+                    eta4_fw = eta4;
+                else
+                    eta4_fwhm_prior->perturb(eta4_fw, rng);
+            }
+            break;
 
+        default:
+            break;
+        }
 
         calculate_C();
         calculate_C_fwhm();
@@ -764,16 +791,25 @@ void RVFWHMmodel::print(std::ostream& out) const
     }
 
     // write GP parameters
-    out << eta1 << '\t' << eta1_fw << '\t';
+    switch (kernel)
+    {
+    case qp:
+        out << eta1 << '\t' << eta1_fw << '\t';
 
-    out << eta2 << '\t';
-    if (!share_eta2) out << eta2_fw << '\t';
+        out << eta2 << '\t';
+        if (!share_eta2) out << eta2_fw << '\t';
 
-    out << eta3 << '\t';
-    if (!share_eta3) out << eta3_fw << '\t';
+        out << eta3 << '\t';
+        if (!share_eta3) out << eta3_fw << '\t';
+        
+        out << eta4 << '\t';
+        if (!share_eta4) out << eta4_fw << '\t';
+        
+        break;
     
-    out << eta4 << '\t';
-    if (!share_eta4) out << eta4_fw << '\t';
+    default:
+        break;
+    }
 
     // write KO parameters
     if(known_object){ // KO mode!
@@ -824,16 +860,25 @@ string RVFWHMmodel::description() const
     }
 
     // GP parameters
-    desc += "eta1" + sep + "eta1_fw" + sep;
+    switch (kernel)
+    {
+    case qp:
+        desc += "eta1" + sep + "eta1_fw" + sep;
 
-    desc += "eta2" + sep;
-    if (!share_eta2) desc += "eta2_fw" + sep;
+        desc += "eta2" + sep;
+        if (!share_eta2) desc += "eta2_fw" + sep;
 
-    desc += "eta3" + sep;
-    if (!share_eta3) desc += "eta3_fw" + sep;
+        desc += "eta3" + sep;
+        if (!share_eta3) desc += "eta3_fw" + sep;
 
-    desc += "eta4" + sep;
-    if (!share_eta4) desc += "eta4_fw" + sep;
+        desc += "eta4" + sep;
+        if (!share_eta4) desc += "eta4_fw" + sep;
+
+        break;
+
+    default:
+        break;
+    }
 
 
     if(known_object) { // KO mode!
@@ -886,7 +931,7 @@ void RVFWHMmodel::save_setup() {
     fout << "npmax: " << npmax << endl << endl;
 
     fout << "GP: " << true << endl;
-    fout << "kernel: " << "standard" << endl;
+    fout << "kernel: " << kernel << endl;
     fout << "share_eta2: " << share_eta2 << endl;
     fout << "share_eta3: " << share_eta3 << endl;
     fout << "share_eta4: " << share_eta4 << endl;
