@@ -740,7 +740,7 @@ namespace brandt
         return rv;
     }
     
-    std::vector<double> keplerian_et(const std::vector<double> &epochs, const double &P,
+    std::vector<double> keplerian_etv(const std::vector<double> &epochs, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
                                   const double &ephem1)
@@ -754,9 +754,6 @@ namespace brandt
         double sinw, cosw;
         sincos(w, &sinw, &cosw);
 
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
-
         // brandt solver calculations, once per orbit
         double bounds[13];
         double EA_tab[6 * 13];
@@ -768,11 +765,8 @@ namespace brandt
             double sinE, cosE;
             double M = n * (epochs[i]*ephem1) + M0;
             solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-            double g = g_e * ((1 - cosE) / sinE);
-            double g2 = g * g;
-            // std::cout << M << '\t' << ecc << '\t' << sinE << '\t' << cosE << std::endl;
-            // std::cout << '\t' << g << '\t' << g2 << std::endl;
-            ets[i] = K / (pow(1- pow(ecc * cosw,2.0),0.5)) * ((1-ecc*ecc)/(1+g2+ecc-ecc*g2) * (2*g*cosw + (1-g2)*sinw) + ecc*sinw);
+            to_f(ecc, 1 - ecc, &sinEf, &cosEf);
+            ets[i] = K / (pow(1- pow(ecc * cosw,2.0),0.5)) * ((1-ecc*ecc)/(1+ecc*cosEf) * (sinEf*cosw + cosEf*sinw) + ecc*sinw);
       }
 
       return ets;
@@ -1188,7 +1182,7 @@ NB_MODULE(kepler, m) {
     m.def("keplerian2", &brandt::keplerian2,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
 
-    m.def("keplerian_etv", &brandt::keplerian_et,
+    m.def("keplerian_etv", &brandt::keplerian_etv,
           "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a);
 
         //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
