@@ -93,39 +93,39 @@ namespace postKep
         return K2;
     }
     
-    inline double light_travel_time(double K1, double f, double w, double ecc)
+    inline double light_travel_time(double K1, double sinf, double cosf, double w, double ecc)
     {
         
-        double delta_LT = pow(K1,2.0)*pow(sin(f + w), 2.0)*(1+ecc*cos(f))/c_light;
+        double delta_LT = pow(K1,2.0)*pow(sinf*cos(w) + cosf*sin(w), 2.0)*(1+ecc*cosf)/c_light;
     
         return delta_LT;
     }
     
-    inline double transverse_doppler(double K1, double f, double ecc, double cosi)
+    inline double transverse_doppler(double K1, double sinf, double cosf, double ecc, double cosi)
     {
         double sin2i = 1.0 - cosi*cosi;
-        double delta_TD = pow(K1,2.0)*(1 + ecc*cos(f) - (1-pow(ecc,2.0))/2)/(c_light*sin2i);
+        double delta_TD = pow(K1,2.0)*(1 + ecc*cosf - (1-pow(ecc,2.0))/2)/(c_light*sin2i);
     
         return delta_TD;
     }
     
-    inline double gravitational_redshift(double K1, double K2, double f, double ecc, double cosi)
+    inline double gravitational_redshift(double K1, double K2, double sinf, double cosf, double ecc, double cosi)
     {
         double sin2i = 1.0 - cosi*cosi;
-        double delta_GR = K1*(K1+K2)*(1+ecc*cos(f))/(c_light*sin2i);
+        double delta_GR = K1*(K1+K2)*(1+ecc*cosf)/(c_light*sin2i);
     
         return delta_GR;
     }
     
-    inline double v_tide(double R1, double M1, double M2, double P, double f, double w, double cosi)
+    inline double v_tide(double R1, double M1, double M2, double P, double sinf, double cosf, double w, double cosi)
     {
         double phi_0 = M_PI/2 - w;
         double sin2i = 1.0 - cosi*cosi;
         
-        return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin(2*(f-phi_0))*sin2i;
+        return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin2i * 2*(sinf*cos(phi_0) - sin(phi_0)*cosf)*(cosf*cosf + sin(phi_0)*sin(phi_0));
     }
     
-    double post_Newtonian(double K1, double f, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid)
+    double post_Newtonian(double K1, double sinf, double cosf, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid)
     {
         double K2;
         double v = 0.0;
@@ -148,14 +148,14 @@ namespace postKep
             {
                 R1 = pow(M1,0.8);
             }
-            double delta_v_tide = v_tide(R1,M1,M2,P,f,w,cosi);
+            double delta_v_tide = v_tide(R1,M1,M2,P,sinf,cosf,w,cosi);
             v = v + delta_v_tide;
         }
         if (GR)
         {
-            double delta_LT = light_travel_time(K1, f, w, ecc);
-            double delta_TD = transverse_doppler(K1, f, ecc,cosi);
-            double delta_GR = gravitational_redshift(K1, K2, f, ecc,cosi);
+            double delta_LT = light_travel_time(K1, sinf,cosf, w, ecc);
+            double delta_TD = transverse_doppler(K1, sinf,cosf, ecc,cosi);
+            double delta_GR = gravitational_redshift(K1, K2, sinf,cosf, ecc,cosi);
             v = v + delta_LT + delta_TD + delta_GR;
         }
         
@@ -163,7 +163,7 @@ namespace postKep
         return v;
     }
     
-    std::tuple <double,double> post_Newtonian_sb2(double K1,double K2, double f, double ecc, double w, double P, double cosi, double q, double R1, double R2, bool GR, bool Tid)
+    std::tuple <double,double> post_Newtonian_sb2(double K1,double K2, double sinf, double cosf, double ecc, double w, double P, double cosi, double q, double R1, double R2, bool GR, bool Tid)
     {
 
         double v1 = 0.0;
@@ -182,21 +182,21 @@ namespace postKep
             {
                 R2 = pow(M2,0.8);
             }
-            double delta_v_tide1 = v_tide(R1,M1,M2,P,f,w,cosi);
+            double delta_v_tide1 = v_tide(R1,M1,M2,P,sinf,cosf,w,cosi);
             v1 = v1 + delta_v_tide1;
-            double delta_v_tide2 = v_tide(R2,M2,M1,P,f,w-M_PI,cosi);
+            double delta_v_tide2 = v_tide(R2,M2,M1,P,sinf,cosf,w-M_PI,cosi);
             v2 = v2 + delta_v_tide2;
         }
         if (GR)
         {
-            double delta_LT = light_travel_time(K1, f, w, ecc);
-            double delta_TD = transverse_doppler(K1, f, ecc,cosi);
-            double delta_GR = gravitational_redshift(K1, K2, f, ecc,cosi);
+            double delta_LT = light_travel_time(K1, sinf,cosf, w, ecc);
+            double delta_TD = transverse_doppler(K1, sinf,cosf, ecc,cosi);
+            double delta_GR = gravitational_redshift(K1, K2, sinf,cosf, ecc,cosi);
             v1 = v1 + delta_LT + delta_TD + delta_GR;
             
-            double delta_LT2 = light_travel_time(K2, f, w - M_PI, ecc);
-            double delta_TD2 = transverse_doppler(K2, f, ecc,cosi);
-            double delta_GR2 = gravitational_redshift(K2, K1, f, ecc,cosi);
+            double delta_LT2 = light_travel_time(K2, sinf,cosf, w - M_PI, ecc);
+            double delta_TD2 = transverse_doppler(K2, sinf,cosf, ecc,cosi);
+            double delta_GR2 = gravitational_redshift(K2, K1, sinf,cosf, ecc,cosi);
             v2 = v2 + delta_LT2 + delta_TD2 + delta_GR2;
         }
         
@@ -239,15 +239,11 @@ namespace postKep
             double sinE, cosE;
             double M = n * (t[i] - M0_epoch) + M0;
             brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-            double g = g_e * ((1 - cosE) / sinE);
-            double g2 = g * g;
+            brandt::to_f(ecc, 1-ecc, &sinEf, &cosEf);
             
-            double vrad = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
-            
-
-            double f = acos((cosE - ecc) / (1 - ecc * cosE));
+            double vrad = K * (cosw * (cosEf + ecc) - sinw * sinEf);
                 
-            double v_correction = postKep::post_Newtonian(K, f, ecc, w_t, P, cosi, M1, M2, R1, GR, Tid);
+            double v_correction = postKep::post_Newtonian(K, sinEf,cosEf, ecc, w_t, P, cosi, M1, M2, R1, GR, Tid);
             
             rv[i] = vrad + v_correction;
       }
@@ -290,15 +286,13 @@ namespace postKep
             double sinE, cosE;
             double M = n * (t[i] - M0_epoch) + M0;
             brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-            double g = g_e * ((1 - cosE) / sinE);
-            double g2 = g * g;
+            brandt::to_f(ecc, 1-ecc, &sinEf, &cosEf);
             
-            double vrad1 = K * (cosw * ((1 - g2) / (1 + g2) + ecc) - sinw * ((2 * g) / (1 + g2)));
-            double vrad2 = K/q * (sinw * ((2 * g) / (1 + g2)) - cosw * ((1 - g2) / (1 + g2) + ecc));
+            double vrad1 = K * (cosw * (cosEf + ecc) - sinw * sinEf);
+            double vrad2 = K/q * (-cosw * (cosEf + ecc) + sinw * sinEf);
             
-            double f = acos((cosE - ecc) / (1 - ecc * cosE));
             
-            auto [v_correction1,v_correction2] = postKep::post_Newtonian_sb2(K, K/q, f, ecc, w_t, P, cosi, q, R1, R2, GR, Tid);
+            auto [v_correction1,v_correction2] = postKep::post_Newtonian_sb2(K, K/q, sinfEf,cosEf, ecc, w_t, P, cosi, q, R1, R2, GR, Tid);
            
             rv1[i] = vrad1 + v_correction1;
             rv2[i] = vrad2 + v_correction2;
