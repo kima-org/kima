@@ -284,7 +284,7 @@ namespace postKep
             double vrad2 = K/q * (-cosw * (cosEf + ecc) + sinw * sinEf);
             
             
-            auto [v_correction1,v_correction2] = postKep::post_Newtonian_sb2(K, K/q, sinfEf,cosEf, ecc, w_t, P, cosi, q, R1, R2, GR, Tid);
+            auto [v_correction1,v_correction2] = postKep::post_Newtonian_sb2(K, K/q, sinEf,cosEf, ecc, w_t, P, cosi, q, R1, R2, GR, Tid);
            
             rv1[i] = vrad1 + v_correction1;
             rv2[i] = vrad2 + v_correction2;
