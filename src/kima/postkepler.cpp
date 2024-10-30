@@ -217,10 +217,6 @@ namespace postKep
         
         // mean motion, once per orbit
         double n = 2. * M_PI / P;
-        
-
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
 
         // brandt solver calculations, once per orbit
         double bounds[13];
@@ -236,9 +232,9 @@ namespace postKep
             double sinw, cosw;
             sincos(w_t, &sinw, &cosw);
             
-            double sinE, cosE;
+            double sinEf, cosEf;
             double M = n * (t[i] - M0_epoch) + M0;
-            brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
             brandt::to_f(ecc, 1-ecc, &sinEf, &cosEf);
             
             double vrad = K * (cosw * (cosEf + ecc) - sinw * sinEf);
@@ -264,10 +260,6 @@ namespace postKep
         
         // mean motion, once per orbit
         double n = 2. * M_PI / P;
-        
-
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
 
         // brandt solver calculations, once per orbit
         double bounds[13];
@@ -283,9 +275,9 @@ namespace postKep
             double sinw, cosw;
             sincos(w_t, &sinw, &cosw);
             
-            double sinE, cosE;
+            double sinEf, cosEf;
             double M = n * (t[i] - M0_epoch) + M0;
-            brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
             brandt::to_f(ecc, 1-ecc, &sinEf, &cosEf);
             
             double vrad1 = K * (cosw * (cosEf + ecc) - sinw * sinEf);

@@ -762,9 +762,9 @@ namespace brandt
         // std::cout << std::endl;
         for (size_t i = 0; i < epochs.size(); i++)
         {
-            double sinE, cosE;
+            double sinEf, cosEf;
             double M = n * (epochs[i]*ephem1) + M0;
-            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
             to_f(ecc, 1 - ecc, &sinEf, &cosEf);
             ets[i] = K / (pow(1- pow(ecc * cosw,2.0),0.5)) * ((1-ecc*ecc)/(1+ecc*cosEf) * (sinEf*cosw + cosEf*sinw) + ecc*sinw);
       }
