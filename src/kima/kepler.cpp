@@ -1185,6 +1185,9 @@ NB_MODULE(kepler, m) {
     m.def("keplerian_etv", &brandt::keplerian_etv,
           "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a);
 
+    m.def("keplerian_gaia", &brandt::keplerian_gaia,
+          "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a);
+
         //   [](nb::ndarray<double, nb::shape<nb::any>, nb::device::cpu> t, 
         //      const double &P, const double &K, const double &ecc,
         //      const double &w, const double &M0, const double &M0_epoch) 

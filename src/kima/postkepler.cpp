@@ -314,3 +314,10 @@ namespace MassConv
     }
 }
 
+NB_MODULE(postkepler, m) {
+    m.def("keplerian_prec", &postKep::keplerian_prec,
+          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a);
+    m.def("keplerian_prec_sb2", &postKep::keplerian_prec_sb2,
+          "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a);
+
+}
