@@ -122,7 +122,7 @@ namespace postKep
         double phi_0 = M_PI/2 - w;
         double sin2i = 1.0 - cosi*cosi;
         
-        return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin2i * 2*(sinf*cos(phi_0) - sin(phi_0)*cosf)*(cosf*cosf + sin(phi_0)*sin(phi_0));
+        return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin2i * 2*(sinf*cos(phi_0) - sin(phi_0)*cosf)*(cosf*cos(phi_0) + sinf*sin(phi_0));
     }
     
     double post_Newtonian(double K1, double sinf, double cosf, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid)
@@ -170,7 +170,7 @@ namespace postKep
         double v2 = 0.0;
         double sin2i = 1.0 - cosi*cosi;
         //calculate masses
-        double M1 = P * days * pow(K2,3.0) * pow((1 - pow(ecc,2.0)),1.5) * pow((1 + q),2.0) * pow(sin2i,1.5) / (TWO_PI * G);
+        double M1 = P * days * pow(K2,3.0) * pow((1 - pow(ecc,2.0)),1.5) * pow((1 + q),2.0) / pow(sin2i,1.5) / (TWO_PI * G)/Msun;
         double M2 = M1 * q;
         if (Tid)
         {
