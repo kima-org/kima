@@ -1480,7 +1480,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                 wrt = res.instruments[i]
 
                 if first in res.instruments:
-                    j = res.instruments.index(second)
+                    j = res.instruments.index(first)
                 else:
                     j = [_i for _i, f in enumerate(res.instruments) if first in f][0]
                 this = res.instruments[j]
