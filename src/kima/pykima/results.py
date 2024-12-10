@@ -21,7 +21,8 @@ from .. import __models__
 from kima.kepler import keplerian
 from kima import distributions
 from .classic import postprocess
-from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
+from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkernel, Matern32kernel, SHOkernel, 
+                 QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  QPpMAGCYCLEkernel, mixtureGP)
 
 from .analysis import get_planet_mass_and_semimajor_axis
@@ -484,7 +485,7 @@ class KimaResults:
         self._ESS = self.posterior_sample.shape[0]
 
         #self.priors = {}
-        self.priors = _read_priors(self)
+        self.priors = _read_priors(self, setup)
 
         # arbitrary units?
         if 'arb' in model.data.units:
@@ -505,7 +506,11 @@ class KimaResults:
         if self.model == 'RVFWHMmodel':
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
 
+        if self.model == 'SPLEAFmodel':
+            self.nseries = int(setup['kima']['nseries'])
+
         self._extra_data = np.array(np.copy(data.actind))
+        self._extra_data_names = np.array(np.copy(data.indicator_names))
 
         self.M0_epoch = data.M0_epoch
         self.n_instruments = np.unique(data.obsi).size
@@ -573,8 +578,11 @@ class KimaResults:
 
         if self.model == 'RVFWHMmodel':
             self.n_jitters *= 2
-        if self.model == 'RVFWHMRHKmodel':
+        elif self.model == 'RVFWHMRHKmodel':
             self.n_jitters *= 3
+        elif self.model == 'SPLEAFmodel':
+            # one jitter per activity indicator per instrument
+            self.n_jitters += self.n_instruments * (self.nseries - 1)
         
         try:
             self.jitter_propto_indicator = model.jitter_propto_indicator
@@ -593,6 +601,9 @@ class KimaResults:
         self.trend = model.trend
         self.trend_degree = model.degree
         self._read_trend()
+
+        # does the model enforce AMD stability?
+        self.enforce_stability = model.enforce_stability
 
         # multiple instruments? read offsets
         self._read_multiple_instruments()
@@ -638,6 +649,15 @@ class KimaResults:
             self.C2 = self.posterior_sample[:, self._current_column]
             self.indices['C2'] = self._current_column
             self._current_column += 1
+
+        if self.model == 'SPLEAFmodel':
+            self.n_zero_points = self.n_instruments * (self.nseries - 1)
+            istart = self._current_column
+            iend = istart + self.n_zero_points
+            self.indices['zero_points'] = slice(istart, iend)
+            self.zero_points = self.posterior_sample[:, istart:iend]
+            self._current_column += self.n_zero_points
+
 
         self.vsys = self.posterior_sample[:, -1]
         self.indices['vsys'] = -1
@@ -841,7 +861,7 @@ class KimaResults:
         return i
 
     def _read_GP(self):
-        from .. import GPmodel
+        from .. import GP
         if self.model not in ('GPmodel', 'RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
             self.has_gp = False
             self.n_hyperparameters = 0
@@ -849,9 +869,9 @@ class KimaResults:
         
         self.has_gp = True
         try:
-            self.kernel = GPmodel.KernelType(int(self.setup['kima']['kernel']))
+            self.kernel = GP.KernelType(int(self.setup['kima']['kernel']))
         except KeyError:
-            self.kernel = GPmodel.KernelType(0)
+            self.kernel = GP.KernelType(0)
 
         try:
             self.magnetic_cycle_kernel = self.setup['kima']['magnetic_cycle_kernel'] == 'true'
@@ -860,14 +880,19 @@ class KimaResults:
         except KeyError:
             pass
 
+        hyperparameters_per_kernel = {
+            GP.KernelType.qp: 4,
+            GP.KernelType.per: 3,
+            GP.KernelType.spleaf_exp: 2,
+            GP.KernelType.spleaf_matern32: 2,
+            GP.KernelType.spleaf_sho: 3,
+            GP.KernelType.spleaf_mep: 4,
+            GP.KernelType.spleaf_esp: 4,
+            'standard+magcycle': 7,
+        }
         if self.model == 'GPmodel':
             try:
-                n_hyperparameters = {
-                    GPmodel.KernelType.qp: 4,
-                    GPmodel.KernelType.per: 3,
-                    'standard+magcycle': 7,
-                }
-                n_hyperparameters = n_hyperparameters[self.kernel]
+                n_hyperparameters = hyperparameters_per_kernel[self.kernel]
             except KeyError:
                 raise ValueError(
                     f'GP kernel = {self.kernel} not recognized')
@@ -907,9 +932,7 @@ class KimaResults:
             self._n_shared_hyperparameters = _n_shared
 
         elif self.model == 'SPLEAFmodel':
-            self.multi_series = self.setup['kima']['multi_series'] == 'true'
-            self.nseries = int(self.setup['kima']['nseries'])
-            self.n_hyperparameters = 2
+            self.n_hyperparameters = hyperparameters_per_kernel[self.kernel]
 
         istart = self._current_column
         iend = istart + self.n_hyperparameters
@@ -922,22 +945,28 @@ class KimaResults:
 
         t, e = self.data.t, self.data.e
         kernels = {
-           GPmodel.KernelType.qp: QPkernel(1, 1, 1, 1),
+            GP.KernelType.qp: QPkernel(1, 1, 1, 1),
+            GP.KernelType.per: PERkernel(1, 1, 1),
+            GP.KernelType.spleaf_exp: EXPkernel(1, 1), 
+            GP.KernelType.spleaf_matern32: Matern32kernel(1, 1),
+            GP.KernelType.spleaf_sho: SHOkernel(1, 1, 1),
+            GP.KernelType.spleaf_mep: MEPkernel(1, 1, 1, 1),
+            GP.KernelType.spleaf_esp: ESPkernel(1, 1, 1, 1, nharm=3),
             'standard+magcycle': QPpMAGCYCLEkernel(1, 1, 1, 1, 1, 1, 1),
-            GPmodel.KernelType.per: PERkernel(1, 1, 1),
+
             #'qpc': QPCkernel(1, 1, 1, 1, 1),
             #'RBF': RBFkernel(1, 1),
             #'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
         }
 
         if self.model == 'RVFWHMmodel':
-            self.GP1 = GP(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
-            self.GP2 = GP(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
+            self.GP1 = GaussianProcess(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
+            self.GP2 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
 
         if self.model == 'RVFWHMRHKmodel':
-            self.GP1 = GP(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
-            self.GP2 = GP(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
-            self.GP3 = GP(deepcopy(kernels[self.kernel]), t, self.data.e3, white_noise=0.0)
+            self.GP1 = GaussianProcess(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
+            self.GP2 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
+            self.GP3 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e3, white_noise=0.0)
 
         elif self.model == 'GPmodel_systematics':
             X = np.c_[self.data.t, self._extra_data[:, 3]]
@@ -946,7 +975,17 @@ class KimaResults:
         elif self.model == 'SPLEAFmodel':
             pass
         else:
-            self.GP = GP(kernels[self.kernel], t, e, white_noise=0.0)
+            self.GP = GaussianProcess(kernels[self.kernel], t, e, white_noise=0.0)
+
+        if self.model == 'SPLEAFmodel':
+            n_alphas = n_betas = self.nseries
+            istart = self._current_column
+            iend = istart + n_alphas + n_betas
+            self.alphas = self.posterior_sample[:, istart:istart+n_alphas]
+            self.indices['GP_alphas'] = slice(istart, istart + n_alphas)
+            self.betas = self.posterior_sample[:, istart+n_alphas:iend]
+            self.indices['GP_betas'] = slice(istart + n_alphas, iend)
+            self._current_column += n_alphas + n_betas
 
     def _read_MA(self):
         # find MA in the compiled model
@@ -1863,6 +1902,10 @@ class KimaResults:
                 pars += ['η2'] if self.share_eta2 else ['η2 RV', 'η2 FWHM', 'η2 RHK']
                 pars += ['η3'] if self.share_eta3 else ['η3 RV', 'η3 FWHM', 'η3 RHK']
                 pars += ['η4'] if self.share_eta4 else ['η4 RV', 'η4 FWHM', 'η4 RHK']
+            else:
+                pars = self._parameters[self.indices['GPpars']]
+
+            pars = [p.replace('eta', 'η') for p in pars]
 
             if squeeze:
                 print()
@@ -1878,13 +1921,26 @@ class KimaResults:
                 s = s.rjust(15 + len(s))
                 print(s)
 
-            # , *p[self.indices['GPpars']])
-            # if self.GPkernel in (0, 2, 3):
-            #     eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
-            #     print('GP parameters: ', eta1, eta2, eta3, eta4)
-            # elif self.GPkernel == 1:
-            #     eta1, eta2, eta3 = pars[self.indices['GPpars']]
-            #     print('GP parameters: ', eta1, eta2, eta3)
+            if self.model == 'SPLEAFmodel':
+                def print_pars(pars, key, offset=0):
+                    print(offset * ' ', end='')
+                    print((len(pars) * ' {:>10s} ').format(*pars))
+                    formatter = {'all': lambda v: f'{v:11.5f}'}
+                    with np.printoptions(formatter=formatter):
+                        s = str(p[self.indices[key]])
+                        s = s.replace('[', '').replace(']', '')
+                    s = s.rjust(15 + len(s))
+                    print(s)
+
+                names = ['RV'] + list(self._extra_data_names[::2])
+                pars1 = [f'α{i} ({n})' for i, n in enumerate(names)]
+                pars2 = [f'β{i} ({n})' for i, n in enumerate(names)]
+                if squeeze:
+                    raise NotImplementedError
+                else:
+                    print_pars(pars1, 'GP_alphas', 15)
+                    print_pars(pars2, 'GP_betas', 15)
+
 
         if self.trend:
             names = ('slope', 'quadr', 'cubic')
@@ -2014,6 +2070,8 @@ class KimaResults:
             v = np.zeros((2, t.size))
         elif self.model == 'RVFWHMRHKmodel':
             v = np.zeros((3, t.size))
+        elif self.model == 'SPLEAFmodel':
+            v = np.zeros((self.nseries, t.size))
         else:
             v = np.zeros_like(t)
 
@@ -2107,10 +2165,12 @@ class KimaResults:
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
-                if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+                if self.model not in ('RVmodel', 'GPmodel'):
                     v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+
+        ni = self.n_instruments
 
         # systemic velocity (and C2) for this sample
         if self.model == 'RVFWHMmodel':
@@ -2118,6 +2178,10 @@ class KimaResults:
             v += C.reshape(-1, 1)
         elif self.model == 'RVFWHMRHKmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']], sample[self.indices['C3']]]
+            v += C.reshape(-1, 1)
+        elif self.model == 'SPLEAFmodel':
+            zp = sample[self.indices['zero_points']]
+            C = np.r_[sample[self.indices['vsys']], zp[ni - 1::ni]]
             v += C.reshape(-1, 1)
         else:
             v += sample[self.indices['vsys']]
@@ -2129,9 +2193,16 @@ class KimaResults:
             ii = self.data.obs.astype(int) - 1
 
             if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-                ni = self.n_instruments
                 offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
+            elif self.model == 'SPLEAFmodel':
+                # complicated code to get
+                # [rv_offset1,   rv_offset2, ..., 0.0,   zero_point1, zero_point2, ...]
+                # [inst1, inst1, ...,             instn, ai_inst1,    ai_inst2, ...]
+                zero_points = sample[self.indices['zero_points']]
+                offsets = np.r_[offsets, 0.0, zero_points]
+                offsets = np.pad(-np.diff(offsets)[::ni].reshape(-1, 1), ((0, 0), (0, 1)))
+                v += np.take(offsets.reshape(-1, ni), ii, axis=1)
             else:
                 offsets = np.pad(offsets, (0, 1))
                 v += np.take(offsets, ii)
@@ -2356,6 +2427,7 @@ class KimaResults:
             np.apply_along_axis(res.stochastic_model, 1, res.posterior_sample)
             ```
         """
+        from .. import GP
 
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -2463,20 +2535,77 @@ class KimaResults:
 
 
         elif self.model == 'SPLEAFmodel':
-            r = self.data.y - self.eval_model(sample)
-            if self.multi_series:
-                raise NotImplementedError()
+            D = np.r_[self.data.y.reshape(1,-1), self._extra_data[::2, :]]
+            resid = D - self.eval_model(sample)
+
+            #TODO: move to beginning of file
+            from spleaf import cov, term
+            tfull, resid_full, efull, obs_full, series_index = cov.merge_series(
+                self.nseries * [self.data.t],
+                resid,
+                np.r_[self.data.e.reshape(1,-1), self._extra_data[1::2, :]],
+                self.nseries * [self.data.obs],
+            )
+            a, b = np.ones(self.nseries), np.ones(self.nseries)
+
+            if include_jitters:
+                jit = {
+                    f'jit{i}{j}': term.InstrumentJitter(series_index[i][obs_full[series_index[i]] == j+1], 1.0)
+                    for i in range(self.nseries)
+                    for j in range(self.n_instruments)
+                }
             else:
-                #TODO: move to beginning of file
-                from spleaf import cov, term
-                C = cov.Cov(
-                    self.data.t,
-                    err=term.Error(self.data.e),
-                    gp=term.Matern52Kernel(1.0, 1.0)
-                )
-                GPpars = sample[self.indices['GPpars']]
-                C.set_param(GPpars, C.param)
-                return C.conditional(r, t)
+                jit = {}
+
+            k = {
+                GP.KernelType.spleaf_sho: term.SHOKernel(1.0, 1.0, 1.0),
+                GP.KernelType.spleaf_mep: term.MEPKernel(1.0, 1.0, 1.0, 1.0),
+                GP.KernelType.spleaf_esp: term.ESPKernel(1.0, 1.0, 1.0, 1.0, nharm=3),
+            }[self.kernel]
+
+            C = cov.Cov(tfull, 
+                        **jit,
+                        err=term.Error(efull),
+                        gp=term.MultiSeriesKernel(k, series_index, a, b)
+            )
+
+            if self.kernel in (GP.KernelType.spleaf_mep, GP.KernelType.spleaf_esp):
+                gp_indices = list(range(*self.indices['GPpars'].indices(sample.size)))
+                gp_indices[1:3] = gp_indices[1:3][::-1]
+            else:
+                gp_indices = self.indices['GPpars']
+            gp_pars = sample[gp_indices].copy()
+
+            # interleave alphas and betas
+            alpha_beta = sample[self.indices['GP_alphas']].copy()
+            alpha_beta = np.insert(alpha_beta, np.arange(1, self.nseries + 1), 
+                                   sample[self.indices['GP_betas']])
+
+            pars = np.r_[
+                sample[self.indices['jitter']].copy(),
+                gp_pars,
+                alpha_beta,
+            ]
+
+            C.set_param(pars, C.param)
+
+            pred = np.zeros((self.nseries, t.size))
+            std = np.zeros((self.nseries, t.size))
+
+            for i in range(self.nseries):
+                C.kernel['gp'].set_conditional_coef(series_id=i)
+                if return_std:
+                    pred[i], std[i] = C.conditional(resid_full, t, calc_cov='diag')
+                else:
+                    pred[i] = C.conditional(resid_full, t)
+
+            if return_std:
+                # return pred*0, std*0
+                return pred, std
+            else:
+                # return pred*0
+                return pred
+            # return C.conditional(r, t)
 
         else:
             r = self.data.y - self.eval_model(sample)
@@ -2485,11 +2614,12 @@ class KimaResults:
                 X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
                 GPpars = sample[self.indices['GPpars']]
                 mu = self.GP.predict(r, X, GPpars)
-                # print(GPpars)
                 # self.GP.kernel.pars = GPpars
                 return mu
             else:
-                GPpars = sample[self.indices['GPpars']]
+                GPpars = sample[self.indices['GPpars']].copy()
+                if self.kernel is GP.KernelType.spleaf_esp:
+                    GPpars[-1] /= 2.0
                 self.GP.kernel.pars = GPpars
                 return self.GP.predict(r, t, return_std=return_std)
 
@@ -2538,10 +2668,6 @@ class KimaResults:
 
         ni = self.n_instruments
         offsets = sample[self.indices['inst_offsets']]
-        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-            offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
-        else:
-            offsets = np.pad(offsets, (0, 1))
 
         if self._time_overlaps[0]:
             v = np.tile(v, (self.n_instruments, 1))
@@ -2560,7 +2686,7 @@ class KimaResults:
                     v[2 * i + 1, t < obst.min()] = np.nan
                     v[2 * i + 1, t > obst.max()] = np.nan
             else:
-                v = (v.T + offsets).T
+                v = (v.T + np.r_[offsets, 0.0]).T
                 # this constrains the RV to the times of each instrument
                 for i in range(self.n_instruments):
                     obst = self.data.t[self.data.obs == i + 1]
@@ -2580,8 +2706,15 @@ class KimaResults:
             #! end HACK!
 
             if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+                offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
+            elif self.model == 'SPLEAFmodel':
+                zero_points = sample[self.indices['zero_points']]
+                offsets = np.r_[offsets, 0.0, zero_points]
+                offsets = np.pad(-np.diff(offsets)[::ni].reshape(-1, 1), ((0, 0), (0, 1)))
+                v += np.take(offsets.reshape(-1, ni), ii, axis=1)
             else:
+                offsets = np.pad(offsets, (0, 1))
                 v += np.take(offsets, ii)
 
         return v
@@ -2961,8 +3094,7 @@ class KimaResults:
 
     def print_results(self, show_prior=False):
         """
-        Print a summary of the results, showing the posterior estimates for each
-        parameter.
+        Print a summary of the results, showing the posterior estimates for each parameter.
 
         Args:
             show_prior (bool, optional):
@@ -3003,7 +3135,7 @@ class KimaResults:
             H, edges = np.histogram(v, bins=40)
             lo, hi = edges[0], edges[-1]
             step = edges[1] - lo
-            if prior is not None:
+            if prior is not None and show_prior:
                 lower = prior.ppf(1e-6)
                 if np.isfinite(lower):
                     lo = max(lower, lo - 2 * step)
@@ -3029,25 +3161,44 @@ class KimaResults:
 
         ########
 
-        print(f'    logZ: {self.evidence:.2f}', end='\n\n')
+        print(f'logL max: {self.sample_info[:,1].max():.2f}')
+        print(f'logZ: {self.evidence:.2f}', end='\n\n')
         print_header()
 
-        if self.posteriors.jitter.ndim == 1:
-            J = self.posteriors.jitter.reshape(-1, 1)
-            number = False
-        else:
-            J = self.posteriors.jitter
-            number = True
+        # if self.posteriors.jitter.ndim == 1:
+        #     J = self.posteriors.jitter.reshape(-1, 1)
+        #     number = False
+        # else:
+        #     J = self.posteriors.jitter
+        #     number = True
 
-        k = 0
-        for i, v in enumerate(J.T):
-            if self.model == 'RVmodel' and self.multi and i == 0:
-                print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
+        if self.model == 'RVmodel' and self.multi:
+            v = self.posteriors.jitter[:, 0]
+            print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
+
+        series_k = 0
+        for i in range(self.n_jitters):
+            v = self.posteriors.jitter[:, i]
+            if self.model == 'SPLEAFmodel' and 'series_j' in self.parameters[i]:
+                prior = self.priors[f'series_jitters_prior_{series_k+1}']
+                series_k += 1
             else:
-                print_line(f'jitter{k+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
-                k += 1
+                prior = self.priors['Jprior']
+            print_line(self.parameters[i], v, prior, show_prior)
+
+        # k = 0
+        # for i, v in enumerate(J.T):
+        #         print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
+        #     else:
+        #         print_line(f'jitter{k+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
+        #         k += 1
         
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
+
+        if self.model == 'SPLEAFmodel':
+            for i in range(self.n_instruments * (self.nseries - 1)):
+                v = self.posterior_sample[:, self.indices['zero_points']][:, i]
+                print_line(f'zero-point {i+1}: ', v, self.priors[f'zero_points_prior_{i+1}'], show_prior)
 
         if self.multi:
             for i, v in enumerate(self.posteriors.offset.T):
@@ -3064,8 +3215,16 @@ class KimaResults:
         
         if self.has_gp:
             print('    - GP')
+            gp_parameter_names = np.array(self._parameters)[self.indices['GPpars']]
             for i in range(self.n_hyperparameters):
-                print_line(f'eta{i+1}', getattr(self.posteriors, f'η{i+1}'), self.priors[f'eta{i+1}_prior'], show_prior)
+                name = gp_parameter_names[i]
+                print_line(name, getattr(self.posteriors, f'η{i+1}'), self.priors[f'{name}_prior'], show_prior)
+
+            if self.model == 'SPLEAFmodel':
+                series_names = np.r_[['RV'], self._extra_data_names[::2]]
+                for i in range(self.nseries):
+                    print_line(f'α{i+1} ({series_names[i]})', self.alphas[:, i], self.priors[f'alpha{i+1}_prior'], show_prior)
+                    print_line(f'β{i+1} ({series_names[i]})', self.betas[:, i], self.priors[f'beta{i+1}_prior'], show_prior)
 
         if self.KO:
             print('    - KO')
@@ -3090,6 +3249,8 @@ class KimaResults:
         from functools import partial
         if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_multiseries, res=self)
+        elif self.model in ('SPLEAFmodel',):
+            self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_spleaf, res=self)
         else:
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples, res=self)
 
