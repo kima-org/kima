@@ -8,9 +8,10 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
-from jax.numpy import exp, sin, cos, sqrt
+from jax.numpy import exp, sin, cos, sqrt, abs
 from jax import jit, vmap, jacfwd
 
+import scipy.special
 from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
@@ -29,6 +30,7 @@ __all__ = [
 π = np.pi
 
 
+@dataclass(eq=True, unsafe_hash=True)
 class Kernel:
 
     @property
@@ -44,6 +46,11 @@ class Kernel:
                 f'{name} expects {self.npars} parameters, got {newpars.size}')
         for n, p in zip(self.names, newpars):
             setattr(self, n, p)
+        
+        try:
+            self.__post_init__()
+        except AttributeError:
+            pass
 
     # @partial(jit, static_argnums=(0,))
     # def metric(self, x1, x2=None):
@@ -68,6 +75,17 @@ class Kernel:
         i = jnp.arange(xi.size)
         return jacfwd(self.__call__, argnums=0)(xi, xj)[i, :, i]
 
+
+@dataclass(eq=True, unsafe_hash=True)
+class ConstantKernel(Kernel):
+    """ The constant kernel """
+    c: float
+    names = ['c']
+    npars = 1
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        return self.c
 
 
 @dataclass(eq=True, unsafe_hash=True)
@@ -103,6 +121,38 @@ class DopplerCOSkernel(Kernel):
 
 
 @dataclass(eq=True, unsafe_hash=True)
+class EXPkernel(Kernel):
+    """ The exponential kernel """
+    η1: float
+    η2: float
+    names = ['η1', 'η2']
+    npars = 2
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = xi - xj
+        sr = jnp.abs(r / self.η2)
+        K = self.η1**2 * exp(-0.5 * sr)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class _Exponentialkernel(Kernel):
+    """ The exponential kernel with the parameterization from Delisle et al. 2022 """
+    a: float # amplitude
+    la: float # decay rate
+    names = ['a', 'la']
+    npars = 2
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = xi - xj
+        sr = jnp.abs(self.la * r)
+        K = self.a * exp(-sr)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
 class RBFkernel(Kernel):
     """ The radial basis function (exponential squared) kernel """
     η1: float
@@ -117,6 +167,189 @@ class RBFkernel(Kernel):
         K = self.η1**2 * exp(-0.5 * sr**2)
         return K
 
+@dataclass(eq=True, unsafe_hash=True)
+class Matern32kernel(Kernel):
+    """ The Matern-3/2 kernel """
+    η1: float
+    η2: float
+    names = ['η1', 'η2']
+    npars = 2
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = xi - xj
+        sr = abs(r / self.η2)
+        K = self.η1**2 * (1 + sqrt(3) * sr) * exp(-sqrt(3) * sr)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class ESkernel(Kernel):
+    """ The Exponential-sine (ES) kernel from [Delisle et al. 2022] """
+    η1: float
+    η2: float
+    names = ['η1', 'η2']
+    npars = 2
+    coef_la: float = 1.0907260149419182
+    mu: float = 1.326644517327145
+
+    def __post_init__(self):
+        self.coef_b = 1 / self.mu
+        self.coef_a0 = 2 / 3 * (1 + self.coef_b**2)
+        self.coef_a = 1 - self.coef_a0
+        self.la = self.coef_la / self.η2
+        self.nu = self.mu * self.la
+        var = self.η1 * self.η1
+        self.a0 = self.coef_a0 * var
+        self.a = self.coef_a * var
+        self.b = self.coef_b * var
+
+        self._exp = _Exponentialkernel(self.a0, self.la)
+        self._qp = _QuasiPeriodicKernel(self.a, self.b, self.la, self.nu)
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        return self._exp.eval(xi, xj) + self._qp.eval(xi, xj)
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class SHOkernel(Kernel):
+    """ The SHO kernel """
+    η1: float
+    P: float
+    Q: float
+    names = ['η1', 'P', 'Q']
+    npars = 3
+
+    def __post_init__(self):
+        self.η = np.sqrt(np.abs(1 - 1/(4*self.Q**2)))
+        self.ω0 = 2 * np.pi / self.P
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = jnp.abs(xi - xj)
+        # C = self.η1 * self.ω0 * self.Q
+        common = jnp.exp(-self.ω0 * r / 2 / self.Q)
+        if self.Q == 0.5:
+            K = common * 2 * (1 + self.ω0 * r)
+            K /= 2.0
+        elif self.Q < 0.5:
+            K = common * (jnp.cosh(self.η * self.ω0 * r) + jnp.sinh(self.η * self.ω0 * r) / (2*self.η*self.Q))
+        elif self.Q > 0.5:
+            K = common * (cos(self.η * self.ω0 * r) + sin(self.η * self.ω0 * r) / (2*self.η*self.Q))
+        return self.η1**2 * K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class _QuasiPeriodicKernel(Kernel):
+    """ The general quasi-periodic kernel from [Delisle et al. 2022] """
+    a: float
+    b: float
+    la: float
+    nu: float
+    names = ['a', 'b', 'la', 'nu']
+    npars = 4
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        r = jnp.abs(xi - xj)
+        K = (self.a * jnp.cos(self.nu * r) + self.b * jnp.sin(self.nu * r)) * jnp.exp(-self.la * r)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class MEPkernel(Kernel):
+    """ The Matérn-3/2 exponential periodic (MEP) kernel [Delisle et al. 2022] """
+    η1: float
+    η2: float
+    η3: float
+    η4: float
+    names = ['η1', 'η2', 'η3', 'η4']
+    npars = 4
+
+    def __post_init__(self):
+        self.la = 1 / self.η2
+        self._var = self.η1 * self.η1
+        self._η4_sq = self.η4 * self.η4
+        self._f = 1 / (4 * self._η4_sq)
+        self._f2 = self._f * self._f
+        self._f2_4 = self._f2 / 4
+        self._deno = 1 + self._f + self._f2_4
+        a0 = self._var / self._deno
+        self.sig0 = np.sqrt(a0)
+        self.a1 = self._f * a0
+        self.a2 = self._f2_4 * a0
+        self.nu = 2 * np.pi / self.η3
+        la_nu = self.la / self.nu
+        self.b1 = self.a1 * la_nu
+        self.b2 = self.a2 * la_nu / 2
+
+        self._mat = Matern32kernel(self.sig0, self.η2)
+        self._qp1 = _QuasiPeriodicKernel(self.a1, self.b1, self.la, self.nu)
+        self._qp2 = _QuasiPeriodicKernel(self.a2, self.b2, self.la, 2 * self.nu)
+    
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        return self._mat.eval(xi, xj) + self._qp1.eval(xi, xj) + self._qp2.eval(xi, xj)
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class _ESP_Pkernel(Kernel):
+    """ 
+    Periodic part of the :class:`ESPKernel`.
+    WARNING: This is not a valid kernel on its own.
+    """
+    P: float
+    eta: float
+    nharm: int = 2
+    names = ['P', 'eta']
+    npars = 2
+
+    def __post_init__(self):
+        self.bessel = np.empty(self.nharm)
+        self.eta2 = self.eta * self.eta
+        self.f = 1 / (4 * self.eta2)
+        self.bessel = scipy.special.ive(np.arange(self.nharm + 1), self.f)
+        self.a = self.bessel.copy()
+        self.a[0] /= 2
+        self.deno = np.sum(self.a)
+        self.a /= self.deno
+        self.nu = 2 * np.pi / self.P
+
+        self._c = ConstantKernel(self.a[0])
+        self._qp = [_QuasiPeriodicKernel(self.a[k], 0, 0, k*self.nu) 
+                    for k in range(1, self.nharm + 1)]
+
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        K = self._c.eval(xi, xj)
+        for k in self._qp:
+            K += k.eval(xi, xj)
+        return K
+
+
+@dataclass(eq=True, unsafe_hash=True)
+class ESPkernel(Kernel):
+    """ The ESP kernel [Delisle et al. 2022] """
+    η1: float
+    η2: float
+    η3: float
+    η4: float
+    nharm: int = 2
+    names = ['η1', 'η2', 'η3', 'η4']
+    npars = 4
+
+    def __post_init__(self):
+        self._es = ESkernel(self.η1, self.η2)
+        self._esp_p = _ESP_Pkernel(self.η3, self.η4, self.nharm)
+    
+    @partial(jit, static_argnums=(0,))
+    def eval(self, xi, xj):
+        return self._es.eval(xi, xj) * self._esp_p.eval(xi, xj)
+
+
+
+# ---------------------------------------
 
 @dataclass(eq=True, unsafe_hash=True)
 class QPkernel(Kernel):
