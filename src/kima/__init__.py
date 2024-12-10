@@ -56,6 +56,8 @@ from .pykima.cli import cli_clean as cleanup
 from .kepler import keplerian
 #from . import spleaf
 from . import distributions
+from . import GP
+
 
 # examples
 from . import examples
