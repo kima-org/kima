@@ -103,7 +103,7 @@ nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
 
 nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/GP.cpp)
 
 nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMRHKmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
