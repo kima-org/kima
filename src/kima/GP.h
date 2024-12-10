@@ -176,9 +176,9 @@ class _spleaf_ESP_PKernel {
 };
 
 
-template <int nharm=2>
 class spleaf_ESPKernel {
     public:
+        static constexpr size_t nharm = 2;
         static constexpr size_t r = 3 + 6 * nharm; // rank of the kernel
         size_t offset = 0;
         double sig; // standard deviation

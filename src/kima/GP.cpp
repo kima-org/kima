@@ -352,8 +352,7 @@ void _spleaf_ESP_PKernel<nharm>::deriv(
 }
 
 
-template <int nharm>
-spleaf_ESPKernel<nharm>::spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> params, size_t offset) 
+spleaf_ESPKernel::spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> params, size_t offset) 
  : sig(params[0]), rho(params[1]), P(params[2]), eta(params[3]), offset(offset)
 {
     size_t r = 0;
@@ -371,8 +370,7 @@ spleaf_ESPKernel<nharm>::spleaf_ESPKernel(const VectorXd &t, std::array<double, 
     _phi2 = MatrixXd_RM(N, esp_p_r);
 }
 
-template <int nharm>
-void spleaf_ESPKernel<nharm>::operator()(
+void spleaf_ESPKernel::operator()(
     const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
 {
     size_t r = 0;
@@ -395,8 +393,7 @@ void spleaf_ESPKernel<nharm>::operator()(
     }
 }
 
-template <int nharm>
-void spleaf_ESPKernel<nharm>::deriv(
+void spleaf_ESPKernel::deriv(
     const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
 {
     size_t r = 0;
@@ -506,5 +503,5 @@ NB_MODULE(GP, m) {
     KERNEL_BIND(spleaf_ESKernel, "ESKernel", 2);
 
     KERNEL_BIND(_spleaf_ESP_PKernel<2>, "_ESP_PKernel", 2);
-    KERNEL_BIND(spleaf_ESPKernel<2>, "ESPKernel", 4);
+    KERNEL_BIND(spleaf_ESPKernel, "ESPKernel", 4);
 }

@@ -864,8 +864,8 @@ double GPmodel::log_likelihood() const
         break;
     
     case spleaf_esp:
-        logL += spleaf_loglike<spleaf_ESPKernel<2>, 4>(residual, v_t, diagonal, v_dt, N,
-                                                       {eta1, eta2, eta3, 0.5 * eta4});
+        logL += spleaf_loglike<spleaf_ESPKernel, 4>(residual, v_t, diagonal, v_dt, N,
+                                                    {eta1, eta2, eta3, 0.5 * eta4});
         break;
 
     
