@@ -336,6 +336,32 @@ def distribution_support(dist):
     return dist.ppf(0.0), dist.ppf(1.0)
 
 
+def find_constrained_invgamma(low, upp, low_tail=0.01, upp_tail=0.01):
+    """ 
+    Find the parameters of the inverse gamma distribution that is constrained
+    between `low` and `upp` with tail probabilities `low_tail` and `upp_tail`.
+    """
+    from scipy.stats import invgamma
+    from scipy.optimize import root
+    def tail_condition(theta, low, upp, low_tail, upp_tail):
+        return [
+            invgamma(a=theta[0], scale=theta[1]).cdf(low) - low_tail,
+            invgamma(a=theta[0], scale=theta[1]).cdf(upp) - (1 - upp_tail),
+        ]
+    def guess(low, upp, delta=0.75):
+        alpha_guess = (delta * (low + upp) / (upp - low))**2 + 2
+        beta_guess = (alpha_guess - 1.0) * 0.5 * (low + upp)
+        return [alpha_guess, beta_guess]
+    result = root(tail_condition, x0=guess(low, upp), args=(low, upp, low_tail, upp_tail), method='lm')
+    if result.success:
+        return result.x
+    else:
+        import warnings
+        warnings.warn('Could not find constrained inverse gamma distribution')
+        return result
+
+
+
 def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
     """
     Get an informative Gaussian prior for the systemic velocity using the data.
