@@ -362,7 +362,7 @@ def find_constrained_invgamma(low, upp, low_tail=0.01, upp_tail=0.01):
 
 
 
-def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
+def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False, use_value=None):
     """
     Get an informative Gaussian prior for the systemic velocity using the data.
 
@@ -373,6 +373,8 @@ def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
             Width of the prior is the range of the data.
         use_std (bool, optional):
             Width of the prior is the standard deviation of the data.
+        use_value (float, optional):
+            Width of the prior is provided directly.
 
     Returns:
         prior (kima.distributions.Gaussian):
@@ -386,6 +388,9 @@ def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
     obsi = np.array(data.obsi)
     u_obsi = np.unique(obsi)
     y = np.array(data.y)[obsi == u_obsi[-1]]
+    if use_value is not None:
+        assert isinstance(use_value, (float, int)), '`use_value` should be a float'
+        return Gaussian(np.median(y), use_value)
     if use_ptp and not use_std:
         return Gaussian(np.median(y), np.ptp(y))
     elif use_std:
@@ -394,7 +399,7 @@ def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False):
         raise ValueError('either `use_ptp` or `use_std` should be True')
 
 
-def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
+def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False, use_value=None):
     """
     Get a informative Gaussian priors for the between-instrument offsets using
     the data.
@@ -406,6 +411,8 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
             Width of the prior is the range of the data.
         use_std (bool, optional):
             Width of the prior is the standard deviation of the data.
+        use_value (float, optional):
+            Width of the prior is provided directly.
 
     Returns:
         prior (kima.distributions.Gaussian):
@@ -425,6 +432,10 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False):
     y_last = np.array(data.y)[obsi == u_obsi[-1]]
     for i in u_obsi[::-1][1:]:
         y = np.array(data.y)[obsi == i]
+        if use_value is not None:
+            assert isinstance(use_value, (float, int)), '`use_value` should be a float'
+            loc_scale.append((np.median(y) - np.median(y_last), use_value))
+            continue
         if use_ptp and not use_std:
             loc_scale.append((np.median(y) - np.median(y_last), np.ptp(y)))
         elif use_std:
