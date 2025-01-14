@@ -5,6 +5,7 @@
 #include <typeinfo>
 #include "DNest4.h"
 #include "Data.h"
+#include "default_priors.h"
 
 // for nanobind
 #include <nanobind/nanobind.h>

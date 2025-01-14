@@ -37,22 +37,26 @@ RVConditionalPrior::RVConditionalPrior():hyperpriors(false)
     //     Kprior = make_shared<Exponential>();
     // }
 
-    if (!Pprior)
-        Pprior = make_shared<LogUniform>(1.0, 1000.0);
-    if (!Kprior)
-        Kprior = make_shared<Uniform>(0.0, 100.0);
-    if (!eprior)
-        eprior = make_shared<Uniform>(0, 1);
-    if (!phiprior)
-        phiprior = make_shared<Uniform>(0, 2*M_PI);
-    if (!wprior)
-        wprior = make_shared<Uniform>(0, 2*M_PI);
+    // if (!Pprior)
+    //     Pprior = make_shared<LogUniform>(1.0, 1000.0);
+    // if (!Kprior)
+    //     Kprior = make_shared<Uniform>(0.0, 100.0);
+    // if (!eprior)
+    //     eprior = make_shared<Uniform>(0, 1);
+    // if (!phiprior)
+    //     phiprior = make_shared<Uniform>(0, 2*M_PI);
+    // if (!wprior)
+    //     wprior = make_shared<Uniform>(0, 2*M_PI);
 }
 
 void RVConditionalPrior::set_default_priors(const RVData &data)
 {
-    Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
-    Kprior = make_shared<Uniform>(0.0, data.get_RV_span());
+    auto defaults = DefaultPriors(data);
+    if (!Pprior) Pprior = defaults.get("Pprior");
+    if (!Kprior) Kprior = defaults.get("Kprior");
+    if (!eprior) eprior = defaults.get("eprior");
+    if (!phiprior) phiprior = defaults.get("phiprior");
+    if (!wprior) wprior = defaults.get("wprior");
 }
 
 void RVConditionalPrior::use_hyperpriors()

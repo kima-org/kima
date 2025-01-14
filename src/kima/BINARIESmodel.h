@@ -9,6 +9,7 @@
 #include "kepler.h"
 #include "postkepler.h"
 #include "AMDstability.h"
+#include "default_priors.h"
 
 using namespace std;
 using namespace DNest4;
@@ -73,16 +74,11 @@ class KIMA_API BINARIESmodel
 
         //primary
         std::vector<double> offsets; // between instruments
-            //   std::vector<double>(0, data.number_instruments - 1);
         std::vector<double> jitters; // for each instrument
-            //   std::vector<double>(data.number_instruments);
               
         //secondary
         std::vector<double> offsets_2; // between instruments
-            //   std::vector<double>(0, data.number_instruments - 1);
         std::vector<double> jitters_2; // for each instrument
-            //   std::vector<double>(data.number_instruments);
-            
         
         
         //std::vector<double> betas = // "slopes" for each indicator
@@ -106,11 +102,8 @@ class KIMA_API BINARIESmodel
 
         // The signal
         std::vector<double> mu;// the RV model
-                            //std::vector<long double>(RVData::get_instance().N());
         std::vector<double> mu_2;// the RV model for secondary
-                            //std::vector<long double>(RVData::get_instance().N()); // changed to imitate RVFWHM get_data replaced by get_instance
         void calculate_mu();
-//         void calculate_mu_2();
         void calculate_mus();
         void add_known_object();
         void add_known_object_sb2();
