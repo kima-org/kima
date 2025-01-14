@@ -443,7 +443,20 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False, us
         else:
             raise ValueError('either `use_ptp` or `use_std` should be True')
     return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
-                        
+
+
+def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, n=None, lower_limit=1.0):
+    from kima.distributions import GaussianMixture
+    periods = [T0_2 - T0_1]
+    errors = [float(np.hypot(T0_1_err, T0_2_err))]
+    i = 2
+    while (periods[0] / i) > lower_limit:
+        periods.append(periods[0] / i)
+        errors.append(errors[0] / i)
+        i += 1
+    return GaussianMixture(periods, errors, lower_limit, np.inf)
+
+
 
 
 # def get_planet_mass_latex(P, K, e, units='earth', **kwargs):
