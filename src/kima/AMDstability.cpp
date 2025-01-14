@@ -285,5 +285,8 @@ namespace AMD
         return C_mmr;
     }
 
+}
 
+NB_MODULE(AMDstability, m) {
+    m.def("AMD_stable", &AMD::AMD_stable);
 }

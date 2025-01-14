@@ -6,6 +6,12 @@
 #include <algorithm>
 #include <numeric>
 
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/vector.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
 // gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
 #define G13 0.0666378476025686
 // 1 Jupiter mass in Earth masses
@@ -35,5 +41,4 @@ namespace AMD
     inline double F(double e, double y, double a);
     inline double dFde(double e, double y, double a);
     double relative_AMD_MMR_overlap(double mu1, double mu2, double a1, double a2);
-
 }

@@ -154,6 +154,10 @@ nanobind_add_module(postkepler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/postkepler.cpp src/kima/kepler.cpp)
 target_compile_features(postkepler PRIVATE cxx_std_17)
 
+nanobind_add_module(AMDstability STABLE_ABI NB_STATIC NB_DOMAIN kima 
+                    src/kima/AMDstability.cpp)
+target_compile_features(AMDstability PRIVATE cxx_std_17)
+
 nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/GP.cpp)
 target_compile_features(GP PRIVATE cxx_std_17)
@@ -193,7 +197,7 @@ target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module math distributions kepler GP transits)
+foreach(module math distributions kepler GP transits AMDstability)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
