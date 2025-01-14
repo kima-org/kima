@@ -35,7 +35,7 @@ def get_model_id(model, star=None, add_timestamp=True):
         id = star + '_'
 
     id += f'k{model.npmax}_' if model.fix else f'k0{model.npmax}_'
-    id += f'd{model.trend_degree}_' if model.trend else ''
+    id += f'd{model.degree}_' if model.trend else ''
     try:
         id += f'studentt_' if model.studentt else ''
     except AttributeError:
