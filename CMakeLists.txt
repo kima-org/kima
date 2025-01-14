@@ -76,7 +76,7 @@ nanobind_add_module(math STABLE_ABI NB_STATIC NB_DOMAIN kima
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp 
                     src/kima/InverseGamma.cpp src/kima/InverseMoment.cpp
-                    src/kima/ExponentialRayleighMixture.cpp)
+                    src/kima/ExponentialRayleighMixture.cpp src/kima/GaussianMixture.cpp)
 
 nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
