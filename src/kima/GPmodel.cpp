@@ -76,37 +76,36 @@ void GPmodel::eta2_larger_eta3(double factor) {
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    beta_prior = make_prior<Gaussian>(0, 1);
+    auto defaults = DefaultPriors(data);
 
-    if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+    beta_prior = defaults.get("beta_prior");
+
+    if (!Cprior) 
+        Cprior = defaults.get("Cprior");
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1*data.get_max_RV_span()), 
-            data.get_max_RV_span()
-        );
+        Jprior = defaults.get("Jprior");
 
-    if (trend){
+    if (trend)
+    {
         if (degree == 0)
             throw std::logic_error("trend=true but degree=0");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 && !slope_prior)
-            slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
+            slope_prior = defaults.get("slope_prior");
         if (degree >= 2 && !quadr_prior)
-            quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
+            quadr_prior = defaults.get("quadr_prior");
         if (degree == 3 && !cubic_prior)
-            cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
+            cubic_prior = defaults.get("cubic_prior");
     }
 
-    // if offsets_prior is not (re)defined, assume a default
     if (data._multi && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+        offsets_prior = defaults.get("offsets_prior");
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
     {
-        // if individual_offset_prior is not (re)defined, assume a offsets_prior
+        // if individual_offset_prior is not (re)defined, assign it offsets_prior
         if (!individual_offset_prior[j])
             individual_offset_prior[j] = offsets_prior;
     }
@@ -122,7 +121,8 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (transiting_planet) {
+    if (transiting_planet)
+    {
         for (size_t i = 0; i < n_transiting_planet; i++)
         {
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
@@ -139,38 +139,38 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
     case qp:
     case spleaf_esp:
         if (!eta1_prior)
-            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+            eta1_prior = defaults.get("eta1_prior");
         if (!eta2_prior)
-            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+            eta2_prior = defaults.get("eta2_prior");
         if (!eta3_prior)
-            eta3_prior = make_prior<Uniform>(10, 40);
+            eta3_prior = defaults.get("eta3_prior");
         if (!eta4_prior)
-            eta4_prior = make_prior<Uniform>(0.2, 5);
+            eta4_prior = defaults.get("eta4_prior");
         break;
 
     case per:
         if (!eta1_prior)
-            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+            eta1_prior = defaults.get("eta1_prior");
         if (!eta3_prior)
-            eta3_prior = make_prior<Uniform>(10, 40);
+            eta3_prior = defaults.get("eta3_prior");
         if (!eta4_prior)
-            eta4_prior = make_prior<Uniform>(0.2, 5);
+            eta4_prior = defaults.get("eta4_prior");
         break;
 
     case spleaf_exp:
     case spleaf_matern32:
     case spleaf_es:
         if (!eta1_prior)
-            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+            eta1_prior = defaults.get("eta1_prior");
         if (!eta2_prior)
-            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+            eta2_prior = defaults.get("eta2_prior");
         break;
 
     case spleaf_sho:
         if (!eta1_prior)
-            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+            eta1_prior = defaults.get("eta1_prior");
         if (!eta3_prior)
-            eta3_prior = make_prior<Uniform>(10, 40);
+            eta3_prior = defaults.get("eta3_prior");
         if (!Q_prior)
             Q_prior = make_prior<Uniform>(0.2, 5);
         break;

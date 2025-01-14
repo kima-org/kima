@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
+#include "default_priors.h"
 #include "GP.h"
 
 #include <Eigen/Core>
