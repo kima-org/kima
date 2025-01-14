@@ -1,6 +1,7 @@
 #include "RVmodel.h"
 
 #define TIMING false
+#define DEBUG false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
@@ -64,49 +65,48 @@ void RVmodel::set_transiting_planet(size_t n)
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    beta_prior = make_prior<Gaussian>(0, 1);
+    auto defaults = DefaultPriors(data);
 
-    if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+    beta_prior = defaults.get("beta_prior");
+
+    if (!Cprior) 
+        Cprior = defaults.get("Cprior");
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1*data.get_max_RV_span()), 
-            data.get_max_RV_span()
-        );
+        Jprior = defaults.get("Jprior");
 
-    // stellar jitter is zero by default
     if (data._multi && !stellar_jitter_prior)
-        stellar_jitter_prior = make_prior<Fixed>(0.0);
+        stellar_jitter_prior = defaults.get("stellar_jitter_prior");
 
     if (jitter_propto_indicator && !jitter_slope_prior)
         jitter_slope_prior = make_prior<Uniform>(0, 50);
 
-    if (trend){
+    if (trend)
+    {
         if (degree == 0)
             throw std::logic_error("trend=true but degree=0");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 && !slope_prior)
-            slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
+            slope_prior = defaults.get("slope_prior");
         if (degree >= 2 && !quadr_prior)
-            quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
+            quadr_prior = defaults.get("quadr_prior");
         if (degree == 3 && !cubic_prior)
-            cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
+            cubic_prior = defaults.get("cubic_prior");
     }
 
-    // if offsets_prior is not (re)defined, assume a default
     if (data._multi && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+        offsets_prior = defaults.get("offsets_prior");
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
     {
-        // if individual_offset_prior is not (re)defined, assume a offsets_prior
+        // if individual_offset_prior is not (re)defined, assign it offsets_prior
         if (!individual_offset_prior[j])
             individual_offset_prior[j] = offsets_prior;
     }
 
-    if (known_object) { // KO mode!
+    // KO mode!
+    if (known_object) { 
         for (size_t i = 0; i < n_known_object; i++)
         {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
@@ -117,7 +117,8 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (transiting_planet) {
+    if (transiting_planet)
+    {
         for (size_t i = 0; i < n_transiting_planet; i++)
         {
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
@@ -128,10 +129,12 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (studentt) {
-        if (!nu_prior)
-            nu_prior = make_prior<LogUniform>(2, 1000);
-    }
+    if (studentt && !nu_prior)
+            nu_prior = defaults.get("nu_prior");
+
+    #if DEBUG
+    std::cout << "setPriors done" << std::endl;
+    #endif
 
 }
 
@@ -742,7 +745,7 @@ void RVmodel::print(std::ostream& out) const
         
     if (data._multi){
         for(int j=0; j<offsets.size(); j++){
-            out<<offsets[j]<<'\t';
+            out << offsets[j] << '\t';
         }
     }
 
@@ -754,19 +757,19 @@ void RVmodel::print(std::ostream& out) const
     }
     
     if(known_object){ // KO mode!
-        for (auto P: KO_P) out << P << "\t";
-        for (auto K: KO_K) out << K << "\t";
+        for (auto P: KO_P)     out << P << "\t";
+        for (auto K: KO_K)     out << K << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
-        for (auto e: KO_e) out << e << "\t";
-        for (auto w: KO_w) out << w << "\t";
+        for (auto e: KO_e)     out << e << "\t";
+        for (auto w: KO_w)     out << w << "\t";
     }
 
     if(transiting_planet){
-        for (auto P: TR_P) out << P << "\t";
-        for (auto K: TR_K) out << K << "\t";
+        for (auto P: TR_P)   out << P  << "\t";
+        for (auto K: TR_K)   out << K  << "\t";
         for (auto Tc: TR_Tc) out << Tc << "\t";
-        for (auto e: TR_e) out << e << "\t";
-        for (auto w: TR_w) out << w << "\t";
+        for (auto e: TR_e)   out << e  << "\t";
+        for (auto w: TR_w)   out << w  << "\t";
     }
 
     planets.print(out);
@@ -874,7 +877,7 @@ string RVmodel::description() const
 */
 void RVmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
-    fout << std::boolalpha;
+    fout << std::boolalpha << std::fixed;
 
     fout << "; " << timestamp() << endl << endl;
 
@@ -916,9 +919,7 @@ void RVmodel::save_setup() {
         fout << n << ",";
     fout << endl;
 
-    fout.precision(15);
     fout << "M0_epoch: " << data.M0_epoch << endl;
-    fout.precision(6);
 
     fout << endl;
 
@@ -988,6 +989,10 @@ void RVmodel::save_setup() {
 
     fout << endl;
 	fout.close();
+
+    #if DEBUG
+    std::cout << "kima_model_setup.txt saved" << std::endl;
+    #endif
 }
 
 

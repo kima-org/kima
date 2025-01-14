@@ -3,6 +3,7 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 namespace nb = nanobind;
 using namespace nb::literals;
 
@@ -11,6 +12,7 @@ using namespace nb::literals;
 #include "InverseGamma.h"
 #include "InverseMoment.h"
 #include "ExponentialRayleighMixture.h"
+#include "GaussianMixture.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
@@ -165,6 +167,27 @@ NB_MODULE(distributions, m)
             }
         );
 
+    nb::class_<DNest4::TruncatedGaussian, DNest4::ContinuousDistribution>(m, "TruncatedGaussian", "docs")
+        .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a)
+        .def_ro("loc", &DNest4::TruncatedGaussian::center)
+        .def_ro("scale", &DNest4::TruncatedGaussian::width)
+        .def_ro("lower", &DNest4::TruncatedGaussian::lower)
+        .def_ro("upper", &DNest4::TruncatedGaussian::upper)
+        .def("__repr__", [](const DNest4::TruncatedGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::TruncatedGaussian::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::TruncatedGaussian::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::TruncatedGaussian::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::TruncatedGaussian &d) { 
+                return std::make_tuple(d.center, d.width, d.lower, d.upper); 
+        })
+        .def("__setstate__",
+             [](DNest4::TruncatedGaussian &d, const _state_type &state) {
+                new (&d) DNest4::TruncatedGaussian(std::get<0>(state), std::get<1>(state), 
+                                                   std::get<2>(state), std::get<3>(state));
+            }
+        );
 
     // Kumaraswamy.cpp
     nb::class_<DNest4::Kumaraswamy, DNest4::ContinuousDistribution>(m, "Kumaraswamy", "Kumaraswamy distribution (similar to a Beta distribution)")
@@ -324,7 +347,6 @@ NB_MODULE(distributions, m)
                 new (&d) DNest4::Uniform(std::get<0>(state), std::get<1>(state));
             }
         );
-        
     
     nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle", "Uniform distribuion in [0, 2*PI]")
         .def(nb::init<>())

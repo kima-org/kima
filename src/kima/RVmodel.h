@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
+#include "default_priors.h"
 
 using namespace std;
 using namespace DNest4;
