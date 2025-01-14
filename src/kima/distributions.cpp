@@ -12,7 +12,6 @@ using namespace nb::literals;
 #include "InverseGamma.h"
 #include "InverseMoment.h"
 #include "ExponentialRayleighMixture.h"
-#include "GaussianMixture.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
