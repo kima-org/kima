@@ -63,6 +63,10 @@ set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH})
 set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
 
+set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp 
+                 src/kima/default_priors.cpp
+                 src/kima/kepler.cpp src/kima/AMDstability.cpp)
+
 # compile the extension modules
 # this will make them available as kima.module
 
@@ -78,52 +82,44 @@ nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
 
 nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/ConditionalPrior.cpp src/kima/Data.cpp)
+                    ${COMMON_UNITS})
 
 # different models, with their corresponding dependencies
 nanobind_add_module(RVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/RVmodel.cpp ${COMMON_UNITS})
 
 nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/OutlierRVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/OutlierRVmodel.cpp ${COMMON_UNITS})
 
 nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/TRANSITmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/transits.cpp src/kima/AMDstability.cpp)
+                    src/kima/TRANSITmodel.cpp 
+                    ${COMMON_UNITS} src/kima/transits.cpp)
 
 nanobind_add_module(GPmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/GPmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/GP.cpp)
+                    src/kima/GPmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
 
 nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/SPLEAFmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/GP.cpp)
+                    src/kima/SPLEAFmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
 
 nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/GP.cpp)
+                    src/kima/RVFWHMmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
 
 nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMRHKmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/RVFWHMRHKmodel.cpp ${COMMON_UNITS})
 
 nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/BINARIESmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/BINARIESmodel.cpp 
+                    ${COMMON_UNITS} src/kima/postkepler.cpp)
                     
 nanobind_add_module(GAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/GAIAmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/GAIAmodel.cpp ${COMMON_UNITS})
                     
 nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVGAIAmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/postkepler.cpp src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                    src/kima/RVGAIAmodel.cpp
+                    ${COMMON_UNITS} src/kima/postkepler.cpp)
                     
 nanobind_add_module(ETVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/ETVmodel.cpp src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp)
+                    src/kima/ETVmodel.cpp ${COMMON_UNITS})
 
 
 # compile the Sampler module to create the kima.run function
@@ -143,6 +139,7 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                     src/kima/kepler.cpp src/kima/postkepler.cpp 
                     src/kima/transits.cpp src/kima/AMDstability.cpp
+                    src/kima/default_priors.cpp
                     src/kima/GP.cpp)
 
 
