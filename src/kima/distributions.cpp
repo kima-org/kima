@@ -12,6 +12,7 @@ using namespace nb::literals;
 #include "InverseGamma.h"
 #include "InverseMoment.h"
 #include "ExponentialRayleighMixture.h"
+#include "GaussianMixture.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
@@ -418,5 +419,15 @@ NB_MODULE(distributions, m)
         //         new (&d) DNest4::ExponentialRayleighMixture(std::get<0>(state), std::get<1>(state));
         //     }
         // );
+    
+    // GaussianMixture
+    nb::class_<DNest4::GaussianMixture, DNest4::ContinuousDistribution>(m, "GaussianMixture", "docs")
+        .def(nb::init<std::vector<double>, std::vector<double>>(), "means"_a, "sigmas"_a, "docs")
+        .def(nb::init<std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "lower"_a, "upper"_a, "docs")
+        .def(nb::init<std::vector<double>, std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "weights"_a, "lower"_a, "upper"_a, "docs")
+        .def("__repr__", [](const DNest4::GaussianMixture &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::GaussianMixture::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
+        .def("ppf", &DNest4::GaussianMixture::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
+        .def("logpdf", &DNest4::GaussianMixture::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
 
 }
