@@ -19,12 +19,19 @@ void RVFWHMmodel::initialize_from_data(RVData& data)
     individual_offset_prior.resize(data.number_instruments - 1);
     individual_offset_fwhm_prior.resize(data.number_instruments - 1);
 
+    size_t N = data.N();
+
     // resize RV, FWHM model vectors
-    mu.resize(data.N());
-    mu_fwhm.resize(data.N());
+    mu.resize(N);
+    mu_fwhm.resize(N);
     // resize covariance matrices
-    C.resize(data.N(), data.N());
-    C_fwhm.resize(data.N(), data.N());
+    C.resize(N, N);
+    C_fwhm.resize(N, N);
+
+    // copy uncertainties
+    sig_copy = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(data.sig.data(), N);
+    auto sig_fwhm = data.get_actind()[1]; // temporary
+    sig_fwhm_copy = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(sig_fwhm.data(), N);
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
@@ -64,59 +71,49 @@ void RVFWHMmodel::set_transiting_planet(size_t n)
 /// set default priors if the user didn't change them
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
+    auto defaults = DefaultPriors(data);
+
     // systemic velocity
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+        Cprior = defaults.get("Cprior");
     
     // "systemic FWHM"
     if (!C2prior)
-    {
-        auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
-        auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
-        C2prior = make_prior<Uniform>(minFWHM, maxFWHM);
-    }
+        C2prior = defaults.get("C2prior");
 
     // jitter for the RVs
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1 * data.get_max_RV_span()), data.get_max_RV_span());
+        Jprior = defaults.get("Jprior");
 
     // jitter for the FWHM
     if (!J2prior)
-    {
-        auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
-        auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
-        auto spanFWHM = maxFWHM - minFWHM;
-        J2prior = make_prior<ModifiedLogUniform>(min(1.0, 0.1 * spanFWHM), spanFWHM);
-    }
+        J2prior = defaults.get("J2prior");
 
-    if (trend){
+    if (trend)
+    {
         if (degree == 0)
             throw std::logic_error("trend=true but degree=0");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 && !slope_prior)
-            slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
+            slope_prior = defaults.get("slope_prior");
         if (degree >= 2 && !quadr_prior)
-            quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
+            quadr_prior = defaults.get("quadr_prior");
         if (degree == 3 && !cubic_prior)
-            cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
+            cubic_prior = defaults.get("cubic_prior");
     }
 
     // if offsets_prior is not (re)defined, assume a default
     if (data._multi)
     {
         if (!offsets_prior)
-            offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
-        if (!offsets_fwhm_prior) {
-            auto minFWHM = *min_element(data.actind[0].begin(), data.actind[0].end());
-            auto maxFWHM = *max_element(data.actind[0].begin(), data.actind[0].end());
-            auto spanFWHM = maxFWHM - minFWHM;
-            offsets_fwhm_prior = make_prior<Uniform>( -spanFWHM, spanFWHM );
-        }
+            offsets_prior = defaults.get("offsets_prior");
+        if (!offsets_fwhm_prior)
+            offsets_fwhm_prior = defaults.get("offsets_fwhm_prior");
 
+        // if individual_offset_prior is not (re)defined, assume offsets_prior
         for (size_t j = 0; j < data.number_instruments - 1; j++)
         {
-            // if individual_offset_prior is not (re)defined, assume offsets_prior
             if (!individual_offset_prior[j])
                 individual_offset_prior[j] = offsets_prior;
             if (!individual_offset_fwhm_prior[j])
@@ -124,8 +121,9 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (known_object) { // KO mode!
-        // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
+    // KO mode!
+    if (known_object)
+    {
         for (int i = 0; i < n_known_object; i++)
         {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
@@ -136,7 +134,8 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         }
     }
 
-    if (transiting_planet) {
+    if (transiting_planet)
+    {
         for (size_t i = 0; i < n_transiting_planet; i++)
         {
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
@@ -157,24 +156,24 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     {
     case qp:
         if (!eta1_prior)
-            eta1_prior = make_prior<LogUniform>(0.1, data.get_max_RV_span());
+            eta1_prior = defaults.get("eta1_prior");
         if (!eta1_fwhm_prior)
-            eta1_fwhm_prior = make_prior<LogUniform>(0.1, data.get_actind_span(0));
+            eta1_fwhm_prior = defaults.get("eta1_fwhm_prior");
 
         if (!eta2_prior)
-            eta2_prior = make_prior<LogUniform>(1, data.get_timespan());
+            eta2_prior = defaults.get("eta2_prior");
         if (!eta2_fwhm_prior)
-            eta2_fwhm_prior = make_prior<LogUniform>(1, data.get_timespan());
+            eta2_fwhm_prior = defaults.get("eta2_fwhm_prior");
 
         if (!eta3_prior)
-            eta3_prior = make_prior<Uniform>(10, 40);
+            eta3_prior = defaults.get("eta3_prior");
         if (!eta3_fwhm_prior)
-            eta3_fwhm_prior = make_prior<Uniform>(10, 40);
+            eta3_fwhm_prior = defaults.get("eta3_fwhm_prior");
 
         if (!eta4_prior)
-            eta4_prior = make_prior<Uniform>(0.2, 5);
+            eta4_prior = defaults.get("eta4_prior");
         if (!eta4_fwhm_prior)
-            eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
+            eta4_fwhm_prior = defaults.get("eta4_fwhm_prior");
         break;
     
     default:
@@ -391,40 +390,63 @@ void RVFWHMmodel::calculate_mu_fwhm()
 /// @brief Fill the GP covariance matrix
 void RVFWHMmodel::calculate_C()
 {
-    size_t N = data.N();
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    for (size_t i = 0; i < N; i++)
+    switch (kernel)
     {
-        for (size_t j = i; j < N; j++)
-        {
-            double r = data.t[i] - data.t[j];
-            C(i, j) = eta1*eta1*exp(-0.5*pow(r/eta2, 2)
-                        -2.0*pow(sin(M_PI*r/eta3)/eta4, 2) );
+    case qp:
+        C = QP(data.t, eta1, eta2, eta3, eta4);
+        break;
+    default:
+        break;
+    }
 
-            if (i == j)
-            {
-                double sig = data.sig[i];
-                if (data._multi)
-                {
-                    double jit = jitters[data.obsi[i] - 1];
-                    C(i, j) += sig * sig + jit * jit;
-                }
-                else
-                {
-                    C(i, j) += sig * sig + jitter * jitter;
-                }
-            }
-            else
-            {
-                C(j, i) = C(i, j);
-            }
+    if (data._multi)
+    {
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            double jit = jitters[data.obsi[i] - 1];
+            C(i, i) += data.sig[i] * data.sig[i] + jit * jit;
         }
     }
+    else
+    {
+        C.diagonal().array() += sig_copy.array().square() + jitter * jitter;
+    }
+
+
+
+    // /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+    // for (size_t i = 0; i < N; i++)
+    // {
+    //     for (size_t j = i; j < N; j++)
+    //     {
+    //         double r = data.t[i] - data.t[j];
+    //         C(i, j) = eta1*eta1*exp(-0.5*pow(r/eta2, 2)
+    //                     -2.0*pow(sin(M_PI*r/eta3)/eta4, 2) );
+
+    //         if (i == j)
+    //         {
+    //             double sig = data.sig[i];
+    //             if (data._multi)
+    //             {
+    //                 double jit = jitters[data.obsi[i] - 1];
+    //                 C(i, j) += sig * sig + jit * jit;
+    //             }
+    //             else
+    //             {
+    //                 C(i, j) += sig * sig + jitter * jitter;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             C(j, i) = C(i, j);
+    //         }
+    //     }
+    // }
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -438,40 +460,60 @@ void RVFWHMmodel::calculate_C()
 /// @brief Fill the GP covariance matrix
 void RVFWHMmodel::calculate_C_fwhm()
 {
-    size_t N = data.N();
-    auto t = data.get_t();
-    auto sig = data.get_actind()[1];
+    auto sig = data.get_actind()[1];    
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    for (size_t i = 0; i < N; i++)
+    switch (kernel)
     {
-        for (size_t j = i; j < N; j++)
-        {
-            double r = data.t[i] - data.t[j];
-            C_fwhm(i, j) = eta1_fw * eta1_fw * exp(-0.5 * pow(r / eta2_fw, 2) - 2.0 * pow(sin(M_PI * r / eta3_fw) / eta4_fw, 2));
+    case qp:
+        C_fwhm = QP(data.t, eta1_fw, eta2_fw, eta3_fw, eta4_fw);
+        break;
+    default:
+        break;
+    }
 
-            if (i == j)
-            {
-                if (data._multi)
-                {
-                    double jit = jitters[data.obsi[i] - 1];
-                    C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
-                }
-                else
-                {
-                    C_fwhm(i, j) += sig[i] * sig[i] + jitter * jitter;
-                }
-            }
-            else
-            {
-                C_fwhm(j, i) = C_fwhm(i, j);
-            }
+    if (data._multi)
+    {
+        for (size_t i = 0; i < data.N(); i++)
+        {
+            double jit = jitters[jitters.size() / 2 + data.obsi[i] - 1];
+            C_fwhm(i, i) += sig[i] * sig[i] + jit * jit;
         }
     }
+    else
+    {
+        C_fwhm.diagonal().array() += sig_fwhm_copy.array().square() + jitter_fwhm * jitter_fwhm;
+    }
+
+    // /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+    // for (size_t i = 0; i < N; i++)
+    // {
+    //     for (size_t j = i; j < N; j++)
+    //     {
+    //         double r = data.t[i] - data.t[j];
+    //         C_fwhm(i, j) = eta1_fw * eta1_fw * exp(-0.5 * pow(r / eta2_fw, 2) - 2.0 * pow(sin(M_PI * r / eta3_fw) / eta4_fw, 2));
+
+    //         if (i == j)
+    //         {
+    //             if (data._multi)
+    //             {
+    //                 double jit = jitters[data.obsi[i] - 1];
+    //                 C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
+    //             }
+    //             else
+    //             {
+    //                 C_fwhm(i, j) += sig[i] * sig[i] + jitter * jitter;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             C_fwhm(j, i) = C_fwhm(i, j);
+    //         }
+    //     }
+    // }
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -1080,6 +1122,26 @@ void RVFWHMmodel::save_setup() {
     }
     if (data._multi)
         fout << "offsets_prior: " << *offsets_prior << endl;
+
+
+    fout << endl << "[priors.GP]" << endl;
+    switch (kernel)
+    {
+    case qp:
+        fout << "eta1_prior: " << *eta1_prior << endl;
+        fout << "eta2_prior: " << *eta2_prior << endl;
+        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "eta4_prior: " << *eta4_prior << endl;
+        fout << endl;
+        fout << "eta1_fwhm_prior: " << *eta1_fwhm_prior << endl;
+        fout << "eta2_fwhm_prior: " << *eta2_fwhm_prior << endl;
+        fout << "eta3_fwhm_prior: " << *eta3_fwhm_prior << endl;
+        fout << "eta4_fwhm_prior: " << *eta4_fwhm_prior << endl;
+        break;
+    default:
+        break;
+    }
+
 
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();

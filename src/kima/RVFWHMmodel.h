@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
+#include "default_priors.h"
 #include "GP.h"
 
 #include <Eigen/Core>
@@ -57,6 +58,8 @@ class  RVFWHMmodel
         RVData data;
 
     private:
+        Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
+        Eigen::VectorXd sig_fwhm_copy;  // copy of FWHM uncertainties for the GP covariance
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
