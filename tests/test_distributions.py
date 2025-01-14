@@ -1,15 +1,18 @@
 
+from typing import Callable
+from functools import partial
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import pytest
 
-from scipy.stats import (cauchy, expon, norm, halfnorm, invgamma, laplace,
+from scipy.stats import (cauchy, expon, norm, halfnorm, truncnorm, invgamma, laplace,
                          loguniform, rayleigh, triang, uniform)
 from kumaraswamy import kumaraswamy
 
 
 from kima.distributions import (Cauchy, Exponential, Fixed, Kumaraswamy,
-                                Gaussian, HalfGaussian, InverseGamma, Laplace, LogUniform,
+                                Gaussian, HalfGaussian, TruncatedGaussian, 
+                                InverseGamma, Laplace, LogUniform, ModifiedLogUniform,
                                 Rayleigh, Triangular, Uniform, UniformAngle)
 
 def test_creation():
@@ -18,7 +21,11 @@ def test_creation():
     f = Fixed(2.5)
     k = Kumaraswamy(0.8, 3)
     g = Gaussian(0, 2)
+    hg = HalfGaussian(2)
+    tg = TruncatedGaussian(0, 2, -1, 1)
     u = Uniform(0, 10)
+    lu = LogUniform(0.1, 10)
+    mlu = ModifiedLogUniform(1, 10)
 
 def test_repr():
     u = Uniform(0, 2)
@@ -32,12 +39,14 @@ def loc_scale():
     return loc, scale
 
 @pytest.fixture
-def number():
-    return np.random.uniform(-20, 20)
+def number(n=1) -> np.ndarray:
+    def gen_number(n=1):
+        return np.random.uniform(-20, 20, size=n)
+    return gen_number
 
 @pytest.fixture
-def positive(n=1):
-    def gen_positive(n):
+def positive(n=1) -> np.ndarray | Callable[[int], np.ndarray]:
+    def gen_positive(n=1):
         return np.random.uniform(0, 10, size=n)
     return gen_positive
 
@@ -64,9 +73,10 @@ def test_cdf(loc_scale, number, positive):
             assert_allclose(dist2.cdf(r), dist1.cdf(r))
 
     # Fixed
-    assert_allclose(Fixed(number).cdf(number), 1.0)
-    assert_allclose(Fixed(number).cdf(number*2), 0.0)
-    assert_allclose(Fixed(number).cdf(number/10), 0.0)
+    n = number()
+    assert_allclose(Fixed(n).cdf(n), 1.0)
+    assert_allclose(Fixed(n).cdf(n*2), 0.0)
+    assert_allclose(Fixed(n).cdf(n/10), 0.0)
 
     # is Kumaraswamy(1, 1) the same as Uniform(0, 1) ?
     assert_allclose(Kumaraswamy(1, 1).cdf(0.5), uniform(0, 1).cdf(0.5))
@@ -74,7 +84,17 @@ def test_cdf(loc_scale, number, positive):
 
     # ModifiedLogUniform
     # ...
-        
+
+    # truncated distributions
+    a, b = np.sort(number(2))
+    pairs = [
+        (truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale), TruncatedGaussian(loc, scale, a, b)),
+    ]
+    for dist1, dist2 in pairs:
+        for r in dist1.rvs(N):
+            assert_allclose(dist2.cdf(r), dist1.cdf(r),
+                            err_msg=f"{r} ({a=}, {b=}, {loc=}, {scale=})")
+
     # Triangular
     for r in triang(c=0.75, scale=4).rvs(N):
         assert_allclose(Triangular(0, 3, 4).cdf(r), triang(c=0.75, scale=4).cdf(r))
@@ -116,7 +136,17 @@ def test_inverse_cdf(loc_scale, number, positive):
 
     # # ModifiedLogUniform
     # # ...
-        
+
+    # truncated distributions
+    a, b = np.sort(number(2))
+    pairs = [
+        (truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale), TruncatedGaussian(loc, scale, a, b)),
+    ]
+    for dist1, dist2 in pairs:
+        for r in np.random.rand(N):
+            assert_allclose(dist2.ppf(r), dist1.ppf(r),
+                            err_msg=f"{r} ({a=}, {b=}, {loc=}, {scale=})")
+
     # # Triangular
     # for r in triang(c=0.75, scale=4).rvs(N):
     #     assert_allclose(Triangular(0, 3, 4).cdf(r), triang(c=0.75, scale=4).cdf(r))
@@ -140,9 +170,10 @@ def test_logpdf(loc_scale, number, positive):
         assert_allclose(Exponential(scale).logpdf(r), expon(scale=scale).logpdf(r))
 
     # Fixed
-    assert_allclose(Fixed(number).logpdf(number), 0.0)
-    assert_allclose(Fixed(number).logpdf(number*2), -np.inf)
-    assert_allclose(Fixed(number).logpdf(number/10), -np.inf)
+    n = number()
+    assert_allclose(Fixed(n).logpdf(n), 0.0)
+    assert_allclose(Fixed(n).logpdf(n*2), -np.inf)
+    assert_allclose(Fixed(n).logpdf(n/10), -np.inf)
     
     # Gaussian
     for r in norm(loc, scale).rvs(N):
@@ -174,7 +205,13 @@ def test_logpdf(loc_scale, number, positive):
 
     # ModifiedLogUniform
     # ...
-        
+
+    # TruncatedGaussian
+    a, b = np.sort(number(2))
+    dist1 = truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale)
+    for r in dist1.rvs(N):
+        assert_allclose(TruncatedGaussian(loc, scale, a, b).logpdf(r), dist1.logpdf(r))
+
     # Rayleigh
     for r in rayleigh(scale=scale).rvs(N):
         assert_allclose(Rayleigh(scale).logpdf(r), rayleigh(scale=scale).logpdf(r))
