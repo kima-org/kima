@@ -1,15 +1,7 @@
 from _typeshed import Incomplete
 from typing import Any
 
-class RVConditionalPrior:
-    Kprior: Incomplete
-    Pprior: Incomplete
-    eprior: Incomplete
-    phiprior: Incomplete
-    wprior: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
-
-class RVmodel:
+class GPmodel:
     Cprior: Incomplete
     Jprior: Incomplete
     KO_Kprior: Incomplete
@@ -17,6 +9,7 @@ class RVmodel:
     KO_eprior: Incomplete
     KO_phiprior: Incomplete
     KO_wprior: Incomplete
+    Q_prior: Incomplete
     TR_Kprior: Incomplete
     TR_Pprior: Incomplete
     TR_Tcprior: Incomplete
@@ -28,24 +21,27 @@ class RVmodel:
     degree: Incomplete
     directory: Incomplete
     enforce_stability: Incomplete
+    eta1_prior: Incomplete
+    eta2_prior: Incomplete
+    eta3_prior: Incomplete
+    eta4_prior: Incomplete
+    eta5_prior: Incomplete
+    eta6_prior: Incomplete
+    eta7_prior: Incomplete
     fix: Incomplete
     indicator_correlations: Incomplete
     individual_offset_prior: Incomplete
-    jitter_propto_indicator: Incomplete
-    jitter_propto_indicator_index: Incomplete
+    kernel: Incomplete
+    magnetic_cycle_kernel: Incomplete
     npmax: Incomplete
-    nu_prior: Incomplete
     offsets_prior: Incomplete
     quadr_prior: Incomplete
-    remove_label_switching_degeneracy: Incomplete
     slope_prior: Incomplete
     star_mass: Incomplete
-    stellar_jitter_prior: Incomplete
-    studentt: Incomplete
     trend: Incomplete
     def __init__(self, *args, **kwargs) -> None: ...
+    def eta2_larger_eta3(self, *args, **kwargs): ...
     def set_known_object(self, *args, **kwargs): ...
-    def set_loguniform_prior_Np(self, *args, **kwargs): ...
     def set_transiting_planet(self, *args, **kwargs): ...
     @property
     def data(self): ...
@@ -57,13 +53,3 @@ class RVmodel:
     def n_transiting_planet(self): ...
     @property
     def transiting_planet(self): ...
-
-class TRANSITConditionalPrior:
-    Pprior: Incomplete
-    RPprior: Incomplete
-    aprior: Incomplete
-    eprior: Incomplete
-    incprior: Incomplete
-    t0prior: Incomplete
-    wprior: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
