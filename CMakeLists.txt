@@ -67,6 +67,8 @@ set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp
                  src/kima/default_priors.cpp
                  src/kima/kepler.cpp src/kima/AMDstability.cpp)
 
+set(GP_UNITS src/kima/GP.cpp src/kima/bessel-library.cpp)
+
 # compile the extension modules
 # this will make them available as kima.module
 
@@ -96,13 +98,13 @@ nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     ${COMMON_UNITS} src/kima/transits.cpp)
 
 nanobind_add_module(GPmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/GPmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
+                    src/kima/GPmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
 
 nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/SPLEAFmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
+                    src/kima/SPLEAFmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
 
 nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMmodel.cpp ${COMMON_UNITS} src/kima/GP.cpp)
+                    src/kima/RVFWHMmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
 
 nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMRHKmodel.cpp ${COMMON_UNITS})
@@ -136,11 +138,11 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMRHKmodel.cpp
                     src/kima/ETVmodel.cpp
                     src/kima/SPLEAFmodel.cpp
-                    src/kima/Data.cpp src/kima/ConditionalPrior.cpp
-                    src/kima/kepler.cpp src/kima/postkepler.cpp 
-                    src/kima/transits.cpp src/kima/AMDstability.cpp
-                    src/kima/default_priors.cpp
-                    src/kima/GP.cpp)
+                    ${COMMON_UNITS}
+                    src/kima/postkepler.cpp 
+                    src/kima/transits.cpp
+                    ${GP_UNITS}
+                    )
 
 
 nanobind_add_module(kepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
@@ -156,7 +158,7 @@ nanobind_add_module(AMDstability STABLE_ABI NB_STATIC NB_DOMAIN kima
 target_compile_features(AMDstability PRIVATE cxx_std_17)
 
 nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/GP.cpp)
+                    ${GP_UNITS})
 target_compile_features(GP PRIVATE cxx_std_17)
 
 nanobind_add_module(transits STABLE_ABI NB_STATIC NB_DOMAIN kima 
