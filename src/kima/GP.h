@@ -9,6 +9,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
+#include "bessel-library.hpp"
 
 extern "C"
 {

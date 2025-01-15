@@ -306,8 +306,13 @@ _spleaf_ESP_PKernel<nharm>::_spleaf_ESP_PKernel(const VectorXd &t, std::array<do
     eta2 = eta * eta;
     f = 1.0 / (4 * eta2);
 
+#ifdef __APPLE__
     for (int i = 0; i <= nharm; i++)
         a[i] = std::cyl_bessel_i(i, f) * exp(-abs(f));
+#else
+    for (int i = 0; i <= nharm; i++)
+        a[i] = bessel::cyl_i(i, f, true);
+#endif
 
     a[0] /= 2.0;
 
