@@ -78,7 +78,8 @@ def _read_priors(res, setup=None):
 
     prior_dists = []
     for p in priors:
-        p = p.replace(';', ',')
+        p = p.replace(';', ',').replace('[', '').replace(']', '')
+        p = p.replace('inf', 'np.inf')
         if 'UniformAngle' in p:
             p = 'UniformAngle()'
         prior_dists.append(eval('distributions.' + p))
