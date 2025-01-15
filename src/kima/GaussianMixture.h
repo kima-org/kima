@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include <string>
 #include "DNest4.h"
 #include "utils.h"
 
@@ -36,7 +37,15 @@ class GaussianMixture:public ContinuousDistribution
 
         virtual std::ostream& print(std::ostream& out) const override
         {
-            out << "GaussianMixture()";
+            out << "GaussianMixture(";
+            out << "[";
+            for (auto &m : means) out << m << ", ";
+            out << "], [";
+            for (auto &s : sigmas) out << s << ", ";
+            out << "]";
+            if (lower != -inf || upper != inf)
+                out << ", " << lower << ", " << upper;
+            out << ")";
             return out;
         }
 };
