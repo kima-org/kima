@@ -39,13 +39,13 @@ def loc_scale():
     return loc, scale
 
 @pytest.fixture
-def number(n=1) -> np.ndarray:
+def number(n=1):
     def gen_number(n=1):
         return np.random.uniform(-20, 20, size=n)
     return gen_number
 
 @pytest.fixture
-def positive(n=1) -> np.ndarray | Callable[[int], np.ndarray]:
+def positive(n=1):
     def gen_positive(n=1):
         return np.random.uniform(0, 10, size=n)
     return gen_positive
