@@ -308,10 +308,10 @@ _spleaf_ESP_PKernel<nharm>::_spleaf_ESP_PKernel(const VectorXd &t, std::array<do
 
 #ifdef __APPLE__
     for (int i = 0; i <= nharm; i++)
-        a[i] = std::cyl_bessel_i(i, f) * exp(-abs(f));
+        a[i] = bessel::cyl_i(i, f, true);
 #else
     for (int i = 0; i <= nharm; i++)
-        a[i] = bessel::cyl_i(i, f, true);
+        a[i] = std::cyl_bessel_i(i, f) * exp(-abs(f));
 #endif
 
     a[0] /= 2.0;
