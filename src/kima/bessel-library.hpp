@@ -158,6 +158,7 @@ inline double pow_dd(double *x, double *y) { return pow(*x,*y); }
 // C++ LIBRARIES
 #include <complex>  // For complex variables. 
 #include <iostream> // For std::cerr, std::endl, ... .
+#include <climits>  // For INT_MAX
 // C++ LIBRARIES
 //-^------------------------------------------------------------------------
 
