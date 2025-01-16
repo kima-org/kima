@@ -283,6 +283,8 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
 def get_bins(res, start=None, end=None, nbins=100):
     try:
         _start, _end = distribution_support(res.priors['Pprior'])
+        if _start == 0.0:
+            _start = res.posteriors.P[res.posteriors.P > 0].min()
     except KeyError:
         _start, _end = 1e-1, 1e7
 
@@ -301,30 +303,44 @@ def aliases(P):
     alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
     return alias_year, alias_solar_day, alias_sidereal_day
 
-def FIP(results, oversampling=5):
+def FIP(results, oversampling=1, nbins=2000):
     import matplotlib.pyplot as plt
-    bins = get_bins(results, nbins=2000)
-    # limits, in frequency
-    Dw = 1 / np.ptp(results.data.t) / oversampling
-    a, b = 1/bins - Dw, 1/bins + Dw
+    # # bins, in period
+    # bins = get_bins(results, nbins=nbins)
+
+    Tobs = np.ptp(results.data.t)
+    Δf = 1 / Tobs / oversampling
+    bins = 1 / np.arange(Δf, 1.0, Δf)
+    a, b = 1/bins - Δf, 1/bins + Δf
 
     # # alias limits, in frequency
     # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
     # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
 
-    c = np.logical_and(a[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b[:,None,None])\
-        .any(axis=2).sum(axis=1)
+    P = results.posteriors.P
+
+    c = np.logical_and(
+        # 
+            a[:, None, None] < 1.0 / P, 
+            1.0 / P < b[:, None, None]
+        # 
+        ).any(axis=2).sum(axis=1)
 
     # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
     # _21 = np.logical_and(a_alias_year1[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year1[:,None,None])
     # _22 = np.logical_and(a_alias_year2[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year2[:,None,None])
     # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
 
-    fig, ax = plt.subplots(1, 1, constrained_layout=True)
-    ax.semilogx(bins, c / results.ESS)
-    # ax.axhline(1.0, color='k', ls='--', alpha=0.3)
-    # ax.axhline(0.5, color='k', ls='--', alpha=0.3)
-    ax.set(xlabel='Period [days]', ylabel='TIP')
+    TIP = c / results.ESS
+    FIP = 1.0 - TIP
+
+    fig, axs = plt.subplots(2, 1, constrained_layout=True)
+    axs[0].semilogx(bins, TIP)
+    axs[1].semilogx(bins, -np.log10(FIP))
+    # axs[0].axhline(1.0, color='k', ls='--', alpha=0.3)
+    # axs[0].axhline(0.5, color='k', ls='--', alpha=0.3)
+    axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1))
+    axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
 
 
 def FIP_count_detections(results, alpha=0.05, Ptrue=None):
