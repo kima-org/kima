@@ -18,27 +18,49 @@ using namespace nb::literals;
 using _state_type = std::tuple<double, double, double, double>;
 
 
+auto CDF_DOC = R"D(
+Cumulative distribution function evaluated at `x`
+
+Args:
+    x (float): point at which to evaluate the CDF
+)D";
+
+auto PPF_DOC = R"D(
+Percent point function (inverse of cdf) evaluated at `q`
+
+Args:
+    q (float): point at which to evaluate the PPF
+)D";
+
+auto LOG_PDF_DOC = R"D(
+Logarithm of the probability density function evaluated at `x`
+
+Args:
+    x (float): point at which to evaluate the PDF
+)D";
+
 NB_MODULE(distributions, m)
 {
     nb::set_leak_warnings(false);
     nb::class_<DNest4::RNG>(m, "RNG")
         .def(nb::init<unsigned int>(), "seed"_a)
-        #
-        .def("rand", &DNest4::RNG::rand)
-        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N); });
+        // 
+        .def("rand", &DNest4::RNG::rand, "Uniform(0, 1)")
+        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N+1); }, "IntegerUniform(0, N)");
         //.def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
     //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
+    nb::class_<DNest4::DiscreteDistribution>(m, "DiscreteDistribution");
 
     // Cauchy.cpp
     nb::class_<DNest4::Cauchy, DNest4::ContinuousDistribution>(m, "Cauchy", "Cauchy distribution")
         .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Cauchy::center)
-        .def_rw("scale", &DNest4::Cauchy::width)
+        .def_rw("loc", &DNest4::Cauchy::center, "Location parameter")
+        .def_rw("scale", &DNest4::Cauchy::width, "Scale parameter")
         .def("__repr__", [](const DNest4::Cauchy &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Cauchy::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Cauchy::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Cauchy::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Cauchy::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Cauchy::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Cauchy::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Cauchy &d) { 
@@ -52,14 +74,14 @@ NB_MODULE(distributions, m)
 
     nb::class_<DNest4::TruncatedCauchy, DNest4::ContinuousDistribution>(m, "TruncatedCauchy", "docs")
         .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a)
-        .def_ro("loc", &DNest4::TruncatedCauchy::center)
-        .def_ro("scale", &DNest4::TruncatedCauchy::width)
+        .def_ro("loc", &DNest4::TruncatedCauchy::center, "Location parameter")
+        .def_ro("scale", &DNest4::TruncatedCauchy::width, "Scale parameter")
         .def_ro("lower", &DNest4::TruncatedCauchy::lower)
         .def_ro("upper", &DNest4::TruncatedCauchy::upper)
         .def("__repr__", [](const DNest4::TruncatedCauchy &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::TruncatedCauchy::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::TruncatedCauchy::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::TruncatedCauchy::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::TruncatedCauchy::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::TruncatedCauchy::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::TruncatedCauchy::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::TruncatedCauchy &d) { 
@@ -76,9 +98,9 @@ NB_MODULE(distributions, m)
     nb::class_<DNest4::Exponential, DNest4::ContinuousDistribution>(m, "Exponential", "Exponential distribution")
         .def(nb::init<double>(), "scale"_a)
         .def("__repr__", [](const DNest4::Exponential &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Exponential::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Exponential::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Exponential::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Exponential::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Exponential::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Exponential::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Exponential &d) { 
@@ -96,9 +118,9 @@ NB_MODULE(distributions, m)
         .def_ro("lower", &DNest4::TruncatedExponential::lower)
         .def_ro("upper", &DNest4::TruncatedExponential::upper)
         .def("__repr__", [](const DNest4::TruncatedExponential &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::TruncatedExponential::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::TruncatedExponential::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::TruncatedExponential::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::TruncatedExponential::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::TruncatedExponential::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::TruncatedExponential::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::TruncatedExponential &d) { 
@@ -113,11 +135,11 @@ NB_MODULE(distributions, m)
     // Fixed.cpp
     nb::class_<DNest4::Fixed, DNest4::ContinuousDistribution>(m, "Fixed", "'Fixed' distribution")
         .def(nb::init<double>(), "value"_a)
-        .def_rw("val", &DNest4::Fixed::val)
+        .def_rw("val", &DNest4::Fixed::val, "Fixed value of the parameter")
         .def("__repr__", [](const DNest4::Fixed &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Fixed::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Fixed::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Fixed::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Fixed::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Fixed::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Fixed::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Fixed &d) { 
@@ -132,12 +154,12 @@ NB_MODULE(distributions, m)
     // Gaussian.cpp
     nb::class_<DNest4::Gaussian, DNest4::ContinuousDistribution>(m, "Gaussian", "Gaussian distribution")
         .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Gaussian::center)
-        .def_rw("scale", &DNest4::Gaussian::width)
+        .def_rw("loc", &DNest4::Gaussian::center, "Location parameter")
+        .def_rw("scale", &DNest4::Gaussian::width, "Scale parameter")
         .def("__repr__", [](const DNest4::Gaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Gaussian::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Gaussian::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Gaussian::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Gaussian::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Gaussian::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Gaussian::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Gaussian &d) { 
@@ -151,11 +173,11 @@ NB_MODULE(distributions, m)
 
     nb::class_<DNest4::HalfGaussian, DNest4::ContinuousDistribution>(m, "HalfGaussian", "Half-Gaussian distribution")
         .def(nb::init<double>(), "scale"_a)
-        .def_rw("scale", &DNest4::HalfGaussian::width)
+        .def_rw("scale", &DNest4::HalfGaussian::width, "Scale parameter")
         .def("__repr__", [](const DNest4::HalfGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::HalfGaussian::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::HalfGaussian::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::HalfGaussian::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::HalfGaussian::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::HalfGaussian::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::HalfGaussian::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::HalfGaussian &d) { 
@@ -167,16 +189,16 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::TruncatedGaussian, DNest4::ContinuousDistribution>(m, "TruncatedGaussian", "docs")
+    nb::class_<DNest4::TruncatedGaussian, DNest4::ContinuousDistribution>(m, "TruncatedGaussian", "Gaussian distribution truncated to [lower, upper] interval")
         .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a)
-        .def_ro("loc", &DNest4::TruncatedGaussian::center)
-        .def_ro("scale", &DNest4::TruncatedGaussian::width)
-        .def_ro("lower", &DNest4::TruncatedGaussian::lower)
-        .def_ro("upper", &DNest4::TruncatedGaussian::upper)
+        .def_ro("loc", &DNest4::TruncatedGaussian::center, "Location parameter")
+        .def_ro("scale", &DNest4::TruncatedGaussian::width, "Scale parameter")
+        .def_ro("lower", &DNest4::TruncatedGaussian::lower, "Lower truncation boundary")
+        .def_ro("upper", &DNest4::TruncatedGaussian::upper, "Upper truncation boundary")
         .def("__repr__", [](const DNest4::TruncatedGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::TruncatedGaussian::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::TruncatedGaussian::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::TruncatedGaussian::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::TruncatedGaussian::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::TruncatedGaussian::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::TruncatedGaussian::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::TruncatedGaussian &d) { 
@@ -195,9 +217,9 @@ NB_MODULE(distributions, m)
         .def_rw("a", &DNest4::Kumaraswamy::a)
         .def_rw("b", &DNest4::Kumaraswamy::b)
         .def("__repr__", [](const DNest4::Kumaraswamy &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Kumaraswamy::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Kumaraswamy::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Kumaraswamy::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Kumaraswamy::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Kumaraswamy::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Kumaraswamy::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Kumaraswamy &d) { 
@@ -212,12 +234,12 @@ NB_MODULE(distributions, m)
     // Laplace.cpp
     nb::class_<DNest4::Laplace, DNest4::ContinuousDistribution>(m, "Laplace", "Laplace distribution")
         .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Laplace::center)
-        .def_rw("scale", &DNest4::Laplace::width)
+        .def_rw("loc", &DNest4::Laplace::center, "Location parameter")
+        .def_rw("scale", &DNest4::Laplace::width, "Scale parameter")
         .def("__repr__", [](const DNest4::Laplace &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Laplace::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Laplace::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Laplace::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Laplace::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Laplace::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Laplace::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Laplace &d) { 
@@ -235,9 +257,9 @@ NB_MODULE(distributions, m)
         .def_ro("lower", &DNest4::LogUniform::lower)
         .def_ro("upper", &DNest4::LogUniform::upper)
         .def("__repr__", [](const DNest4::LogUniform &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::LogUniform::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::LogUniform::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::LogUniform::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::LogUniform::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::LogUniform::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::LogUniform::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::LogUniform &d) { 
@@ -254,9 +276,9 @@ NB_MODULE(distributions, m)
         .def_ro("knee", &DNest4::ModifiedLogUniform::knee)
         .def_ro("upper", &DNest4::ModifiedLogUniform::upper)
         .def("__repr__", [](const DNest4::ModifiedLogUniform &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::ModifiedLogUniform::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::ModifiedLogUniform::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::ModifiedLogUniform::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::ModifiedLogUniform::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::ModifiedLogUniform::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::ModifiedLogUniform::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::ModifiedLogUniform &d) { 
@@ -273,9 +295,9 @@ NB_MODULE(distributions, m)
         .def(nb::init<double>(), "scale"_a)
         .def_rw("scale", &DNest4::Rayleigh::scale)
         .def("__repr__", [](const DNest4::Rayleigh &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Rayleigh::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Rayleigh::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Rayleigh::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Rayleigh::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Rayleigh::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Rayleigh::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Rayleigh &d) { 
@@ -287,15 +309,15 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::TruncatedRayleigh, DNest4::ContinuousDistribution>(m, "TruncatedRayleigh", "Rayleigh distribution truncated to [lower, upper]")
+    nb::class_<DNest4::TruncatedRayleigh, DNest4::ContinuousDistribution>(m, "TruncatedRayleigh", "Rayleigh distribution truncated to [lower, upper] interval")
         .def(nb::init<double, double, double>(), "scale"_a, "lower"_a, "upper"_a)
         .def_ro("scale", &DNest4::TruncatedRayleigh::scale)
         .def_ro("lower", &DNest4::TruncatedRayleigh::lower)
         .def_ro("upper", &DNest4::TruncatedRayleigh::upper)
         .def("__repr__", [](const DNest4::TruncatedRayleigh &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::TruncatedRayleigh::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::TruncatedRayleigh::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::TruncatedRayleigh::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::TruncatedRayleigh::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::TruncatedRayleigh::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::TruncatedRayleigh::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::TruncatedRayleigh &d) { 
@@ -314,9 +336,9 @@ NB_MODULE(distributions, m)
         .def_rw("center", &DNest4::Triangular::centre)
         .def_rw("upper", &DNest4::Triangular::upper)
         .def("__repr__", [](const DNest4::Triangular &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Triangular::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Triangular::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Triangular::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Triangular::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Triangular::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Triangular::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Triangular &d) { 
@@ -334,9 +356,9 @@ NB_MODULE(distributions, m)
         .def_rw("lower", &DNest4::Uniform::lower)
         .def_rw("upper", &DNest4::Uniform::upper)
         .def("__repr__", [](const DNest4::Uniform &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::Uniform::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::Uniform::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::Uniform::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::Uniform::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Uniform::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Uniform::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::Uniform &d) { 
@@ -351,12 +373,32 @@ NB_MODULE(distributions, m)
     nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle", "Uniform distribuion in [0, 2*PI]")
         .def(nb::init<>())
         .def("__repr__", [](const DNest4::UniformAngle &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::UniformAngle::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::UniformAngle::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::UniformAngle::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::UniformAngle::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::UniformAngle::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::UniformAngle::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__", [](const DNest4::UniformAngle &d) { return 0; })
         .def("__setstate__", [](DNest4::UniformAngle &d, const int &state) { new (&d) DNest4::UniformAngle(); });
+
+    nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribuion in [lower, upper]")
+        .def(nb::init<int, int>(), "lower"_a, "upper"_a)
+        .def_rw("lower", &DNest4::UniformInt::lower)
+        .def_rw("upper", &DNest4::UniformInt::upper)
+        .def("__repr__", [](const DNest4::UniformInt &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::UniformInt::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::UniformInt::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::UniformInt::log_pdf, "x"_a, LOG_PDF_DOC)
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::UniformInt &d) { 
+                return std::make_tuple(d.lower, d.upper, 0.0, 0.0); 
+        })
+        .def("__setstate__",
+             [](DNest4::UniformInt &d, const _state_type &state) {
+                new (&d) DNest4::UniformInt(std::get<0>(state), std::get<1>(state));
+            }
+        );
+
 
     // InverseMoment
     nb::class_<DNest4::InverseMoment, DNest4::ContinuousDistribution>(m, "InverseMoment", "InverseMoment prior")
@@ -364,9 +406,9 @@ NB_MODULE(distributions, m)
         .def_rw("tau", &DNest4::InverseMoment::tau)
         .def_rw("kmax", &DNest4::InverseMoment::kmax)
         .def("__repr__", [](const DNest4::InverseMoment &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::InverseMoment::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::InverseMoment::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::InverseMoment::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::InverseMoment::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::InverseMoment::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::InverseMoment::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::InverseMoment &d) { 
@@ -385,9 +427,9 @@ NB_MODULE(distributions, m)
         .def_rw("alpha", &DNest4::InverseGamma::alpha, "Shape parameter α")
         .def_rw("beta", &DNest4::InverseGamma::beta, "Scale parameter β")
         .def("__repr__", [](const DNest4::InverseGamma &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::InverseGamma::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::InverseGamma::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::InverseGamma::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`")
+        .def("cdf", &DNest4::InverseGamma::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::InverseGamma::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::InverseGamma::log_pdf, "x"_a, LOG_PDF_DOC)
         // for pickling
         .def("__getstate__",
              [](const DNest4::InverseGamma &d) { 
@@ -406,9 +448,9 @@ NB_MODULE(distributions, m)
         .def_rw("scale", &DNest4::ExponentialRayleighMixture::scale, "")
         .def_rw("sigma", &DNest4::ExponentialRayleighMixture::sigma, "")
         .def("__repr__", [](const DNest4::ExponentialRayleighMixture &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::ExponentialRayleighMixture::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::ExponentialRayleighMixture::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::ExponentialRayleighMixture::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
+        .def("cdf", &DNest4::ExponentialRayleighMixture::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::ExponentialRayleighMixture::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::ExponentialRayleighMixture::log_pdf, "x"_a, LOG_PDF_DOC);
         // // for pickling
         // .def("__getstate__",
         //      [](const DNest4::ExponentialRayleighMixture &d) { 
@@ -421,13 +463,16 @@ NB_MODULE(distributions, m)
         // );
     
     // GaussianMixture
-    nb::class_<DNest4::GaussianMixture, DNest4::ContinuousDistribution>(m, "GaussianMixture", "docs")
-        .def(nb::init<std::vector<double>, std::vector<double>>(), "means"_a, "sigmas"_a, "docs")
-        .def(nb::init<std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "lower"_a, "upper"_a, "docs")
-        .def(nb::init<std::vector<double>, std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "weights"_a, "lower"_a, "upper"_a, "docs")
+    nb::class_<DNest4::GaussianMixture, DNest4::ContinuousDistribution>(m, "GaussianMixture", "Mixture of Gaussian distributions")
+        .def(nb::init<std::vector<double>, std::vector<double>>(), "means"_a, "sigmas"_a, 
+             "Instantiates a mixture of Gaussian distributions from lists of means and sigmas, with equal weights")
+        .def(nb::init<std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "lower"_a, "upper"_a,
+             "Instantiates a mixture of Gaussian distributions from lists of means and sigmas, with equal weights, truncated to [lower, upper]")
+        .def(nb::init<std::vector<double>, std::vector<double>, std::vector<double>, double, double>(), "means"_a, "sigmas"_a, "weights"_a, "lower"_a, "upper"_a,
+             "Instantiates a mixture of Gaussian distributions from lists of means, sigmas, and weights, truncated to [lower, upper]")
         .def("__repr__", [](const DNest4::GaussianMixture &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::GaussianMixture::cdf, "x"_a, "Cumulative distribution function evaluated at `x`")
-        .def("ppf", &DNest4::GaussianMixture::cdf_inverse, "q"_a, "Percent point function (inverse of cdf) evaluated at `q`")
-        .def("logpdf", &DNest4::GaussianMixture::log_pdf, "x"_a, "Log of the probability density function evaluated at `x`");
+        .def("cdf", &DNest4::GaussianMixture::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::GaussianMixture::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::GaussianMixture::log_pdf, "x"_a, LOG_PDF_DOC);
 
 }
