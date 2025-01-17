@@ -303,44 +303,81 @@ def aliases(P):
     alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
     return alias_year, alias_solar_day, alias_sidereal_day
 
-def FIP(results, oversampling=1, nbins=2000):
-    import matplotlib.pyplot as plt
-    # # bins, in period
-    # bins = get_bins(results, nbins=nbins)
+def FIP(results, plot=True, show_peaks=True, oversampling=1):
+    """ Calculate (and plot) the True and False Inclusion Probability (TIP/FIP)
 
+    Args:
+        res (kima.KimaResults):
+            The `KimaResults` instance
+        plot (bool, optional): 
+            Plot the TIP and FIP. Defaults to True.
+        show_peaks (bool, optional): 
+            Identify and show prominent TIP peaks. Defaults to True.
+        oversampling (int, optional): 
+            Oversampling factor for the period binning. Defaults to 1.
+
+    Returns:
+        bins (np.ndarray):
+            The period bins
+        FIP (np.ndarray):
+            The False Inclusion Probability
+    """
     Tobs = np.ptp(results.data.t)
     Δf = 1 / Tobs / oversampling
     bins = 1 / np.arange(Δf, 1.0, Δf)
-    a, b = 1/bins - Δf, 1/bins + Δf
 
     # # alias limits, in frequency
+    # a, b = 1/bins - Δf, 1/bins + Δf
     # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
     # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
 
     P = results.posteriors.P
 
-    c = np.logical_and(
-        # 
-            a[:, None, None] < 1.0 / P, 
-            1.0 / P < b[:, None, None]
-        # 
-        ).any(axis=2).sum(axis=1)
+    TIP = np.zeros_like(bins)
+    dig = np.digitize(P, bins)
+    i, c = np.unique(dig, return_counts=True)
+    TIP[i-1] = c
+    with np.errstate(divide='ignore'):
+        dig = np.digitize(P, 1/(1/bins - Δf))
+    i, c = np.unique(dig, return_counts=True)
+    TIP[i-1] += c
+    TIP[-1] = 0
+    TIP /= results.ESS
 
+    # very memory intensive and slower:
+    # with np.errstate(divide='ignore'):
+    #     c = np.logical_and(
+    #         # 
+    #             a[:, None, None] < 1.0 / P, 
+    #             1.0 / P < b[:, None, None]
+    #         # 
+    #     ).any(axis=2).sum(axis=1)
+    # TIP = c / results.ESS
     # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
     # _21 = np.logical_and(a_alias_year1[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year1[:,None,None])
     # _22 = np.logical_and(a_alias_year2[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year2[:,None,None])
     # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
 
-    TIP = c / results.ESS
     FIP = 1.0 - TIP
 
-    fig, axs = plt.subplots(2, 1, constrained_layout=True)
-    axs[0].semilogx(bins, TIP)
-    axs[1].semilogx(bins, -np.log10(FIP))
-    # axs[0].axhline(1.0, color='k', ls='--', alpha=0.3)
-    # axs[0].axhline(0.5, color='k', ls='--', alpha=0.3)
-    axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1))
-    axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
+    if plot:
+        import matplotlib.pyplot as plt
+        from scipy.signal import find_peaks
+        fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
+        axs[0].semilogx(bins, TIP)
+        axs[1].semilogx(bins, -np.log10(FIP))
+        if show_peaks:
+            peaks, peaks_info = find_peaks(TIP, height=0.95)
+            for peak in peaks:
+                axs[0].plot(bins[peak], TIP[peak], 'ro', ms=3)
+                axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.4f}', 
+                                xy=(bins[peak], TIP[peak]), xytext=(5, 0), 
+                                xycoords='data', textcoords='offset points', 
+                                ha='left', va='top')
+        axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1.05))
+        axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
+
+    return bins, FIP
 
 
 def FIP_count_detections(results, alpha=0.05, Ptrue=None):
