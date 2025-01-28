@@ -25,6 +25,8 @@ jobs:
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
 
+      - uses: actions/setup-python@v5
+
       - name: Tilde
         run: |
           python metadata_tilde.py wheel
