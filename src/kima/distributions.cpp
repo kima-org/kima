@@ -380,24 +380,24 @@ NB_MODULE(distributions, m)
         .def("__getstate__", [](const DNest4::UniformAngle &d) { return 0; })
         .def("__setstate__", [](DNest4::UniformAngle &d, const int &state) { new (&d) DNest4::UniformAngle(); });
 
-    nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribuion in [lower, upper]")
-        .def(nb::init<int, int>(), "lower"_a, "upper"_a)
-        .def_rw("lower", &DNest4::UniformInt::lower)
-        .def_rw("upper", &DNest4::UniformInt::upper)
-        .def("__repr__", [](const DNest4::UniformInt &d){ std::ostringstream out; d.print(out); return out.str(); })
-        .def("cdf", &DNest4::UniformInt::cdf, "x"_a, CDF_DOC)
-        .def("ppf", &DNest4::UniformInt::cdf_inverse, "q"_a, PPF_DOC)
-        .def("logpdf", &DNest4::UniformInt::log_pdf, "x"_a, LOG_PDF_DOC)
-        // for pickling
-        .def("__getstate__",
-             [](const DNest4::UniformInt &d) { 
-                return std::make_tuple(d.lower, d.upper, 0.0, 0.0); 
-        })
-        .def("__setstate__",
-             [](DNest4::UniformInt &d, const _state_type &state) {
-                new (&d) DNest4::UniformInt(std::get<0>(state), std::get<1>(state));
-            }
-        );
+    // nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribuion in [lower, upper]")
+    //     .def(nb::init<int, int>(), "lower"_a, "upper"_a)
+    //     .def_rw("lower", &DNest4::UniformInt::lower)
+    //     .def_rw("upper", &DNest4::UniformInt::upper)
+    //     .def("__repr__", [](const DNest4::UniformInt &d){ std::ostringstream out; d.print(out); return out.str(); })
+    //     .def("cdf", &DNest4::UniformInt::cdf, "x"_a, CDF_DOC)
+    //     .def("ppf", &DNest4::UniformInt::cdf_inverse, "q"_a, PPF_DOC)
+    //     .def("logpdf", &DNest4::UniformInt::log_pdf, "x"_a, LOG_PDF_DOC)
+    //     // for pickling
+    //     .def("__getstate__",
+    //          [](const DNest4::UniformInt &d) { 
+    //             return std::make_tuple(d.lower, d.upper, 0.0, 0.0); 
+    //     })
+    //     .def("__setstate__",
+    //          [](DNest4::UniformInt &d, const _state_type &state) {
+    //             new (&d) DNest4::UniformInt(std::get<0>(state), std::get<1>(state));
+    //         }
+    //     );
 
 
     // InverseMoment
