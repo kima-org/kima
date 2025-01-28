@@ -26,6 +26,10 @@ jobs:
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
 
+      - name: Tilde
+        run: |
+          python metadata_tilde.py wheel
+
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
@@ -39,6 +43,10 @@ jobs:
 
       - name: Build sdist
         run: pipx run build --sdist
+
+      - name: Tilde
+        run: |
+          python metadata_tilde.py dist
 
       - uses: actions/upload-artifact@v4
         with:
