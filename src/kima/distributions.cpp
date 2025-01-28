@@ -50,7 +50,7 @@ NB_MODULE(distributions, m)
         //.def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
     //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
-    nb::class_<DNest4::DiscreteDistribution>(m, "DiscreteDistribution");
+    // nb::class_<DNest4::DiscreteDistribution>(m, "DiscreteDistribution");
 
     // Cauchy.cpp
     nb::class_<DNest4::Cauchy, DNest4::ContinuousDistribution>(m, "Cauchy", "Cauchy distribution")
