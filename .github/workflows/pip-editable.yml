@@ -24,6 +24,7 @@ jobs:
     - name: Dependencies
       run: |
         pip install pip -U
+        pip install scikit_build_core nanobind
 
     - name: Check versions
       run: |
