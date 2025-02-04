@@ -73,7 +73,8 @@ set(DISTRIBUTION_UNITS
     src/kima/distributions/InverseGamma.cpp
     src/kima/distributions/InverseMoment.cpp
     src/kima/distributions/ExponentialRayleighMixture.cpp
-    src/kima/distributions/GaussianMixture.cpp)
+    src/kima/distributions/GaussianMixture.cpp
+    src/kima/distributions/PowerLaw.cpp)
 
 # compile the extension modules
 # this will make them available as kima.module

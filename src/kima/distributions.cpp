@@ -13,6 +13,7 @@ using namespace nb::literals;
 #include "distributions/InverseMoment.h"
 #include "distributions/ExponentialRayleighMixture.h"
 #include "distributions/GaussianMixture.h"
+#include "distributions/PowerLaw.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
@@ -289,6 +290,69 @@ NB_MODULE(distributions, m)
                 new (&d) DNest4::ModifiedLogUniform(std::get<0>(state), std::get<1>(state));
             }
         );
+
+    // Pareto.cpp
+    nb::class_<DNest4::Pareto, DNest4::ContinuousDistribution>(m, "Pareto", "Pareto distribution")
+        .def(nb::init<double, double>(), "min"_a, "alpha"_a)
+        // .def_rw("min", &DNest4::Pareto::min)
+        // .def_rw("alpha", &DNest4::Pareto::alpha)
+        .def("__repr__", [](const DNest4::Pareto &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::Pareto::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Pareto::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Pareto::log_pdf, "x"_a, LOG_PDF_DOC);
+        // for pickling
+        // .def("__getstate__",
+        //      [](const DNest4::Pareto &d) { 
+        //         return std::make_tuple(d.min, d.alpha, 0.0, 0.0);
+        // })
+        // .def("__setstate__",
+        //      [](DNest4::Pareto &d, const _state_type &state) {
+        //         new (&d) DNest4::Pareto(std::get<0>(state), std::get<1>(state));
+        // })
+    
+    // PowerLaw.cpp
+    nb::class_<DNest4::TruncatedPareto, DNest4::ContinuousDistribution>(m, "TruncatedPareto", "docs")
+    .def(nb::init<double, double, double, double>(), "min"_a, "alpha"_a, "lower"_a, "upper"_a)
+    .def_ro("min", &DNest4::TruncatedPareto::min, "Location parameter")
+    .def_ro("alpha", &DNest4::TruncatedPareto::alpha, "Scale parameter")
+    .def_ro("lower", &DNest4::TruncatedPareto::lower)
+    .def_ro("upper", &DNest4::TruncatedPareto::upper)
+    .def("__repr__", [](const DNest4::TruncatedPareto &d){ std::ostringstream out; d.print(out); return out.str(); })
+    .def("cdf", &DNest4::TruncatedPareto::cdf, "x"_a, CDF_DOC)
+    .def("ppf", &DNest4::TruncatedPareto::cdf_inverse, "q"_a, PPF_DOC)
+    .def("logpdf", &DNest4::TruncatedPareto::log_pdf, "x"_a, LOG_PDF_DOC)
+    // for pickling
+    .def("__getstate__",
+            [](const DNest4::TruncatedPareto &d) { 
+            return std::make_tuple(d.min, d.alpha, d.lower, d.upper); 
+    })
+    .def("__setstate__",
+            [](DNest4::TruncatedPareto &d, const _state_type &state) {
+            new (&d) DNest4::TruncatedPareto(std::get<0>(state), std::get<1>(state), 
+                                                std::get<2>(state), std::get<3>(state));
+        }
+    );
+
+    nb::class_<DNest4::SingleTransitPeriodPrior, DNest4::ContinuousDistribution>(m, "SingleTransitPeriodPrior", "docs")
+    .def(nb::init<double, double, double>(), "W"_a, "L"_a, "Pmax"_a)
+    .def_ro("W", &DNest4::SingleTransitPeriodPrior::W, "Observational window")
+    .def_ro("L", &DNest4::SingleTransitPeriodPrior::L, "Mid-transit time minus the start of the observational window")
+    .def_ro("Pmax", &DNest4::SingleTransitPeriodPrior::Pmax, "Maximum orbital period")
+    .def("__repr__", [](const DNest4::SingleTransitPeriodPrior &d){ std::ostringstream out; d.print(out); return out.str(); })
+    .def("cdf", &DNest4::SingleTransitPeriodPrior::cdf, "x"_a, CDF_DOC)
+    .def("ppf", &DNest4::SingleTransitPeriodPrior::cdf_inverse, "q"_a, PPF_DOC)
+    .def("logpdf", &DNest4::SingleTransitPeriodPrior::log_pdf, "x"_a, LOG_PDF_DOC)
+    // for pickling
+    .def("__getstate__",
+            [](const DNest4::SingleTransitPeriodPrior &d) { 
+            return std::make_tuple(d.W, d.L, d.Pmax); 
+    })
+    .def("__setstate__",
+            [](DNest4::SingleTransitPeriodPrior &d, const _state_type &state) {
+            new (&d) DNest4::SingleTransitPeriodPrior(std::get<0>(state), std::get<1>(state), std::get<2>(state));
+        }
+    );
+
 
     // Rayleigh.cpp
     nb::class_<DNest4::Rayleigh, DNest4::ContinuousDistribution>(m, "Rayleigh", "Rayleigh distribution")
