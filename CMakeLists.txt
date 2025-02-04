@@ -69,6 +69,12 @@ set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp
 
 set(GP_UNITS src/kima/GP.cpp src/kima/bessel-library.cpp)
 
+set(DISTRIBUTION_UNITS 
+    src/kima/distributions/InverseGamma.cpp
+    src/kima/distributions/InverseMoment.cpp
+    src/kima/distributions/ExponentialRayleighMixture.cpp
+    src/kima/distributions/GaussianMixture.cpp)
+
 # compile the extension modules
 # this will make them available as kima.module
 
@@ -76,9 +82,10 @@ nanobind_add_module(math STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/math.cpp)
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/distributions.cpp 
-                    src/kima/InverseGamma.cpp src/kima/InverseMoment.cpp
-                    src/kima/ExponentialRayleighMixture.cpp src/kima/GaussianMixture.cpp)
+                    src/kima/distributions.cpp ${DISTRIBUTION_UNITS})
+
+nanobind_add_module(default_priors STABLE_ABI NB_STATIC NB_DOMAIN kima 
+                    src/kima/default_priors.cpp src/kima/Data.cpp)
 
 nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
@@ -167,7 +174,7 @@ target_compile_features(transits PRIVATE cxx_std_17)
 
 
 # compilation settings for each module
-foreach(targ distributions Data ConditionalPrior 
+foreach(targ distributions default_priors Data ConditionalPrior 
         RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
@@ -196,7 +203,7 @@ target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module math distributions kepler GP transits AMDstability)
+foreach(module math distributions default_priors kepler GP transits AMDstability)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 

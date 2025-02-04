@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 #include "DNest4.h"
-#include "utils.h"
+#include "../utils.h"
 
 const double inf = std::numeric_limits<double>::infinity();
 

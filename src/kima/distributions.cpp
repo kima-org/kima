@@ -9,10 +9,10 @@ using namespace nb::literals;
 
 #include "DNest4.h"
 
-#include "InverseGamma.h"
-#include "InverseMoment.h"
-#include "ExponentialRayleighMixture.h"
-#include "GaussianMixture.h"
+#include "distributions/InverseGamma.h"
+#include "distributions/InverseMoment.h"
+#include "distributions/ExponentialRayleighMixture.h"
+#include "distributions/GaussianMixture.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;

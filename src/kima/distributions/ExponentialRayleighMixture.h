@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 #include "DNest4.h"
-#include "utils.h"
+#include "../utils.h"
 
 namespace DNest4
 {
