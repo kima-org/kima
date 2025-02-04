@@ -311,7 +311,7 @@ NB_MODULE(distributions, m)
         // })
     
     // PowerLaw.cpp
-    nb::class_<DNest4::TruncatedPareto, DNest4::ContinuousDistribution>(m, "TruncatedPareto", "docs")
+    nb::class_<DNest4::TruncatedPareto, DNest4::ContinuousDistribution>(m, "TruncatedPareto", "Pareto distribution truncated to [lower, upper] interval")
     .def(nb::init<double, double, double, double>(), "min"_a, "alpha"_a, "lower"_a, "upper"_a)
     .def_ro("min", &DNest4::TruncatedPareto::min, "Location parameter")
     .def_ro("alpha", &DNest4::TruncatedPareto::alpha, "Scale parameter")
@@ -333,7 +333,7 @@ NB_MODULE(distributions, m)
         }
     );
 
-    nb::class_<DNest4::SingleTransitPeriodPrior, DNest4::ContinuousDistribution>(m, "SingleTransitPeriodPrior", "docs")
+    nb::class_<DNest4::SingleTransitPeriodPrior, DNest4::ContinuousDistribution>(m, "SingleTransitPeriodPrior", "Prior for the orbital period when a single planet transit was observed")
     .def(nb::init<double, double, double>(), "W"_a, "L"_a, "Pmax"_a)
     .def_ro("W", &DNest4::SingleTransitPeriodPrior::W, "Observational window")
     .def_ro("L", &DNest4::SingleTransitPeriodPrior::L, "Mid-transit time minus the start of the observational window")
