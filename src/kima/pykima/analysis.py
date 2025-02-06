@@ -574,14 +574,52 @@ def reorder_P2(res, replace=False, passes=1):
                     new_posterior.P[i, ind] = new_posterior.P[i, ind][::-1]
                 # input()
 
+
+def reorder_P3(res, reference_periods=None, replace=False):
+    from .results import posterior_holder
+
+    new_posterior = posterior_holder()
+    new_posterior.P = res.posteriors.P.copy()
+    new_posterior.K = res.posteriors.K.copy()
+    new_posterior.e = res.posteriors.e.copy()
+    new_posterior.w = res.posteriors.w.copy()
+    new_posterior.φ = res.posteriors.φ.copy()
+
+    for i in range(res.max_components, 1, -1):
+        can_calculate_distance = (res.Np == i - 1).any() or reference_periods
+        if can_calculate_distance:
+            mask_i = res.Np == i
+            mask_im1 = res.Np == i - 1
+            r = np.where(mask_i)[0]
+
+            if reference_periods is not None:
+                reference = reference_periods[:i - 1]
+                # print(reference)
+            else:
+                reference = new_posterior.P[mask_im1, i - 2].mean()
+
+            dist_sort = np.abs(new_posterior.P[mask_i] - reference).argsort()
+
+            new_posterior.P[mask_i] = new_posterior.P[r, dist_sort.T].T
+            new_posterior.K[mask_i] = new_posterior.K[r, dist_sort.T].T
+            new_posterior.e[mask_i] = new_posterior.e[r, dist_sort.T].T
+            new_posterior.w[mask_i] = new_posterior.w[r, dist_sort.T].T
+            new_posterior.φ[mask_i] = new_posterior.φ[r, dist_sort.T].T
+
     if replace:
         res.posteriors.P = new_posterior.P
         res.posteriors.K = new_posterior.K
         res.posteriors.e = new_posterior.e
         res.posteriors.w = new_posterior.w
         res.posteriors.φ = new_posterior.φ
+        res.posterior_sample[:, res.indices['planets.P']] = new_posterior.P
+        res.posterior_sample[:, res.indices['planets.K']] = new_posterior.K
+        res.posterior_sample[:, res.indices['planets.e']] = new_posterior.e
+        res.posterior_sample[:, res.indices['planets.w']] = new_posterior.w
+        res.posterior_sample[:, res.indices['planets.φ']] = new_posterior.φ
 
     return new_posterior
+
 
 def sort_planet_samples(res, byP=True, replace=False):
     # here we sort the planet_samples array by the orbital period
