@@ -872,8 +872,9 @@ def get_instrument_name(data_file):
             r'SOPHIE',
             r'HAMILTON',
             r'NIRPS',
-            r'PFS',
-            r'UCLES'
+            r'PFS[\d+]',
+            r'UCLES',
+            r'MIKE',
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 

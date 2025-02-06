@@ -1086,6 +1086,11 @@ class KimaResults:
                     prior = self.priors[f'individual_offset_prior[{i}]']
                     priors[self.indices['inst_offsets']][i] = prior
 
+        if self.indicator_correlations:
+            prior = self.priors['beta_prior']
+            priors[self.indices['betas']] = prior
+
+
         if self.has_gp:
             if self.model == 'GPmodel':
                 priors[self.indices['GPpars']] = [
@@ -1160,6 +1165,9 @@ class KimaResults:
             for i in range(self.max_components):
                 planet_priors.append(self.priors['wprior'])
             priors[self.indices['planets']] = planet_priors
+
+        if self.studentt:
+            priors[self.indices['nu']] = self.priors['nu_prior']
 
         try:
             priors[self.indices['vsys']] = self.priors['Cprior']
@@ -1612,6 +1620,7 @@ class KimaResults:
             return logp + logl, logl, logp
         return logp + logl
 
+    @lru_cache
     def map_sample(self, Np=None, mask=None, printit=True,
                    from_posterior=False):
         """
