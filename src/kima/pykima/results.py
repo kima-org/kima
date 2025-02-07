@@ -10,6 +10,7 @@ from typing_extensions import Self
 import zipfile
 import time
 import tempfile
+from functools import lru_cache
 from string import ascii_lowercase
 from dataclasses import dataclass, field
 from io import StringIO
