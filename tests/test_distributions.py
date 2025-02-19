@@ -125,6 +125,13 @@ def test_inverse_cdf(loc_scale, number, positive):
         for r in np.random.rand(N):
             assert_allclose(dist2.ppf(r), dist1.ppf(r), err_msg=f'{dist1} != {dist2}')
 
+    # infinites
+    assert_equal(Gaussian(loc, scale).ppf(0), -np.inf)
+    assert_equal(Gaussian(loc, scale).ppf(1), np.inf)
+    assert_equal(HalfGaussian(scale).ppf(1), np.inf)
+    assert_equal(Cauchy(loc, scale).ppf(0), -np.inf)
+    assert_equal(Cauchy(loc, scale).ppf(1), np.inf)
+
     # # Fixed
     # assert_allclose(Fixed(number).cdf(number), 1.0)
     # assert_allclose(Fixed(number).cdf(number*2), 0.0)
