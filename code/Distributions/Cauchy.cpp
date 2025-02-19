@@ -24,6 +24,10 @@ double Cauchy::cdf_inverse(double x) const
 {
     if( (x < 0.0) || (x > 1.0))
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    if (x == 0.0)
+        return -std::numeric_limits<double>::infinity();
+    if (x == 1.0)
+        return std::numeric_limits<double>::infinity();
     return center + width*tan(M_PI*(x - 0.5));
 }
 
@@ -59,6 +63,10 @@ double TruncatedCauchy::cdf_inverse(double x) const
 {
     if( (x < 0.0) || (x > 1.0) )
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    if(x == 0.0)
+        return lower;
+    if(x == 1.0)
+        return upper;
     double xx = unC.cdf(lower) + x * c;
     return unC.cdf_inverse(xx);
 }
