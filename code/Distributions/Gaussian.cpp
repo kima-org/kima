@@ -21,8 +21,12 @@ double Gaussian::cdf(double x) const
 
 double Gaussian::cdf_inverse(double x) const
 {
-    if(x < 0.0 || x > 1.0)
+    if (x < 0.0 || x > 1.0)
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    if (x == 0.0)
+        return -std::numeric_limits<double>::infinity();
+    if (x == 1.0)
+        return std::numeric_limits<double>::infinity();
     return center + width*normal_inverse_cdf(x);
     //return center + width * sqrt(2) * boost::math::erf_inv(2*x - 1);
 }
@@ -50,6 +54,10 @@ double HalfGaussian::cdf_inverse(double x) const
 {
     if(x < 0.0 || x > 1.0)
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    if(x == 0.0)
+        return 0.0;
+    if(x == 1.0)
+        return std::numeric_limits<double>::infinity();
     return width * normal_inverse_cdf(0.5*(x+1.0));
     //return center + width * sqrt(2) * boost::math::erf_inv(2*x - 1);
 }
@@ -92,6 +100,10 @@ double TruncatedGaussian::cdf_inverse(double x) const
 {
     if(x < 0.0 || x > 1.0)
         throw std::domain_error("Input to cdf_inverse must be in [0, 1].");
+    if(x == 0.0)
+        return lower;
+    if(x == 1.0)
+        return upper;
     double x_cdf = Z * x + normal_cdf(alpha);
     return center + width * normal_inverse_cdf(x_cdf);
 }
