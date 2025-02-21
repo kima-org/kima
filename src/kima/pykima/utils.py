@@ -445,7 +445,7 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False, us
     return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
 
 
-def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, n=None, lower_limit=1.0):
+def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, lower_limit=1.0):
     from kima.distributions import GaussianMixture
     periods = [T0_2 - T0_1]
     errors = [float(np.hypot(T0_1_err, T0_2_err))]
@@ -532,6 +532,67 @@ def get_transit_probability(Rstar=1.0, a=1.0):
     a: semi-major axis [au]
     """
     return Rstar / (a * AU).to(R_sun).value
+
+
+def get_mean_longitude(M0, w, fold=False, deg=False):
+    """ 
+    Return the mean longitude λ for a given mean anomaly M0 and longitude of
+    periastron w (given by λ = M0 + w).
+
+    Args:
+        M0 (float or ndarray):
+            Mean anomaly (M0=0 at periastron) [rad]
+        w (float or ndarray):
+            Longitude of periastron [rad]
+        fold (bool, optional):
+            Fold the mean longitude into the range [-π, π) [default: False]
+        deg (bool, optional):
+            Return mean longitude in degrees [default: False]
+
+    Returns:
+        λ (float or ndarray):
+            Mean longitude [rad or deg]
+    """
+    λ = M0 + w
+    if fold:
+        λ = np.angle(np.exp(1j * λ))
+    if deg:
+        λ = np.rad2deg(λ)
+    return λ
+
+def mean_anomaly_from_time_periastron(t, P, Tp, deg=False):
+    """ 
+    Calculate mean anomaly for times t, given period P and time of periastron Tp.
+
+    Args:
+        t (float, ndarray): Times at which to calculate mean anomaly [days]
+        P (float): Orbital period [days]
+        Tp (float): Time of periastron [days]
+        deg (bool, optional): Return mean anomaly in degrees [default: False]
+
+    Returns:
+        M (float, ndarray): Mean anomaly [rad or deg]
+    """
+    M = 2 * np.pi * (t - Tp) / P
+    if deg:
+        M = np.rad2deg(M)
+    return M
+
+def mean_anomaly_from_epoch(t, P, M0, epoch):
+    """
+    Calculate mean anomaly for times t, given period P, mean anomaly at the
+    epoch M0, and epoch.
+
+    Args:
+        t (float, ndarray): Times at which to calculate mean anomaly [days]
+        P (float): Orbital period [days]
+        M0 (float): Mean anomaly at the epoch [rad]
+        epoch (float): Epoch [days]
+
+    Returns:
+        M (float, ndarray): Mean anomaly [rad]
+    """
+    return 2 * np.pi * (t - epoch) / P + M0
 
 
 def lighten_color(color, amount=0.5):
