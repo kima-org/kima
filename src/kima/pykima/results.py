@@ -468,7 +468,7 @@ class KimaResults:
             except FileNotFoundError as e:
                 if e.filename == 'levels.txt':
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
-                    raise FileNotFoundError(msg)
+                    raise FileNotFoundError(msg) from None
                 raise e
             except IndexError:
                 raise ValueError('Something went wrong reading the posterior samples. Try again')
@@ -3183,19 +3183,32 @@ class KimaResults:
         #     J = self.posteriors.jitter
         #     number = True
 
+        jitter = self.posteriors.jitter.copy()
+        if jitter.ndim == 1:
+            jitter = jitter.reshape(-1, 1)
+
+        start_jitter = 0
         if self.model == 'RVmodel' and self.multi:
-            v = self.posteriors.jitter[:, 0]
+            v = jitter[:, 0]
             print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
+            start_jitter = 1
 
         series_k = 0
-        for i in range(self.n_jitters):
-            v = self.posteriors.jitter[:, i]
+        has_instruments = len(self.instruments) == self.n_jitters - start_jitter
+        for i in range(start_jitter, self.n_jitters):
+            v = jitter[:, i]
+
+            if has_instruments:
+                jitter_name = f'jit {self.instruments[i - start_jitter]}'
+            else:
+                jitter_name = self.parameters[i]
+
             if self.model == 'SPLEAFmodel' and 'series_j' in self.parameters[i]:
                 prior = self.priors[f'series_jitters_prior_{series_k+1}']
                 series_k += 1
             else:
                 prior = self.priors['Jprior']
-            print_line(self.parameters[i], v, prior, show_prior)
+            print_line(jitter_name, v, prior, show_prior)
 
         # k = 0
         # for i, v in enumerate(J.T):
