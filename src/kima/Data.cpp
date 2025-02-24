@@ -27,6 +27,8 @@ RVData::RVData(const string& filename, const string& units, int skip, int max_ro
         load_multi(filename, units, skip, max_rows, delimiter, indicators);
     else
         load(filename, units, skip, max_rows, delimiter, indicators);
+    
+    normalize_actind();
 }
 
 /// @brief Load data from a list of filenames
@@ -257,8 +259,8 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 
     // empty and resize the indicator vectors
     actind.clear();
-    normalized_actind.clear();
     actind.resize(number_indicators);
+    normalized_actind.clear();
     normalized_actind.resize(number_indicators);
     for (int n = 0; n < number_indicators; n++) {
         actind[n].clear();
@@ -276,6 +278,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
             else
             {
                 actind[j] = data[3 + i];
+                normalized_actind[j] = data[3 + i];
                 j++;
             }
         }
@@ -382,8 +385,12 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     // empty and resize the indicator vectors
     actind.clear();
     actind.resize(number_indicators);
-    for (int n = 0; n < number_indicators; n++)
+    normalized_actind.clear();
+    normalized_actind.resize(number_indicators);
+    for (int n = 0; n < number_indicators; n++) {
         actind[n].clear();
+        normalized_actind[n].clear();
+    }
 
     // set the indicator vectors to the right columns
     if (indicator_correlations)
@@ -396,6 +403,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
             else
             {
                 actind[j] = data[3 + i];
+                normalized_actind[j] = data[3 + i];
                 j++;
             }
         }
@@ -493,9 +501,12 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     // empty and resize the indicator vectors
     actind.clear();
     actind.resize(number_indicators);
-    for (int n = 0; n < number_indicators; n++)
+    normalized_actind.clear();
+    normalized_actind.resize(number_indicators);
+    for (int n = 0; n < number_indicators; n++) {
         actind[n].clear();
-
+        normalized_actind[n].clear();
+    }
 
     int filecount = 1;
     for (auto& filename : filenames) {
@@ -538,6 +549,7 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
                 else
                 {
                     actind[j].insert(actind[j].end(), data[3 + i].begin(), data[3 + i].end());
+                    normalized_actind[j].insert(normalized_actind[j].end(), data[3 + i].begin(), data[3 + i].end());
                     j++;
                 }
             }
@@ -593,8 +605,9 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     if (number_instruments > 1) {
         // We need to sort t because it comes from different instruments
         size_t N = t.size();
-        vector<double> tt(N), yy(N);
-        vector<double> sigsig(N);
+        vector<double> tt(N), yy(N), sigsig(N);
+        vector<vector<double>> aiai(number_indicators, vector<double>(N));
+        vector<vector<double>> nainai(number_indicators, vector<double>(N));
         vector<int> obsiobsi(N);
         vector<int> order(N);
 
@@ -609,6 +622,11 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
             yy[i] = y[order[i]];
             sigsig[i] = sig[order[i]];
             obsiobsi[i] = obsi[order[i]];
+            for (size_t j = 0; j < number_indicators; j++)
+            {
+                aiai[j][i] = actind[j][order[i]];
+                nainai[j][i] = normalized_actind[j][order[i]];
+            }
         }
 
         for (size_t i = 0; i < N; i++) {
@@ -616,11 +634,19 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
             y[i] = yy[i];
             sig[i] = sigsig[i];
             obsi[i] = obsiobsi[i];
+            for (size_t j = 0; j < number_indicators; j++)
+            {
+                actind[j][i] = aiai[j][i];
+                normalized_actind[j][i] = nainai[j][i];
+            }
         }
     }
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+
+    // normalize the activity indicators
+    normalize_actind();
 }
 
 
@@ -756,6 +782,21 @@ double RVData::get_actind_var(size_t i) const
     return accum / (actind[i].size() - 1);
 }
 
+// normalize activity indicators from 0 to 1
+// by subtracting the minimum value and dividing by the range
+void RVData::normalize_actind()
+{
+    if (actind.size() == 0) return;
+
+    for (size_t i=0; i<actind.size(); i++) {
+        double min = *min_element(actind[i].begin(), actind[i].end());
+        double max = *max_element(actind[i].begin(), actind[i].end());
+        for (size_t j = 0; j < actind[i].size(); j++)
+        {
+            normalized_actind[i][j] = (actind[i][j] - min) / (max - min);
+        }
+    }
+}
 
 ostream& operator<<(ostream& os, const RVData& d)
 {
@@ -1051,6 +1092,8 @@ NB_MODULE(Data, m) {
         .def_prop_ro("obsi", [](RVData &d) { return d.get_obsi(); }, "The instrument identifier")
         .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
         .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
+        .def_prop_ro("normalized_actind", [](RVData &d) { return d.get_normalized_actind(); }, 
+                     "Activity indicators normalized to [0,1]")
         //
         .def_ro("units", &RVData::_units, "Units of the RVs and uncertainties")
         .def_ro("multi", &RVData::_multi, "Data comes from multiple instruments")

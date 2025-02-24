@@ -94,6 +94,19 @@ def test_RVData_missing_indicators():
                         indicators=['i', 'j'])
 
 
+def test_RVData_normalized_actind():
+    D = kima.RVData('tests/simulated2.txt', indicators=['i'])
+    assert_equal(np.shape(D.actind), (1, D.N))
+    assert_equal(np.shape(D.normalized_actind), (1, D.N))
+    assert_equal(np.min(D.normalized_actind), 0.0)
+    assert_equal(np.max(D.normalized_actind), 1.0)
+    ai = np.array(D.actind)
+    assert_allclose(D.normalized_actind, (ai - np.min(ai)) / np.ptp(ai))
+
+
+def test_RVData_reductions():
+    pass
+
 def test_RVmodel():
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
 
