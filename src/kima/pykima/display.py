@@ -1513,6 +1513,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
 
     RVFWHM = res.model == 'RVFWHMmodel'
     RVFWHMRHK = res.model == 'RVFWHMRHKmodel'
+    SPLEAF = res.model == 'SPLEAFmodel'
 
     if ax is None:
         kw = dict(constrained_layout=True, sharey=False)
@@ -1522,9 +1523,14 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         elif RVFWHMRHK:
             fig, axs = plt.subplots(3, res.n_jitters // 3, 
                                     figsize=(min(10, 5 + res.n_jitters * 2), 6), **kw)
+        elif SPLEAF:
+            fig, axs = plt.subplots(res.n_instruments, res.nseries, 
+                                    # figsize=(min(10, 5 + res.n_jitters * 2), 6), 
+                                    **kw
+                                    )
         else:
-            nrows = 2 if res.n_jitters >= 6 else 1
-            fig, axs = plt.subplots(nrows, res.n_jitters // nrows, 
+            nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[res.n_jitters]
+            fig, axs = plt.subplots(nrows, int(np.ceil(res.n_jitters / nrows)),
                                     figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
         axs = np.atleast_1d(axs)
     else:
@@ -1548,9 +1554,18 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     kwargs.setdefault('bins', 'doane')
     axs = np.ravel(axs)
     for i, ax in enumerate(axs):
+        if i >= res.n_jitters:
+            ax.axis('off')
+            break
         j = i // res.n_instruments
         estimate = percentile68_ranges_latex(res.jitter[:, i]) + ' m/s'
+
+        # remove "m/s" from jitter slope
+        if res.jitter_propto_indicator and i == res.n_jitters - 1:
+            estimate = estimate[:-3]
+
         ax.hist(res.jitter[:, i], label=estimate, **kwargs)
+
         leg = ax.legend()
         leg._legend_box.sep = 0
 
@@ -1595,7 +1610,10 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     for ax in axs:
         ax.set(yticks=[], ylabel='posterior')
 
-    insts = [get_instrument_name(i) for i in res.instruments]
+    instruments = res.instruments
+    if isinstance(instruments, str):
+        instruments = [instruments]
+    insts = [get_instrument_name(i) for i in instruments]
 
     if RVFWHM:
         labels = [f'RV jitter {i} [m/s]' for i in insts]
@@ -1604,10 +1622,17 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         labels = [f'RV jitter {i} [m/s]' for i in insts]
         labels += [f'FWHM jitter {i} [m/s]' for i in insts]
         labels += [f'RHK jitter {i}' for i in insts]
+    elif SPLEAF:
+        labels = [f'RV jitter {i} [m/s]' for i in insts]
+        labels += [f'{s} jitter {i} [m/s]' for i in insts 
+                   for s in res._extra_data_names[::2]]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
         if res.model == 'RVmodel':
-            labels.insert(0, 'stellar jitter')
+            if res.multi:
+                labels.insert(0, 'stellar jitter')
+            if res.jitter_propto_indicator:
+                labels.append('jitter slope')
 
     for ax, label in zip(axs, labels):
         ax.set_xlabel(label, fontsize=10)

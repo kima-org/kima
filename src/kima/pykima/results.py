@@ -571,7 +571,7 @@ class KimaResults:
         self._current_column = 0
 
         # read jitters
-        if self.multi and self.model in ('RVmodel'):
+        if self.multi and self.model in ('RVmodel',):
             self.n_jitters = 1  # stellar jitter
         else:
             self.n_jitters = 0
@@ -3218,6 +3218,15 @@ class KimaResults:
         #         k += 1
         
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
+
+        if self.trend:
+            if self.trend_degree >= 1:
+                print_line('slope', self.posteriors.slope, self.priors['slope_prior'], show_prior)
+            if self.trend_degree >= 2:
+                print_line('quadr', self.posteriors.quadr, self.priors['quadr_prior'], show_prior)
+            if self.trend_degree >= 3:
+                print_line('cubic', self.posteriors.cubic, self.priors['cubic_prior'], show_prior)
+
 
         if self.model == 'SPLEAFmodel':
             for i in range(self.n_instruments * (self.nseries - 1)):
