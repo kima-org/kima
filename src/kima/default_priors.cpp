@@ -29,6 +29,8 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
         {"wprior", make_prior<DNest4::UniformAngle>()},
         // GP hyperparameters
         {"eta1_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_max_RV_span() )},
+        // another possibility?
+        // {"eta1_prior", make_prior<DNest4::HalfGaussian>( data.get_max_RV_span() )},
         {"eta2_prior", make_prior<DNest4::LogUniform>(1, data.get_timespan())},
         {"eta3_prior", make_prior<DNest4::Uniform>(10, 40)},
         {"eta4_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
@@ -49,6 +51,8 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
             {"J2prior", make_prior<DNest4::ModifiedLogUniform>(min(1.0, 0.1*data.get_actind_span(0)), data.get_actind_span(0))},
             // GP hyperparameters
             {"eta1_fwhm_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_actind_span(0) )},
+            // another possibility?
+            // {"eta1_fwhm_prior", make_prior<DNest4::HalfGaussian>( data.get_actind_span(0) )},
             {"eta2_fwhm_prior", make_prior<DNest4::LogUniform>(1, data.get_timespan())},
             {"eta3_fwhm_prior", make_prior<DNest4::Uniform>(10, 40)},
             {"eta4_fwhm_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
@@ -76,4 +80,12 @@ void DefaultPriors::print()
     {
         std::cout << prior.first << ": " << *prior.second << std::endl;
     }
+}
+
+
+NB_MODULE(default_priors, m) {
+     nb::class_<DefaultPriors>(m, "DefaultPriors", "")
+        .def(nb::init<const RVData&>(), "data"_a, "Create default priors")
+        .def("get", &DefaultPriors::get)
+        .def("print", &DefaultPriors::print);
 }

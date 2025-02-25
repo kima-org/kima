@@ -9,6 +9,11 @@
 #include "utils.h"
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
+// for nanobind
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
+namespace nb = nanobind;
+using namespace nb::literals;
 
 class DefaultPriors
 {
@@ -23,5 +28,3 @@ class DefaultPriors
         void print();
     
 };
-
-// distribution get_default_prior(std::string name);
