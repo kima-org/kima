@@ -17,7 +17,7 @@ class Exponential:public ContinuousDistribution
         double scale; // scale parameter
 
         Exponential(double scale=1.0);
-        void setpars(double scale); // setter
+        void setpars(double scale) override;
 
         double cdf(double x) const override;
         double cdf_inverse(double p) const override;
