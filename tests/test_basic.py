@@ -236,5 +236,4 @@ def test_phase_plot(include, KO, nKO, TR, nTR, nP):
     p = np.r_[p, [0,         trend[1]]]
 
     fig = phase_plot(res, p)
-    # plt.show()
     return fig
