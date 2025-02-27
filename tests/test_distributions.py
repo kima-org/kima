@@ -6,13 +6,13 @@ from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from scipy.stats import (cauchy, expon, norm, halfnorm, truncnorm, invgamma, laplace,
-                         loguniform, rayleigh, triang, uniform)
+                         loguniform, rayleigh, triang, uniform, pareto)
 from kumaraswamy import kumaraswamy
 
 
 from kima.distributions import (Cauchy, Exponential, Fixed, Kumaraswamy,
                                 Gaussian, HalfGaussian, TruncatedGaussian, 
-                                InverseGamma, Laplace, LogUniform, ModifiedLogUniform,
+                                InverseGamma, Laplace, LogUniform, ModifiedLogUniform, Pareto,
                                 Rayleigh, Triangular, Uniform, UniformAngle)
 
 def test_creation():
@@ -66,6 +66,7 @@ def test_cdf(loc_scale, number, positive):
         (loguniform(0.1*scale, 3*scale), LogUniform(0.1*scale, 3*scale)),
         (rayleigh(scale=scale), Rayleigh(scale)),
         (uniform(0.1*scale, 5*scale-0.1*scale), Uniform(0.1*scale, 5*scale)),
+        (pareto(b=b), Pareto(1.0, b)),
     ]
 
     for dist1, dist2 in pairs:
@@ -93,7 +94,7 @@ def test_cdf(loc_scale, number, positive):
     for dist1, dist2 in pairs:
         for r in dist1.rvs(N):
             assert_allclose(dist2.cdf(r), dist1.cdf(r),
-                            err_msg=f"{r} ({a=}, {b=}, {loc=}, {scale=})")
+                            err_msg=f"{dist2} - {r} ({a=}, {b=}, {loc=}, {scale=})")
 
     # Triangular
     for r in triang(c=0.75, scale=4).rvs(N):
@@ -119,6 +120,7 @@ def test_inverse_cdf(loc_scale, number, positive):
         (loguniform(0.1*scale, 3*scale), LogUniform(0.1*scale, 3*scale)),
         (rayleigh(scale=scale), Rayleigh(scale)),
         (uniform(0.1*scale, 5*scale-0.1*scale), Uniform(0.1*scale, 5*scale)),
+        (pareto(b=b), Pareto(1.0, b)),
     ]
 
     for dist1, dist2 in pairs:
