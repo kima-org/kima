@@ -949,27 +949,34 @@ def get_instrument_name(data_file):
                 return bn
 
 
-def read_big_file(filename):
+def read_big_file(filename, names=None):
     # return np.genfromtxt(filename)
+    # if cache and os.path.exists(filename + '.npy'):
+    #     return np.load(filename + '.npy')
+
     try:
         import pandas as pd
-        names = open(filename).readline().strip().replace('#', '').split()
+        if names is None:
+            names = open(filename).readline().strip().replace('#', '').split()
         try:
-            data = pd.read_csv(filename,
-                            delim_whitespace=True,
-                            comment='#',
-                            names=names,
-                            dtype=float).values
+            data = pd.read_csv(filename, sep=r'\s+', comment='#',
+                               names=names, dtype=float).values
         except pd.errors.ParserError:
             raise ValueError
 
         # pandas.read_csv has problems with 1-line files
         if data.shape[0] == 0:
             data = np.genfromtxt(filename)
-        return data
 
-    except (ImportError, ValueError):  # no pandas or some other issue, use np.genfromtxt
-        return np.genfromtxt(filename)
+    # no pandas or some other issue, use np.genfromtxt
+    except (ImportError, ValueError):  
+        data = np.genfromtxt(filename)
+
+    # if cache:
+    #     np.save(filename + '.npy', data)
+
+    return data
+
 
 
 def kima_to_george_GP(η1, η2, η3, η4, η5=None, η6=None, η7=None, build_kernel=True):
