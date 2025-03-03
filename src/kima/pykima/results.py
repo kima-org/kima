@@ -983,10 +983,11 @@ class KimaResults:
             n_alphas = n_betas = self.nseries
             istart = self._current_column
             iend = istart + n_alphas + n_betas
-            self.alphas = self.posterior_sample[:, istart:istart+n_alphas]
-            self.indices['GP_alphas'] = slice(istart, istart + n_alphas)
-            self.betas = self.posterior_sample[:, istart+n_alphas:iend]
-            self.indices['GP_betas'] = slice(istart + n_alphas, iend)
+            alphas_betas = self.posterior_sample[:, istart:iend]
+            self.alphas = alphas_betas[:, ::2]
+            self.betas = alphas_betas[:, 1::2]
+            self.indices['GP_alphas'] = slice(istart, iend, 2)
+            self.indices['GP_betas'] = slice(istart + 1, iend, 2)
             self._current_column += n_alphas + n_betas
 
     def _read_MA(self):
@@ -1415,6 +1416,10 @@ class KimaResults:
             for i in range(self.n_hyperparameters):
                 setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
                 setattr(self.posteriors, f'_eta{i+1}', self.etas[:, i])
+            
+            if self.model == 'SPLEAFmodel':
+                self.posteriors.alpha = self.alphas
+                self.posteriors.beta = self.betas
 
         if self.model == 'GAIAmodel':
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
@@ -2548,7 +2553,13 @@ class KimaResults:
 
 
         elif self.model == 'SPLEAFmodel':
-            D = np.r_[self.data.y.reshape(1,-1), self._extra_data[::2, :]]
+            if self.nseries > 1:
+                D = np.r_[self.data.y.reshape(1,-1), self._extra_data[::2, :]]
+                errors = np.r_[self.data.e.reshape(1,-1), self._extra_data[1::2, :]]
+            else:
+                D = self.data.y.copy().reshape(1,-1)
+                errors = self.data.e.copy().reshape(1,-1)
+
             resid = D - self.eval_model(sample)
 
             #TODO: move to beginning of file
@@ -2556,21 +2567,19 @@ class KimaResults:
             tfull, resid_full, efull, obs_full, series_index = cov.merge_series(
                 self.nseries * [self.data.t],
                 resid,
-                np.r_[self.data.e.reshape(1,-1), self._extra_data[1::2, :]],
+                errors,
                 self.nseries * [self.data.obs],
             )
             a, b = np.ones(self.nseries), np.ones(self.nseries)
 
-            if include_jitters:
-                jit = {
-                    f'jit{i}{j}': term.InstrumentJitter(series_index[i][obs_full[series_index[i]] == j+1], 1.0)
-                    for i in range(self.nseries)
-                    for j in range(self.n_instruments)
-                }
-            else:
-                jit = {}
+            jit = {
+                f'jit{i}{j}': term.InstrumentJitter(series_index[i][obs_full[series_index[i]] == j+1], 1.0)
+                for i in range(self.nseries)
+                for j in range(self.n_instruments)
+            }
 
             k = {
+                GP.KernelType.spleaf_matern32: term.Matern32Kernel(1.0, 1.0),
                 GP.KernelType.spleaf_sho: term.SHOKernel(1.0, 1.0, 1.0),
                 GP.KernelType.spleaf_mep: term.MEPKernel(1.0, 1.0, 1.0, 1.0),
                 GP.KernelType.spleaf_esp: term.ESPKernel(1.0, 1.0, 1.0, 1.0, nharm=3),
@@ -2588,11 +2597,21 @@ class KimaResults:
             else:
                 gp_indices = self.indices['GPpars']
             gp_pars = sample[gp_indices].copy()
+            gp_pars[-1] *= 0.5
+            # gp_pars = [1.0, 9.746, 17.95, 0.49]
+            # print(gp_pars)
 
-            # interleave alphas and betas
-            alpha_beta = sample[self.indices['GP_alphas']].copy()
-            alpha_beta = np.insert(alpha_beta, np.arange(1, self.nseries + 1), 
-                                   sample[self.indices['GP_betas']])
+            # alphas and betas
+            alpha_beta = np.r_[
+                sample[self.indices['GP_alphas']].copy(),
+                sample[self.indices['GP_betas']].copy(),
+                # [6.5, 44.8],
+                # [28.2, 0.0]
+            ]
+            # alpha_beta = np.insert(alpha_beta, np.arange(1, self.nseries + 1), 
+            #                        sample[self.indices['GP_betas']])
+            # print(alpha_beta)
+
 
             pars = np.r_[
                 sample[self.indices['jitter']].copy(),
@@ -2600,7 +2619,10 @@ class KimaResults:
                 alpha_beta,
             ]
 
+            # for name, p in zip(C.param, pars):
+            #     print(name, p)
             C.set_param(pars, C.param)
+            # print(C.get_param())
 
             pred = np.zeros((self.nseries, t.size))
             std = np.zeros((self.nseries, t.size))
@@ -2613,11 +2635,9 @@ class KimaResults:
                     pred[i] = C.conditional(resid_full, t)
 
             if return_std:
-                # return pred*0, std*0
-                return pred, std
+                return pred, std#, C
             else:
-                # return pred*0
-                return pred
+                return pred#, C
             # return C.conditional(r, t)
 
         else:
