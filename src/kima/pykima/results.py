@@ -159,6 +159,7 @@ class posterior_holder:
         stellar_jitter (ndarray): Global jitter
         offset (ndarray): Between-instrument offset(s)
         vsys (ndarray): Systemic velocity
+        slope, quadr, cubic (ndarray): Trend parameters (up to 3rd degree)
         --
         η1 - η6 (ndarray): GP hyperparameters
         --
@@ -177,6 +178,9 @@ class posterior_holder:
     stellar_jitter: np.ndarray = field(init=False)
     offset: np.ndarray = field(init=False)
     vsys: np.ndarray = field(init=False)
+    slope: np.ndarray = field(init=False)
+    quadr: np.ndarray = field(init=False)
+    cubic: np.ndarray = field(init=False)
     # 
     outlier_mean: np.ndarray = field(init=False)
     outlier_sigma: np.ndarray = field(init=False)
@@ -188,11 +192,13 @@ class posterior_holder:
     η4: np.ndarray = field(init=False)
     η5: np.ndarray = field(init=False)
     η6: np.ndarray = field(init=False)
+    alpha: np.ndarray = field(init=False)
+    beta: np.ndarray = field(init=False)
     # 
     TR: Self = field(init=False)
     KO: Self = field(init=False)
 
-    def __repr__(self):
+    def _get_set_fields(self):
         fields = list(self.__dataclass_fields__.keys())
         check_hasattr = lambda f: hasattr(self, f)
         check_isph = lambda f: isinstance(getattr(self, f), posterior_holder)
@@ -201,6 +207,10 @@ class posterior_holder:
             f for f in fields 
             if check_hasattr(f) and (check_isph(f) or check_size(f))
         ]
+        return fields
+
+    def __repr__(self):
+        fields = self._get_set_fields()
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
 
@@ -1684,7 +1694,7 @@ class KimaResults:
         return map_sample
 
     def maximum_likelihood_sample(self, Np=None, printit=True, mask=None,
-                                  from_posterior=False):
+                                  from_posterior=False, optimize=False):
         """
         Get the maximum likelihood sample. 
         
@@ -1702,6 +1712,9 @@ class KimaResults:
             from_posterior (bool, optional): 
                 If True, return the highest likelihood sample *from those that
                 represent the posterior*. 
+            optimize (bool, optional):
+                If True, optimize the likelihood, starting from the maximum
+                likelihood sample.
         """
         if self.sample_info is None and not self._lnlike_available:
             print('log-likelihoods are not available! '
@@ -1721,16 +1734,25 @@ class KimaResults:
             maxlike = loglike[ind_maxlike]
             pars = self.sample[ind][ind_maxlike]
 
+        if optimize:
+            # TODO: should take into account the prior (bounds)
+            from scipy.optimize import minimize
+            res = minimize(lambda p: -self.log_likelihood(p), pars)
+            maxlike = -res.fun
+            pars = res.x
+
         if printit:
+            text = '(after optimization)' if optimize else ''
+
             if from_posterior:
-                print('Posterior sample with the highest likelihood value', end=' ')
+                print(f'Posterior sample with the highest likelihood value {text}', end=' ')
             else:
-                print('Sample with the highest likelihood value', end=' ')
+                print(f'Sample with the highest likelihood value {text}', end=' ')
 
             print('(logL = {:.2f})'.format(maxlike))
 
             if Np is not None:
-                print('from samples with %d Keplerians only' % Np)
+                print(f'from samples with {Np=} only')
 
             msg = '-> might not be representative '\
                   'of the full posterior distribution\n'
@@ -2765,7 +2787,30 @@ class KimaResults:
         else:
             return D - self.eval_model(sample)
 
-    def residual_rms(self, sample, weighted=True, printit=True):
+    def residual_std(self, sample, per_instrument=True, printit=True):
+        r = self.residuals(sample, full=True)
+        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            r = r[0]
+
+        vals = []
+        val = np.std(r)
+
+        if printit:
+            print(f'full: {val:.3f} m/s')
+
+        vals.append(val)
+
+        if per_instrument and self.multi:
+            for inst, o in zip(self.instruments, np.unique(self.data.obs)):
+                val = np.std(r[self.data.obs == o])
+                if printit:
+                    print(f'{inst}: {val:.3f} m/s')
+                vals.append(val)
+
+        return np.array(vals)
+
+
+    def residual_rms(self, sample, per_instrument=True, weighted=True, printit=True):
         r = self.residuals(sample, full=True)
         if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             r = r[0]
@@ -2781,7 +2826,7 @@ class KimaResults:
 
         vals.append(val)
 
-        if self.multi:
+        if per_instrument and self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = wrms(r[self.data.obs == o],
                            weights=1 / self.data.e[self.data.obs == o]**2)
