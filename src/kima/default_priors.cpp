@@ -44,11 +44,11 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
             // 
             // specific parameters in the RVFWHM model
             // systemic FWHM
-            {"C2prior", make_prior<DNest4::Uniform>(data.get_actind_min(0), data.get_actind_max(0))},
+            {"Cfwhm_prior", make_prior<DNest4::Uniform>(data.get_actind_min(0), data.get_actind_max(0))},
             // between-instrument FWHM offsets
             {"offsets_fwhm_prior", make_prior<DNest4::Uniform>( -data.get_actind_span(0), data.get_actind_span(0) )},
             // jitter for the FWHM, per instrument
-            {"J2prior", make_prior<DNest4::ModifiedLogUniform>(min(1.0, 0.1*data.get_actind_span(0)), data.get_actind_span(0))},
+            {"Jfwhm_prior", make_prior<DNest4::ModifiedLogUniform>(min(1.0, 0.1*data.get_actind_span(0)), data.get_actind_span(0))},
             // GP hyperparameters
             {"eta1_fwhm_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_actind_span(0) )},
             // another possibility?
