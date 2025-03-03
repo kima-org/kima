@@ -86,8 +86,8 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         Jprior = defaults.get("Jprior");
 
     // jitter for the FWHM
-    if (!J2prior)
-        J2prior = defaults.get("J2prior");
+    if (!Jfwhm_prior)
+        Jfwhm_prior = defaults.get("Jfwhm_prior");
 
     if (trend)
     {
@@ -212,13 +212,13 @@ void RVFWHMmodel::from_prior(RNG& rng)
         }
 
         for (size_t i = jitters.size() / 2; i < jitters.size(); i++) {
-            jitters[i] = J2prior->generate(rng);
+            jitters[i] = Jfwhm_prior->generate(rng);
         }
     }
     else
     {
         jitter = Jprior->generate(rng);
-        jitter_fwhm = J2prior->generate(rng);
+        jitter_fwhm = Jfwhm_prior->generate(rng);
     }
 
     if(trend)
@@ -677,13 +677,13 @@ double RVFWHMmodel::perturb(RNG& rng)
             }
             for (size_t i = jitters.size() / 2; i < jitters.size(); i++)
             {
-                J2prior->perturb(jitters[i], rng);
+                Jfwhm_prior->perturb(jitters[i], rng);
             }
         }
         else
         {
             Jprior->perturb(jitter, rng);
-            J2prior->perturb(jitter_fwhm, rng);
+            Jfwhm_prior->perturb(jitter_fwhm, rng);
         }
 
         calculate_C(); // recalculate covariance matrix
@@ -1116,7 +1116,7 @@ void RVFWHMmodel::save_setup() {
     fout << "Cprior: " << *Cprior << endl;
     fout << "Cfwhm_prior: " << *Cfwhm_prior << endl;
     fout << "Jprior: " << *Jprior << endl;
-    fout << "J2prior: " << *J2prior << endl;
+    fout << "Jfwhm_prior: " << *Jfwhm_prior << endl;
 
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
@@ -1292,9 +1292,9 @@ NB_MODULE(RVFWHMmodel, m) {
             [](RVFWHMmodel &m) { return m.Jprior; },
             [](RVFWHMmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
-        .def_prop_rw("J2prior",
-            [](RVFWHMmodel &m) { return m.J2prior; },
-            [](RVFWHMmodel &m, distribution &d) { m.J2prior = d; },
+        .def_prop_rw("Jfwhm_prior",
+            [](RVFWHMmodel &m) { return m.Jfwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.Jfwhm_prior = d; },
             "Prior for the extra white noise (jitter) in the FWHM")
     
         .def_prop_rw("slope_prior",

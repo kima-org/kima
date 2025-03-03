@@ -135,7 +135,7 @@ class  RVFWHMmodel
 
         /// Prior for the extra white noise (jitter).
         distribution Jprior;
-        distribution J2prior;
+        distribution Jfwhm_prior;
 
         /// Prior for the slope
         distribution slope_prior;

@@ -648,8 +648,8 @@ class KimaResults:
             self.studentt = False
 
         if self.model == 'RVFWHMmodel':
-            self.C2 = self.posterior_sample[:, self._current_column]
-            self.indices['C2'] = self._current_column
+            self.cfwhm = self.posterior_sample[:, self._current_column]
+            self.indices['cfwhm'] = self._current_column
             self._current_column += 1
 
         if self.model == 'SPLEAFmodel':
@@ -847,9 +847,9 @@ class KimaResults:
         """
         if self.model == 'RVFWHMmodel':
             i = [0, 1]  # eta1_rv, eta1_fwhm
-            i += [2, 2] if self.share_eta2 else [2]
-            i += [3, 3] if self.share_eta3 else [3]
-            i += [4, 4] if self.share_eta4 else [4]
+            i += 2 * [i[-1] + 1] if self.share_eta2 else [i[-1] + 1, i[-1] + 2]
+            i += 2 * [i[-1] + 1] if self.share_eta3 else [i[-1] + 1, i[-1] + 2]
+            i += 2 * [i[-1] + 1] if self.share_eta4 else [i[-1] + 1, i[-1] + 2]
         elif self.model == 'RVFWHMRHKmodel':
             i = [0, 1, 2]  # eta1_rv, eta1_fwhm, eta1_rhk
             i += 3 * [i[-1]+1] if self.share_eta2 else list(range(i[-1]+1, i[-1] + 4))
@@ -1064,7 +1064,7 @@ class KimaResults:
             for i in range(self.n_instruments):
                 priors[i] = self.priors['Jprior']
             for i in range(self.n_instruments, 2 * self.n_instruments):
-                priors[i] = self.priors['J2prior']
+                priors[i] = self.priors['Jfwhm_prior']
         else:
             priors[self.indices['jitter']] = self.priors['Jprior']
             if self.model == 'RVmodel' and self.multi:
@@ -1079,7 +1079,7 @@ class KimaResults:
             no = self.n_instruments - 1
             if self.model == 'RVFWHMmodel':
                 prior1 = self.priors['offsets_prior']
-                prior2 = self.priors['offsets2_prior']
+                prior2 = self.priors['offsets_fwhm_prior']
                 offset_priors = no * [prior1] + no * [prior2]
                 priors[self.indices['inst_offsets']] = np.array(offset_priors)
             else:
@@ -1093,39 +1093,43 @@ class KimaResults:
 
 
         if self.has_gp:
-            if self.model == 'GPmodel':
+            if self.model in ('GPmodel', 'SPLEAFmodel'):
                 priors[self.indices['GPpars']] = [
                     self.priors[f'eta{i}_prior'] for i in range(1, 5)
                 ]
             elif self.model == 'RVFWHMmodel':
                 i = self.indices['GPpars_start']
-                priors[i] = self.priors['eta1_1_prior']
+                priors[i] = self.priors['eta1_prior']
                 i += 1
-                priors[i] = self.priors['eta1_2_prior']
+                priors[i] = self.priors['eta1_fwhm_prior']
                 i += 1
                 if self.share_eta2:
-                    priors[i] = self.priors['eta2_1_prior']
+                    priors[i] = self.priors['eta2_prior']
                     i += 1
                 else:
-                    priors[i] = self.priors['eta2_1_prior']
-                    priors[i + 1] = self.priors['eta2_1_prior']
+                    priors[i] = self.priors['eta2_prior']
+                    priors[i + 1] = self.priors['eta2_fwhm_prior']
                     i += 2
                 #
                 if self.share_eta3:
-                    priors[i] = self.priors['eta3_1_prior']
+                    priors[i] = self.priors['eta3_prior']
                     i += 1
                 else:
-                    priors[i] = self.priors['eta3_1_prior']
-                    priors[i + 1] = self.priors['eta3_1_prior']
+                    priors[i] = self.priors['eta3_prior']
+                    priors[i + 1] = self.priors['eta3_fwhm_prior']
                     i += 2
                 #
                 if self.share_eta4:
-                    priors[i] = self.priors['eta4_1_prior']
+                    priors[i] = self.priors['eta4_prior']
                     i += 1
                 else:
-                    priors[i] = self.priors['eta4_1_prior']
-                    priors[i + 1] = self.priors['eta4_1_prior']
+                    priors[i] = self.priors['eta4_prior']
+                    priors[i + 1] = self.priors['eta4_fwhm_prior']
                     i += 2
+            
+            if self.model == 'SPLEAFmodel':
+                priors[self.indices['GP_alphas']] = [self.priors[f'alpha{i+1}_prior'] for i in range(self.nseries)]
+                priors[self.indices['GP_betas']] = [self.priors[f'beta{i+1}_prior'] for i in range(self.nseries)]
 
         if self.KO:
             KO_priors = []
@@ -1170,11 +1174,9 @@ class KimaResults:
         if self.studentt:
             priors[self.indices['nu']] = self.priors['nu_prior']
 
-        try:
-            priors[self.indices['vsys']] = self.priors['Cprior']
-        except KeyError:
-            priors[self.indices['vsys']] = self.priors['Vprior']
-            priors[self.indices['C2']] = self.priors['C2prior']
+        priors[self.indices['vsys']] = self.priors['Cprior']
+        if self.model == 'RVFWHMmodel':
+            priors[self.indices['cfwhm']] = self.priors['Cfwhm_prior']
 
         return priors
 
@@ -2185,7 +2187,7 @@ class KimaResults:
 
         # systemic velocity (and C2) for this sample
         if self.model == 'RVFWHMmodel':
-            C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
+            C = np.c_[sample[self.indices['vsys']], sample[self.indices['cfwhm']]]
             v += C.reshape(-1, 1)
         elif self.model == 'RVFWHMRHKmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']], sample[self.indices['C3']]]
@@ -3206,6 +3208,11 @@ class KimaResults:
             if self.model == 'SPLEAFmodel' and 'series_j' in self.parameters[i]:
                 prior = self.priors[f'series_jitters_prior_{series_k+1}']
                 series_k += 1
+            elif self.model == 'RVFWHMmodel':
+                if i < self.n_instruments:
+                    prior = self.priors['Jprior']
+                else:
+                    prior = self.priors['Jfwhm_prior']    
             else:
                 prior = self.priors['Jprior']
             print_line(jitter_name, v, prior, show_prior)
@@ -3218,6 +3225,9 @@ class KimaResults:
         #         k += 1
         
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
+
+        if self.model == 'RVFWHMmodel':
+            print_line('cfwhm', self.posteriors.cfwhm, self.priors['Cfwhm_prior'], show_prior)
 
         if self.trend:
             if self.trend_degree >= 1:
@@ -3234,17 +3244,27 @@ class KimaResults:
                 print_line(f'zero-point {i+1}: ', v, self.priors[f'zero_points_prior_{i+1}'], show_prior)
 
         if self.multi:
-            for i, v in enumerate(self.posteriors.offset.T):
-                print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
+            if self.model == 'RVFWHMmodel':
+                rv_offsets = self.posteriors.offset[:, :self.n_instruments - 1]
+                for i, v in enumerate(rv_offsets.T):
+                    print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
+                fw_offsets = self.posteriors.offset[:, self.n_instruments - 1:]
+                for i, v in enumerate(fw_offsets.T):
+                    print_line(f'offset{i+1}_fwhm', v, self.priors[f'individual_offset_fwhm_prior[{i}]'], show_prior)
+            else:
+                for i, v in enumerate(self.posteriors.offset.T):
+                    print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
 
         if self.max_components > 0:
             print('    - planets')
             for i in range(self.max_components):
-                print_line(f'{i+1}: P', self.posteriors.P[:, i], self.priors['Pprior'], show_prior)
-                print_line(f'{i+1}: K', self.posteriors.K[:, i], self.priors['Kprior'], show_prior)
-                print_line(f'{i+1}: M0', self.posteriors.φ[:, i], self.priors['phiprior'], show_prior)
-                print_line(f'{i+1}: e', self.posteriors.e[:, i], self.priors['eprior'], show_prior)
-                print_line(f'{i+1}: w', self.posteriors.w[:, i], self.priors['wprior'], show_prior)
+                Np_mask = self.Np > i
+                print_line(f'{i+1}: P', self.posteriors.P[Np_mask, i], self.priors['Pprior'], show_prior)
+                print_line(f'{i+1}: K', self.posteriors.K[Np_mask, i], self.priors['Kprior'], show_prior)
+                print_line(f'{i+1}: M0', self.posteriors.φ[Np_mask, i], self.priors['phiprior'], show_prior)
+                print_line(f'{i+1}: e', self.posteriors.e[Np_mask, i], self.priors['eprior'], show_prior)
+                print_line(f'{i+1}: w', self.posteriors.w[Np_mask, i], self.priors['wprior'], show_prior)
+                print('    --')
         
         if self.has_gp:
             print('    - GP')
