@@ -131,7 +131,7 @@ class  RVFWHMmodel
 
         /// Prior for the systemic velocity.
         distribution Cprior;
-        distribution C2prior;
+        distribution Cfwhm_prior;
 
         /// Prior for the extra white noise (jitter).
         distribution Jprior;

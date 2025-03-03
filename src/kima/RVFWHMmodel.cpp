@@ -78,8 +78,8 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         Cprior = defaults.get("Cprior");
     
     // "systemic FWHM"
-    if (!C2prior)
-        C2prior = defaults.get("C2prior");
+    if (!Cfwhm_prior)
+        Cfwhm_prior = defaults.get("Cfwhm_prior");
 
     // jitter for the RVs
     if (!Jprior)
@@ -192,7 +192,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
 
     bkg = Cprior->generate(rng);
-    bkg_fwhm = C2prior->generate(rng);
+    bkg_fwhm = Cfwhm_prior->generate(rng);
 
     if(data._multi)
     {
@@ -744,7 +744,7 @@ double RVFWHMmodel::perturb(RNG& rng)
 
         // propose new vsys
         Cprior->perturb(bkg, rng);
-        C2prior->perturb(bkg_fwhm, rng);
+        Cfwhm_prior->perturb(bkg_fwhm, rng);
 
         // propose new instrument offsets
         if (data._multi)
@@ -997,16 +997,16 @@ string RVFWHMmodel::description() const
     switch (kernel)
     {
     case qp:
-        desc += "eta1" + sep + "eta1_fw" + sep;
+        desc += "eta1" + sep + "eta1_fwhm" + sep;
 
         desc += "eta2" + sep;
-        if (!share_eta2) desc += "eta2_fw" + sep;
+        if (!share_eta2) desc += "eta2_fwhm" + sep;
 
         desc += "eta3" + sep;
-        if (!share_eta3) desc += "eta3_fw" + sep;
+        if (!share_eta3) desc += "eta3_fwhm" + sep;
 
         desc += "eta4" + sep;
-        if (!share_eta4) desc += "eta4_fw" + sep;
+        if (!share_eta4) desc += "eta4_fwhm" + sep;
 
         break;
 
@@ -1114,14 +1114,36 @@ void RVFWHMmodel::save_setup() {
 
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
+    fout << "Cfwhm_prior: " << *Cfwhm_prior << endl;
     fout << "Jprior: " << *Jprior << endl;
+    fout << "J2prior: " << *J2prior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data._multi)
+
+    if (data._multi) {
         fout << "offsets_prior: " << *offsets_prior << endl;
+
+        int i = 0;
+        for (auto &p : individual_offset_prior)
+        {
+            fout << "individual_offset_prior[" << i << "]: " << *p << endl;
+            i++;
+        }
+
+        fout << "offsets_fwhm_prior: " << *offsets_fwhm_prior << endl;
+
+        i = 0;
+        for (auto &p : individual_offset_fwhm_prior)
+        {
+            fout << "individual_offset_fwhm_prior[" << i << "]: " << *p << endl;
+            i++;
+        }
+
+    }
 
 
     fout << endl << "[priors.GP]" << endl;
@@ -1261,10 +1283,20 @@ NB_MODULE(RVFWHMmodel, m) {
             [](RVFWHMmodel &m) { return m.Cprior; },
             [](RVFWHMmodel &m, distribution &d) { m.Cprior = d; },
             "Prior for the systemic velocity")
+        .def_prop_rw("Cfwhm_prior",
+            [](RVFWHMmodel &m) { return m.Cfwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.Cfwhm_prior = d; },
+            "Prior for the 'systemic' FWHM")
+
         .def_prop_rw("Jprior",
             [](RVFWHMmodel &m) { return m.Jprior; },
             [](RVFWHMmodel &m, distribution &d) { m.Jprior = d; },
             "Prior for the extra white noise (jitter)")
+        .def_prop_rw("J2prior",
+            [](RVFWHMmodel &m) { return m.J2prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.J2prior = d; },
+            "Prior for the extra white noise (jitter) in the FWHM")
+    
         .def_prop_rw("slope_prior",
             [](RVFWHMmodel &m) { return m.slope_prior; },
             [](RVFWHMmodel &m, distribution &d) { m.slope_prior = d; },
