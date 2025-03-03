@@ -1259,7 +1259,7 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
     x.add_row(3 * [''])
     x.add_row([r'\multicolumn{3}{c}{GP}', '', ''])
     # GP
-    if res.GPmodel:
+    if res.has_gp:
         parnames = [r'$\eta_1$', r'$\eta_2$', r'$\eta_3$', r'$\eta_4$']
         units = ['m/s', 'days', 'days', '']
         if res.model == 'RVFWHMmodel':
