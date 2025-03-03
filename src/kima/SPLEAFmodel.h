@@ -65,7 +65,6 @@ class SPLEAFmodel
         std::vector<double> series_jitters; // for each activity time series, TODO: and each instrument
 
         double slope=0.0, quadr=0.0, cubic=0.0;
-        double extra_sigma=0.0;
 
         // Parameters for the known object, if set
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
@@ -86,6 +85,9 @@ class SPLEAFmodel
         double eta1, eta2, eta3, eta4;
         double Q;
 
+        bool _eta2_larger_eta3 = false;
+        double _eta2_larger_eta3_factor = 1.0;
+
         // the RV Keplerian signal
         std::vector<double> mu;
 
@@ -99,8 +101,10 @@ class SPLEAFmodel
 
         unsigned int staleness;
 
-        VectorXd t_full, yerr_full, dt;
-        std::vector<Eigen::ArrayXi> series_index;
+        size_t _N, _Nfull, _Nfull_non_nan;
+        VectorXd t_full, y_full, yerr_full, dt;
+        Eigen::ArrayXi obsi_array;
+        std::vector<Eigen::ArrayXi> series_index, instrument_index;
         std::vector<double> alpha, beta;
 
 
@@ -197,8 +201,10 @@ class SPLEAFmodel
         /// Prior for $Q$, the quality factor in a SHO kernel
         distribution Q_prior;
 
-        distribution alpha0_prior, alpha_prior;
-        distribution beta_prior;
+        std::vector<distribution> alpha_prior, beta_prior;
+
+        /// Constrain $\eta_2$ to be larger than factor * $\eta_3$
+        void eta2_larger_eta3(double factor=1.0);
 
 
         RVConditionalPrior* get_conditional_prior() {
