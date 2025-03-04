@@ -1,8 +1,12 @@
 #ifndef DNest4_Kumaraswamy
 #define DNest4_Kumaraswamy
 
+#include <cmath>
+#include <stdexcept>
+#include <limits>
 #include "ContinuousDistribution.h"
 #include "../RNG.h"
+#include "../Utils.h"
 
 namespace DNest4
 {

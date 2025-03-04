@@ -1,7 +1,4 @@
 #include "Kumaraswamy.h"
-#include <stdexcept>
-#include <cmath>
-#include "../Utils.h"
 
 namespace DNest4
 {
@@ -27,7 +24,9 @@ Kumaraswamy::Kumaraswamy(double a, double b)
 
     double Kumaraswamy::log_pdf(double x) const
     {
-        return log(a) + log(b) + (a-1)*log(x) + (b-1)*log(1-pow(x,a));
+        if( (x < 0.0) || (x > 1.0) )
+            return -std::numeric_limits<double>::infinity();
+        return log(a) + log(b) + (a - 1) * log(x) + (b - 1) * log(1 - pow(x, a));
     }
 
 
