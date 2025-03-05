@@ -628,8 +628,8 @@ double RVFWHMmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-
-    if(rng.rand() <= 0.5) // perturb planet parameters
+    int maxpl = planets.get_max_num_components();
+    if(maxpl > 0 && rng.rand() <= 0.5) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
