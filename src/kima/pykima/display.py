@@ -690,6 +690,9 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
         print('Model does not have GP! plot_gp() doing nothing...')
         return
 
+    FWHMmodel = res.model == 'RVFWHMmodel'
+    FWHMRHKmodel = res.model == 'RVFWHMRHKmodel'
+
     # n = res.etas.shape[1]
     labels = ('η1', 'η2', 'η3', 'η4')
 
@@ -699,7 +702,7 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    if res.model == 'RVFWHMmodel':
+    if FWHMmodel:
         fig, axs = plt.subplot_mosaic(
             [
                 ['η1RV', 'η2'], 
@@ -710,7 +713,8 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
                 ['η1FW', 'η4'],
             ],
         figsize=(8, 6), constrained_layout=True)
-    elif res.model == 'RVFWHMRHKmodel':
+
+    elif FWHMRHKmodel:
         fig, axs = plt.subplot_mosaic(
             [
                 ['η1RV', 'η1FW', 'η1RHK'], 
@@ -736,7 +740,7 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
     axs['η1FW'].set_xlim((0, None))
     j = 2
 
-    if res.model == 'RVFWHMRHKmodel':
+    if FWHMRHKmodel:
         estimate = percentile68_ranges_latex(res.etas[:, 2])
         axs['η1RHK'].hist(res.etas[:, 2], **histkw)
         axs['η1RHK'].set_title(estimate, loc='right', fontsize=10)
@@ -746,40 +750,40 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
 
     if show_prior:
         kw = dict(color='k', alpha=0.2, density=True, zorder=-1, bins='doane')
-        prior = res.priors['eta1_1_prior']
-        axs['η1RV'].hist(prior.rvs(10*res.ESS), **kw)
-        axs['η1RV'].set_xlim(*prior.support())
-        prior = res.priors['eta1_2_prior']
-        axs['η1FW'].hist(prior.rvs(10*res.ESS), **kw)
-        axs['η1FW'].set_xlim(*prior.support())
+        prior = res.priors[f'eta1_prior']
+        axs['η1RV'].hist(distribution_rvs(prior, res.ESS), **kw)
+        prior = res.priors[f'eta1_fwhm_prior']
+        axs['η1FW'].hist(distribution_rvs(prior, res.ESS), **kw)
+        if FWHMRHKmodel:
+            prior = res.priors[f'eta1_rhk_prior']
+            axs['η1RHK'].hist(distribution_rvs(prior, res.ESS), **kw)
 
-    col = 1
+
+    from itertools import islice
+    def grouper(n, iterable):
+        iterable = iter(iterable)
+        return iter(lambda: list(islice(iterable, n)), [])
 
     units = [' [days]', ' [days]', '']
+    group = 3 if FWHMRHKmodel else 2
 
-    for i in range(3):
-        ax = axs[f'η{i+2}']
-        j = 3 * (i+1)
+    for i, n in zip(grouper(group, res._GP_par_indices[j:]), (2, 3, 4)):
+        ax = axs[f'η{n}']
 
-        multiple = res._GP_par_indices[j] != res._GP_par_indices[j + 1]
+        locs = ('left', 'center', 'right')
+        for k, j in enumerate(np.unique(i)):
+            estimate = percentile68_ranges_latex(res.etas[:, j])
+            ax.set_title(estimate, loc=locs[k], fontsize=10, color=f'C{k}')
+            ax.hist(res.etas[:, j], **histkw)
+        
+        if not getattr(res, f'share_eta{n}'):
+            ax.text(0.96, 0.96, f'share_eta{n} = False', transform=ax.transAxes, 
+                    fontsize=10, ha='right', va='top')
 
-        if multiple:
-            ax.hist(res.etas[:, res._GP_par_indices[j + 0]], **histkw2)
-            ax.hist(res.etas[:, res._GP_par_indices[j + 1]], **histkw2)
-            ax.hist(res.etas[:, res._GP_par_indices[j + 2]], **histkw2)
-            ax.legend(['RV', 'FWHM', r"R'$_{HK}$"])
-        else:
-            ax.hist(res.etas[:, res._GP_par_indices[j]], **histkw)
-            estimate = percentile68_ranges_latex(res.etas[:, res._GP_par_indices[j]]) + ' days'
-            ax.set_title(estimate, loc='right', fontsize=10)
+        ax.set(xlabel=fr'$\eta_{n}$' + units[n - 2], ylabel='posterior', **allkw)
 
-        ax.set(xlabel=fr'$\eta_{i+2}$' + units[i], ylabel='posterior', **allkw)
+        # TODO: implement show_prior ? 
 
-        if show_prior:
-            kw = dict(color='k', alpha=0.2, density=True, zorder=-1, bins='doane')
-            prior = res.priors[f'eta{2+i}_1_prior']
-            if prior is not None:
-                ax.hist(prior.rvs(10*res.ESS), **kw)
     return fig
 
 

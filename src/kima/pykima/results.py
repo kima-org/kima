@@ -2224,7 +2224,7 @@ class KimaResults:
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['cfwhm']]]
             v += C.reshape(-1, 1)
         elif self.model == 'RVFWHMRHKmodel':
-            C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']], sample[self.indices['C3']]]
+            C = np.c_[sample[self.indices['vsys']], sample[self.indices['cfwhm']], sample[self.indices['crhk']]]
             v += C.reshape(-1, 1)
         elif self.model == 'SPLEAFmodel':
             zp = sample[self.indices['zero_points']]
