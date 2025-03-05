@@ -515,8 +515,15 @@ class KimaResults:
         self.data.obs = np.array(np.copy(data.obsi))
         self.data.N = data.N
 
+        self.series = ('RV',)
+
         if self.model == 'RVFWHMmodel':
+            self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
+
+        if self.model == 'RVFWHMRHKmodel':
+            self.series = ('RV', 'FWHM', 'RHK')
+            self.data.y2, self.data.e2, self.data.y3, self.data.e3, *_ = np.array(data.actind)
 
         if self.model == 'SPLEAFmodel':
             self.nseries = int(setup['kima']['nseries'])
