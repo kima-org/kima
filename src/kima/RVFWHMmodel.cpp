@@ -43,11 +43,8 @@ void RVFWHMmodel::set_known_object(size_t n)
     known_object = true;
     n_known_object = n;
 
-    KO_Pprior.resize(n);
-    KO_Kprior.resize(n);
-    KO_eprior.resize(n);
-    KO_phiprior.resize(n);
-    KO_wprior.resize(n);
+    KO_Pprior.resize(n); KO_Kprior.resize(n); KO_eprior.resize(n); KO_phiprior.resize(n); KO_wprior.resize(n);
+    KO_P.resize(n); KO_K.resize(n); KO_e.resize(n); KO_phi.resize(n); KO_w.resize(n);
 }
 
 void RVFWHMmodel::set_transiting_planet(size_t n)
@@ -55,17 +52,8 @@ void RVFWHMmodel::set_transiting_planet(size_t n)
     transiting_planet = true;
     n_transiting_planet = n;
 
-    TR_Pprior.resize(n);
-    TR_Kprior.resize(n);
-    TR_eprior.resize(n);
-    TR_Tcprior.resize(n);
-    TR_wprior.resize(n);
-
-    TR_P.resize(n);
-    TR_K.resize(n);
-    TR_e.resize(n);
-    TR_Tc.resize(n);
-    TR_w.resize(n);
+    TR_Pprior.resize(n); TR_Kprior.resize(n); TR_eprior.resize(n); TR_Tcprior.resize(n); TR_wprior.resize(n);
+    TR_P.resize(n); TR_K.resize(n); TR_e.resize(n); TR_Tc.resize(n); TR_w.resize(n);
 }
 
 /// set default priors if the user didn't change them
@@ -346,6 +334,10 @@ void RVFWHMmodel::calculate_mu()
 
         if (known_object) { // KO mode!
             add_known_object();
+        }
+
+        if (transiting_planet) {
+            add_transiting_planet();
         }
     }
     else // just updating (adding) planets
