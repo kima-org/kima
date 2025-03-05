@@ -110,9 +110,10 @@ void GPmodel::setPriors()  // BUG: should be done by only one thread!
             individual_offset_prior[j] = offsets_prior;
     }
 
-    if (known_object) { // KO mode!
-        // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
-        for (int i = 0; i < n_known_object; i++){
+    if (known_object)  // KO mode!
+    {
+        for (int i = 0; i < n_known_object; i++)
+        {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
             {
                 std::string msg = "When known_object=true, must set priors for each of KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
@@ -1251,6 +1252,19 @@ void GPmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
+auto GPMODEL_DOC = R"D(
+Implements a model for the RVs with a sum-of-Keplerians plus a 
+correlated noise component given by a Gaussian process.
+
+Args:
+    fix (bool):
+        whether the number of Keplerians should be fixed
+    npmax (int):
+        maximum number of Keplerians
+    data (RVData):
+        the RV data
+)D";
+
 class GPmodel_publicist : public GPmodel
 {
     public:
@@ -1269,7 +1283,7 @@ class GPmodel_publicist : public GPmodel
 NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel> model(m, "GPmodel");
     
-    model.def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        model.def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, GPMODEL_DOC)
         //
         .def_rw("directory", &GPmodel::directory,
                 "directory where the model ran")
