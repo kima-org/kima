@@ -155,25 +155,45 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     switch (kernel)
     {
     case qp:
+        // user didn't define eta1_prior
         if (!eta1_prior)
             eta1_prior = defaults.get("eta1_prior");
+        // user didn't define eta1_fwhm_prior
         if (!eta1_fwhm_prior)
             eta1_fwhm_prior = defaults.get("eta1_fwhm_prior");
 
+        // user didn't define eta2_prior
         if (!eta2_prior)
             eta2_prior = defaults.get("eta2_prior");
-        if (!eta2_fwhm_prior)
-            eta2_fwhm_prior = defaults.get("eta2_fwhm_prior");
+        // user didn't define eta2_fwhm_prior
+        if (!eta2_fwhm_prior) {
+            if (share_eta2) // if sharing eta2, priors in RV and FWHM are the same
+                eta2_fwhm_prior = eta2_prior;
+            else // otherwise, use default prior
+                eta2_fwhm_prior = defaults.get("eta2_fwhm_prior");
+        }
 
+        // user didn't define eta3_prior
         if (!eta3_prior)
             eta3_prior = defaults.get("eta3_prior");
-        if (!eta3_fwhm_prior)
-            eta3_fwhm_prior = defaults.get("eta3_fwhm_prior");
+        // user didn't define eta3_fwhm_prior
+        if (!eta3_fwhm_prior) {
+            if (share_eta3) // if sharing eta3, priors in RV and FWHM are the same
+                eta3_fwhm_prior = eta3_prior;
+            else // otherwise, use default prior
+                eta3_fwhm_prior = defaults.get("eta3_fwhm_prior");
+        }
 
+        // user didn't define eta4_prior
         if (!eta4_prior)
             eta4_prior = defaults.get("eta4_prior");
-        if (!eta4_fwhm_prior)
-            eta4_fwhm_prior = defaults.get("eta4_fwhm_prior");
+        // user didn't define eta4_fwhm_prior
+        if (!eta4_fwhm_prior) {
+            if (share_eta4) // if sharing eta4, priors in RV and FWHM are the same
+                eta4_fwhm_prior = eta4_prior;
+            else // otherwise, use default prior
+                eta4_fwhm_prior = defaults.get("eta4_fwhm_prior");
+        }
         break;
     
     default:
@@ -1214,6 +1234,18 @@ void RVFWHMmodel::save_setup() {
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
+auto RVFWHMMODEL_DOC = R"D(
+Implements a joint model for RVs and FWHM with a GP component for activity signals.
+
+Args:
+    fix (bool):
+        whether the number of Keplerians should be fixed
+    npmax (int):
+        maximum number of Keplerians
+    data (RVData):
+        the RV data
+)D";
+
 class RVFWHMmodel_publicist : public RVFWHMmodel
 {
     public:
@@ -1233,7 +1265,7 @@ class RVFWHMmodel_publicist : public RVFWHMmodel
 
 NB_MODULE(RVFWHMmodel, m) {
     nb::class_<RVFWHMmodel>(m, "RVFWHMmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVFWHMMODEL_DOC)
         //
         .def_rw("directory", &RVFWHMmodel::directory,
                 "directory where the model ran")
