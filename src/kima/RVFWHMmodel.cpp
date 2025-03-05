@@ -143,43 +143,61 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     switch (kernel)
     {
     case qp:
-        // user didn't define eta1_prior
+        // eta1 and eta1_fwhm are never shared, so they get default priors if
+        // they haven't been set
         if (!eta1_prior)
+        {
             eta1_prior = defaults.get("eta1_prior");
-        // user didn't define eta1_fwhm_prior
-        if (!eta1_fwhm_prior)
-            eta1_fwhm_prior = defaults.get("eta1_fwhm_prior");
+        }
 
-        // user didn't define eta2_prior
+        if (!eta1_fwhm_prior)
+        {
+            eta1_fwhm_prior = defaults.get("eta1_fwhm_prior");
+        }
+
+        // eta2 can be shared
         if (!eta2_prior)
+        {
             eta2_prior = defaults.get("eta2_prior");
-        // user didn't define eta2_fwhm_prior
-        if (!eta2_fwhm_prior) {
-            if (share_eta2) // if sharing eta2, priors in RV and FWHM are the same
-                eta2_fwhm_prior = eta2_prior;
-            else // otherwise, use default prior
+        }
+
+        if (share_eta2)
+        {
+            eta2_fwhm_prior = eta2_prior;
+        }
+        else
+        {
+            if (!eta2_fwhm_prior)
                 eta2_fwhm_prior = defaults.get("eta2_fwhm_prior");
         }
 
-        // user didn't define eta3_prior
+        // eta3 can be shared
         if (!eta3_prior)
+        {
             eta3_prior = defaults.get("eta3_prior");
-        // user didn't define eta3_fwhm_prior
-        if (!eta3_fwhm_prior) {
-            if (share_eta3) // if sharing eta3, priors in RV and FWHM are the same
-                eta3_fwhm_prior = eta3_prior;
-            else // otherwise, use default prior
+        }
+        if (share_eta3)
+        {
+            eta3_fwhm_prior = eta3_prior;
+        }
+        else
+        {
+            if (!eta3_fwhm_prior)
                 eta3_fwhm_prior = defaults.get("eta3_fwhm_prior");
         }
 
-        // user didn't define eta4_prior
+        // eta4 can be shared
         if (!eta4_prior)
+        {
             eta4_prior = defaults.get("eta4_prior");
-        // user didn't define eta4_fwhm_prior
-        if (!eta4_fwhm_prior) {
-            if (share_eta4) // if sharing eta4, priors in RV and FWHM are the same
-                eta4_fwhm_prior = eta4_prior;
-            else // otherwise, use default prior
+        }
+        if (share_eta4)
+        {
+            eta4_fwhm_prior = eta4_prior;
+        }
+        else
+        {
+            if (!eta4_fwhm_prior)
                 eta4_fwhm_prior = defaults.get("eta4_fwhm_prior");
         }
         break;
@@ -499,33 +517,6 @@ void RVFWHMmodel::calculate_C_fwhm()
     {
         C_fwhm.diagonal().array() += sig_fwhm_copy.array().square() + jitter_fwhm * jitter_fwhm;
     }
-
-    // /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    // for (size_t i = 0; i < N; i++)
-    // {
-    //     for (size_t j = i; j < N; j++)
-    //     {
-    //         double r = data.t[i] - data.t[j];
-    //         C_fwhm(i, j) = eta1_fw * eta1_fw * exp(-0.5 * pow(r / eta2_fw, 2) - 2.0 * pow(sin(M_PI * r / eta3_fw) / eta4_fw, 2));
-
-    //         if (i == j)
-    //         {
-    //             if (data._multi)
-    //             {
-    //                 double jit = jitters[data.obsi[i] - 1];
-    //                 C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
-    //             }
-    //             else
-    //             {
-    //                 C_fwhm(i, j) += sig[i] * sig[i] + jitter * jitter;
-    //             }
-    //         }
-    //         else
-    //         {
-    //             C_fwhm(j, i) = C_fwhm(i, j);
-    //         }
-    //     }
-    // }
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();

@@ -101,6 +101,7 @@ class  RVFWHMmodel
 
         void calculate_mu();
         void calculate_mu_fwhm();
+
         void add_known_object();
         void remove_known_object();
         void add_transiting_planet();
