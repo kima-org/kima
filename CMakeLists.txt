@@ -115,7 +115,7 @@ nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
 
 nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMRHKmodel.cpp ${COMMON_UNITS})
+                    src/kima/RVFWHMRHKmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
 
 nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/BINARIESmodel.cpp 
