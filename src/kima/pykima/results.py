@@ -2,6 +2,7 @@
 This module defines the `KimaResults` class to hold results from a run.
 """
 
+from functools import lru_cache
 import os
 import sys
 import pickle
