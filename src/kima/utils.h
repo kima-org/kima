@@ -2,14 +2,15 @@
 
 #include <ctime>
 #include <mutex>
+#include <cmath>
+#include <memory>       // std::shared_ptr
+#include <algorithm>    // std::min, std::max
 
-#ifndef MIN
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#endif
-#ifndef MAX
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#endif
 
+inline bool approx_equal(double x, double y, double reltol = 1e-6)
+{
+    return std::fabs(x - y) < reltol * std::max(std::fabs(x), std::fabs(y));
+}
 
 inline std::tm localtime_xp(std::time_t timer)
 {
@@ -123,7 +124,7 @@ double brenth(Functor f, double xa, double xb,
                 stry = -fcur*(fblk - fpre)/(fblk*dpre - fpre*dblk);
             }
 
-            if (2*fabs(stry) < MIN(fabs(spre), 3*fabs(sbis) - delta)) {
+            if (2*fabs(stry) < std::min(fabs(spre), 3*fabs(sbis) - delta)) {
                 /* accept step */
                 spre = scur;
                 scur = stry;
