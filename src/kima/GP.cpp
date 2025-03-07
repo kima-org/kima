@@ -299,8 +299,7 @@ void spleaf_ESKernel::deriv(
 }
 
 
-template <int nharm>
-_spleaf_ESP_PKernel<nharm>::_spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2> params, size_t offset)
+_spleaf_ESP_PKernel::_spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2> params, size_t offset)
 : P(params[0]), eta(params[1]), offset(offset)
 {
     eta2 = eta * eta;
@@ -324,8 +323,7 @@ _spleaf_ESP_PKernel<nharm>::_spleaf_ESP_PKernel(const VectorXd &t, std::array<do
     nu = 2 * M_PI / P;
 };
 
-template <int nharm>
-void _spleaf_ESP_PKernel<nharm>::operator()(
+void _spleaf_ESP_PKernel::operator()(
     const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
 {
     size_t r = 0;
@@ -340,8 +338,7 @@ void _spleaf_ESP_PKernel<nharm>::operator()(
     }
 }
 
-template <int nharm>
-void _spleaf_ESP_PKernel<nharm>::deriv(
+void _spleaf_ESP_PKernel::deriv(
     const VectorXd &t, const VectorXd &dt, MatrixXd_RM &dU, MatrixXd_RM &dV)
 {
     size_t r = 0;
@@ -362,7 +359,7 @@ spleaf_ESPKernel::spleaf_ESPKernel(const VectorXd &t, std::array<double, 4> para
 {
     size_t r = 0;
     size_t es_r = spleaf_ESKernel::r;
-    size_t esp_p_r = _spleaf_ESP_PKernel<nharm>::r;
+    size_t esp_p_r = _spleaf_ESP_PKernel::r;
 
     size_t N = t.size();
     _A1 = VectorXd::Zero(N);
@@ -381,7 +378,7 @@ void spleaf_ESPKernel::operator()(
     size_t r = 0;
     spleaf_ESKernel es = spleaf_ESKernel(t, {sig, rho}, r);
     r += es.r;
-    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel<nharm>(t, {P, eta}, r);
+    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel(t, {P, eta}, r);
 
     es(t, dt, _A1, _U1, _V1, _phi1);
     esp_p(t, dt, _A2, _U2, _V2, _phi2);
@@ -404,7 +401,7 @@ void spleaf_ESPKernel::deriv(
     size_t r = 0;
     spleaf_ESKernel es = spleaf_ESKernel(t, {sig, rho}, r);
     r += es.r;
-    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel<nharm>(t, {P, eta}, r);
+    _spleaf_ESP_PKernel esp_p = _spleaf_ESP_PKernel(t, {P, eta}, r);
 
     size_t N = t.size();
     MatrixXd_RM _dU1 = MatrixXd_RM(N, es.r), _dU2 = MatrixXd_RM(N, esp_p.r);
@@ -507,6 +504,6 @@ NB_MODULE(GP, m) {
     KERNEL_BIND(spleaf_MEPKernel, "MEPKernel", 4);
     KERNEL_BIND(spleaf_ESKernel, "ESKernel", 2);
 
-    KERNEL_BIND(_spleaf_ESP_PKernel<2>, "_ESP_PKernel", 2);
+    KERNEL_BIND(_spleaf_ESP_PKernel, "_ESP_PKernel", 2);
     KERNEL_BIND(spleaf_ESPKernel, "ESPKernel", 4);
 }

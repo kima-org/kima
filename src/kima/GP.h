@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <vector>
+#include <iomanip>
 #include <iostream>
 #include <array>
 #include <numeric>
@@ -10,6 +11,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 #include "bessel-library.hpp"
+#include "utils.h"
 
 extern "C"
 {
@@ -158,9 +160,9 @@ class spleaf_ESKernel {
 
 
 // WARNING: not a valid kernel by itself, only used in spleaf_ESPKernel
-template <int nharm=2>
 class _spleaf_ESP_PKernel { 
     public:
+        static constexpr size_t nharm = 3;
         static constexpr size_t r = 1 + 2 * nharm; // rank of the kernel
         size_t offset = 0;
         double P;
@@ -179,7 +181,7 @@ class _spleaf_ESP_PKernel {
 
 class spleaf_ESPKernel {
     public:
-        static constexpr size_t nharm = 2;
+        static constexpr size_t nharm = 3;
         static constexpr size_t r = 3 + 6 * nharm; // rank of the kernel
         size_t offset = 0;
         double sig; // standard deviation
