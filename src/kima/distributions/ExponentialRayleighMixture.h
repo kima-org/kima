@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
+#include <algorithm>    // std::min, std::max
 #include "DNest4.h"
 #include "../utils.h"
 

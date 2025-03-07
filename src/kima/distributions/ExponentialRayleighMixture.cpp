@@ -26,7 +26,7 @@ double ExponentialRayleighMixture::cdf(double x) const
     else if (x > 1.0)
         return 1.0;
 
-    double _x = MAX(MIN(x, 1.0), 0.0);
+    double _x = std::max(std::min(x, 1.0), 0.0);
     double cdf_exp = Exp.cdf(_x) * C1exp;
     double cdf_ray = Ray.cdf(_x) * C1ray;
     return weight * cdf_exp + (1.0 - weight) * cdf_ray;
