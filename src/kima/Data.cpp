@@ -768,9 +768,14 @@ double RVData::get_adjusted_RV_var() const
  * `degree` supported by the data. It calculates the order of magnitude of
  *    RVspan / timespan^degree
  */
-int RVData::get_trend_magnitude(int degree) const
+int RVData::get_trend_magnitude(int degree, int i) const
 {
-    return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+    if (i == -1)
+        return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+    else
+    {
+        return (int)round(log10(get_actind_span( static_cast<size_t>(i) ) / pow(get_timespan(), degree)));
+    }
 }
 
 double RVData::get_actind_var(size_t i) const

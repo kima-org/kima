@@ -426,7 +426,7 @@ void RVFWHMmodel::calculate_mu_fwhm()
 
     mu_fwhm.assign(mu_fwhm.size(), bkg_fwhm);
 
-    if(trend)
+    if(trend_fwhm)
     {
         double tmid = data.get_t_middle();
         for (size_t i = 0; i < N; i++)
@@ -810,9 +810,9 @@ double RVFWHMmodel::perturb(RNG& rng)
 
         if (trend_fwhm)
         {
-            if (degree >= 1) slope_fwhm_prior->perturb(slope_fwhm, rng);
-            if (degree >= 2) quadr_fwhm_prior->perturb(quadr_fwhm, rng);
-            if (degree == 3) cubic_fwhm_prior->perturb(cubic_fwhm, rng);
+            if (degree_fwhm >= 1) slope_fwhm_prior->perturb(slope_fwhm, rng);
+            if (degree_fwhm >= 2) quadr_fwhm_prior->perturb(quadr_fwhm, rng);
+            if (degree_fwhm == 3) cubic_fwhm_prior->perturb(cubic_fwhm, rng);
         }
 
         for (size_t i = 0; i < mu.size(); i++)

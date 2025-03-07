@@ -177,15 +177,15 @@ class  KIMA_API RVData {
     /// Get the maximum slope allowed by the data
     double topslope() const;
     /// Order of magnitude of trend coefficient (of degree) given the data
-    int get_trend_magnitude(int degree) const;
+    int get_trend_magnitude(int degree, int i=-1) const;
 
     /// Get the array of activity indictators
     const vector<vector<double>>& get_actind() const { return actind; }
 
     /// Get the mininum value of Activity Indicator i
-    double get_actind_min(size_t i) const { return *min_element(actind[i].begin(), actind[i].end()); }
+    double get_actind_min(size_t i) const { return *min_element(actind.at(i).begin(), actind.at(i).end()); }
     /// Get the maximum value of Activity Indicator i
-    double get_actind_max(size_t i) const { return *max_element(actind[i].begin(), actind[i].end()); }
+    double get_actind_max(size_t i) const { return *max_element(actind.at(i).begin(), actind.at(i).end()); }
     /// Get the span of Activity Indicator i
     double get_actind_span(size_t i) const { return get_actind_max(i) - get_actind_min(i); }
     /// Get the variance of Activity Indicator i
