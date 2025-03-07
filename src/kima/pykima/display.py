@@ -2830,7 +2830,46 @@ def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
 
 def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
                         show_vsys=False, isolate_known_object=True, isolate_transiting_planet=True,
-                        include_jitters=True, full_plot=False, show_outliers=False, **kwargs):
+                        include_jitters_in_points=False, include_jitters_in_predict=True, 
+                        full_plot=False, show_outliers=False, **kwargs):
+    """
+    Display the RV data together with curves from the posterior predictive. 
+
+    Args:
+        ncurves (int, optional):
+            Number of posterior predictive curves to show. Defaults to 50.
+        samples (array, optional):
+            Specific posterior sample(s) to plot. Defaults to None.
+        over (float, optional):
+            Curves are calculated covering 100*(1 + `over`)% of the timespan of
+            the data. Defaults to 0.1.
+        ntt (int, optional):
+            Number of points for the time grid. Defaults to 5000.
+        show_vsys (bool, optional):
+            Show the systemic velocity for each sample. Defaults to False.
+        isolate_known_object (bool, optional):
+            Show the Keplerian curves for the known object(s), if present in the
+            model. Defaults to True.
+        isolate_transiting_planet (bool, optional):
+            Show the Keplerian curves for the transiting planet(s), if present
+            in the model. Defaults to True.
+        include_jitters_in_points (bool, optional):
+            Include an extra error bar for each point which takes into account
+            the jitter(s). This only works when ncurves=1. Defaults to False.
+        include_jitters_in_predict (bool, optional):
+            Include the jitters in the GP prediction (if model has a GP). This
+            should almost always be True! Defaults to True.
+        full_plot (bool, optional):
+            If True (and ncurves=1), adds panels with the residuals from the
+            given sample and their GLS periodogram. Defaults to False.
+        show_outliers (bool, optional):
+            Highlight the outliers (if likelihood is Student-t). Defaults to
+            False.
+
+    Returns:
+        fig (matplotlib.figure.Figure):
+            The figure with the plot
+    """
 
     if samples is None:
         samples = res.posterior_sample.copy()
@@ -2842,14 +2881,15 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
     mask = np.ones(samples.shape[0], dtype=bool)
 
     t = res.data.t.copy()
-    M0_epoch = res.M0_epoch
+    M0_epoch = copy(res.M0_epoch)
+
     if t[0] > 24e5:
         t -= 24e5
         M0_epoch -= 24e5
 
     tt = res._get_tt(ntt, over)
     if res.has_gp:
-        ttGP = res._get_ttGP()
+        tt = res._get_ttGP()
 
     if t.size > 100:
         ncurves = min(10, ncurves)
@@ -2864,8 +2904,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         ii = np.zeros(1, dtype=int)
     elif ncurves == samples.shape[0] or samples_provided:
         # ii = np.arange(ncurves)
-        ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves,
-                              replace=False)
+        ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
     else:
         try:
             # select `ncurves` indices from the 70% highest likelihood samples
@@ -2875,29 +2914,36 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
             ii = np.random.choice(np.where(mask & mask_lnlike)[0], size=ncurves,
                                   replace=False)
         except ValueError:
-            ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves,
-                                  replace=False)
+            ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
 
     if 'ax' in kwargs:
         ax = kwargs.pop('ax')
         fig = ax.figure
     else:
         if full_plot:
-            fig, axs = plt.subplot_mosaic('aac\naac\nbbc')
+            fig, axs = plt.subplot_mosaic('aac\naac\nbbc', constrained_layout=True,
+                                           figsize=(8, 5))
             ax = axs['a']
             axs['b'].sharex(ax)
         else:
-            fig, ax = plt.subplots(1, 1)
+            fig, ax = plt.subplots(1, 1, constrained_layout=True)
 
     cc = kwargs.pop('curve_color', 'k')
     gpc = kwargs.pop('gp_color', 'plum')
+    actc = kwargs.pop('act_color', 'tomato')
 
     _, y_offset = plot_data(res, ax, **kwargs)
 
+    if include_jitters_in_points:
+        if ncurves == 1:
+            _ = plot_data_jitters(res, samples[0], ax=ax, ms=3, legend=False)
+        else:
+            import warnings
+            warnings.warn('include_jitters_in_points can only be used when ncurves=1')
+
     if show_outliers:
         if res.studentt:
-            outliers = find_outliers(
-                res, res.maximum_likelihood_sample(printit=False))
+            outliers = find_outliers(res, res.maximum_likelihood_sample(printit=False))
             if outliers.any():
                 mi = res.data.y[~outliers].min() - res.data.e.max()
                 ma = res.data.y[~outliers].max() + res.data.e.max()
@@ -2913,7 +2959,13 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
     for icurve, i in enumerate(ii):
         sample = samples[i]
-        stoc_model = np.atleast_2d(res.stochastic_model(sample, tt))
+
+        if ncurves == 1:
+            stoc_model, stoc_std = res.stochastic_model(sample, tt, return_std=True,
+                                                        include_jitters=include_jitters_in_predict)
+        else:
+            stoc_model = res.stochastic_model(sample, tt, include_jitters=include_jitters_in_predict)
+        stoc_model = np.atleast_2d(stoc_model)
         model = np.atleast_2d(res.eval_model(sample, tt))
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
@@ -2927,17 +2979,24 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         else:
             color = None
 
-        ax.plot(tt, (stoc_model + model).T - y_offset, color=color, 
-                alpha=alpha, zorder=-1)
+        ax.plot(tt, (stoc_model + model).T - y_offset,
+                color=color, alpha=alpha, zorder=-1)
 
         if res.has_gp:
-            ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc, alpha=alpha)
+            m = (stoc_model + offset_model).T - y_offset
+            ax.plot(tt, m, color=gpc, alpha=alpha)
+
+            # plot the predictive std if there's only one curve
+            if ncurves == 1:
+                m = m.squeeze()
+                ax.fill_between(tt, m - stoc_std, m + stoc_std, 
+                                color=gpc, alpha=0.2*alpha)
 
         if hasattr(res, 'indicator_correlations') and res.indicator_correlations:
             model_wo_ind = res.eval_model(sample, tt,
                                           include_indicator_correlations=False)
             curve = (model - model_wo_ind + offset_model).T - y_offset
-            ax.plot(tt, curve, color=gpc, alpha=alpha)
+            ax.plot(tt, curve, color=actc, alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
@@ -2991,8 +3050,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
 def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt=10000, 
                                     show_vsys=False, isolate_known_object=True,
-                                    include_jitters=True, just_rvs=False, 
-                                    full_plot=False, highest_likelihood=False, **kwargs):
+                                    include_jitters_in_points=False, include_jitters_in_predict=True, 
+                                    just_rvs=False, full_plot=False, highest_likelihood=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
     A total of `ncurves` random samples are chosen, and the Keplerian 
@@ -3061,14 +3120,20 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
         # ii = np.random.choice(np.where(mask)[0], ncurves)
 
-    if 'ax1' in kwargs and 'ax2' in kwargs and 'ax3' in kwargs:
-        ax1, ax2, ax3 = kwargs.pop('ax1'), kwargs.pop('ax2'), kwargs.pop('ax3')
-        fig = ax1.figure
-    elif 'ax' in kwargs:
-        ax1 = kwargs.pop('ax')
-        fig = ax1.figure
-        just_rvs = True
+    ax1, ax2, ax3 = None, None, None
+    if just_rvs:
+        if 'ax' in kwargs:
+            ax1 = kwargs.pop('ax')
+            fig = ax1.figure
     else:
+        if 'ax1' in kwargs and 'ax2' in kwargs:
+            ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
+            fig = ax1.figure
+        if rhk:
+            if 'ax3' in kwargs:
+                ax3 = kwargs.pop('ax3')
+
+    if ax1 is None and ax2 is None and ax3 is None:
         fig = plt.figure(constrained_layout=True, figsize=(10, 8))
         if full_plot:
             width_ratios = [3, 1, 1]
@@ -3104,7 +3169,7 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
             _, _, y_offset, y2_offset = plot_data(res, ax=ax1, axf=ax2, ms=3, legend=False)
 
 
-    if include_jitters:
+    if include_jitters_in_points:
         if ncurves == 1:
             if just_rvs:
                 _ = plot_data_jitters(res, samples[0], ax=ax1, ms=3, legend=False, ignore_y2=True)
@@ -3114,7 +3179,8 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
                 else:
                     _ = plot_data_jitters(res, samples[0], ax=ax1, axf=ax2, ms=3, legend=False)
         else:
-            print('include_jitters in the data points can only be used when ncurves=1')
+            import warnings
+            warnings.warn('include_jitters_in_points in the data points can only be used when ncurves=1')
 
     ## plot the Keplerian curves
     alpha = 0.2 if ncurves > 1 else 1
@@ -3127,7 +3193,8 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     for icurve, i in enumerate(ii):
         # just the GP, centered around 0
         # for models without GP, stoc_model will be full of zeros
-        stoc_model = res.stochastic_model(samples[i], tt, include_jitters=include_jitters)
+        stoc_model = res.stochastic_model(samples[i], tt, 
+                                          include_jitters=include_jitters_in_predict)
         # the model, including planets, systemic RV/FWHM, and offsets
         model = res.eval_model(samples[i], tt)
         # burst the model if there are multiple instruments
@@ -3154,19 +3221,21 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
                          color='g', alpha=alpha)
 
         if res.has_gp:
-            kw = dict(color='plum', alpha=alpha, zorder=1)
+            kw = dict(color='plum', alpha=alpha, zorder=1)#, ls='--')
             if overlap:
                 v = stoc_model[0] + offset_model[::2] - y_offset
                 ax1.plot(tt, v.T, **kw)
-                f = stoc_model[1] + offset_model[1::2] - y2_offset
-                ax2.plot(tt, f.T, **kw)
+                if not just_rvs:
+                    f = stoc_model[1] + offset_model[1::2] - y2_offset
+                    ax2.plot(tt, f.T, **kw)
                 if rhk:
                     pass
             else:
                 ax1.plot(tt, stoc_model[0] + offset_model[0] - y_offset, **kw)
-                ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
-                if rhk:
-                    ax3.plot(tt, stoc_model[2] + offset_model[2] - y3_offset, **kw)
+                if not just_rvs:
+                    ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
+                    if rhk:
+                        ax3.plot(tt, stoc_model[2] + offset_model[2] - y3_offset, **kw)
 
         if show_vsys:
             kw = dict(alpha=0.1, color='r', ls='--')
@@ -3263,7 +3332,8 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
 
     ax1.set(ylabel=ylabel, xlabel='Time [days]')
     # ax1r.set(ylabel='', xlabel='Time [days]')
-    ax2.set(ylabel='FWHM [m/s]', xlabel='Time [days]')
+    if not just_rvs:
+        ax2.set(ylabel='FWHM [m/s]', xlabel='Time [days]')
     # ax2r.set(ylabel='', xlabel='Time [days]')
     # if full_plot:
     # ax2.set(xlabel='Time [days]', ylabel=f'FWHM [m/s]')
