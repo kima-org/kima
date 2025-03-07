@@ -2,6 +2,7 @@
 
 using namespace Eigen;
 #define TIMING false
+#define DEBUG false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
@@ -27,6 +28,13 @@ void RVFWHMRHKmodel::initialize_from_data(RVData& data)
     individual_offset_prior.resize(data.number_instruments - 1);
     individual_offset_fwhm_prior.resize(data.number_instruments - 1);
     individual_offset_rhk_prior.resize(data.number_instruments - 1);
+
+    #if DEBUG
+        std::cout << "RVFWHMRHKmodel::initialize_from_data" << std::endl;
+        std::cout << "n_instruments: " << data.number_instruments << std::endl;
+        std::cout << "offsets.size(): " << offsets.size() << std::endl;
+        std::cout << "jitters.size(): " << jitters.size() << std::endl;
+    #endif
 
     size_t N = data.N();
 
@@ -173,7 +181,7 @@ void RVFWHMRHKmodel::setPriors()  // BUG: should be done by only one thread!
     {
     case qp:
 
-        // eta1 and eta1_fwhm are never shared, so they get default priors if
+        // eta1's are never shared, so they get default priors if
         // they haven't been set
         if (!eta1_prior)
         {
@@ -183,6 +191,11 @@ void RVFWHMRHKmodel::setPriors()  // BUG: should be done by only one thread!
         if (!eta1_fwhm_prior)
         {
             eta1_fwhm_prior = defaults.get("eta1_fwhm_prior");
+        }
+
+        if (!eta1_rhk_prior)
+        {
+            eta1_rhk_prior = defaults.get("eta1_rhk_prior");
         }
 
         // eta2 can be shared
@@ -259,6 +272,10 @@ void RVFWHMRHKmodel::setPriors()  // BUG: should be done by only one thread!
             eta7_prior = make_prior<Uniform>(1, 10);
     }
 
+    #if DEBUG
+    std::cout << std::endl << "setPriors done" << std::endl;
+    #endif
+
 }
 
 
@@ -267,10 +284,10 @@ void RVFWHMRHKmodel::from_prior(RNG& rng)
     // preliminaries
     setPriors();
     save_setup();
-
+    
     planets.from_prior(rng);
     planets.consolidate_diff();
-
+    
     bkg = Cprior->generate(rng);
     bkg_fwhm = Cfwhm_prior->generate(rng);
     bkg_rhk = Crhk_prior->generate(rng);
@@ -285,6 +302,7 @@ void RVFWHMRHKmodel::from_prior(RNG& rng)
         // jit4     jit5    jit6    FWHM   |-   3 * n_instruments
         // jit7     jit8    jit9    R'HK   |
 
+        if (data._multi)
         {
             auto no = offsets.size();
             auto lim1 = no / 3;
@@ -413,6 +431,11 @@ void RVFWHMRHKmodel::from_prior(RNG& rng)
     calculate_C();
     calculate_C_fwhm();
     calculate_C_rhk();
+
+    #if DEBUG
+    std::cout << std::endl << "from_prior done" << std::endl;
+    #endif
+
 }
 
 /// @brief Calculate the full RV model
@@ -499,6 +522,10 @@ void RVFWHMRHKmodel::calculate_mu()
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
     #endif
 
+    #if DEBUG
+    std::cout << std::endl << "calculate_mu done" << std::endl;
+    #endif
+
 }
 
 
@@ -520,6 +547,11 @@ void RVFWHMRHKmodel::calculate_mu_fwhm()
             }
         }
     }
+
+    #if DEBUG
+    std::cout << std::endl << "calculate_mu_fwhm done" << std::endl;
+    #endif
+
 }
 
 
@@ -541,6 +573,10 @@ void RVFWHMRHKmodel::calculate_mu_rhk()
             }
         }
     }
+
+    #if DEBUG
+    std::cout << std::endl << "calculate_mu_rhk done" << std::endl;
+    #endif
 }
 
 
@@ -582,6 +618,10 @@ void RVFWHMRHKmodel::calculate_C()
     cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
     cout << " ns" << "\t"; // << std::endl;
     #endif
+
+    #if DEBUG
+    std::cout << std::endl << "calculate_C done" << std::endl;
+    #endif
 }
 
 
@@ -622,6 +662,10 @@ void RVFWHMRHKmodel::calculate_C_fwhm()
     cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
     cout << " ns" << "\t"; // << std::endl;
     #endif
+
+    #if DEBUG
+    std::cout << std::endl << "calculate_C_fwhm done" << std::endl;
+    #endif
 }
 
 
@@ -661,6 +705,10 @@ void RVFWHMRHKmodel::calculate_C_rhk()
     cout << "GP build matrix: ";
     cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
     cout << " ns" << "\t"; // << std::endl;
+    #endif
+
+    #if DEBUG
+    std::cout << std::endl << "calculate_C_rhk done" << std::endl;
     #endif
 }
 
@@ -1203,16 +1251,16 @@ string RVFWHMRHKmodel::description() const
     switch (kernel)
     {
     case qp:
-        desc += "eta1" + sep + "eta1_fw" + sep + "eta1_rhk" + sep;
+        desc += "eta1" + sep + "eta1_fwhm" + sep + "eta1_rhk" + sep;
 
         desc += "eta2" + sep;
-        if (!share_eta2) desc += "eta2_fw" + sep + "eta2_rhk" + sep;
+        if (!share_eta2) desc += "eta2_fwhm" + sep + "eta2_rhk" + sep;
 
         desc += "eta3" + sep;
-        if (!share_eta3) desc += "eta3_fw" + sep + "eta3_rhk" + sep;
+        if (!share_eta3) desc += "eta3_fwhm" + sep + "eta3_rhk" + sep;
 
         desc += "eta4" + sep;
-        if (!share_eta4) desc += "eta4_fw" + sep + "eta4_rhk" + sep;
+        if (!share_eta4) desc += "eta4_fwhm" + sep + "eta4_rhk" + sep;
 
         break;
 
@@ -1332,6 +1380,7 @@ void RVFWHMRHKmodel::save_setup() {
     fout << "Jfwhm_prior: " << *Jfwhm_prior << endl;
     fout << "Jrhk_prior: " << *Jrhk_prior << endl;
 
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
@@ -1440,6 +1489,11 @@ void RVFWHMRHKmodel::save_setup() {
 
     fout << endl;
 	fout.close();
+
+    #if DEBUG
+    std::cout << std::endl << "kima_model_setup.txt saved" << std::endl;
+    #endif
+
 }
 
 
