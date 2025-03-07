@@ -2486,7 +2486,10 @@ class KimaResults:
             t = self.data.t.copy()
 
         if not self.has_gp:
-            return np.zeros_like(t)
+            if return_std:
+                return np.zeros_like(t), np.zeros_like(t)
+            else:
+                return np.zeros_like(t)
 
         if self.model == 'RVFWHMmodel':
             D = np.vstack((self.data.y, self.data.y2))
