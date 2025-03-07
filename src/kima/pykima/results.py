@@ -2494,8 +2494,24 @@ class KimaResults:
             GPpars = sample[self.indices['GPpars']]
 
             η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM = GPpars[self._GP_par_indices]
+
             self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV])
+            if include_jitters:
+                # get jitters per instrument in an array
+                jRV = sample[self.indices['jitter']][:self.n_instruments]
+                jRV = jRV[self.data.obs.astype(int) - 1]
+                self.GP1.white_noise = jRV
+            else:
+                self.GP1.white_noise = 0.0
+
             self.GP2.kernel.pars = np.array([η1FWHM, η2FWHM, η3FWHM, η4FWHM])
+            if include_jitters:
+                # get jitters per instrument in an array
+                jFW = sample[self.indices['jitter']][self.n_instruments:2*self.n_instruments]
+                jFW = jFW[self.data.obs.astype(int) - 1]
+                self.GP2.white_noise = jFW
+            else:
+                self.GP2.white_noise = 0.0
 
             if derivative:
                 out0 = self.GP1.derivative(r[0], t, return_std=return_std)
@@ -2671,6 +2687,15 @@ class KimaResults:
 
         else:
             r = self.data.y - self.eval_model(sample)
+
+            if include_jitters:
+                # get jitters per instrument in an array
+                jRV = sample[self.indices['jitter']]
+                jRV = jRV[self.data.obs.astype(int) - 1]
+                self.GP.white_noise = jRV
+            else:
+                self.GP.white_noise = 0.0
+
             if self.model == 'GPmodel_systematics':
                 x = self._extra_data[:, 3]
                 X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
