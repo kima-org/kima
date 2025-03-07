@@ -884,7 +884,7 @@ def corner_all(res):
         names[names.index('vsys')] = f'vsys - {mean_vsys}'
 
     # remove parameters with no range (fixed)
-    ind = post.ptp(axis=0) == 0
+    ind = np.ptp(post, axis=0) == 0
     post = post[:, ~ind]
     names = np.array(names)[~ind]
 
@@ -1303,8 +1303,8 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
     # return fig
 
 
-def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
-              **kwargs):
+def hist_vsys(res, ax=None, show_offsets=True, show_other=False, 
+              specific=None, show_prior=False, **kwargs):
     """
     Plot the histogram of the posterior for the systemic velocity and for the
     between-instrument offsets. (if the model has multiple instruments).
@@ -1314,36 +1314,38 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
             The `KimaResults` instance
         show_offsets (bool, optional):
             Whether to plot the histograms for the between-instrument offsets
+        show_other (bool, optional):
+            Whether to plot the histogram for the constant offsets corresponding
+            to the activity indicators in the corresponding models
         specific (tuple, optional):
             If not None, it should be a tuple with two instrument names
             (matching `res.instrument`). In that case, this function works out
             (and plots) the RV offset between those two instruments.
         show_prior (bool, optional):
             Whether to plot the histogram of the prior distribution
+        **kwargs:
+            Keyword arguments passed to `matplotlib.pyplot.hist`
     """
     figures = []
+    units = ' (arbitrary)' if res.arbitrary_units else ' (m/s)'
 
-    vsys = res.posterior_sample[:, -1]
-
-    if res.arbitrary_units:
-        units = ' (arbitrary)'
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, constrained_layout=True)
     else:
-        units = ' (m/s)'  # if res.units == 'ms' else ' (km/s)'
-
-    estimate = percentile68_ranges_latex(vsys) + units
-
-    fig, ax = plt.subplots(1, 1)
+        fig = ax.figure
     figures.append(fig)
 
-    kwargs.setdefault('bins', 'doane')
+    bins = kwargs.get('bins', 'doane')
+    density = kwargs.get('density', True)
+    hist_kw = dict(bins=bins, density=density)
+    hist_prior_kw = dict(**hist_kw, alpha=0.15, color='k', zorder=-1)
 
-    ax.hist(vsys, **kwargs)
+    vsys = res.posteriors.vsys.copy()
+    estimate = percentile68_ranges_latex(vsys) + units
+    ax.hist(vsys, label=estimate, **hist_kw)
 
-    title = 'Posterior distribution for $v_{\\rm sys}$ \n %s' % estimate
-    if kwargs.get('density', False):
-        ylabel = 'posterior'
-    else:
-        ylabel = 'posterior samples'
+    title = 'Posterior distribution for $v_{\\rm sys}$'
+    ylabel = 'posterior' if density else 'posterior samples'
     ax.set(xlabel='vsys' + units, ylabel=ylabel, title=title)
 
     if show_prior:
@@ -1351,18 +1353,9 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
             prior = res.priors['Cprior']
         except KeyError:
             prior = res.priors['Vprior']
+        ax.hist(distribution_rvs(prior, size=res.ESS), label='prior', **hist_prior_kw)
 
-        # low, upp = prior.interval(1)
-        d = kwargs.get('density', False)
-        ax.hist(distribution_rvs(prior, size=res.ESS),
-                density=d,
-                alpha=0.15,
-                color='k',
-                zorder=-1)
-        ax.legend(['posterior', 'prior'])
-
-        # except Exception as e:
-        #     print(str(e))
+    ax.legend()
 
     if res.save_plots:
         filename = 'kima-showresults-fig7.2.png'
@@ -1388,17 +1381,14 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                 for i in range(n_inst_offsets // 2):
                     this = res.instruments[i]
                     a = res.inst_offsets[:, k]
-                    axs[j, i].hist(a)
+                    axs[j, i].hist(a, **hist_kw)
                     label = 'offset\n%s rel. to %s' % (this, wrt)
                     estimate = percentile68_ranges_latex(a) + units
-                    axs[j, i].set(xlabel=label, title=estimate,
-                                  ylabel='posterior samples')
+                    axs[j, i].set(xlabel=label, title=estimate)
                     k += 1
 
                     if show_prior and j == 0:
-                        d = kwargs.get('density', False)
-                        kw = dict(density=d, alpha=0.15, color='k', zorder=-1)
-                        axs[j, i].hist(distribution_rvs(prior, size=res.ESS), **kw)
+                        axs[j, i].hist(distribution_rvs(prior, size=res.ESS), **hist_prior_kw)
                         axs[j, i].legend(['posterior', 'prior'])
 
         else:
@@ -1410,20 +1400,17 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                 label = 'offset\n%s rel. to %s' % (this, wrt)
                 a = res.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(a) + units
-                axs[i].hist(a)
+                axs[i].hist(a, **hist_kw)
 
                 if show_prior:
                     try:
                         prior = res.priors[f'individual_offset_prior[{i}]']
                     except KeyError:
                         pass
-                    d = kwargs.get('density', False)
-                    kw = dict(density=d, alpha=0.15, color='k', zorder=-1)
-                    axs[i].hist(distribution_rvs(prior, size=res.ESS), **kw)
+                    axs[i].hist(distribution_rvs(prior, size=res.ESS), **hist_prior_kw)
                     axs[i].legend(['posterior', 'prior'])
 
-                axs[i].set(xlabel=label, title=estimate,
-                        ylabel='posterior samples')
+                axs[i].set(xlabel=label, title=estimate, ylabel=ylabel)
 
         title = 'Posterior distribution(s) for instrument offset(s)'
         fig.suptitle(title)
@@ -1447,10 +1434,10 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
 
             # all RV offsets are with respect to the last data file
             # so if the second element is that last one, we don't have to do much
-            if second in res.data_file[-1] or second in res.instruments[-1]:
+            if second in res.instruments[-1] or second in res.data_file[-1]:
                 # find the first
                 if first in res.instruments:
-                    i = res.instruments.index(second)
+                    i = res.instruments.index(first)
                 else:
                     i = [_i for _i, f in enumerate(res.instruments) if first in f][0]
                 wrt, this = res.instruments[-1], res.instruments[i]
@@ -1495,11 +1482,42 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
                 estimate = percentile68_ranges_latex(of1 - of2) + units
                 fig, ax = plt.subplots(1, 1, constrained_layout=True)
                 ax.hist(of1 - of2)
-                ax.set(xlabel=label, title=estimate,
-                       ylabel='posterior samples')
+                ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
 
     else:
         figures.append(None)
+
+    if show_other:
+        if res.model == 'RVFWHMmodel':
+            fig, ax = plt.subplots(1, 1, constrained_layout=True)
+            val = res.posterior_sample[:, res.indices['cfwhm']]
+            estimate = percentile68_ranges_latex(val)
+            ax.hist(val, label=estimate, **hist_kw)
+
+            if show_prior:
+                prior = res.priors['Cfwhm_prior']
+                ax.hist(distribution_rvs(prior, size=res.ESS), label='prior',
+                        **hist_prior_kw)
+
+            ax.legend()
+            ax.set(xlabel='C fwhm', ylabel=ylabel)
+
+        if res.model == 'SPLEAFmodel' and res.nseries > 1:
+            fig, axs = plt.subplots(1, res.nseries - 1, constrained_layout=True)
+            axs = np.atleast_1d(axs)
+
+            zp = res.posterior_sample[:, res.indices['zero_points']]
+            for i, label in zip(range(res.nseries - 1), res._extra_data_names[::2]):
+                estimate = percentile68_ranges_latex(zp[:, i])
+                axs[i].hist(zp[:, i], label=estimate, **hist_kw)
+                axs[i].set(xlabel=f'zero point {label}', ylabel=ylabel)
+
+                if show_prior:
+                    prior = res.priors[f'zero_points_prior_{i+1}']
+                    axs[i].hist(distribution_rvs(prior, size=res.ESS), label='prior',
+                                **hist_prior_kw)
+
+                axs[i].legend()
 
     if res.return_figs:
         return figures
