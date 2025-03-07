@@ -5,12 +5,10 @@ This module defines the `KimaResults` class to hold results from a run.
 import os
 import sys
 import pickle
-from typing import List, Tuple, Union, Any
+from typing import List, Union
 from typing_extensions import Self
 import zipfile
-import time
 import tempfile
-from functools import lru_cache
 from string import ascii_lowercase
 from dataclasses import dataclass, field
 from io import StringIO
@@ -18,8 +16,8 @@ from contextlib import redirect_stdout
 from copy import copy, deepcopy
 
 
-from .. import __models__
-from kima.kepler import keplerian
+from .. import __models__, MODELS
+from ..kepler import keplerian
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkernel, Matern32kernel, SHOkernel, 
@@ -31,14 +29,11 @@ from .utils import (distribution_rvs, read_datafile, read_datafile_rvfwhm, read_
                     get_star_name, mjup2mearth, get_instrument_name, SimpleTimer, get_timestamp,
                     _show_kima_setup, read_big_file, rms, wrms, chdir)
 
-from .import display
+from . import display
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.stats import (
-    norm, t as students_t, gaussian_kde, randint as discrete_uniform, 
-    multivariate_normal, multivariate_t
-)
+from scipy.stats import norm, t as students_t, gaussian_kde, randint as discrete_uniform
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -291,181 +286,13 @@ class KimaResults:
 
     _debug = False
 
-    # def __init__(self, save_plots=False, return_figs=True, verbose=False, _dummy=False):
-    #     self.save_plots = save_plots
-    #     self.return_figs = return_figs
-    #     self.verbose = verbose
-
-
-    #     self.setup = setup = read_model_setup()
-
-    #     if _dummy:
-    #         return
-
-    #     try:
-    #         self.model = setup['kima']['model']
-    #     except KeyError:
-    #         self.model = 'RVmodel'
-
-    #     if self._debug:
-    #         print('model:', self.model)
-
-    #     try:
-    #         self.fix = setup['kima']['fix'] == 'true'
-    #         self.npmax = int(setup['kima']['npmax'])
-    #     except KeyError:
-    #         self.fix = True
-    #         self.npmax = 0
-
-    #     # read the priors
-    #     self.priors = _read_priors(self, setup)
-    #     if self._debug:
-    #         print('finished reading priors')
-
-    #     # and the data
-    #     self._read_data()
-    #     if self._debug:
-    #         print('finished reading data')
-
-    #     # read the posterior samples
-    #     self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
-
-    #     # try reading posterior sample info to get log-likelihoods
-    #     try:
-    #         self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
-    #         self._lnlike_available = True
-    #     except IOError:
-    #         self._lnlike_available = False
-    #         print('Could not find file "posterior_sample_info.txt", '
-    #               'log-likelihoods will not be available.')
-
-    #     # read original samples
-    #     try:
-    #         t1 = time.time()
-    #         self.sample = np.atleast_2d(read_big_file('sample.txt'))
-    #         t2 = time.time()
-    #         self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
-    #         with open('sample.txt', 'r') as fs:
-    #             header = fs.readline()
-    #             header = header.replace('#', '').replace('  ', ' ').strip()
-    #             self.parameters = [p for p in header.split(' ') if p != '']
-    #             self.parameters.pop(self.parameters.index('ndim'))
-    #             self.parameters.pop(self.parameters.index('maxNp'))
-    #             self.parameters.pop(self.parameters.index('staleness'))
-
-    #         # different sizes can happen when running the model and sample_info
-    #         # was updated while reading sample.txt
-    #         if self.sample.shape[0] != self.sample_info.shape[0]:
-    #             minimum = min(self.sample.shape[0], self.sample_info.shape[0])
-    #             self.sample = self.sample[:minimum]
-    #             self.sample_info = self.sample_info[:minimum]
-
-    #     except IOError:
-    #         self.sample = None
-    #         self.sample_info = None
-    #         self.parameters = []
-
-    #     if self._debug:
-    #         print('finished reading sample file', end=' ')
-    #         print(f'(took {t2 - t1:.1f} seconds)')
-
-    #     self.indices = {}
-
-    #     self._current_column = 0
-        
-    #     # read jitters
-    #     self._read_jitters()
-
-    #     # read astrometric solution
-    #     if self.model == 'GAIAmodel':
-    #         self._read_astrometric_solution()
-
-    #     # read limb-darkening coefficients
-    #     if self.model == 'TRANSITmodel':
-    #         self._read_limb_dark()
-        
-    #     # find trend in the compiled model and read it
-    #     try:
-    #         self.trend = self.setup['kima']['trend'] == 'true'
-    #         self.trend_degree = int(self.setup['kima']['degree'])
-    #         self._read_trend()
-    #     except KeyError:
-    #         self.trend, self.trend_degree = False, 0
-    #     # multiple instruments? read offsets
-    #     self._read_multiple_instruments()
-    #     # activity indicator correlations?
-    #     self._read_actind_correlations()
-    #     # find GP in the compiled model
-    #     self._read_GP()
-    #     # find MA in the compiled model
-    #     self._read_MA()
-
-    #     # find KO in the compiled model
-    #     try:
-    #         self.KO = self.setup['kima']['known_object'] == 'true'
-    #         self.nKO = int(self.setup['kima']['n_known_object'])
-    #     except KeyError:
-    #         self.KO = False
-    #         self.nKO = 0
-    #     self._read_KO()
-
-    #     # find transiting planet in the compiled model
-    #     try:
-    #         self.TR = self.setup['kima']['transiting_planet'] == 'true'
-    #         self.nTR = int(self.setup['kima']['n_transiting_planet'])
-    #     except KeyError:
-    #         self.TR = False
-    #         self.nTR = 0
-    #     self._read_TR()
-
-
-    #     if self.model == 'OutlierRVmodel':
-    #         self._read_outlier()
-
-    #     self._read_components()
-
-    #     # staleness (ignored)
-    #     self._current_column += 1
-
-    #     # student-t likelihood?
-    #     try:
-    #         self.studentt = self.setup['kima']['studentt'] == 'true'
-    #     except KeyError:
-    #         self.studentt = False
-    #     self._read_studentt()
-
-    #     if self.model == 'RVFWHMRHKmodel':
-    #         self.C3 = self.posterior_sample[:, self._current_column]
-    #         self.indices['C3'] = self._current_column
-    #         self._current_column += 1
-
-    #     if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-    #         self.C2 = self.posterior_sample[:, self._current_column]
-    #         self.indices['C2'] = self._current_column
-    #         self._current_column += 1
-
-    #     if self.model != 'GAIAmodel':
-    #         self.vsys = self.posterior_sample[:, -1]
-    #         self.indices['vsys'] = -1
-
-    #     # build the marginal posteriors for planet parameters
-    #     self.get_marginals()
-
-    #     if self.fix:
-    #         self.parameters.pop(self.parameters.index('Np'))
-
-    #     self._set_plots()
-    #     # # make the plots, if requested
-    #     # self.make_plots(options, self.save_plots)
-
-
-    # @classmethod
-    # def from_model(cls, model, diagnostic=False, verbose=True):
-    def __init__(self, model, data=None, diagnostic=False, moreSamples=1,
-                 save_plots=False, return_figs=True, verbose=False):
+    def __init__(self, model, data=None, diagnostic=False, 
+                 moreSamples=1, n_resample_logX=1, cache_files=True,
+                 save_plots=False, return_figs=True, verbose=False, _debug=False):
         self.save_plots = save_plots
         self.return_figs = return_figs
         self.verbose = verbose
+        self._debug = _debug
 
         self.setup = setup = read_model_setup()
 
@@ -483,7 +310,7 @@ class KimaResults:
             except IndexError:
                 raise ValueError('Something went wrong reading the posterior samples. Try again')
 
-        self.model = model.__class__.__name__
+        self.model = MODELS(model.__class__.__name__)
         self.fix = model.fix
         self.npmax = model.npmax
         self.evidence = evidence
@@ -517,15 +344,15 @@ class KimaResults:
 
         self.series = ('RV',)
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
 
-        if self.model == 'RVFWHMRHKmodel':
+        if self.model is MODELS.RVFWHMRHKmodel:
             self.series = ('RV', 'FWHM', 'RHK')
             self.data.y2, self.data.e2, self.data.y3, self.data.e3, *_ = np.array(data.actind)
 
-        if self.model == 'SPLEAFmodel':
+        if self.model is MODELS.SPLEAFmodel:
             self.nseries = int(setup['kima']['nseries'])
 
         self._extra_data = np.array(np.copy(data.actind))
@@ -588,18 +415,18 @@ class KimaResults:
         self._current_column = 0
 
         # read jitters
-        if self.multi and self.model in ('RVmodel',):
+        if self.multi and self.model is MODELS.RVmodel:
             self.n_jitters = 1  # stellar jitter
         else:
             self.n_jitters = 0
 
         self.n_jitters += self.n_instruments
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             self.n_jitters *= 2
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             self.n_jitters *= 3
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             # one jitter per activity indicator per instrument
             self.n_jitters += self.n_instruments * (self.nseries - 1)
         
@@ -613,12 +440,17 @@ class KimaResults:
         self._read_jitters()
 
         # read limb-darkening coefficients
-        if self.model == 'TRANSITmodel':
+        if self.model is MODELS.TRANSITmodel:
             self._read_limb_dark()
 
         # read trend
         self.trend = model.trend
         self.trend_degree = model.degree
+
+        if self.model is MODELS.RVFWHMmodel:
+            self.trend_fwhm = model.trend_fwhm
+            self.trend_fwhm_degree = model.degree_fwhm
+
         self._read_trend()
 
         # does the model enforce AMD stability?
@@ -650,7 +482,7 @@ class KimaResults:
             self.nTR = 0
         self._read_TR()
 
-        if self.model == 'OutlierRVmodel':
+        if self.model is MODELS.OutlierRVmodel:
             self._read_outlier()
 
         self._read_components()
@@ -664,12 +496,18 @@ class KimaResults:
         except AttributeError:
             self.studentt = False
 
-        if self.model == 'RVFWHMmodel':
+        if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             self.cfwhm = self.posterior_sample[:, self._current_column]
             self.indices['cfwhm'] = self._current_column
             self._current_column += 1
 
-        if self.model == 'SPLEAFmodel':
+            if self.model is MODELS.RVFWHMRHKmodel:
+                self.crhk = self.posterior_sample[:, self._current_column]
+                self.indices['crhk'] = self._current_column
+                self._current_column += 1
+
+
+        if self.model is MODELS.SPLEAFmodel:
             self.n_zero_points = self.n_instruments * (self.nseries - 1)
             istart = self._current_column
             iend = istart + self.n_zero_points
@@ -742,8 +580,14 @@ class KimaResults:
             self.trendpars = self.posterior_sample[:, i1:i2]
             self._current_column += n_trend
             self.indices['trend'] = slice(i1, i2)
-        else:
-            n_trend = 0
+        
+        if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
+            n_trend = self.trend_fwhm_degree
+            i1 = self._current_column
+            i2 = self._current_column + n_trend
+            self.trend_fwhm_pars = self.posterior_sample[:, i1:i2]
+            self._current_column += n_trend
+            self.indices['trend_fwhm'] = slice(i1, i2)
 
         if self._debug:
             print('finished reading trend, trend =', self.trend)
@@ -751,9 +595,9 @@ class KimaResults:
     def _read_multiple_instruments(self):
         if self.multi:
             # there are n instruments and n-1 offsets per output
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 n_inst_offsets = 2 * (self.n_instruments - 1)
-            elif self.model == 'RVFWHMRHKmodel':
+            elif self.model is MODELS.RVFWHMRHKmodel:
                 n_inst_offsets = 3 * (self.n_instruments - 1)
             else:
                 n_inst_offsets = self.n_instruments - 1
@@ -839,7 +683,7 @@ class KimaResults:
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
         
-        if self.model == 'GAIAmodel':
+        if self.model is MODELS.GAIAmodel:
             for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
                 iend = istart + self.max_components
                 self.indices[f'planets.{p}'] = slice(istart, iend)
@@ -862,12 +706,12 @@ class KimaResults:
         indices for specific GP hyperparameters:
         eta1_RV, eta1_FWHM, eta2_RV, eta2_FWHM, eta3_RV, eta3_FWHM, eta4_RV, eta4_FWHM
         """
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             i = [0, 1]  # eta1_rv, eta1_fwhm
             i += 2 * [i[-1] + 1] if self.share_eta2 else [i[-1] + 1, i[-1] + 2]
             i += 2 * [i[-1] + 1] if self.share_eta3 else [i[-1] + 1, i[-1] + 2]
             i += 2 * [i[-1] + 1] if self.share_eta4 else [i[-1] + 1, i[-1] + 2]
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             i = [0, 1, 2]  # eta1_rv, eta1_fwhm, eta1_rhk
             i += 3 * [i[-1]+1] if self.share_eta2 else list(range(i[-1]+1, i[-1] + 4))
             i += 3 * [i[-1]+1] if self.share_eta3 else list(range(i[-1]+1, i[-1] + 4))
@@ -881,7 +725,7 @@ class KimaResults:
 
     def _read_GP(self):
         from .. import GP
-        if self.model not in ('GPmodel', 'RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
+        if self.model not in (MODELS.GPmodel, MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
             self.has_gp = False
             self.n_hyperparameters = 0
             return
@@ -909,7 +753,7 @@ class KimaResults:
             GP.KernelType.spleaf_esp: 4,
             'standard+magcycle': 7,
         }
-        if self.model == 'GPmodel':
+        if self.model is MODELS.GPmodel:
             try:
                 n_hyperparameters = hyperparameters_per_kernel[self.kernel]
             except KeyError:
@@ -918,7 +762,7 @@ class KimaResults:
 
             self.n_hyperparameters = n_hyperparameters
 
-        elif self.model == 'RVFWHMmodel':
+        elif self.model is MODELS.RVFWHMmodel:
             _n_shared = 0
             for i in range(2, 5):
                 setattr(self, f'share_eta{i}',
@@ -933,7 +777,7 @@ class KimaResults:
             self.n_hyperparameters = n_hyperparameters
             self._n_shared_hyperparameters = _n_shared
 
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             _n_shared = 0
             for i in range(2, 5):
                 setattr(self, f'share_eta{i}',
@@ -950,7 +794,7 @@ class KimaResults:
             self.n_hyperparameters = n_hyperparameters
             self._n_shared_hyperparameters = _n_shared
 
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             self.n_hyperparameters = hyperparameters_per_kernel[self.kernel]
 
         istart = self._current_column
@@ -978,25 +822,25 @@ class KimaResults:
             #'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
         }
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             self.GP1 = GaussianProcess(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
             self.GP2 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
 
-        if self.model == 'RVFWHMRHKmodel':
+        if self.model is MODELS.RVFWHMRHKmodel:
             self.GP1 = GaussianProcess(deepcopy(kernels[self.kernel]), t, e, white_noise=0.0)
             self.GP2 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e2, white_noise=0.0)
             self.GP3 = GaussianProcess(deepcopy(kernels[self.kernel]), t, self.data.e3, white_noise=0.0)
 
-        elif self.model == 'GPmodel_systematics':
-            X = np.c_[self.data.t, self._extra_data[:, 3]]
-            self.GP = mixtureGP([], X, None, e)
+        # elif self.model is MODELS.GPmodel_systematics:
+        #     X = np.c_[self.data.t, self._extra_data[:, 3]]
+        #     self.GP = mixtureGP([], X, None, e)
 
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             pass
         else:
             self.GP = GaussianProcess(kernels[self.kernel], t, e, white_noise=0.0)
 
-        if self.model == 'SPLEAFmodel':
+        if self.model is MODELS.SPLEAFmodel:
             n_alphas = n_betas = self.nseries
             istart = self._current_column
             iend = istart + n_alphas + n_betas
@@ -1025,7 +869,7 @@ class KimaResults:
 
     def _read_KO(self):
         if self.KO:
-            if self.model == 'TRANSITmodel':
+            if self.model is MODELS.TRANSITmodel:
                 n_KOparameters = 6 * self.nKO
             else:
                 n_KOparameters = 5 * self.nKO
@@ -1039,7 +883,7 @@ class KimaResults:
 
     def _read_TR(self):
         if self.TR:
-            if self.model == 'TRANSITmodel':
+            if self.model is MODELS.TRANSITmodel:
                 n_TRparameters = 6 * self.nTR
             else:
                 n_TRparameters = 5 * self.nTR
@@ -1078,24 +922,29 @@ class KimaResults:
         """ A list of priors which can be indexed using self.indices """
         priors = np.full(self.posterior_sample.shape[1], None)
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             for i in range(self.n_instruments):
                 priors[i] = self.priors['Jprior']
             for i in range(self.n_instruments, 2 * self.n_instruments):
                 priors[i] = self.priors['Jfwhm_prior']
         else:
             priors[self.indices['jitter']] = self.priors['Jprior']
-            if self.model == 'RVmodel' and self.multi:
+            if self.model is MODELS.RVmodel and self.multi:
                 priors[0] = self.priors['stellar_jitter_prior']
 
         if self.trend:
             names = ('slope_prior', 'quadr_prior', 'cubic_prior')
             trend_priors = [self.priors[n] for n in names if n in self.priors]
             priors[self.indices['trend']] = trend_priors
+        
+        if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
+            names = ('slope_fwhm_prior', 'quadr_fwhm_prior', 'cubic_fwhm_prior')
+            trend_priors = [self.priors[n] for n in names if n in self.priors]
+            priors[self.indices['trend_fwhm']] = trend_priors
 
         if self.multi:
             no = self.n_instruments - 1
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 prior1 = self.priors['offsets_prior']
                 prior2 = self.priors['offsets_fwhm_prior']
                 offset_priors = no * [prior1] + no * [prior2]
@@ -1111,11 +960,11 @@ class KimaResults:
 
 
         if self.has_gp:
-            if self.model in ('GPmodel', 'SPLEAFmodel'):
+            if self.model in (MODELS.GPmodel, MODELS.SPLEAFmodel):
                 priors[self.indices['GPpars']] = [
                     self.priors[f'eta{i}_prior'] for i in range(1, 5)
                 ]
-            elif self.model == 'RVFWHMmodel':
+            elif self.model is MODELS.RVFWHMmodel:
                 i = self.indices['GPpars_start']
                 priors[i] = self.priors['eta1_prior']
                 i += 1
@@ -1145,7 +994,7 @@ class KimaResults:
                     priors[i + 1] = self.priors['eta4_fwhm_prior']
                     i += 2
             
-            if self.model == 'SPLEAFmodel':
+            if self.model is MODELS.SPLEAFmodel:
                 priors[self.indices['GP_alphas']] = [self.priors[f'alpha{i+1}_prior'] for i in range(self.nseries)]
                 priors[self.indices['GP_betas']] = [self.priors[f'beta{i+1}_prior'] for i in range(self.nseries)]
 
@@ -1193,7 +1042,7 @@ class KimaResults:
             priors[self.indices['nu']] = self.priors['nu_prior']
 
         priors[self.indices['vsys']] = self.priors['Cprior']
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             priors[self.indices['cfwhm']] = self.priors['Cfwhm_prior']
 
         return priors
@@ -1314,7 +1163,7 @@ class KimaResults:
         
         try:
             from .. import GPmodel
-            if self.model == 'GPmodel':
+            if self.model is MODELS.GPmodel:
                 if not hasattr(self, 'kernel'):
                     self.kernel = {
                         'standard': GPmodel.KernelType.qp
@@ -1343,9 +1192,9 @@ class KimaResults:
         id += f'k{self.npmax}_' if self.fix else f'k0{self.npmax}_'
         id += f'd{self.trend_degree}_' if self.trend else ''
         id += f'studentt_' if self.studentt else ''
-        id += 'GP_' if self.model == 'GPmodel' else ''
-        id += 'RVFWHM_' if self.model == 'RVFWHMmodel' else ''
-        id += 'RVFWHMRHK_' if self.model == 'RVFWHMRHKmodel' else ''
+        id += 'GP_' if self.model is MODELS.GPmodel else ''
+        id += 'RVFWHM_' if self.model is MODELS.RVFWHMmodel else ''
+        id += 'RVFWHMRHK_' if self.model is MODELS.RVFWHMRHKmodel else ''
         id += f'KO{self.nKO}_' if self.KO else ''
         id += f'TR{self.nTR}_' if self.TR else ''
         if add_timestamp:
@@ -1434,11 +1283,11 @@ class KimaResults:
                 setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
                 setattr(self.posteriors, f'_eta{i+1}', self.etas[:, i])
             
-            if self.model == 'SPLEAFmodel':
+            if self.model is MODELS.SPLEAFmodel:
                 self.posteriors.alpha = self.alphas
                 self.posteriors.beta = self.betas
 
-        if self.model == 'GAIAmodel':
+        if self.model is MODELS.GAIAmodel:
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
             self.posteriors.da = da
             self.posteriors.dd = dd
@@ -1450,12 +1299,26 @@ class KimaResults:
         if self.multi:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
         
-        if self.model != 'GAIAmodel':
+        if self.model != MODELS.GAIAmodel:
             # systemic velocity
             self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+            if self.model is MODELS.RVFWHMmodel:
+                self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
+
+        if self.trend:
+            ind = self.indices['trend']
+            ind = list(range(ind.start or 0, ind.stop or 0, ind.step or 1))
+            for i, name in zip(ind, ('slope', 'quadr', 'cubic')):
+                setattr(self.posteriors, name, self.posterior_sample[:, i])
+        
+        if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
+            ind = self.indices['trend_fwhm']
+            ind = list(range(ind.start or 0, ind.stop or 0, ind.step or 1))
+            for i, name in zip(ind, ('slope_fwhm', 'quadr_fwhm', 'cubic_fwhm')):
+                setattr(self.posteriors, name, self.posterior_sample[:, i])
 
         # parameters of the outlier model
-        if self.model == 'OutlierRVmodel':
+        if self.model is MODELS.OutlierRVmodel:
             self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = \
                 self.posterior_sample[:, self.indices['outlier']].T
 
@@ -1613,7 +1476,7 @@ class KimaResults:
         return np.sum(logp)
 
     def log_likelihood(self, sample, separate_instruments=False):
-        if self.model != 'RVmodel':
+        if self.model != MODELS.RVmodel:
             raise NotImplementedError('only implemented for RVmodel')
         if self.multi:
             stellar_jitter = sample[self.indices['jitter']][0]
@@ -1817,7 +1680,7 @@ class KimaResults:
 
         print('jitter:')
         if squeeze:
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 inst = instruments + instruments
                 data = self.n_instruments * ['RV'] + self.n_instruments * ['FWHM']
             else:
@@ -1827,13 +1690,13 @@ class KimaResults:
             for i, jit in enumerate(p[self.indices['jitter']]):
                 print(f'  {data[i]:5s} ({inst[i]}): {jit:.2f} m/s')
         else:
-            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 print(f'{"RV":>10s}', end=': ')
                 print(p[self.indices['jitter']][:self.n_instruments])
                 print(f'{"FWHM":>10s}', end=': ')
                 print(p[self.indices['jitter']][self.n_instruments:2*self.n_instruments])
 
-                if self.model == 'RVFWHMRHKmodel':
+                if self.model is MODELS.RVFWHMRHKmodel:
                     print(f'{"RHK":>10s}', end=': ')
                     print(p[self.indices['jitter']][2*self.n_instruments:])
             else:
@@ -1849,7 +1712,7 @@ class KimaResults:
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            if self.model == 'GAIAmodel':
+            if self.model is MODELS.GAIAmodel:
                 pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
             else:
                 pars = ['P', 'K', 'M0', 'e', 'w']
@@ -1940,11 +1803,11 @@ class KimaResults:
 
         if self.has_gp:
             print('GP parameters: ', end='')
-            if self.model == 'GPmodel':
+            if self.model is MODELS.GPmodel:
                 pars = ('η1', 'η2', 'η3', 'η4')
-            elif self.model == 'RVFWHMmodel':
+            elif self.model is MODELS.RVFWHMmodel:
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
-            elif self.model == 'RVFWHMRHKmodel':
+            elif self.model is MODELS.RVFWHMRHKmodel:
                 pars = ['η1 RV', 'η1 FWHM', 'η1 RHK']
                 pars += ['η2'] if self.share_eta2 else ['η2 RV', 'η2 FWHM', 'η2 RHK']
                 pars += ['η3'] if self.share_eta3 else ['η3 RV', 'η3 FWHM', 'η3 RHK']
@@ -1968,7 +1831,7 @@ class KimaResults:
                 s = s.rjust(15 + len(s))
                 print(s)
 
-            if self.model == 'SPLEAFmodel':
+            if self.model is MODELS.SPLEAFmodel:
                 def print_pars(pars, key, offset=0):
                     print(offset * ' ', end='')
                     print((len(pars) * ' {:>10s} ').format(*pars))
@@ -1999,6 +1862,17 @@ class KimaResults:
             for name, unit, trend_par in zip(names, units, trend):
                 print(name + ':', '%-8.5f' % trend_par, unit)
 
+        if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
+            names = ('slope_fwhm', 'quadr_fwhm', 'cubic_fwhm')
+            units = ['m/s/yr', 'm/s/yr²', 'm/s/yr³']
+            trend = p[self.indices['trend_fwhm']].copy()
+            # transfrom from /day to /yr
+            trend *= 365.25**np.arange(1, self.trend_fwhm_degree + 1)
+
+            for name, unit, trend_par in zip(names, units, trend):
+                print(name + ':', '%-8.5f' % trend_par, unit)
+
+
         if self.multi:
             ni = self.n_instruments - 1
             print('instrument offsets: ', end=' ')
@@ -2013,7 +1887,11 @@ class KimaResults:
             s += (ni * ' {:<20.3f} ').format(*p[i])
             print(s)
 
-        if self.model != 'GAIAmodel':
+        if self.model != MODELS.GAIAmodel:
+            if self.model is MODELS.RVFWHMmodel:
+                print('cfwhm: ', p[self.indices['cfwhm']])
+            if self.model is MODELS.RVFWHMRHKmodel:
+                print('crhk: ', p[self.indices['crhk']])
             print('vsys: ', p[-1])
 
 
@@ -2113,11 +1991,11 @@ class KimaResults:
             t = self.data.t.copy()
             data_t = True
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             v = np.zeros((3, t.size))
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             v = np.zeros((self.nseries, t.size))
         else:
             v = np.zeros_like(t)
@@ -2155,7 +2033,7 @@ class KimaResults:
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    if self.model not in ('RVmodel', 'GPmodel'):
+                    if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
                         v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
                         v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
@@ -2181,7 +2059,7 @@ class KimaResults:
                     f = np.pi/2 - w # true anomaly at conjunction
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
-                    if self.model not in ('RVmodel', 'GPmodel'):
+                    if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
                         v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
                         v += keplerian(t, P, K, ecc, w, M, Tc)
@@ -2212,7 +2090,7 @@ class KimaResults:
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
-                if self.model not in ('RVmodel', 'GPmodel'):
+                if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
                     v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
@@ -2220,13 +2098,13 @@ class KimaResults:
         ni = self.n_instruments
 
         # systemic velocity (and C2) for this sample
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['cfwhm']]]
             v += C.reshape(-1, 1)
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['cfwhm']], sample[self.indices['crhk']]]
             v += C.reshape(-1, 1)
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             zp = sample[self.indices['zero_points']]
             C = np.r_[sample[self.indices['vsys']], zp[ni - 1::ni]]
             v += C.reshape(-1, 1)
@@ -2239,10 +2117,10 @@ class KimaResults:
             offsets = sample[self.indices['inst_offsets']]
             ii = self.data.obs.astype(int) - 1
 
-            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
-            elif self.model == 'SPLEAFmodel':
+            elif self.model is MODELS.SPLEAFmodel:
                 # complicated code to get
                 # [rv_offset1,   rv_offset2, ..., 0.0,   zero_point1, zero_point2, ...]
                 # [inst1, inst1, ...,             instn, ai_inst1,    ai_inst2, ...]
@@ -2255,15 +2133,21 @@ class KimaResults:
                 v += np.take(offsets, ii)
 
         # add the trend, if present
-        if include_trend and self.trend:
-            trend_par = sample[self.indices['trend']]
-            # polyval wants coefficients in reverse order, and vsys was already
-            # added so the last coefficient is 0
-            trend_par = np.r_[trend_par[::-1], 0.0]
-            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-                v[0, :] += np.polyval(trend_par, t - self.data.tmiddle)
-            else:
-                v += np.polyval(trend_par, t - self.data.tmiddle)
+        if include_trend:
+            if self.trend:
+                trend_par = sample[self.indices['trend']]
+                # polyval wants coefficients in reverse order, and vsys was already
+                # added so the last coefficient is 0
+                trend_par = np.r_[trend_par[::-1], 0.0]
+                if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
+                    v[0, :] += np.polyval(trend_par, t - self.data.tmiddle)
+                else:
+                    v += np.polyval(trend_par, t - self.data.tmiddle)
+            
+            if self.model in (MODELS.RVFWHMmodel, ) and self.trend_fwhm:
+                trend_par = sample[self.indices['trend_fwhm']]
+                trend_par = np.r_[trend_par[::-1], 0.0]
+                v[1, :] += np.polyval(trend_par, t - self.data.tmiddle)
 
         # TODO: check if _extra_data is always read correctly
         if hasattr(self, 'indicator_correlations') and self.indicator_correlations and include_indicator_correlations:
@@ -2348,9 +2232,9 @@ class KimaResults:
         if t is None or t is self.data.t:
             t = self.data.t.copy()
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             v = np.zeros((3, t.size))
         else:
             v = np.zeros_like(t)
@@ -2434,7 +2318,7 @@ class KimaResults:
             # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
-            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
             else:
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
@@ -2491,7 +2375,7 @@ class KimaResults:
             else:
                 return np.zeros_like(t)
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             D = np.vstack((self.data.y, self.data.y2))
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
@@ -2531,7 +2415,7 @@ class KimaResults:
             else:
                 return np.vstack([out0, out1])
 
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             D = np.vstack((self.data.y, self.data.y2, self.data.y3))
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
@@ -2600,7 +2484,7 @@ class KimaResults:
                 return np.vstack([out1, out2, out3])
 
 
-        elif self.model == 'SPLEAFmodel':
+        elif self.model is MODELS.SPLEAFmodel:
             if self.nseries > 1:
                 D = np.r_[self.data.y.reshape(1,-1), self._extra_data[::2, :]]
                 errors = np.r_[self.data.e.reshape(1,-1), self._extra_data[1::2, :]]
@@ -2699,19 +2583,20 @@ class KimaResults:
             else:
                 self.GP.white_noise = 0.0
 
-            if self.model == 'GPmodel_systematics':
-                x = self._extra_data[:, 3]
-                X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
-                GPpars = sample[self.indices['GPpars']]
-                mu = self.GP.predict(r, X, GPpars)
-                # self.GP.kernel.pars = GPpars
-                return mu
-            else:
-                GPpars = sample[self.indices['GPpars']].copy()
-                if self.kernel is GP.KernelType.spleaf_esp:
-                    GPpars[-1] /= 2.0
-                self.GP.kernel.pars = GPpars
-                return self.GP.predict(r, t, return_std=return_std)
+            # if self.model is MODELS.GPmodel_systematics:
+            #     x = self._extra_data[:, 3]
+            #     X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
+            #     GPpars = sample[self.indices['GPpars']]
+            #     mu = self.GP.predict(r, X, GPpars)
+            #     # self.GP.kernel.pars = GPpars
+            #     return mu
+            # else:
+            GPpars = sample[self.indices['GPpars']].copy()
+            if self.kernel is GP.KernelType.spleaf_esp:
+                GPpars[-1] /= 2.0
+            self.GP.kernel.pars = GPpars
+            return self.GP.predict(r, t, return_std=return_std)
+
 
     def full_model(self, sample, t=None, **kwargs):
         """
@@ -2761,7 +2646,7 @@ class KimaResults:
 
         if self._time_overlaps[0]:
             v = np.tile(v, (self.n_instruments, 1))
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 offsets = np.insert(offsets[0],
                                     np.arange(1, offsets.shape[1] + 1),
                                     offsets[1])
@@ -2795,10 +2680,10 @@ class KimaResults:
                 ii = -ii.max() * (ii - ii.max())
             #! end HACK!
 
-            if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+            if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
-            elif self.model == 'SPLEAFmodel':
+            elif self.model is MODELS.SPLEAFmodel:
                 zero_points = sample[self.indices['zero_points']]
                 offsets = np.r_[offsets, 0.0, zero_points]
                 offsets = np.pad(-np.diff(offsets)[::ni].reshape(-1, 1), ((0, 0), (0, 1)))
@@ -2810,9 +2695,9 @@ class KimaResults:
         return v
 
     def residuals(self, sample, full=False):
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             D = np.vstack([self.data.y, self.data.y2])
-        elif self.model == 'RVFWHMRHKmodel':
+        elif self.model is MODELS.RVFWHMRHKmodel:
             D = np.vstack([self.data.y, self.data.y2, self.data.y3])
         else:
             D = self.data.y
@@ -2824,7 +2709,7 @@ class KimaResults:
 
     def residual_std(self, sample, per_instrument=True, printit=True):
         r = self.residuals(sample, full=True)
-        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             r = r[0]
 
         vals = []
@@ -2844,10 +2729,11 @@ class KimaResults:
 
         return np.array(vals)
 
+    # residual_std = partialmethod(_residual_quantity, np.std)
 
     def residual_rms(self, sample, per_instrument=True, weighted=True, printit=True):
         r = self.residuals(sample, full=True)
-        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             r = r[0]
 
         vals = []
@@ -2904,22 +2790,22 @@ class KimaResults:
         e = np.zeros_like(y)
 
         if add_noise:
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 n1 = np.random.normal(0, self.e.mean(), times.size)
                 n2 = np.random.normal(0, self.e2.mean(), times.size)
                 y += np.c_[n1, n2].T
-            elif self.model == 'RVmodel':
+            elif self.model is MODELS.RVmodel:
                 n = np.random.normal(0, self.e.mean(), times.size)
                 y += n
 
         if errors:
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 er1 = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 er2 = np.random.uniform(self.e2.min(), self.e2.max(),
                                         times.size)
                 e += np.c_[er1, er2].T
 
-            elif self.model == 'RVmodel':
+            elif self.model is MODELS.RVmodel:
                 er = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 e += er
 
@@ -2932,10 +2818,10 @@ class KimaResults:
 
             with open(file, 'w') as out:
                 out.writelines(open(last_file).readlines())
-                if self.model == 'RVFWHMmodel':
+                if self.model is MODELS.RVFWHMmodel:
                     kw = dict(delimiter='\t', fmt=['%.5f'] + 4 * ['%.9f'])
                     np.savetxt(out, np.c_[times, y[0], e[0], y[1], e[1]], **kw)
-                elif self.model == 'RVmodel':
+                elif self.model is MODELS.RVmodel:
                     kw = dict(delimiter='\t', fmt=['%.5f'] + 2 * ['%.9f'])
                     np.savetxt(out, np.c_[times, y, e], **kw)
 
@@ -3086,21 +2972,21 @@ class KimaResults:
     # @property
     # def eta2(self):
     #     if self.has_gp:
-    #         i = 2 if self.model == 'RVFWHMmodel' else 1
+    #         i = 2 if self.model is MODELS.RVFWHMmodel else 1
     #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
     #     return None
 
     # @property
     # def eta3(self):
     #     if self.has_gp:
-    #         i = 3 if self.model == 'RVFWHMmodel' else 2
+    #         i = 3 if self.model is MODELS.RVFWHMmodel else 2
     #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
     #     return None
 
     # @property
     # def eta4(self):
     #     if self.has_gp:
-    #         i = 4 if self.model == 'RVFWHMmodel' else 3
+    #         i = 4 if self.model is MODELS.RVFWHMmodel else 3
     #         return self.posterior_sample[:, self.indices['GPpars']][:, i]
     #     return None
 
@@ -3290,7 +3176,7 @@ class KimaResults:
             jitter = jitter.reshape(-1, 1)
 
         start_jitter = 0
-        if self.model == 'RVmodel' and self.multi:
+        if self.model is MODELS.RVmodel and self.multi:
             v = jitter[:, 0]
             print_line('stellar_jitter', v, self.priors['stellar_jitter_prior'], show_prior)
             start_jitter = 1
@@ -3305,10 +3191,10 @@ class KimaResults:
             else:
                 jitter_name = self.parameters[i]
 
-            if self.model == 'SPLEAFmodel' and 'series_j' in self.parameters[i]:
+            if self.model is MODELS.SPLEAFmodel and 'series_j' in self.parameters[i]:
                 prior = self.priors[f'series_jitters_prior_{series_k+1}']
                 series_k += 1
-            elif self.model == 'RVFWHMmodel':
+            elif self.model is MODELS.RVFWHMmodel:
                 if i < self.n_instruments:
                     prior = self.priors['Jprior']
                 else:
@@ -3326,7 +3212,7 @@ class KimaResults:
         
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
 
-        if self.model == 'RVFWHMmodel':
+        if self.model is MODELS.RVFWHMmodel:
             print_line('cfwhm', self.posteriors.cfwhm, self.priors['Cfwhm_prior'], show_prior)
 
         if self.trend:
@@ -3337,14 +3223,21 @@ class KimaResults:
             if self.trend_degree >= 3:
                 print_line('cubic', self.posteriors.cubic, self.priors['cubic_prior'], show_prior)
 
+        if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
+            if self.trend_fwhm_degree >= 1:
+                print_line('slope_fwhm', self.posteriors.slope_fwhm, self.priors['slope_fwhm_prior'], show_prior)
+            if self.trend_fwhm_degree >= 2:
+                print_line('quadr_fwhm', self.posteriors.quadr_fwhm, self.priors['quadr_fwhm_prior'], show_prior)
+            if self.trend_fwhm_degree >= 3:
+                print_line('cubic_fwhm', self.posteriors.cubic_fwhm, self.priors['cubic_fwhm_prior'], show_prior)
 
-        if self.model == 'SPLEAFmodel':
+        if self.model is MODELS.SPLEAFmodel:
             for i in range(self.n_instruments * (self.nseries - 1)):
                 v = self.posterior_sample[:, self.indices['zero_points']][:, i]
                 print_line(f'zero-point {i+1}: ', v, self.priors[f'zero_points_prior_{i+1}'], show_prior)
 
         if self.multi:
-            if self.model == 'RVFWHMmodel':
+            if self.model is MODELS.RVFWHMmodel:
                 rv_offsets = self.posteriors.offset[:, :self.n_instruments - 1]
                 for i, v in enumerate(rv_offsets.T):
                     print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
@@ -3373,7 +3266,7 @@ class KimaResults:
                 name = gp_parameter_names[i]
                 print_line(name, getattr(self.posteriors, f'η{i+1}'), self.priors[f'{name}_prior'], show_prior)
 
-            if self.model == 'SPLEAFmodel':
+            if self.model is MODELS.SPLEAFmodel:
                 series_names = np.r_[['RV'], self._extra_data_names[::2]]
                 for i in range(self.nseries):
                     print_line(f'α{i+1} ({series_names[i]})', self.alphas[:, i], self.priors[f'alpha{i+1}_prior'], show_prior)
@@ -3400,12 +3293,14 @@ class KimaResults:
 
     def _set_plots(self):
         from functools import partial
-        if self.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_multiseries, res=self)
-        elif self.model in ('SPLEAFmodel',):
+        elif self.model in (MODELS.SPLEAFmodel,):
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples_spleaf, res=self)
         else:
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples, res=self)
+        self.plot_random_samples.__doc__ = display.plot_random_samples.__doc__
+        self.plot6.__doc__ = display.plot_random_samples.__doc__
 
     #
     hist_vsys = display.hist_vsys

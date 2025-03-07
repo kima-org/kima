@@ -1,3 +1,5 @@
+# flake8: noqa
+# ruff: noqa
 
 __all__ = [
     'RVData', 'PHOTdata', 'GAIAdata', 'ETVData',
@@ -8,16 +10,19 @@ __all__ = [
     'run', 'load_results',
 ]
 
+import sys
+from enum import Enum
+
 from .Data import RVData, PHOTdata, GAIAdata, ETVData
 
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
 
 from .RVFWHMmodel import RVFWHMmodel
+from .RVFWHMRHKmodel import RVFWHMRHKmodel
 from .SPLEAFmodel import SPLEAFmodel
 
 from .TRANSITmodel import TRANSITmodel
-from .RVFWHMRHKmodel import RVFWHMRHKmodel
 
 from .OutlierRVmodel import OutlierRVmodel
 from .BINARIESmodel import BINARIESmodel
@@ -39,6 +44,8 @@ __models__ = (
     RVGAIAmodel,
     ETVmodel,
 )
+MODELS = Enum('models', {m.__name__: m.__name__ for m in __models__})
+
 
 # add plot method to data classes
 from .pykima.display import plot_RVData
@@ -48,7 +55,7 @@ RVData.plot = plot_RVData
 # kima.run
 from .Sampler import run
 # kima.load_results
-from .pykima.results import load_results #, KimaResults
+from .pykima.results import load_results, KimaResults
 # kima.cleanup
 from .pykima.cli import cli_clean as cleanup
 
