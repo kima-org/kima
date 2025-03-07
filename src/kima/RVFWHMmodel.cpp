@@ -91,6 +91,21 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
             cubic_prior = defaults.get("cubic_prior");
     }
 
+    if (trend_fwhm)
+    {
+        if (degree_fwhm == 0)
+            throw std::logic_error("trend_fwhm=true but degree_fwhm=0");
+        if (degree_fwhm > 3)
+            throw std::range_error("can't go higher than 3rd degree trends");
+        if (degree_fwhm >= 1 && !slope_fwhm_prior)
+            slope_fwhm_prior = defaults.get("slope_fwhm_prior");
+        if (degree_fwhm >= 2 && !quadr_fwhm_prior)
+            quadr_fwhm_prior = defaults.get("quadr_fwhm_prior");
+        if (degree_fwhm == 3 && !cubic_fwhm_prior)
+            cubic_fwhm_prior = defaults.get("cubic_fwhm_prior");
+    }
+
+
     // if offsets_prior is not (re)defined, assume a default
     if (data._multi)
     {
@@ -254,6 +269,13 @@ void RVFWHMmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
+    if (trend_fwhm)
+    {
+        if (degree_fwhm >= 1) slope_fwhm = slope_fwhm_prior->generate(rng);
+        if (degree_fwhm >= 2) quadr_fwhm = quadr_fwhm_prior->generate(rng);
+        if (degree_fwhm == 3) cubic_fwhm = cubic_fwhm_prior->generate(rng);
+    }
+
 
     if (known_object) { // KO mode!
         for (int i=0; i<n_known_object; i++){
@@ -403,6 +425,17 @@ void RVFWHMmodel::calculate_mu_fwhm()
     int Ni = data.Ninstruments();
 
     mu_fwhm.assign(mu_fwhm.size(), bkg_fwhm);
+
+    if(trend)
+    {
+        double tmid = data.get_t_middle();
+        for (size_t i = 0; i < N; i++)
+        {
+            mu_fwhm[i] += slope_fwhm * (data.t[i] - tmid) +
+                          quadr_fwhm * pow(data.t[i] - tmid, 2) +
+                          cubic_fwhm * pow(data.t[i] - tmid, 3);
+        }
+    }
 
     if (data._multi) {
         auto obsi = data.get_obsi();
@@ -726,6 +759,9 @@ double RVFWHMmodel::perturb(RNG& rng)
     }
     else
     {
+        // NOTE: this only modifies mu (and not mu_fwhm), because
+        // calculate_mu_fwhm() is called at the end
+
         for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] -= bkg;
@@ -765,14 +801,21 @@ double RVFWHMmodel::perturb(RNG& rng)
         }
 
         // propose new slope
-        if(trend) {
+        if (trend)
+        {
             if (degree >= 1) slope_prior->perturb(slope, rng);
             if (degree >= 2) quadr_prior->perturb(quadr, rng);
             if (degree == 3) cubic_prior->perturb(cubic, rng);
         }
 
+        if (trend_fwhm)
+        {
+            if (degree >= 1) slope_fwhm_prior->perturb(slope_fwhm, rng);
+            if (degree >= 2) quadr_fwhm_prior->perturb(quadr_fwhm, rng);
+            if (degree == 3) cubic_fwhm_prior->perturb(cubic_fwhm, rng);
+        }
 
-        for(size_t i=0; i<mu.size(); i++)
+        for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] += bkg;
 
@@ -903,7 +946,7 @@ void RVFWHMmodel::print(std::ostream& out) const
         out << jitter_fwhm << '\t';
     }
 
-    if(trend)
+    if (trend)
     {
         out.precision(15);
         if (degree >= 1) out << slope << '\t';
@@ -911,7 +954,16 @@ void RVFWHMmodel::print(std::ostream& out) const
         if (degree == 3) out << cubic << '\t';
         out.precision(8);
     }
-        
+
+    if (trend_fwhm)
+    {
+        out.precision(15);
+        if (degree_fwhm >= 1) out << slope_fwhm << '\t';
+        if (degree_fwhm >= 2) out << quadr_fwhm << '\t';
+        if (degree_fwhm == 3) out << cubic_fwhm << '\t';
+        out.precision(8);
+    }
+
     if (data._multi){
         for (int j = 0; j < offsets.size(); j++)
         {
@@ -990,6 +1042,12 @@ string RVFWHMmodel::description() const
         if (degree == 3) desc += "cubic" + sep;
     }
 
+    if (trend_fwhm)
+    {
+        if (degree_fwhm >= 1) desc += "slope_fwhm" + sep;
+        if (degree_fwhm >= 2) desc += "quadr_fwhm" + sep;
+        if (degree_fwhm == 3) desc += "cubic_fwhm" + sep;
+    }
 
     if (data._multi){
         for(unsigned j=0; j<offsets.size(); j++)
@@ -1089,6 +1147,8 @@ void RVFWHMmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
+    fout << "trend_fwhm: " << trend_fwhm << endl;
+    fout << "degree_fwhm: " << degree_fwhm << endl;
     fout << "multi_instrument: " << data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
@@ -1121,10 +1181,18 @@ void RVFWHMmodel::save_setup() {
     fout << "Jprior: " << *Jprior << endl;
     fout << "Jfwhm_prior: " << *Jfwhm_prior << endl;
 
-    if (trend){
+    if (trend)
+    {
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
+    }
+
+    if (trend_fwhm)
+    {
+        if (degree_fwhm >= 1) fout << "slope_fwhm_prior: " << *slope_fwhm_prior << endl;
+        if (degree_fwhm >= 2) fout << "quadr_fwhm_prior: " << *quadr_fwhm_prior << endl;
+        if (degree_fwhm == 3) fout << "cubic_fwhm_prior: " << *cubic_fwhm_prior << endl;
     }
 
     if (data._multi) {
@@ -1236,8 +1304,8 @@ class RVFWHMmodel_publicist : public RVFWHMmodel
         using RVFWHMmodel::npmax;
         using RVFWHMmodel::data;
         //
-        using RVFWHMmodel::trend;
-        using RVFWHMmodel::degree;
+        using RVFWHMmodel::trend, RVFWHMmodel::degree;
+        using RVFWHMmodel::trend_fwhm, RVFWHMmodel::degree_fwhm;
         using RVFWHMmodel::star_mass;
         using RVFWHMmodel::enforce_stability;
 
@@ -1261,10 +1329,12 @@ NB_MODULE(RVFWHMmodel, m) {
                 "the data")
 
         //
-        .def_rw("trend", &RVFWHMmodel_publicist::trend,
-                "whether the model includes a polynomial trend")
-        .def_rw("degree", &RVFWHMmodel_publicist::degree,
-                "degree of the polynomial trend")
+        .def_rw("trend", &RVFWHMmodel_publicist::trend, "whether the model includes a polynomial trend (in the RVs)")
+        .def_rw("degree", &RVFWHMmodel_publicist::degree, "degree of the polynomial trend (in the RVs)")
+
+        .def_rw("trend_fwhm", &RVFWHMmodel_publicist::trend_fwhm, "whether the model includes a polynomial trend (in the FWHM)")
+        .def_rw("degree_fwhm", &RVFWHMmodel_publicist::degree_fwhm, "degree of the polynomial trend (in the FWHM)")
+
 
         // KO mode
         .def("set_known_object", &RVFWHMmodel::set_known_object)
@@ -1315,15 +1385,29 @@ NB_MODULE(RVFWHMmodel, m) {
         .def_prop_rw("slope_prior",
             [](RVFWHMmodel &m) { return m.slope_prior; },
             [](RVFWHMmodel &m, distribution &d) { m.slope_prior = d; },
-            "Prior for the slope")
+            "Prior for the slope (in the RVs)")
         .def_prop_rw("quadr_prior",
             [](RVFWHMmodel &m) { return m.quadr_prior; },
             [](RVFWHMmodel &m, distribution &d) { m.quadr_prior = d; },
-            "Prior for the quadratic coefficient of the trend")
+            "Prior for the quadratic coefficient of the trend (in the RVs)")
         .def_prop_rw("cubic_prior",
             [](RVFWHMmodel &m) { return m.cubic_prior; },
             [](RVFWHMmodel &m, distribution &d) { m.cubic_prior = d; },
-            "Prior for the cubic coefficient of the trend")
+            "Prior for the cubic coefficient of the trend (in the RVs)")
+        
+        .def_prop_rw("slope_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.slope_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.slope_fwhm_prior = d; },
+            "Prior for the slope in the FWHM (in the FWHM)")
+        .def_prop_rw("quadr_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.quadr_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.quadr_fwhm_prior = d; },
+            "Prior for the quadratic coefficient of the trend in the FWHM (in the FWHM)")
+        .def_prop_rw("cubic_fwhm_prior",
+            [](RVFWHMmodel &m) { return m.cubic_fwhm_prior; },
+            [](RVFWHMmodel &m, distribution &d) { m.cubic_fwhm_prior = d; },
+            "Prior for the cubic coefficient of the trend in the FWHM (in the FWHM)")
+
         
         // priors for the GP hyperparameters
         .def_prop_rw("eta1_prior",

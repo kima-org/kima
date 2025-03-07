@@ -38,8 +38,10 @@ class  RVFWHMmodel
 
         /// whether the model includes a polynomial trend
         bool trend {false};
+        bool trend_fwhm {false};
         /// degree of the polynomial trend
         int degree {0};
+        int degree_fwhm {0};
 
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
@@ -69,7 +71,8 @@ class  RVFWHMmodel
         std::vector<double> offsets; // between instruments
         std::vector<double> jitters; // for each instrument
 
-        double slope, quadr=0.0, cubic=0.0;
+        double slope=0.0, quadr=0.0, cubic=0.0;
+        double slope_fwhm=0.0, quadr_fwhm=0.0, cubic_fwhm=0.0;
         double jitter, jitter_fwhm;
         double nu;
 
@@ -138,12 +141,19 @@ class  RVFWHMmodel
         distribution Jprior;
         distribution Jfwhm_prior;
 
-        /// Prior for the slope
+        /// Prior for the slope in the RVs
         distribution slope_prior;
-        /// Prior for the quadratic coefficient of the trend
+        /// Prior for the quadratic coefficient of the trend in the RVs
         distribution quadr_prior;
-        /// Prior for the cubic coefficient of the trend
+        /// Prior for the cubic coefficient of the trend in the RVs
         distribution cubic_prior;
+
+        /// Prior for the slope in the FWHM
+        distribution slope_fwhm_prior;
+        /// Prior for the quadratic coefficient of the trend in the FWHM
+        distribution quadr_fwhm_prior;
+        /// Prior for the cubic coefficient of the trend in the FWHM
+        distribution cubic_fwhm_prior;
 
         /// (Common) prior for the between-instruments offsets.
         distribution offsets_prior;
