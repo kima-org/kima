@@ -142,11 +142,12 @@ def test_run(cleanup_after_running):
 def test_phase_plot(include, KO, nKO, TR, nTR, nP):
     from kima.pykima.display import phase_plot
     from kima.pykima.results import data_holder, KimaResults
+    from kima import MODELS
     from common import create_data
 
     class FakeResult:
         max_components = 2
-        model = 'RVmodel'
+        model = MODELS.RVmodel
         has_gp = studentt = False
         full_model = KimaResults.full_model
         eval_model = KimaResults.eval_model
