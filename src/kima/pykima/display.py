@@ -2303,6 +2303,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
         params[k]['w'] = w = sample[res.indices['planets.w']][i]
         params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        params[k]['type'] = 'planet'
         params[k]['index'] = i + 1
 
     pj = 0
@@ -2316,6 +2317,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
             ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
             pj += 1
         params.update(ko)
@@ -2329,7 +2331,11 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             tr[k]['Tc'] = Tc = sample[res.indices['TRpars']][i + 2 * res.nTR]
             tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
             tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
+            f = np.pi/2 - w
+            E = 2.0 * np.arctan(np.tan(f/2.0) * np.sqrt((1.0 - e) / (1.0 + e)))
+            tr[k]['φ'] = φ = E - e * np.sin(E)
             # tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            tr[k]['type'] = 'TR'
             tr[k]['index'] = -pj - 1
             pj += 1
         params.update(tr)
@@ -2345,11 +2351,11 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
     return nplanets, params, keys
 
 
-def phase_plot(res, sample, phase_axs=None,
+def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                sort_by_increasing_P=False, sort_by_decreasing_K=True,
                highlight=None, highlight_points=None, only=None,
-               add_titles=True, sharey=False, show_gls_residuals=False,
-               **kwargs):
+               show_titles=True, sharey=False, show_gls_residuals=False,
+               show_outliers=False, fancy_ticks=False, **kwargs):
     """
     Plot the planet phase curves, GP, and residuals, for a given `sample`.
     
@@ -2360,6 +2366,8 @@ def phase_plot(res, sample, phase_axs=None,
             Array with one posterior sample
         phase_axs (list[matplotlib.axes.Axes]):
             One or more axes for the phase plot(s)
+        xaxis (str):
+            Plot the phase curve against 'mean anomaly' or 'mean longitude'
         sort_by_increasing_P (bool):
             Sort the planets by increasing period
         sort_by_decreasing_K (bool):
@@ -2370,12 +2378,16 @@ def phase_plot(res, sample, phase_axs=None,
             Highlight specific data points by index
         only (list):
             Only show data from specific instrument(s)
-        add_titles (bool):
+        show_titles (bool):
             Add titles to each phase plot
         sharey (bool):
             Share the y-axis of the phase plots
         show_gls_residuals (bool):
             Add a panel with the Lomb-Scargle periodogram of the residuals
+        show_outliers (bool):
+            Show points identified as outliers
+        fancy_ticks (bool):
+            Use fancy ticks for angles
         **kwargs (dict):
             Keyword arguments passed to `plt.errorbar`
     
@@ -2391,6 +2403,11 @@ def phase_plot(res, sample, phase_axs=None,
     if res.model == 'GAIAmodel':
         astrometry_phase_plot(res, sample)
         return
+
+    if xaxis not in ('mean anomaly', 'mean longitude'):
+        raise ValueError(f'`xaxis` must be "mean anomaly" or "mean longitude", got {xaxis}')
+
+    tau = 2 * np.pi
 
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
@@ -2420,22 +2437,21 @@ def phase_plot(res, sample, phase_axs=None,
 
     # subtract stochastic model and vsys / offsets from data
     v = res.full_model(sample, t=None, include_planets=False)
-    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+
+    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
         v = v[0]
 
     y = y - v
 
+
     # errorbar plot arguments
-    ekwargs = {
-        'fmt': 'o',
-        'mec': 'none',
-        'ms': 4,
-        'capsize': 0,
-        'elinewidth': 0.8,
-    }
-    for k in ekwargs:
-        if k in kwargs:
-            ekwargs[k] = kwargs[k]
+    colors = kwargs.pop('colors', None)
+    ekwargs = kwargs
+    ekwargs.setdefault('fmt', 'o')
+    ekwargs.setdefault('mec', 'none')
+    ekwargs.setdefault('ms', 4)
+    ekwargs.setdefault('capsize', 0)
+    ekwargs.setdefault('elinewidth', 0.8)
 
     # very complicated logic just to make the figure the right size
     fs = [
@@ -2518,21 +2534,36 @@ def phase_plot(res, sample, phase_axs=None,
     else:
         axs = phase_axs
 
-    colors = kwargs.get('colors', None)
+    for ax in axs:
+        ax.minorticks_on()
 
     # for each planet in this sample
     for i, letter in enumerate(keys):
         ax = axs[i]
 
-        ax.axvline(0.5, ls='--', color='k', alpha=0.2, zorder=-5)
+        # ax.axvline(0.5, ls='--', color='k', alpha=0.2, zorder=-5)
+        # ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
+        ax.axvline(np.pi, ls='--', color='k', alpha=0.2, zorder=-5)
         ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
 
         P = params[letter]['P']
+        w = params[letter]['w']
+        M0 = params[letter]['φ']
         # Tp = params[letter]['Tp']
 
         # plot the keplerian curve in phase (3 times)
-        phase = np.linspace(0, 1, 200)
-        tt = phase * P + res.M0_epoch
+        phase = np.linspace(0, tau, 200)
+        if xaxis == 'mean anomaly':
+            tt = (phase - M0) * P / tau + res.M0_epoch
+        elif xaxis == 'mean longitude':
+            tt = (phase - M0 - w) * P / tau + res.M0_epoch
+
+        # Msmooth = np.linspace(0, 360, 200)
+        # M0 = 180 / np.pi * (λ0 - w)
+        # # M = (M0 + 360 / P * t) % 360
+        # tt = (Msmooth - M0) * P / 360
+        # # mod = kep.rv((Msmooth - M0) * P / 360)
+
 
         # keplerian for this planet
         planet_index = params[letter]['index']
@@ -2541,14 +2572,14 @@ def phase_plot(res, sample, phase_axs=None,
         # the background model at these times
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
-        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
             vv = vv[0]
             offset_model = offset_model[0]
 
 
         for j in (-1, 0, 1):
             alpha = 0.2 if j in (-1, 1) else 1
-            ax.plot(np.sort(phase) + j, vv[np.argsort(phase)] - offset_model,
+            ax.plot(np.sort(phase) + j * tau, vv[np.argsort(phase)] - offset_model,
                     color='k', alpha=alpha, zorder=100)
 
         # subtract the other planets from the data and plot it (the data)
@@ -2556,13 +2587,19 @@ def phase_plot(res, sample, phase_axs=None,
         if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
             vv = vv[0]
 
-        if res.studentt:
+        if res.studentt and show_outliers:
             outliers = find_outliers(res, sample)
+
+        from .utils import mean_anomaly_from_epoch
 
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = obs == k
-                phase = ((t[m] - res.M0_epoch) / P) % 1.0
+                # phase = ((t[m] - res.M0_epoch) / P) % 1.0
+                if xaxis == 'mean anomaly':
+                    phase = mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) % tau
+                elif xaxis == 'mean longitude':
+                    phase = (mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) + w) % tau
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
@@ -2570,6 +2607,8 @@ def phase_plot(res, sample, phase_axs=None,
                 if colors is None:
                     # one color for each instrument
                     color = f'C{k-1}'
+                elif isinstance(colors, dict):
+                    color = colors[res.instruments[k - 1]]
                 else:
                     color = colors[k - 1]
 
@@ -2578,19 +2617,19 @@ def phase_plot(res, sample, phase_axs=None,
                     alpha = 0.2 if j in (-1, 1) else 1
                     if highlight:
                         if highlight not in res.data_file[k - 1]:
-                            alpha = 0.1
+                            alpha = 0.5
                     elif only:
                         if only not in res.data_file[k - 1]:
                             alpha = 0
 
-                    _phi = np.sort(phase) + j
+                    _phi = np.sort(phase) + j * tau
                     _y = yy[np.argsort(phase)]
                     _e = ee[np.argsort(phase)]
                     ax.errorbar(_phi, _y, _e,
                                 label=label, color=color, alpha=alpha, **ekwargs)
                 
-                    if res.studentt:
-                        _phi = np.sort(phase[outliers[m]]) + j
+                    if res.studentt and show_outliers:
+                        _phi = np.sort(phase[outliers[m]]) + j * tau
                         _y = yy[outliers[m]][np.argsort(phase[outliers[m]])]
                         _e = ee[outliers[m]][np.argsort(phase[outliers[m]])]
                         ax.errorbar(_phi, _y, _e, fmt='xr', alpha=alpha, zorder=-10)
@@ -2603,19 +2642,28 @@ def phase_plot(res, sample, phase_axs=None,
                                     alpha=alpha, **hlkw)
 
         else:
-            phase = ((t - res.M0_epoch) / P) % 1.0
+            # phase = ((t - res.M0_epoch) / P) % 1.0
+            if xaxis == 'mean anomaly':
+                phase = mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) % tau
+            elif xaxis == 'mean longitude':
+                phase = (mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) + w) % tau
+
             yy = y - vv
 
             for j in (-1, 0, 1):
                 alpha = 0.3 if j in (-1, 1) else 1
-                ax.errorbar(
-                    np.sort(phase) + j, yy[np.argsort(phase)],
-                    e[np.argsort(phase)], color='C0', alpha=alpha, **ekwargs)
+                ax.errorbar(np.sort(phase) + j * tau, yy[np.argsort(phase)], e[np.argsort(phase)],
+                            color='C0', alpha=alpha, **ekwargs)
 
-        ax.set(xlabel="phase", ylabel="RV [m/s]")
-        ax.set_xlim(-0.1, 1.1)
+        ax.set(xlabel=xaxis, ylabel="RV [m/s]")
+        # ax.set_xlim(-0.1, 1.1)
+        ax.set_xlim(-0.3, 2*np.pi+0.3)
 
-        if add_titles:
+        if fancy_ticks:
+            ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi])
+            ax.set_xticklabels([r'$0$', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$'])
+
+        if show_titles:
             # ax.set_title('%s' % letter, loc='left', **title_kwargs)
             K = params[letter]['K']
             ecc = params[letter]['e']
@@ -2684,7 +2732,7 @@ def phase_plot(res, sample, phase_axs=None,
     if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
         residuals = residuals[0]
 
-    if res.studentt:
+    if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     res.data.e[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
