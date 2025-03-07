@@ -54,11 +54,11 @@ jobs:
     - name: Test
       run: |
         python -m pytest -s tests/ 
-        python -m pytest -s tests/ --mpl  --mpl-results-path=results --mpl-generate-summary=html
+        python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
 
     - uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: results-${{ matrix.platform }}
-        path: results
+        name: mpl-results-${{ matrix.platform }}
+        path: tests/baseline
         retention-days: 2
