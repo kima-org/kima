@@ -10,6 +10,7 @@ from scipy.signal import find_peaks
 from corner import corner
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
+from .. import MODELS
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
 from .analysis import get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
@@ -627,14 +628,17 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None, axs=None,
         return
 
     # dispatch if RVFWHMmodel
-    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+    if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
         return plot_gp_rvfwhm(res, Np, ranges, show_prior, fig, **hist_kwargs)
 
     n = res.etas.shape[1]
-    available_etas = [f'eta{i}' for i in range(1, n + 1)]
-    labels = [rf'$\eta_{i}$' for i in range(1, n + 1)]
+    available_etas = [f'eta_{i}' for i in range(1, n + 1)]
+    units = ['m/s', 'days', 'days', None]
+    # print(n)
+    # labels = [rf'$\eta_{i}$' + f'[{units[i-1]}]' if units[i-1] else '' for i in range(1, n + 1)]
+
     if ranges is None:
-        ranges = len(labels) * [None]
+        ranges = n * [None]
 
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
@@ -644,10 +648,9 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None, axs=None,
         if fig is None:
             fig, axes = plt.subplots(2, nplots, constrained_layout=True)
         else:
-            axes = fig.axes
+            axes = np.array(fig.axes)
     else:
         axes = axs
-        print(len(axes))
         fig = axes.ravel()[0].figure
     assert len(axes.ravel()) >= 2 * nplots, 'figure has too few axes!'
 
@@ -656,17 +659,29 @@ def plot_gp(res, Np=None, ranges=None, show_prior=False, fig=None, axs=None,
 
     for i, eta in enumerate(available_etas):
         ax = np.ravel(axes)[i]
+
+
         try:
-            ax.hist(getattr(res.posteriors, f'η{i+1}'), bins=40, range=ranges[i], **hist_kwargs)
+            val = getattr(res.posteriors, f'η{i+1}')
         except AttributeError:
-            ax.hist(res.etas[:, i], bins=40, range=ranges[i], **hist_kwargs)
+            val = res.etas[:, i]
+
+        estimate = percentile68_ranges_latex(val)
+        ax.hist(val, bins='doane', range=ranges[i], label=estimate, **hist_kwargs)
 
         if show_prior:
+            previous_xlim = ax.get_xlim()
             prior = res.priors[f'eta{i+1}_prior']
-            ax.hist(distribution_rvs(prior, res.ESS), bins=40, 
+            ax.hist(distribution_rvs(prior, res.ESS), bins='doane', 
                     color='k', alpha=0.2, density=True)
+            ax.set_xlim(previous_xlim)
 
-        ax.set(xlabel=labels[i], ylabel='posterior')
+        ax.legend()
+        label = available_etas[i].replace('eta', r'\eta')
+        label = f'${label}$'
+        if units[i] is not None:
+            label += f' [{units[i]}]'
+        ax.set(xlabel=label, ylabel='posterior')
 
     for j in range(i + 1, 2 * nplots):
         np.ravel(axes)[j].axis('off')
@@ -690,8 +705,8 @@ def plot_gp_rvfwhm(res, Np=None, ranges=None, show_prior=False, fig=None,
         print('Model does not have GP! plot_gp() doing nothing...')
         return
 
-    FWHMmodel = res.model == 'RVFWHMmodel'
-    FWHMRHKmodel = res.model == 'RVFWHMRHKmodel'
+    FWHMmodel = res.model is MODELS.RVFWHMmodel
+    FWHMRHKmodel = res.model is MODELS.RVFWHMRHKmodel
 
     # n = res.etas.shape[1]
     labels = ('η1', 'η2', 'η3', 'η4')
@@ -1364,7 +1379,7 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
 
     if show_offsets and res.multi:
         n_inst_offsets = res.inst_offsets.shape[1]
-        nrows = 2 if res.model == 'RVFWHMmodel' else 1
+        nrows = 2 if res.model is MODELS.RVFWHMmodel else 1
         fig, axs = plt.subplots(nrows, n_inst_offsets // nrows, sharey=True,
                                 figsize=(2 + n_inst_offsets * 3, 5), squeeze=True,
                                 constrained_layout=True)
@@ -1374,7 +1389,7 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
 
         prior = res.priors['offsets_prior']
 
-        if res.model == 'RVFWHMmodel':
+        if res.model is MODELS.RVFWHMmodel:
             k = 0
             wrt = res.instruments[-1]
             for j in range(2):
@@ -1488,7 +1503,7 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
         figures.append(None)
 
     if show_other:
-        if res.model == 'RVFWHMmodel':
+        if res.model is MODELS.RVFWHMmodel:
             fig, ax = plt.subplots(1, 1, constrained_layout=True)
             val = res.posterior_sample[:, res.indices['cfwhm']]
             estimate = percentile68_ranges_latex(val)
@@ -1502,7 +1517,7 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
             ax.legend()
             ax.set(xlabel='C fwhm', ylabel=ylabel)
 
-        if res.model == 'SPLEAFmodel' and res.nseries > 1:
+        if res.model is MODELS.SPLEAFmodel and res.nseries > 1:
             fig, axs = plt.subplots(1, res.nseries - 1, constrained_layout=True)
             axs = np.atleast_1d(axs)
 
@@ -1533,9 +1548,9 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     # else:
     #     units = ' (m/s)'  # if res.units == 'ms' else ' (km/s)'
 
-    RVFWHM = res.model == 'RVFWHMmodel'
-    RVFWHMRHK = res.model == 'RVFWHMRHKmodel'
-    SPLEAF = res.model == 'SPLEAFmodel'
+    RVFWHM = res.model is MODELS.RVFWHMmodel
+    RVFWHMRHK = res.model is MODELS.RVFWHMRHKmodel
+    SPLEAF = res.model is MODELS.SPLEAFmodel
 
     if ax is None:
         kw = dict(constrained_layout=True, sharey=False)
@@ -1599,7 +1614,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                 prior_name = 'Jprior' if j==0 else f'J{j+1}prior'
                 prior = distribution_rvs(res.priors[prior_name], size=res.ESS)
             else:
-                if res.model == 'RVmodel' and res.multi and i==0:
+                if res.model is MODELS.RVmodel and res.multi and i==0:
                     prior = distribution_rvs(res.priors['stellar_jitter_prior'], size=res.ESS)
                 else:
                     prior = distribution_rvs(res.priors['Jprior'], size=res.ESS)
@@ -1650,7 +1665,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                    for s in res._extra_data_names[::2]]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
-        if res.model == 'RVmodel':
+        if res.model is MODELS.RVmodel:
             if res.multi:
                 labels.insert(0, 'stellar jitter')
             if res.jitter_propto_indicator:
@@ -1855,12 +1870,12 @@ def plot_RVData(data, **kwargs):
     return fig, ax
 
 
-def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extract_offset=True,
+def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
               legend=True, show_rms=False, outliers=None, **kwargs):
 
-    fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
-    rhk_model = res.model == 'RVFWHMRHKmodel' and not (ignore_y3 or ignore_y2)
+    fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
+    rhk_model = res.model is MODELS.RVFWHMRHKmodel and not (ignore_y3 or ignore_y2)
 
     if ax is None:
         if fwhm_model:
@@ -1871,13 +1886,14 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, y2=None, y3=None, extrac
             fig, ax = plt.subplots(1, 1)
 
     t = res.data.t.copy()
-    e = res.data.e.copy()
 
     if y is None:
         y = res.data.y.copy()
+        e = res.data.e.copy()
     else:
         if y.ndim > 1:
             y = y[0]
+        assert e is not None, 'must provide `e` if `y` is not None'
 
     if fwhm_model or rhk_model:
         y2 = res.data.y2.copy()
@@ -1999,8 +2015,8 @@ def plot_data_jitters(res, sample, ax=None, axf=None, axr=None,
                       time_offset=0.0, highlight=None, legend=True,
                       show_rms=False, outliers=None, **kwargs):
 
-    fwhm_model = res.model == 'RVFWHMmodel' and not ignore_y2
-    rhk_model = res.model == 'RVFWHMRHKmodel' and not ignore_y3
+    fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
+    rhk_model = res.model is MODELS.RVFWHMRHKmodel and not ignore_y3
 
     if ax is None:
         if fwhm_model:
@@ -2136,7 +2152,7 @@ def plot_data_jitters(res, sample, ax=None, axf=None, axr=None,
 def gls_data(res, sample=None, ax=None):
     from gatspy.periodic import LombScargle, LombScargleMultiband
     from astropy.timeseries import LombScargle as GLS
-    fwhm_model = res.model == 'RVFWHMmodel' #and not ignore_y2
+    fwhm_model = res.model is MODELS.RVFWHMmodel #and not ignore_y2
 
     if ax is None:
         kw = dict(sharex=True, constrained_layout=True)
@@ -2400,7 +2416,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         print('Model has no planets! phase_plot() doing nothing...')
         return
 
-    if res.model == 'GAIAmodel':
+    if res.model is MODELS.GAIAmodel:
         astrometry_phase_plot(res, sample)
         return
 
@@ -2438,7 +2454,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     # subtract stochastic model and vsys / offsets from data
     v = res.full_model(sample, t=None, include_planets=False)
 
-    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
+    if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
         v = v[0]
 
     y = y - v
@@ -2572,7 +2588,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         # the background model at these times
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
-        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel', 'SPLEAFmodel'):
+        if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
             vv = vv[0]
             offset_model = offset_model[0]
 
@@ -2584,7 +2600,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
         # subtract the other planets from the data and plot it (the data)
         vv = res.planet_model(sample, except_planet=planet_index)
-        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+        if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             vv = vv[0]
 
         if res.studentt and show_outliers:
@@ -2696,7 +2712,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         y = res.data.y.copy()
         y = y - res.eval_model(sample)
 
-        _, y_offset = plot_data(res, y=y, ax=axGP, ignore_y2=True, legend=False,
+        _, y_offset = plot_data(res, y=y, e=res.data.e, ax=axGP, ignore_y2=True, legend=False,
                                 highlight=highlight, only=only, time_offset=time_offset,
                                 **ekwargs)
         axGP.set(xlabel=time_label, ylabel="GP [m/s]")
@@ -2705,11 +2721,8 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
-        if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
-            if res.model == 'RVFWHMmodel':
-                (pred, _), (std, _) = res.stochastic_model(sample, tt, return_std=True)
-            elif res.model == 'RVFWHMRHKmodel':
-                (pred, _, _), (std, _, _) = res.stochastic_model(sample, tt, return_std=True)
+        if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
+            (pred, *_), (std, *_) = res.stochastic_model(sample, tt, return_std=True)
             if overlap:
                 no_planets_model = no_planets_model[::2]
             else:
@@ -2729,7 +2742,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     ############
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
-    if res.model in ('RVFWHMmodel', 'RVFWHMRHKmodel'):
+    if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
         residuals = residuals[0]
 
     if res.studentt and show_outliers:
@@ -2739,7 +2752,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     else:
         outliers = None
 
-    plot_data(res, ax=ax, y=residuals, ignore_y2=True, legend=True,
+    plot_data(res, ax=ax, y=residuals, e=res.data.e, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
               highlight=highlight, **ekwargs)
 
@@ -2859,7 +2872,7 @@ def astrometry_phase_plot(res, sample):
 
 
 def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
-    if res.model != 'GAIAmodel':
+    if res.model != MODELS.GAIAmodel:
         print('Model is not GAIAmodel! '
               'corner_astrometric_solution() doing nothing...')
         return
@@ -3096,7 +3109,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
 
     if full_plot:
         r = res.residuals(sample, full=True)
-        plot_data(res, ax=axs['b'], y=r, legend=False, show_rms=True)
+        plot_data(res, ax=axs['b'], y=r, e=res.data.e, legend=False, show_rms=True)
         axs['b'].axhline(y=0, ls='--', color='k', alpha=0.5)
         gls = LombScargle(res.data.t, r, res.data.e)
         f, p = gls.autopower(samples_per_peak=15)
@@ -3126,7 +3139,7 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     GP hyperparameters for each of the random samples.
     """
     full_plot = kwargs.pop('full_plot', False)
-    rhk = res.model == 'RVFWHMRHKmodel'
+    rhk = res.model is MODELS.RVFWHMRHKmodel
 
 
     if samples is None:
