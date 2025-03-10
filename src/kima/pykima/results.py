@@ -317,7 +317,7 @@ class prior_holder:
 
 
 def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
-                 moreSamples=1):
+                 moreSamples=1, n_resample_logX=1):
     """ Load the results from a kima run 
 
     Args:
@@ -333,8 +333,11 @@ def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
         verbose (bool, optional):
             Print some information about the results
         moreSamples (int, optional):
-            The total number of posterior samples will be equal to ESS *
-            moreSamples
+            The total number of posterior samples will be equal to 
+            ESS * moreSamples
+        n_resample_logX (int, optional):
+            Number of times to resample the logX values in order to estimate the
+            NS uncertainty in logZ, I, etc.
 
     Raises:
         FileNotFoundError:
@@ -354,10 +357,12 @@ def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
         if hasattr(model_or_file, 'directory') and model_or_file.directory != '':
             with chdir(model_or_file.directory):
                 res = KimaResults(model_or_file, data,
-                                  diagnostic=diagnostic, verbose=verbose)
+                                  diagnostic=diagnostic, verbose=verbose,
+                                  moreSamples=moreSamples, n_resample_logX=n_resample_logX)
         else:
             res = KimaResults(model_or_file, data,
-                              diagnostic=diagnostic, verbose=verbose)
+                              diagnostic=diagnostic, verbose=verbose,
+                              moreSamples=moreSamples, n_resample_logX=n_resample_logX)
 
     return res
 
@@ -407,7 +412,10 @@ class KimaResults:
 
         with redirect_stdout(stdout):
             try:
-                evidence, H, logx_samples = postprocess(plot=diagnostic, moreSamples=moreSamples)
+                evidence, H, logx_samples = postprocess(plot=diagnostic, 
+                                                        moreSamples=moreSamples,
+                                                        numResampleLogX=n_resample_logX,
+                                                        debug=self._debug)
             except FileNotFoundError as e:
                 if e.filename == 'levels.txt':
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
