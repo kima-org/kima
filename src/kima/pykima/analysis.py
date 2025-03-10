@@ -297,13 +297,15 @@ def get_bins(res, start=None, end=None, nbins=100):
     return bins
 
 def aliases(P):
-    yearly, solar_dayly, sidereal_dayly = 1 / 365.25, 1.0, 1 + 1 / 365.25
+    yearly, solar_dayly, sidereal_dayly, synodic_monthly = 1 / 365.25, 1.0, 1 + 1 / 365.25, 1 / 29
     alias_year = [abs(1 / (yearly + i / P)) for i in [1, -1]]
     alias_solar_day = [abs(1 / (solar_dayly + i / P)) for i in [1, -1]]
     alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
-    return alias_year, alias_solar_day, alias_sidereal_day
+    # alias_synodic_month = [abs(1 / (synodic_monthly + i / P)) for i in [1, -1]]
+    return alias_year, alias_solar_day, alias_sidereal_day #, alias_synodic_month
 
-def FIP(results, plot=True, show_peaks=True, oversampling=1):
+def FIP(results, plot=True, show_peaks=True, oversampling=1, include_aliases=False,
+        show_ESS=True):
     """ Calculate (and plot) the True and False Inclusion Probability (TIP/FIP)
 
     Args:
@@ -331,7 +333,9 @@ def FIP(results, plot=True, show_peaks=True, oversampling=1):
     # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
     # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
 
-    P = results.posteriors.P
+    P = results.posteriors.P.copy()
+    if include_aliases:
+        P = np.array(aliases(P)).reshape(-1, P.shape[1])
 
     TIP = np.zeros_like(bins)
     dig = np.digitize(P, bins)
@@ -340,8 +344,9 @@ def FIP(results, plot=True, show_peaks=True, oversampling=1):
     with np.errstate(divide='ignore'):
         dig = np.digitize(P, 1/(1/bins - Δf))
     i, c = np.unique(dig, return_counts=True)
-    TIP[i-1] += c
+    TIP[i - 1] += c
     TIP[-1] = 0
+
     TIP /= results.ESS
 
     # very memory intensive and slower:
@@ -359,21 +364,28 @@ def FIP(results, plot=True, show_peaks=True, oversampling=1):
     # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
 
     FIP = 1.0 - TIP
+    FIP = np.clip(FIP, 0, 1)
+    with np.errstate(divide='ignore'):
+        mlog10FIP = -np.log10(FIP)
 
     if plot:
         import matplotlib.pyplot as plt
         from scipy.signal import find_peaks
         fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
         axs[0].semilogx(bins, TIP)
-        axs[1].semilogx(bins, -np.log10(FIP))
+        axs[1].semilogx(bins, mlog10FIP)
         if show_peaks:
+            ndigits = len(str(results.ESS))
             peaks, peaks_info = find_peaks(TIP, height=0.95)
             for peak in peaks:
                 axs[0].plot(bins[peak], TIP[peak], 'ro', ms=3)
-                axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.4f}', 
+                axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
                                 xy=(bins[peak], TIP[peak]), xytext=(5, 0), 
                                 xycoords='data', textcoords='offset points', 
                                 ha='left', va='top')
+        if show_ESS:
+            ess = f'{results.ESS:,}'.replace(',', r'$\,$')
+            axs[0].text(0.95, 0.9, f'ESS: {ess}', ha='right', transform=axs[0].transAxes)
         axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1.05))
         axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
 
