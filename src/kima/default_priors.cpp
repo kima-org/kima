@@ -62,6 +62,28 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
             {"eta4_fwhm_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
         });
     }
+
+    if (data.number_indicators > 2)
+    {
+        default_mapping.insert({
+            // 
+            // specific parameters in the RVFWHMRHK model
+            // systemic R'HK
+            {"Crhk_prior", make_prior<DNest4::Uniform>(data.get_actind_min(2), data.get_actind_max(2))},
+            // between-instrument R'HK offsets
+            {"offsets_rhk_prior", make_prior<DNest4::Uniform>( -data.get_actind_span(2), data.get_actind_span(2) )},
+            // jitter for the R'HK, per instrument
+            {"Jrhk_prior", make_prior<DNest4::ModifiedLogUniform>(min(1.0, 0.1*data.get_actind_span(2)), data.get_actind_span(2))},
+            // GP hyperparameters
+            {"eta1_rhk_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_actind_span(2) )},
+            // another possibility?
+            // {"eta1_rhk_prior", make_prior<DNest4::HalfGaussian>( data.get_actind_span(2) )},
+            {"eta2_rhk_prior", make_prior<DNest4::LogUniform>(1, data.get_timespan())},
+            {"eta3_rhk_prior", make_prior<DNest4::Uniform>(10, 40)},
+            {"eta4_rhk_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
+        });
+    }
+
 }
 
 distribution DefaultPriors::get(std::string name)

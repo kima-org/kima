@@ -90,6 +90,21 @@ def _read_priors(res, setup=None):
     return priors
 
 
+class named_array(np.ndarray):
+    columns = []
+    def set_columns(self, columns):
+        self.columns = columns
+
+    def __getattr__(self, name):
+        if name in self.columns:
+            return self[:, self.columns.index(name)]
+        return super().__getattribute__(name)
+    
+    # def __repr__(self):
+    #     if self.columns is not None:
+    #         return f'{super().__repr__()}\n(attributes={self.columns})'
+    #     return super(np.ndarray).__repr__()
+
 @dataclass
 class data_holder:
     """ A simple class to hold the RV datasets used in kima
@@ -170,7 +185,7 @@ class posterior_holder:
     φ: np.ndarray = field(init=False)
     Tc: np.ndarray = field(init=False)
     # 
-    jitter: np.ndarray = field(init=False)
+    jitter: named_array = field(init=False)
     stellar_jitter: np.ndarray = field(init=False)
     offset: np.ndarray = field(init=False)
     vsys: np.ndarray = field(init=False)
@@ -209,6 +224,96 @@ class posterior_holder:
         fields = self._get_set_fields()
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
+
+def _get_pdf(prior, x=None, N=300):
+    if x is None:
+        if np.isneginf(_min := prior.ppf(0.0)):
+            _min = prior.ppf(1e-6)
+        if np.isinf(_max := prior.ppf(1.0)):
+            _max = prior.ppf(1.0 - 1e-6)
+        support = _max - _min
+        x = np.linspace(_min - 0.1 * support, _max + 0.1 * support, N)
+        return x, np.exp(np.vectorize(prior.logpdf)(x))
+    return np.exp(np.vectorize(prior.logpdf)(x))
+
+@dataclass
+class prior_holder:
+    """ A simple class to hold the priors
+
+    Attributes:
+        P (ndarray): Orbital period(s)
+        K (ndarray): Semi-amplitude(s)
+        e (ndarray): Orbital eccentricities(s)
+        w (ndarray): Argument(s) of pericenter
+        φ (ndarray): Mean anomaly(ies) at the epoch
+        --
+        jitter (ndarray): Per-instrument jitter(s)
+        stellar_jitter (ndarray): Global jitter
+        offset (ndarray): Between-instrument offset(s)
+        vsys (ndarray): Systemic velocity
+        slope, quadr, cubic (ndarray): Trend parameters (up to 3rd degree)
+        --
+        η1 - η6 (ndarray): GP hyperparameters
+        --
+        TR: TRansiting planet parameters
+        KO: Known Object parameters
+    """
+    # Np: np.ndarray = field(init=False)
+    # P: np.ndarray = field(init=False)
+    # K: np.ndarray = field(init=False)
+    # e: np.ndarray = field(init=False)
+    # w: np.ndarray = field(init=False)
+    # φ: np.ndarray = field(init=False)
+    # Tc: np.ndarray = field(init=False)
+    # 
+    jitter: distributions.Distribution = field(init=False)
+    # stellar_jitter: np.ndarray = field(init=False)
+    # offset: np.ndarray = field(init=False)
+    vsys: distributions.Distribution = field(init=False)
+    # slope: np.ndarray = field(init=False)
+    # quadr: np.ndarray = field(init=False)
+    # cubic: np.ndarray = field(init=False)
+    # 
+    # outlier_mean: np.ndarray = field(init=False)
+    # outlier_sigma: np.ndarray = field(init=False)
+    # outlier_Q: np.ndarray = field(init=False)
+    #
+    η1: np.ndarray = field(init=False)
+    η2: np.ndarray = field(init=False)
+    η3: np.ndarray = field(init=False)
+    η4: np.ndarray = field(init=False)
+    η5: np.ndarray = field(init=False)
+    η6: np.ndarray = field(init=False)
+    # alpha: np.ndarray = field(init=False)
+    # beta: np.ndarray = field(init=False)
+    # 
+    TR: Self = field(init=False)
+    KO: Self = field(init=False)
+
+    def _get_set_fields(self):
+        fields = list(self.__dataclass_fields__.keys())
+        check_hasattr = lambda f: hasattr(self, f)  # noqa: E731
+        check_isph = lambda f: isinstance(getattr(self, f), prior_holder)  # noqa: E731
+        check_dist = lambda f: isinstance(getattr(self, f), distributions.Distribution)  # noqa: E731
+        fields = [
+            f for f in fields 
+            if check_hasattr(f) and (check_isph(f) or check_dist(f))
+        ]
+        return fields
+
+    def __repr__(self):
+        fields = self._get_set_fields()
+        fields = ', '.join(fields)
+        return f'prior_holder({fields})'
+
+    def get_samples(self, field, N=1):
+        prior = getattr(self, field)
+        u = np.random.rand(N)
+        return np.vectorize(prior.ppf)(u)
+
+    def get_pdf(self, field, x=None):
+        prior = getattr(self, field)
+        return _get_pdf(prior, x)
 
 
 def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
@@ -387,9 +492,17 @@ class KimaResults:
                 print(f'Loading "sample.txt" took {timer.interval:.2f} seconds')
 
             with SimpleTimer() as timer:
-                self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
+                self.sample_info = np.atleast_2d(
+                    read_big_file('sample_info.txt', names=['level_assignment', 'logL', 'tiebreaker', 'ID'],
+                            )
+                )
             if self._debug:
                 print(f'Loading "sample_info.txt" took {timer.interval:.2f} seconds')
+
+            with SimpleTimer() as timer:
+                self.levels = np.atleast_2d(read_big_file('levels.txt'))
+            if self._debug:
+                print(f'Loading "levels.txt" took {timer.interval:.2f} seconds')
 
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
@@ -904,6 +1017,28 @@ class KimaResults:
         self._current_column += n_outlier_parameters
         self.indices['outlier'] = outlier_inds
 
+    def _make_named_arrays(self):
+        self.posteriors.jitter = self.posteriors.jitter.view(named_array)
+        columns = []
+        if self.model is MODELS.RVmodel and self.multi:
+            columns.append('stellar')
+    
+        if self.multi:
+            columns += self.instruments
+        else:
+            columns += [self.instruments]
+
+        if self.model is MODELS.RVFWHMmodel:
+            columns += [i + '_FWHM' for i in columns]
+
+        if self.jitter_propto_indicator:
+            columns.append('slope')
+        self.posteriors.jitter.set_columns(columns)
+
+        if self.multi:
+            self.posteriors.offset = self.posteriors.offset.view(named_array)
+            self.posteriors.offset.set_columns(self.instruments[:-1])
+
     @property
     def _mc(self):
         """ Maximum number of Keplerians in the model """
@@ -1273,20 +1408,31 @@ class KimaResults:
         """
 
         self.posteriors = posterior_holder()
+        self._priors = prior_holder()
 
         # jitter(s)
         self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
-        if self.n_jitters == 1:
-            self.posteriors.jitter = self.posteriors.jitter.ravel()
+        self.posteriors.jitter = self.posteriors.jitter.view(named_array)
+        self._priors.jitter = self.priors['Jprior']
+        # if self.n_jitters == 1:
+        #     self.posteriors.jitter = self.posteriors.jitter.ravel()
 
         if self.has_gp:
             for i in range(self.n_hyperparameters):
                 setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
                 setattr(self.posteriors, f'_eta{i+1}', self.etas[:, i])
+                if self.model != MODELS.RVFWHMmodel:
+                    try:
+                        setattr(self._priors, f'η{i+1}', self.priors[f'eta{i+1}_prior'])
+                    except KeyError:
+                        pass
             
             if self.model is MODELS.SPLEAFmodel:
                 self.posteriors.alpha = self.alphas
                 self.posteriors.beta = self.betas
+                for i in range(self.nseries):
+                    setattr(self._priors, f'alpha{i+1}', self.priors[f'alpha{i+1}_prior'])
+                    setattr(self._priors, f'beta{i+1}', self.priors[f'beta{i+1}_prior'])
 
         if self.model is MODELS.GAIAmodel:
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
@@ -1295,87 +1441,110 @@ class KimaResults:
             self.posteriors.mua = mua
             self.posteriors.mud = mud
             self.posteriors.plx = plx
+            # TODO: _priors
 
         # instrument offsets
         if self.multi:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
+            # TODO: _priors
         
         if self.model != MODELS.GAIAmodel:
             # systemic velocity
             self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+            self._priors.vsys = self.priors['Cprior']
             if self.model is MODELS.RVFWHMmodel:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
+                self._priors.cfwhm = self.priors['Cfwhm_prior']
 
         if self.trend:
             ind = self.indices['trend']
             ind = list(range(ind.start or 0, ind.stop or 0, ind.step or 1))
             for i, name in zip(ind, ('slope', 'quadr', 'cubic')):
                 setattr(self.posteriors, name, self.posterior_sample[:, i])
+                setattr(self._priors, name, self.priors[f'{name}_prior'])
         
         if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
             ind = self.indices['trend_fwhm']
             ind = list(range(ind.start or 0, ind.stop or 0, ind.step or 1))
             for i, name in zip(ind, ('slope_fwhm', 'quadr_fwhm', 'cubic_fwhm')):
                 setattr(self.posteriors, name, self.posterior_sample[:, i])
+                setattr(self._priors, name, self.priors[f'{name}_prior'])
 
         # parameters of the outlier model
         if self.model is MODELS.OutlierRVmodel:
             self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = \
                 self.posterior_sample[:, self.indices['outlier']].T
+            # TODO: _priors
 
         max_components = self.max_components
         index_component = self.index_component
 
-        # periods
-        i1 = 0 * max_components + index_component + 1
-        i2 = 0 * max_components + index_component + max_components + 1
-        s = np.s_[i1:i2]
-        self.posteriors.P = self.posterior_sample[:, s]
+        if max_components > 0:
+            # periods
+            i1 = 0 * max_components + index_component + 1
+            i2 = 0 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.P = self.posterior_sample[:, s]
+            self._priors.P = self.priors['Pprior']
 
-        # amplitudes
-        i1 = 1 * max_components + index_component + 1
-        i2 = 1 * max_components + index_component + max_components + 1
-        s = np.s_[i1:i2]
-        self.posteriors.K = self.posterior_sample[:, s]
+            # amplitudes
+            i1 = 1 * max_components + index_component + 1
+            i2 = 1 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.K = self.posterior_sample[:, s]
+            self._priors.K = self.priors['Kprior']
 
-        # phases
-        i1 = 2 * max_components + index_component + 1
-        i2 = 2 * max_components + index_component + max_components + 1
-        s = np.s_[i1:i2]
-        self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+            # phases
+            i1 = 2 * max_components + index_component + 1
+            i2 = 2 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+            self._priors.φ = self.priors['phiprior']
 
-        # eccentricities
-        i1 = 3 * max_components + index_component + 1
-        i2 = 3 * max_components + index_component + max_components + 1
-        s = np.s_[i1:i2]
-        self.posteriors.e = self.posterior_sample[:, s]
+            # eccentricities
+            i1 = 3 * max_components + index_component + 1
+            i2 = 3 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.e = self.posterior_sample[:, s]
+            self._priors.e = self.priors['eprior']
 
-        # omegas
-        i1 = 4 * max_components + index_component + 1
-        i2 = 4 * max_components + index_component + max_components + 1
-        s = np.s_[i1:i2]
-        self.posteriors.w = self.posterior_sample[:, s]
+            # omegas
+            i1 = 4 * max_components + index_component + 1
+            i2 = 4 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.w = self.posterior_sample[:, s]
+            self._priors.w = self.priors['wprior']
 
-        # times of periastron
-        self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+            # times of periastron
+            self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
 
         if self.KO:
             self.posteriors.KO = posterior_holder()
-            self.posteriors.KO.__doc__ = 'Known object parameters'
+            self._priors.KO = prior_holder()
+            self.posteriors.KO.__doc__ = self._priors.KO.__doc__ = 'Known object parameters'
             self.posteriors.KO.P = self.KOpars[:, range(0*self.nKO, 1*self.nKO)]
             self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
             self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
             self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
             self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+            for i in range(self.nKO):
+                setattr(self._priors.KO, f'P{i}', self.priors[f'KO_Pprior_{i}'])
 
         if self.TR:
             self.posteriors.TR = posterior_holder()
-            self.posteriors.TR.__doc__ = 'Transiting planet parameters'
+            self._priors.TR = prior_holder()
+            self.posteriors.TR.__doc__ = self._priors.TR.__doc__ = 'Transiting planet parameters'
             self.posteriors.TR.P = self.TRpars[:, range(0*self.nTR, 1*self.nTR)]
             self.posteriors.TR.K = self.TRpars[:, range(1*self.nTR, 2*self.nTR)]
             self.posteriors.TR.Tc = self.TRpars[:, range(2*self.nTR, 3*self.nTR)]
             self.posteriors.TR.e = self.TRpars[:, range(3*self.nTR, 4*self.nTR)]
             self.posteriors.TR.w = self.TRpars[:, range(4*self.nTR, 5*self.nTR)]
+            for i in range(self.nTR):
+                setattr(self._priors.TR, f'P{i}', self.priors[f'TR_Pprior_{i}'])
+                setattr(self._priors.TR, f'K{i}', self.priors[f'TR_Kprior_{i}'])
+                setattr(self._priors.TR, f'e{i}', self.priors[f'TR_eprior_{i}'])
+                setattr(self._priors.TR, f'w{i}', self.priors[f'TR_wprior_{i}'])
+                setattr(self._priors.TR, f'Tc{i}', self.priors[f'TR_Tcprior_{i}'])
 
 
         # # times of inferior conjunction (transit, if the planet transits)
@@ -1384,6 +1553,8 @@ class KimaResults:
         #     np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
         # Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
         # self.posteriors.Tc = Tc
+        self._make_named_arrays()
+
 
     def get_medians(self):
         """ return the median values of all the parameters """
