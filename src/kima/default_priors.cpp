@@ -49,6 +49,10 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
             {"offsets_fwhm_prior", make_prior<DNest4::Uniform>( -data.get_actind_span(0), data.get_actind_span(0) )},
             // jitter for the FWHM, per instrument
             {"Jfwhm_prior", make_prior<DNest4::ModifiedLogUniform>(min(1.0, 0.1*data.get_actind_span(0)), data.get_actind_span(0))},
+            // coefficients of the trend in the FWHM
+            {"slope_fwhm_prior", make_prior<DNest4::Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1, 0)) )},
+            {"quadr_fwhm_prior", make_prior<DNest4::Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2, 0)) )},
+            {"cubic_fwhm_prior", make_prior<DNest4::Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3, 0)) )},
             // GP hyperparameters
             {"eta1_fwhm_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_actind_span(0) )},
             // another possibility?
