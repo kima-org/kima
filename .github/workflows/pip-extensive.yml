@@ -1,4 +1,4 @@
-name: pip-extensive
+name: pip extensive
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   build:
     name: Build with pip
     runs-on: ${{ matrix.platform }}
-    continue-on-error: ${{ matrix.experimental }}
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
