@@ -1,6 +1,5 @@
 #include "Data.h"
 
-
 double median(vector<double> v)
 {
   if(v.empty()) {
@@ -215,7 +214,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     auto data = loadtxt(filename)
                     .skiprows(skip)
                     .max_rows(max_rows)
-                    .delimiter(delimiter)();
+                    .delimiters(delimiter)();
 
     if (data.size() < 3) {
         std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
@@ -340,7 +339,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     auto data = loadtxt(filename)
                     .skiprows(skip)
                     .max_rows(max_rows)
-                    .delimiter(delimiter)();
+                    .delimiters(delimiter)();
 
     if (data.size() < 4) {
         std::string msg = "kima: RVData: file (" + filename + ") contains less than 4 columns! (multi=true)";
@@ -841,7 +840,7 @@ void PHOTdata::load(const string filename, int skip, const string delimiter)
 
     auto data = loadtxt(filename)
                     .skiprows(skip)
-                    .delimiter(delimiter)();
+                    .delimiters(delimiter)();
 
     if (data.size() < 3) {
         std::string msg = "kima: PHOTdata: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
@@ -947,7 +946,7 @@ GAIAdata::GAIAdata() {};
         auto data = loadtxt(filename)
                         .skiprows(skip)
                         .max_rows(max_rows)
-                        .delimiter(delimiter)();
+                        .delimiters(delimiter)();
 
         if (data.size() < 5) {
             std::string msg = "kima: GAIAdata: file (" + filename + ") contains less than 5 columns! (is skip correct?)";
@@ -1011,7 +1010,7 @@ ETVData::ETVData() {};
         auto data = loadtxt(filename)
                         .skiprows(skip)
                         .max_rows(max_rows)
-                        .delimiter(delimiter)();
+                        .delimiters(delimiter)();
 
         if (data.size() < 3) {
             std::string msg = "kima: ETVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
@@ -1062,7 +1061,7 @@ NB_MODULE(Data, m) {
         .def(nb::init<std::string>())
         .def("skiprows", &loadtxt::skiprows)
         .def("comments", &loadtxt::comments)
-        .def("delimiter", &loadtxt::delimiter)
+        .def("delimiters", &loadtxt::delimiters)
         .def("usecols", &loadtxt::usecols)
         .def("max_rows", &loadtxt::max_rows)
         .def("__call__", &loadtxt::operator());
@@ -1071,11 +1070,11 @@ NB_MODULE(Data, m) {
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
         // constructors
         .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&, bool>(),
-             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ", "indicators"_a=vector<string>(), "double_lined"_a=false,
+             "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
              "Load RV data from a list of files")
         //
         .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&, bool>(),
-             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" ", "indicators"_a=vector<string>(), "double_lined"_a=false,
+             "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
              "Load RV data from a file")
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
@@ -1164,7 +1163,7 @@ Args:
     nb::class_<PHOTdata>(m, "PHOTdata", "docs")
         // constructor
         .def(nb::init<const string&, int, const string&>(),
-             "filename"_a, "skip"_a=0, "delimiter"_a=" ",
+             "filename"_a, "skip"_a=0, "delimiter"_a=" \t,",
              "Load photometric data from a file")
         // properties
         .def_prop_ro("t", [](PHOTdata &d) { return d.get_t(); }, "The times of observations")
@@ -1177,7 +1176,7 @@ Args:
     nb::class_<GAIAdata>(m, "GAIAdata", "docs")
         // constructor
         .def(nb::init<const string&, const string&, int, int, const string&>(),
-              "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
+              "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
               "Load astrometric data from a file")
         // properties
         .def_prop_ro("t", [](GAIAdata &d) { return d.get_t(); }, "The times of observations")
