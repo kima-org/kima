@@ -3,7 +3,17 @@ from _typeshed import Incomplete
 class SPLEAFmodel:
     Cprior: Incomplete
     Jprior: Incomplete
+    KO_Kprior: Incomplete
+    KO_Pprior: Incomplete
+    KO_eprior: Incomplete
+    KO_phiprior: Incomplete
+    KO_wprior: Incomplete
     Q_prior: Incomplete
+    TR_Kprior: Incomplete
+    TR_Pprior: Incomplete
+    TR_Tcprior: Incomplete
+    TR_eprior: Incomplete
+    TR_wprior: Incomplete
     alpha_prior: Incomplete
     beta_prior: Incomplete
     conditional: Incomplete

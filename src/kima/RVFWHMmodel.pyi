@@ -1,7 +1,10 @@
 from _typeshed import Incomplete
+from typing import Any
 
 class RVFWHMmodel:
+    Cfwhm_prior: Incomplete
     Cprior: Incomplete
+    Jfwhm_prior: Incomplete
     Jprior: Incomplete
     KO_Kprior: Incomplete
     KO_Pprior: Incomplete
@@ -14,8 +17,10 @@ class RVFWHMmodel:
     TR_eprior: Incomplete
     TR_wprior: Incomplete
     conditional: Incomplete
+    cubic_fwhm_prior: Incomplete
     cubic_prior: Incomplete
     degree: Incomplete
+    degree_fwhm: Incomplete
     directory: Incomplete
     enforce_stability: Incomplete
     eta1_fwhm_prior: Incomplete
@@ -28,13 +33,16 @@ class RVFWHMmodel:
     eta4_prior: Incomplete
     fix: Incomplete
     npmax: Incomplete
+    quadr_fwhm_prior: Incomplete
     quadr_prior: Incomplete
     share_eta2: Incomplete
     share_eta3: Incomplete
     share_eta4: Incomplete
+    slope_fwhm_prior: Incomplete
     slope_prior: Incomplete
     star_mass: Incomplete
-    trend: Incomplete
+    trend: Any
+    trend_fwhm: Incomplete
     def __init__(self, *args, **kwargs) -> None: ...
     def set_known_object(self, *args, **kwargs): ...
     def set_transiting_planet(self, *args, **kwargs): ...

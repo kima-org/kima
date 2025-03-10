@@ -1,17 +1,22 @@
 from _typeshed import Incomplete
 
 class RVFWHMRHKmodel:
-    C2prior: Incomplete
-    C3prior: Incomplete
+    Cfwhm_prior: Incomplete
     Cprior: Incomplete
-    J2prior: Incomplete
-    J3prior: Incomplete
+    Crhk_prior: Incomplete
+    Jfwhm_prior: Incomplete
     Jprior: Incomplete
+    Jrhk_prior: Incomplete
     KO_Kprior: Incomplete
     KO_Pprior: Incomplete
     KO_eprior: Incomplete
     KO_phiprior: Incomplete
     KO_wprior: Incomplete
+    TR_Kprior: Incomplete
+    TR_Pprior: Incomplete
+    TR_Tcprior: Incomplete
+    TR_eprior: Incomplete
+    TR_wprior: Incomplete
     conditional: Incomplete
     cubic_prior: Incomplete
     degree: Incomplete
@@ -41,9 +46,14 @@ class RVFWHMRHKmodel:
     trend: Incomplete
     def __init__(self, *args, **kwargs) -> None: ...
     def set_known_object(self, *args, **kwargs): ...
+    def set_transiting_planet(self, *args, **kwargs): ...
     @property
     def data(self): ...
     @property
     def known_object(self): ...
     @property
     def n_known_object(self): ...
+    @property
+    def n_transiting_planet(self): ...
+    @property
+    def transiting_planet(self): ...

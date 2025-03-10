@@ -37,7 +37,6 @@ class RVmodel:
     nu_prior: Incomplete
     offsets_prior: Incomplete
     quadr_prior: Incomplete
-    remove_label_switching_degeneracy: Incomplete
     slope_prior: Incomplete
     star_mass: Incomplete
     stellar_jitter_prior: Incomplete
