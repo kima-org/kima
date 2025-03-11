@@ -1034,9 +1034,7 @@ NB_MODULE(RVmodel, m) {
     bind_RVConditionalPrior(m);
 
     nb::class_<RVmodel>(m, "RVmodel", "")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a,  
-             RVMODEL_DOC
-        )
+        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
         //
         .def_rw("directory", &RVmodel::directory,
                 "directory where the model ran")
