@@ -1297,6 +1297,9 @@ class KimaResults:
         return res
 
     def _update(self):
+        if isinstance(self.model, str):
+            self.model = MODELS(self.model)
+
         if hasattr(self, 'studentT'):
             self.studentt = self.studentT
             del self.studentT
@@ -1334,7 +1337,7 @@ class KimaResults:
 
         id += f'k{self.npmax}_' if self.fix else f'k0{self.npmax}_'
         id += f'd{self.trend_degree}_' if self.trend else ''
-        id += f'studentt_' if self.studentt else ''
+        id += 'studentt_' if self.studentt else ''
         id += 'GP_' if self.model is MODELS.GPmodel else ''
         id += 'RVFWHM_' if self.model is MODELS.RVFWHMmodel else ''
         id += 'RVFWHMRHK_' if self.model is MODELS.RVFWHMRHKmodel else ''
@@ -1355,6 +1358,8 @@ class KimaResults:
                 A string to add to the filename, after the timestamp.
             verbose (bool, optional):
                 Print a message. Defaults to True.
+        Returns:
+            filename (str): The name of the pickle file where the model was saved
         """
         if filename is None:
             filename = self.get_model_id(add_timestamp=True)
