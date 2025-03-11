@@ -79,11 +79,11 @@ class  KIMA_API RVData {
 
     // read data from a list of files
     RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0,
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>(), bool double_lined=false);
+           const string& delimiter=" \t,", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from a single file
     RVData(const string& filename, const string& units="ms", int skip=0, int max_rows=0, bool multi=false,
-           const string& delimiter=" ", const vector<string>& indicators=vector<string>(), bool double_lined=false);
+           const string& delimiter=" \t,", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from arrays
     RVData(const vector<double> t, const vector<double> y, const vector<double> sig,
@@ -99,15 +99,15 @@ class  KIMA_API RVData {
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,
-              const string delimiter=" ", const vector<string> &indicators=vector<string>());
+              const string delimiter=" \t,", const vector<string> &indicators=vector<string>());
 
     // to read data from one file, more than one instrument
     void load_multi(const string filename, const string units, int skip=0, int max_rows=0,
-                    const string delimiter=" ", const vector<string> &indicators=vector<string>());
+                    const string delimiter=" \t,", const vector<string> &indicators=vector<string>());
 
     // to read data from more than one file, more than one instrument
     void load_multi(vector<string> filenames, const string units, int skip=0, int max_rows=0,
-                    const string delimiter=" ", const vector<string>& indicators=vector<string>());
+                    const string delimiter=" \t,", const vector<string>& indicators=vector<string>());
 
     bool indicator_correlations;
     int number_indicators;
@@ -239,7 +239,7 @@ class KIMA_API PHOTdata {
     int _skip;
 
     PHOTdata() {};
-    PHOTdata(const string& filename, int skip=0, const string& delimiter=" ")
+    PHOTdata(const string& filename, int skip=0, const string& delimiter=" \t,")
     {
       load(filename, skip, delimiter);
     }
@@ -247,7 +247,7 @@ class KIMA_API PHOTdata {
     friend ostream& operator<<(ostream& os, const PHOTdata& d);
 
     // to read data from one file, one instrument
-    void load(const string filename, int skip=0, const string delimiter=" ");
+    void load(const string filename, int skip=0, const string delimiter=" \t,");
 
     /// docs for M0_epoch
     double M0_epoch;
@@ -308,7 +308,7 @@ class KIMA_API GAIAdata {
 
     GAIAdata();
     GAIAdata(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
-            const string& delimiter=" ")
+            const string& delimiter=" \t,")
     {
       load(filename, units, skip, max_rows, delimiter);
     }
@@ -317,7 +317,7 @@ class KIMA_API GAIAdata {
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,
-              const string delimiter=" ");
+              const string delimiter=" \t,");
 
 
     /// docs for M0_epoch
@@ -378,7 +378,7 @@ class ETVData {
     
     ETVData();
     ETVData(const string& filename, const string& units="days", int skip=0, int max_rows=0, 
-            const string& delimiter=" ")
+            const string& delimiter=" \t,")
     {
       load(filename, units, skip, max_rows, delimiter);
     }
@@ -387,7 +387,7 @@ class ETVData {
     
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,
-              const string delimiter=" ");
+              const string delimiter=" \t,");
 
     /// docs for M0_epoch
     double M0_epoch;
