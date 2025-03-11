@@ -51,6 +51,17 @@ def test_methods(cleanup_after_running):
     res.stochastic_model(res.posterior_sample[0])
     res.burst_model(res.posterior_sample[0])
 
+
+def test_pickling(cleanup_after_running):
+    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+    m.trend = True
+    m.degree = 2
+    kima.run(m, steps=100)
+
+    res = kima.load_results(m)
+    pkl = res.save_pickle()
+    print(pkl)
+
 def test_log_posterior(cleanup_after_running):
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
     m.trend = True

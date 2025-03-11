@@ -44,7 +44,7 @@ __models__ = (
     RVGAIAmodel,
     ETVmodel,
 )
-MODELS = Enum('models', {m.__name__: m.__name__ for m in __models__})
+MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
 
 
 # add plot method to data classes
