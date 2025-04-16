@@ -133,7 +133,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             nu_prior = defaults.get("nu_prior");
 
     #if DEBUG
-    std::cout << "setPriors done" << std::endl;
+    std::cout << std::endl << "setPriors done" << std::endl;
     #endif
 
 }
@@ -207,6 +207,10 @@ void RVmodel::from_prior(RNG& rng)
         nu = nu_prior->generate(rng);
 
     calculate_mu();
+
+    #if DEBUG
+    std::cout << std::endl << "from_prior done" << std::endl;
+    #endif
 }
 
 /**
@@ -625,6 +629,10 @@ double RVmodel::perturb(RNG& rng)
     cout << " μs" << std::endl;
     #endif
 
+    #if DEBUG
+    std::cout << std::endl << "perturb finished" << std::endl;
+    #endif
+
     return logH;
 }
 
@@ -712,6 +720,12 @@ double RVmodel::log_likelihood() const
     {
         logL = std::numeric_limits<double>::infinity();
     }
+
+    #if DEBUG
+    std::cout << std::endl << "log_likelihood finished" << std::endl;
+    #endif
+
+    // cout << "--> logL: " << logL << endl;
     return logL;
 }
 
@@ -991,7 +1005,7 @@ void RVmodel::save_setup() {
 	fout.close();
 
     #if DEBUG
-    std::cout << "kima_model_setup.txt saved" << std::endl;
+    std::cout << std::endl << "kima_model_setup.txt saved" << std::endl;
     #endif
 }
 
