@@ -261,11 +261,12 @@ void RVmodel::calculate_mu()
 
         if(indicator_correlations)
         {
-            for(size_t i=0; i<N; i++)
+            for (size_t j = 0; j < data.number_indicators; j++)
             {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * data.actind[j][i];
-            }   
+                double mean = data.get_actind_mean(j);
+                for (size_t i = 0; i < N; i++)
+                    mu[i] += betas[j] * (data.actind[j][i] - mean);
+            }
         }
 
         if (known_object) { // KO mode!
@@ -567,8 +568,10 @@ double RVmodel::perturb(RNG& rng)
             }
 
             if(indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] -= betas[j] * actind[j][i];
+                for (size_t j = 0; j < data.number_indicators; j++)
+                {
+                    double mean = data.get_actind_mean(j);
+                    mu[i] -= betas[j] * (actind[j][i] - mean);
                 }
             }
         }
@@ -594,7 +597,8 @@ double RVmodel::perturb(RNG& rng)
 
         // propose new indicator correlations
         if(indicator_correlations){
-            for(size_t j = 0; j < data.number_indicators; j++){
+            for (size_t j = 0; j < data.number_indicators; j++)
+            {
                 logH += beta_prior->perturb(betas[j], rng);
             }
         }
@@ -613,9 +617,12 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
 
-            if(indicator_correlations) {
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    mu[i] += betas[j]*actind[j][i];
+            if (indicator_correlations)
+            {
+                for (size_t j = 0; j < data.number_indicators; j++)
+                {
+                    double mean = data.get_actind_mean(j);
+                    mu[i] += betas[j] * (actind[j][i] - mean);
                 }
             }
         }
