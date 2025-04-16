@@ -777,6 +777,17 @@ int RVData::get_trend_magnitude(int degree, int i) const
     }
 }
 
+double RVData::get_actind_mean(size_t i) const
+{
+    auto ind = actind[i];
+
+    size_t n = std::count_if(begin(ind), end(ind), [](double d) { return !std::isnan(d); });
+
+    double sum = std::accumulate(begin(ind), end(ind), 0.0,
+                                 [](double acc, double other) { return std::isnan(other) ? acc : acc + other; });
+    return sum / n;
+}
+
 double RVData::get_actind_var(size_t i) const
 {
     double sum = accumulate(begin(actind[i]), end(actind[i]), 0.0);
