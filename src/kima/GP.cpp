@@ -1,5 +1,16 @@
 #include "GP.h"
 
+VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance)
+{
+    static std::mt19937 gen{ std::random_device{}() };
+    static std::normal_distribution<> dist;
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(K.rows(), K.cols()) * white_noise_variance;
+    Eigen::LLT<Eigen::MatrixXd> cholesky = (K + I).llt();
+    MatrixXd L = cholesky.matrixL();
+    return L * Eigen::VectorXd{ K.cols() }.unaryExpr([&](auto x) { return dist(gen); });
+}
+
+
 Eigen::MatrixXd QP(std::vector<double> &t, double eta1, double eta2, double eta3, double eta4)
 {
     size_t N = t.size();
@@ -484,7 +495,10 @@ double loglike(VectorXd &y, size_t n, size_t r, VectorXl &offsetrow, VectorXl &b
 
 
 NB_MODULE(GP, m) {
-    m.def("QP", &QP);
+    m.def("sample", &sample, "K"_a, "white_noise_variance"_a = 1.25e-12,
+          "Draw samples from the GP prior distribution given a kernel matrix K.");
+    m.def("QP", &QP, "t"_a, "η1"_a, "η2"_a, "η3"_a, "η4"_a,
+          "Quasi-periodic kernel ");
     m.def("PER", &PER);
 
     nb::enum_<KernelType>(m, "KernelType")
@@ -498,12 +512,12 @@ NB_MODULE(GP, m) {
         .value("spleaf_esp", KernelType::spleaf_esp)
         .export_values();
 
-    KERNEL_BIND(spleaf_ExponentialKernel, "ExponentialKernel", 2);
-    KERNEL_BIND(spleaf_Matern32Kernel, "Matern32Kernel", 2);
-    KERNEL_BIND(spleaf_SHOKernel, "SHOKernel", 3);
-    KERNEL_BIND(spleaf_MEPKernel, "MEPKernel", 4);
-    KERNEL_BIND(spleaf_ESKernel, "ESKernel", 2);
+    KERNEL_BIND(spleaf_ExponentialKernel, "Exponential", 2);
+    KERNEL_BIND(spleaf_Matern32Kernel, "Matern32", 2);
+    KERNEL_BIND(spleaf_SHOKernel, "SHO", 3);
+    KERNEL_BIND(spleaf_MEPKernel, "MEP", 4);
+    KERNEL_BIND(spleaf_ESKernel, "ES", 2);
 
-    KERNEL_BIND(_spleaf_ESP_PKernel, "_ESP_PKernel", 2);
-    KERNEL_BIND(spleaf_ESPKernel, "ESPKernel", 4);
+    KERNEL_BIND(_spleaf_ESP_PKernel, "_ESP_P", 2);
+    KERNEL_BIND(spleaf_ESPKernel, "ESP", 4);
 }
