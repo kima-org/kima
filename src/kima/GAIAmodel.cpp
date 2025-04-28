@@ -293,13 +293,13 @@ double GAIAmodel::perturb(RNG& rng)
 
     double logH = 0.;
 
-    if(rng.rand() <= 0.75 && npmax > 0) // perturb planet parameters
+    if(rng.rand() <= 0.5 && npmax > 0) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.4) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.2) // perturb jitter(s) + known_object
     {
         
         Jprior->perturb(jitter, rng);
