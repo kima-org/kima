@@ -230,57 +230,74 @@ void GAIAmodel::calculate_mu()
 
 void GAIAmodel::remove_known_object()
 {
+    size_t N = data.N();
     double wk, ti, Tp;
     double A, B, F, G, X, Y;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         
+        A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         
-        
-        
-        for(size_t i=0; i<data.N(); i++)
-        {
-            ti = data.t[i];
+        auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
+        for(size_t i=0; i<N; i++)
+            mu[i] -= wk[i];
+
+        // for(size_t i=0; i<data.N(); i++)
+        // {
+        //     ti = data.t[i];
             
-            A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-            B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-            F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-            G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        //     A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        //     B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        //     F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        //     G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
             
-            Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
+        //     Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
             
-            tie(X,Y) = nijenhuis::ellip_rectang(ti, KO_P[j], KO_e[j], Tp);
+        //     tie(X,Y) = nijenhuis::ellip_rectang(ti, KO_P[j], KO_e[j], Tp);
             
-            wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-            mu[i] -= wk;
-        }
+        //     wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
+        //     mu[i] -= wk;
+        // }
     }
 }
 
 
 void GAIAmodel::add_known_object()
 {
+    size_t N = data.N();
     double wk, ti, Tp;
     double A, B, F, G, X, Y;
     for(int j=0; j<n_known_object; j++)
     {
-        for(size_t i=0; i<data.N(); i++)
-        {
-            ti = data.t[i];
+        A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        
+        auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
+        for(size_t i=0; i<N; i++)
+            mu[i] += wk[i];
+        
+        // for(size_t i=0; i<data.N(); i++)
+        // {
+        //     ti = data.t[i];
             
-            A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-            B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-            F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-            G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        //     A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        //     B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        //     F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        //     G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
             
-            Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
+        //     Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
             
-            tie(X,Y) = nijenhuis::ellip_rectang(ti,  KO_P[j], KO_e[j], Tp);
+        //     tie(X,Y) = nijenhuis::ellip_rectang(ti,  KO_P[j], KO_e[j], Tp);
             
-            wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-            mu[i] += wk;
-        }
+        //     wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
+        //     mu[i] += wk;
+        // }
     }
 }
 
