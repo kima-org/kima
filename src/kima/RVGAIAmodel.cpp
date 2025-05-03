@@ -411,13 +411,13 @@ double RVGAIAmodel::perturb(RNG& rng)
     auto actind = RV_data.get_actind();
     double tmid = RV_data.get_t_middle();
 
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(rng.rand() <= 0.5) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.25) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.2) // perturb jitter(s) + known_object
     {
         
         J_GAIA_prior->perturb(jitter_GAIA, rng);

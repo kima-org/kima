@@ -405,7 +405,7 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
     if (!cosiprior)
         cosiprior = make_shared<Uniform>(-1, 1);
     if (!Omegaprior)
-        Omegaprior = make_shared<Uniform>(0, M_PI);
+        Omegaprior = make_shared<Uniform>(0, 2*M_PI);
     
 }
 
