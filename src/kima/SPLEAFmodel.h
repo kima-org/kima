@@ -54,15 +54,15 @@ class SPLEAFmodel
         bool enforce_stability = false;
 
     private:
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<KeplerianConditionalPrior> planets =
+            DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double background=0.0;  // RV, systemic RV
-        std::vector<double> zero_points; // for each activity time series, TODO: and each instrument
+        std::vector<double> zero_points; // for each activity time series, and each instrument
 
         std::vector<double> offsets; // between instruments, RV
         std::vector<double> jitters; // for each instrument, RV
-        std::vector<double> series_jitters; // for each activity time series, TODO: and each instrument
+        std::vector<double> series_jitters; // for each activity time series, and each instrument
 
         double slope=0.0, quadr=0.0, cubic=0.0;
 
@@ -207,11 +207,11 @@ class SPLEAFmodel
         void eta2_larger_eta3(double factor=1.0);
 
 
-        RVConditionalPrior* get_conditional_prior() {
+        KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const RVConditionalPrior &conditional) {
-            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
+        void set_conditional_prior(const KeplerianConditionalPrior &conditional) {
+            planets = DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, conditional);
         }
 
         /// @brief Generate a point from the prior.

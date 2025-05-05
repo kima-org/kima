@@ -1462,6 +1462,6 @@ NB_MODULE(GPmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](GPmodel &m) { return m.get_conditional_prior(); },
-                     [](GPmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](GPmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 
 }

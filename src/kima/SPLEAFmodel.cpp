@@ -1472,7 +1472,7 @@ NB_MODULE(SPLEAFmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](SPLEAFmodel &m) { return m.get_conditional_prior(); },
-                     [](SPLEAFmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](SPLEAFmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
         // // covariance kernel
         // .def_prop_rw("kernel",
         //              [](SPLEAFmodel &m) { return m.get_kernel(); },

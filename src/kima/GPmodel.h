@@ -57,8 +57,8 @@ class  GPmodel
         Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
 
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<KeplerianConditionalPrior> planets =
+            DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double background;
 
@@ -216,11 +216,11 @@ class  GPmodel
         // /// @brief an alias for RVData::get_instance()
         // static RVData& get_data() { return RVData::get_instance(); }
 
-        RVConditionalPrior* get_conditional_prior() {
+        KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const RVConditionalPrior &conditional) {
-            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
+        void set_conditional_prior(const KeplerianConditionalPrior &conditional) {
+            planets = DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, conditional);
         }
 
         /// @brief Generate a point from the prior.
