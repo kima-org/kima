@@ -65,7 +65,7 @@ set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
 set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp 
                  src/kima/default_priors.cpp
-                 src/kima/kepler.cpp src/kima/AMDstability.cpp)
+                 src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/kmath.cpp)
 
 set(GP_UNITS src/kima/GP.cpp src/kima/bessel-library.cpp)
 
@@ -79,8 +79,8 @@ set(DISTRIBUTION_UNITS
 # compile the extension modules
 # this will make them available as kima.module
 
-nanobind_add_module(math STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/math.cpp)
+nanobind_add_module(kmath STABLE_ABI NB_STATIC NB_DOMAIN kima 
+                    src/kima/kmath.cpp)
 
 nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp ${DISTRIBUTION_UNITS})
@@ -204,7 +204,7 @@ target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module math distributions default_priors kepler GP transits AMDstability)
+foreach(module kmath distributions default_priors kepler GP transits AMDstability)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
