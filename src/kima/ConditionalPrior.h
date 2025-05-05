@@ -14,7 +14,7 @@ namespace nb = nanobind;
 using namespace nb::literals;
 
 
-class RVConditionalPrior : public DNest4::ConditionalPrior
+class KeplerianConditionalPrior : public DNest4::ConditionalPrior
 {
 	private:
 		/// whether the model includes hyper-priors for the orbital period and
@@ -27,7 +27,7 @@ class RVConditionalPrior : public DNest4::ConditionalPrior
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
-		RVConditionalPrior();
+		KeplerianConditionalPrior();
 
 		void set_default_priors(const RVData &data);
 
@@ -40,9 +40,9 @@ class RVConditionalPrior : public DNest4::ConditionalPrior
 		distribution Kprior;
 		/// Prior for the eccentricities.
 		distribution eprior;
-		/// Prior for the phases.
+		/// Prior for the mean anomalies
 		distribution phiprior;
-		/// Prior for the .
+		/// Prior for the arguments of periastron
 		distribution wprior;
 
 		// hyperpriors
@@ -70,7 +70,6 @@ class RVConditionalPrior : public DNest4::ConditionalPrior
 		void print(std::ostream& out) const;
 		static const int weight_parameter = 1;
 };
-
 
 
 class TRANSITConditionalPrior:public DNest4::ConditionalPrior
@@ -266,7 +265,7 @@ class ETVConditionalPrior:public DNest4::ConditionalPrior
 
 
 
-void bind_RVConditionalPrior(nb::module_ &m);
+void bind_KeplerianConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
 void bind_RVGAIAConditionalPrior(nb::module_ &m);
 void bind_ETVConditionalPrior(nb::module_&m);

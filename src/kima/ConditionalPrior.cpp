@@ -3,7 +3,7 @@
 using namespace std;
 using namespace DNest4;
 
-RVConditionalPrior::RVConditionalPrior():hyperpriors(false)
+KeplerianConditionalPrior::KeplerianConditionalPrior():hyperpriors(false)
 {
     // if (hyperpriors){
     //     if (!log_muP_prior)
@@ -49,7 +49,7 @@ RVConditionalPrior::RVConditionalPrior():hyperpriors(false)
     //     wprior = make_shared<Uniform>(0, 2*M_PI);
 }
 
-void RVConditionalPrior::set_default_priors(const RVData &data)
+void KeplerianConditionalPrior::set_default_priors(const RVData &data)
 {
     auto defaults = DefaultPriors(data);
     if (!Pprior) Pprior = defaults.get("Pprior");
@@ -59,7 +59,7 @@ void RVConditionalPrior::set_default_priors(const RVData &data)
     if (!wprior) wprior = defaults.get("wprior");
 }
 
-void RVConditionalPrior::use_hyperpriors()
+void KeplerianConditionalPrior::use_hyperpriors()
 {
     hyperpriors = true;
     if (!log_muP_prior)
@@ -81,7 +81,7 @@ void RVConditionalPrior::use_hyperpriors()
     Kprior = make_shared<Exponential>();
 }
 
-void RVConditionalPrior::from_prior(RNG& rng)
+void KeplerianConditionalPrior::from_prior(RNG& rng)
 {
     if(hyperpriors)
     {
@@ -91,7 +91,7 @@ void RVConditionalPrior::from_prior(RNG& rng)
     }
 }
 
-double RVConditionalPrior::perturb_hyperparameters(RNG& rng)
+double KeplerianConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
     double logH = 0.;
 
@@ -114,7 +114,7 @@ double RVConditionalPrior::perturb_hyperparameters(RNG& rng)
     return logH;
 }
 
-double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
+double KeplerianConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
@@ -129,7 +129,7 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
            wprior->log_pdf(vec[4]);
 }
 
-void RVConditionalPrior::from_uniform(std::vector<double>& vec) const
+void KeplerianConditionalPrior::from_uniform(std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
@@ -144,7 +144,7 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec) const
     vec[4] = wprior->cdf_inverse(vec[4]);
 }
 
-void RVConditionalPrior::to_uniform(std::vector<double>& vec) const
+void KeplerianConditionalPrior::to_uniform(std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
@@ -159,7 +159,7 @@ void RVConditionalPrior::to_uniform(std::vector<double>& vec) const
     vec[4] = wprior->cdf(vec[4]);
 }
 
-void RVConditionalPrior::print(std::ostream& out) const
+void KeplerianConditionalPrior::print(std::ostream& out) const
 {
     if(hyperpriors)
         out<<center<<' '<<width<<' '<<muK<<' ';
@@ -189,7 +189,6 @@ void TRANSITConditionalPrior::set_default_priors(const PHOTdata &data)
 {
     Pprior = make_shared<LogUniform>(0.1, max(0.2, data.get_timespan()));
 }
-
 
 void TRANSITConditionalPrior::from_prior(RNG& rng)
 {}
@@ -273,7 +272,6 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
     
     
 }
-
 
 void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
 {
@@ -411,7 +409,6 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
     
 }
 
-
 void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIA_data, RVData &RV_data)
 {
     double tmin1, tmin2, tmax1, tmax2;
@@ -499,7 +496,6 @@ void ETVConditionalPrior::set_default_priors(const ETVData &ETVdata)
     
 }
 
-
 void ETVConditionalPrior::from_prior(RNG& rng)
 {
 
@@ -556,28 +552,28 @@ void ETVConditionalPrior::print(std::ostream& out) const
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
-void bind_RVConditionalPrior(nb::module_ &m) {
-    nb::class_<RVConditionalPrior>(m, "RVConditionalPrior")
+void bind_KeplerianConditionalPrior(nb::module_ &m) {
+    nb::class_<KeplerianConditionalPrior>(m, "KeplerianConditionalPrior")
         .def(nb::init<>())
         .def_prop_rw("Pprior",
-            [](RVConditionalPrior &c) { return c.Pprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            [](KeplerianConditionalPrior &c) { return c.Pprior; },
+            [](KeplerianConditionalPrior &c, distribution &d) { c.Pprior = d; },
             "Prior for the orbital period(s)")
         .def_prop_rw("Kprior",
-            [](RVConditionalPrior &c) { return c.Kprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            [](KeplerianConditionalPrior &c) { return c.Kprior; },
+            [](KeplerianConditionalPrior &c, distribution &d) { c.Kprior = d; },
             "Prior for the semi-amplitude(s)")
         .def_prop_rw("eprior",
-            [](RVConditionalPrior &c) { return c.eprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.eprior = d; },
+            [](KeplerianConditionalPrior &c) { return c.eprior; },
+            [](KeplerianConditionalPrior &c, distribution &d) { c.eprior = d; },
             "Prior for the orbital eccentricity(ies)")
         .def_prop_rw("wprior",
-            [](RVConditionalPrior &c) { return c.wprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.wprior = d; },
+            [](KeplerianConditionalPrior &c) { return c.wprior; },
+            [](KeplerianConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
         .def_prop_rw("phiprior",
-            [](RVConditionalPrior &c) { return c.phiprior; },
-            [](RVConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            [](KeplerianConditionalPrior &c) { return c.phiprior; },
+            [](KeplerianConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)");
     
     nb::class_<TRANSITConditionalPrior>(m, "TRANSITConditionalPrior")
