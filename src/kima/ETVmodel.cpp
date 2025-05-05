@@ -608,5 +608,5 @@ NB_MODULE(ETVmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](ETVmodel &m) { return m.get_conditional_prior(); },
-                     [](ETVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](ETVmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 }

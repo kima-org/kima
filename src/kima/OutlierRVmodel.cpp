@@ -837,5 +837,5 @@ NB_MODULE(OutlierRVmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](OutlierRVmodel &m) { return m.get_conditional_prior(); },
-                     [](OutlierRVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](OutlierRVmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 }

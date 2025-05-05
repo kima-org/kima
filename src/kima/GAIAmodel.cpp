@@ -644,7 +644,7 @@ class GAIAmodel_publicist : public GAIAmodel
 
 
 NB_MODULE(GAIAmodel, m) {
-    // bind RVConditionalPrior so it can be returned
+    // bind ConditionalPrior so it can be returned
     bind_GAIAConditionalPrior(m);
 
     nb::class_<GAIAmodel>(m, "GAIAmodel")
