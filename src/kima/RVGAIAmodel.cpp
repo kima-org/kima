@@ -962,7 +962,7 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
 
 
 NB_MODULE(RVGAIAmodel, m) {
-    // bind RVConditionalPrior so it can be returned
+    // bind ConditionalPrior so it can be returned
     bind_RVGAIAConditionalPrior(m);
 
     nb::class_<RVGAIAmodel>(m, "RVGAIAmodel")

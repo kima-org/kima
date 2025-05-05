@@ -1270,5 +1270,5 @@ NB_MODULE(BINARIESmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](BINARIESmodel &m) { return m.get_conditional_prior(); },
-                     [](BINARIESmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](BINARIESmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 }
