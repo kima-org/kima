@@ -57,8 +57,8 @@ class KIMA_API RVmodel
 
     private:
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<KeplerianConditionalPrior> planets =
+            DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double background;
 
@@ -190,7 +190,7 @@ class KIMA_API RVmodel
         bool transiting_planet {false};
         bool get_transiting_planet() { return transiting_planet; }
 
-        /// how many known objects
+        /// how many transiting planets
         size_t n_transiting_planet {0};
         size_t get_n_transiting_planet() { return n_transiting_planet; }
 
@@ -211,16 +211,16 @@ class KIMA_API RVmodel
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;
 
-        RVConditionalPrior* get_conditional_prior() {
+        KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
-        void set_conditional_prior(const RVConditionalPrior &conditional) {
-            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, conditional);
+        void set_conditional_prior(const KeplerianConditionalPrior &conditional) {
+            planets = DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, conditional);
         }
 
         void set_loguniform_prior_Np() {
             auto conditional = planets.get_conditional_prior();
-            planets = DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, *conditional,
+            planets = DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, *conditional,
                                                            DNest4::PriorType::log_uniform);
         };
 

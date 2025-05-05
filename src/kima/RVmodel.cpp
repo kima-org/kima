@@ -1051,8 +1051,8 @@ class RVmodel_publicist : public RVmodel
 
 
 NB_MODULE(RVmodel, m) {
-    // bind RVConditionalPrior so it can be returned
-    bind_RVConditionalPrior(m);
+    // bind ConditionalPrior so it can be returned
+    bind_KeplerianConditionalPrior(m);
 
     nb::class_<RVmodel>(m, "RVmodel", "")
         .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
@@ -1229,5 +1229,5 @@ NB_MODULE(RVmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](RVmodel &m) { return m.get_conditional_prior(); },
-                     [](RVmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](RVmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 }
