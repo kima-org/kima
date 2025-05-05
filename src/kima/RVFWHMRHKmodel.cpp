@@ -1722,5 +1722,5 @@ NB_MODULE(RVFWHMRHKmodel, m) {
         // conditional object
         .def_prop_rw("conditional",
                      [](RVFWHMRHKmodel &m) { return m.get_conditional_prior(); },
-                     [](RVFWHMRHKmodel &m, RVConditionalPrior& c) { /* does nothing */ });
+                     [](RVFWHMRHKmodel &m, KeplerianConditionalPrior& c) { /* does nothing */ });
 }

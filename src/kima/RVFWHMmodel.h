@@ -63,8 +63,8 @@ class  RVFWHMmodel
         Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
         Eigen::VectorXd sig_fwhm_copy;  // copy of FWHM uncertainties for the GP covariance
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<KeplerianConditionalPrior> planets =
+            DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double bkg, bkg_fwhm;
 
@@ -232,7 +232,7 @@ class  RVFWHMmodel
         distribution eta4_fwhm_prior;
 
 
-        RVConditionalPrior* get_conditional_prior() {
+        KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
 

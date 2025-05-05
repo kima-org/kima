@@ -65,8 +65,8 @@ class  RVFWHMRHKmodel
         Eigen::VectorXd sig_fwhm_copy;  // copy of FWHM uncertainties for the GP covariance
         Eigen::VectorXd sig_rhk_copy;  // copy of R'HK uncertainties for the GP covariance
 
-        DNest4::RJObject<RVConditionalPrior> planets =
-            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+        DNest4::RJObject<KeplerianConditionalPrior> planets =
+            DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double bkg, bkg_fwhm, bkg_rhk;
 
@@ -248,7 +248,7 @@ class  RVFWHMRHKmodel
         /// Prior for $\eta_7$, the recurrence timescale of the magnetic cycle kernel
         distribution eta7_prior;
 
-        RVConditionalPrior* get_conditional_prior() {
+        KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
 
