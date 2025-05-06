@@ -319,8 +319,8 @@ void RVGAIAmodel::remove_known_object()
         a0 = MassConv::SemiPhotPl(KO_P[j],star_mass,KO_M[j],plx);
         
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
 
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
@@ -365,8 +365,8 @@ void RVGAIAmodel::add_known_object()
         a0 = MassConv::SemiPhotPl(KO_P[j], star_mass, KO_M[j], plx);
 
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
