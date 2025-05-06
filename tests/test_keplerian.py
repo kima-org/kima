@@ -36,6 +36,15 @@ def test_keplerian():
             kepler.keplerian2(t, P, K, ecc, w, 0.0, 0.0)
         )
 
+def test_keplerian_is_array():
+    from kima import keplerian
+
+    t = np.linspace(0, 1, 10)
+    P, K, ecc, w, M0, M0_epoch = 1.0, 1.0, 0.0, 0.0, 0.0, 0.0
+    v = keplerian(t, P, K, ecc, w, M0, M0_epoch)
+    assert isinstance(v, np.ndarray)
+
+
 def test_keplerian_etv():
     from kima.kepler import keplerian_etv
 
