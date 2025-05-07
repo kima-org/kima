@@ -3085,7 +3085,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
                     start = t[instrument_mask].min()
                     end = t[instrument_mask].max()
                     m = np.where((tt > start) & (tt < end))
-                    ax.plot(tt[m], offset_model[m] - y_offset, **kw)
+                    ax.plot(tt[m], offset_model[j][m] - y_offset, **kw)
             else:
                 ax.plot(tt, offset_model - y_offset, **kw)
 
