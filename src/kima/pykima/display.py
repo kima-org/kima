@@ -1539,7 +1539,7 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
 
 
 def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
-                ax=None, **kwargs):
+                show_stellar_jitter=True, ax=None, **kwargs):
     """
     Plot the histogram of the posterior for the additional white noise
     """
@@ -1552,28 +1552,40 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     RVFWHMRHK = res.model is MODELS.RVFWHMRHKmodel
     SPLEAF = res.model is MODELS.SPLEAFmodel
 
+    all_in_one_plot = False
+
+    n_jitters = res.n_jitters
+
+    if not show_stellar_jitter:
+        if res.model is MODELS.RVmodel and res.multi:
+            n_jitters -= 1
+
     if ax is None:
         kw = dict(constrained_layout=True, sharey=False)
         if RVFWHM:
-            fig, axs = plt.subplots(2, res.n_jitters // 2, 
-                                    figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
+            fig, axs = plt.subplots(2, n_jitters // 2, 
+                                    figsize=(min(10, 5 + n_jitters * 2), 4), **kw)
         elif RVFWHMRHK:
-            fig, axs = plt.subplots(3, res.n_jitters // 3, 
-                                    figsize=(min(10, 5 + res.n_jitters * 2), 6), **kw)
+            fig, axs = plt.subplots(3, n_jitters // 3, 
+                                    figsize=(min(10, 5 + n_jitters * 2), 6), **kw)
         elif SPLEAF:
             fig, axs = plt.subplots(res.n_instruments, res.nseries, 
-                                    # figsize=(min(10, 5 + res.n_jitters * 2), 6), 
+                                    # figsize=(min(10, 5 + n_jitters * 2), 6), 
                                     **kw
                                     )
         else:
-            nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[res.n_jitters]
-            fig, axs = plt.subplots(nrows, int(np.ceil(res.n_jitters / nrows)),
-                                    figsize=(min(10, 5 + res.n_jitters * 2), 4), **kw)
+            nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[n_jitters]
+            fig, axs = plt.subplots(nrows, int(np.ceil(n_jitters / nrows)),
+                                    figsize=(min(10, 5 + n_jitters * 2), 4), **kw)
         axs = np.atleast_1d(axs)
     else:
         axs = np.atleast_1d(ax)
-        assert len(axs) == res.n_jitters, \
-            f'length of ax should be same as number of jitters ({res.n_jitters})'
+        if axs.size == 1 and n_jitters > 1:
+            axs = np.tile(axs, n_jitters)
+            all_in_one_plot = True
+        
+        # assert len(axs) == n_jitters, \
+        #     f'length of ax should be same as number of jitters ({n_jitters})'
         fig = axs[0].figure
 
     if show_title:
@@ -1590,7 +1602,16 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     kwargs.setdefault('density', True)
     kwargs.setdefault('bins', 'doane')
     axs = np.ravel(axs)
+
+    # trick the loop with a None axis
+    if not show_stellar_jitter:
+        if res.model is MODELS.RVmodel and res.multi:
+            axs = np.r_[None, axs]
+
     for i, ax in enumerate(axs):
+        if ax is None:
+            continue
+
         if i >= res.n_jitters:
             ax.axis('off')
             break
@@ -1644,6 +1665,10 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                 ax.axvline(s, 0, 0.2, color='g')
                 ax.text(s, 0.2, r'SD RV', color='g', **kw)
 
+    if not show_stellar_jitter:
+        if res.model is MODELS.RVmodel and res.multi:
+            axs = axs[1:]
+
     for ax in axs:
         ax.set(yticks=[], ylabel='posterior')
 
@@ -1665,14 +1690,18 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                    for s in res._extra_data_names[::2]]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
-        if res.model is MODELS.RVmodel:
-            if res.multi:
-                labels.insert(0, 'stellar jitter')
-            if res.jitter_propto_indicator:
-                labels.append('jitter slope')
+        if show_stellar_jitter:
+            if res.model is MODELS.RVmodel:
+                if res.multi:
+                    labels.insert(0, 'stellar jitter')
+                if res.jitter_propto_indicator:
+                    labels.append('jitter slope')
 
-    for ax, label in zip(axs, labels):
-        ax.set_xlabel(label, fontsize=10)
+    if all_in_one_plot:
+        ax.set_xlabel('jitter [m/s]')
+    else:
+        for ax, label in zip(axs, labels):
+            ax.set_xlabel(label, fontsize=10)
 
     if res.save_plots:
         filename = 'kima-showresults-fig7.3.png'
