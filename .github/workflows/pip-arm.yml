@@ -5,13 +5,13 @@ on:
 
 jobs:
   build:
-    name: Build with pip (extensive)
+    name: Build with pip (arm64)
     runs-on: ${{ matrix.platform }}
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-13, macos-14, macos-15, macos-latest, ubuntu-latest, windows-latest]
+        platform: [ubuntu-22.04-arm, ubuntu-24.04-arm, windows-11-arm]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         # experimental: [false]
         # include:
