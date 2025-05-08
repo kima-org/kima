@@ -1,4 +1,4 @@
-name: pip extensive
+name: pip arm64
 
 on:
   workflow_dispatch:
