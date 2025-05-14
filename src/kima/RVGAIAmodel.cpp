@@ -320,8 +320,8 @@ void RVGAIAmodel::remove_known_object()
         
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = -a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        G = -a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
 
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
         for (size_t i = 0; i < GAIA_data.N(); i++)
@@ -366,8 +366,8 @@ void RVGAIAmodel::add_known_object()
 
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        G = a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        F = -a0*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
+        G = -a0*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], GAIA_data.M0_epoch);
         for (size_t i = 0; i < GAIA_data.N(); i++)
@@ -411,13 +411,13 @@ double RVGAIAmodel::perturb(RNG& rng)
     auto actind = RV_data.get_actind();
     double tmid = RV_data.get_t_middle();
 
-    if(rng.rand() <= 0.5) // perturb planet parameters
+    if(rng.rand() <= 0.4) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.2) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.4) // perturb jitter(s) + known_object
     {
         
         J_GAIA_prior->perturb(jitter_GAIA, rng);
