@@ -265,7 +265,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
         if (!omegaprior)
             omegaprior = make_shared<Uniform>(0, 2*M_PI);
         if (!cosiprior)
-            cosiprior = make_shared<Uniform>(-1, 1);
+            cosiprior = make_shared<Uniform>(0, 1);
         if (!Omegaprior)
             Omegaprior = make_shared<Uniform>(0, M_PI);
     }
@@ -403,7 +403,7 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
     if (!omegaprior)
         omegaprior = make_shared<Uniform>(0, 2*M_PI);
     if (!cosiprior)
-        cosiprior = make_shared<Uniform>(-1, 1);
+        cosiprior = make_shared<Uniform>(0, 1);
     if (!Omegaprior)
         Omegaprior = make_shared<Uniform>(0, 2*M_PI);
     
