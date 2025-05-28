@@ -63,11 +63,12 @@ Args:
     max_num_levels (int, optional):
         Maximum number of levels, or 0 if it should be determined automatically. Default is 0.
     lambda_ (int, optional):
-        DOC. Default is 10.0
+        Backtracking scale length, controls the degree to which particles are allowed to “backtrack” 
+        down in level during the first stage of DNS when levels are being built. Default is 10.
     beta (int, optional):
-        DOC. Default is 100.0,
+        Equal weight enforcement, see Brewer et al. (2011). Default is 100.
     compression (int, optional):
-        DOC. Default is exp(1.0)
+        Each subsequent level is expected to be compressed by this factor. Default is exp(1).
     seed (int, optional):
         Random number seed value, or 0 to use current time. Default is 0.
     print_thin (int, optional):
