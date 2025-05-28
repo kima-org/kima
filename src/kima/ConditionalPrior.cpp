@@ -3,6 +3,8 @@
 using namespace std;
 using namespace DNest4;
 
+/// KeplerianConditionalPrior
+
 KeplerianConditionalPrior::KeplerianConditionalPrior():hyperpriors(false)
 {
     // if (hyperpriors){
@@ -166,6 +168,7 @@ void KeplerianConditionalPrior::print(std::ostream& out) const
 }
 
 /*****************************************************************************/
+// TRANSITConditionalPrior
 
 TRANSITConditionalPrior::TRANSITConditionalPrior()
 {
@@ -236,7 +239,7 @@ void TRANSITConditionalPrior::print(std::ostream& out) const
 
 
 /*****************************************************************************/
-
+// GAIAConditionalPrior
 
 GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 {
@@ -387,11 +390,10 @@ void GAIAConditionalPrior::print(std::ostream& out) const //needed?
 
 
 /*****************************************************************************/
-
+// RVGAIAConditionalPrior
 
 RVGAIAConditionalPrior::RVGAIAConditionalPrior()
 {
-    
     if (!Pprior)
         Pprior = make_shared<LogUniform>(1., 1e5);
     if (!eprior)
@@ -474,6 +476,7 @@ void RVGAIAConditionalPrior::print(std::ostream& out) const //needed?
 
 
 /*****************************************************************************/
+// ETVConditionalPrior
 
 ETVConditionalPrior::ETVConditionalPrior()
 {
@@ -549,6 +552,72 @@ void ETVConditionalPrior::print(std::ostream& out) const
 
 
 /*****************************************************************************/
+
+
+/*****************************************************************************/
+// RVHGPMConditionalPrior
+
+RVHGPMConditionalPrior::RVHGPMConditionalPrior()
+{}
+
+void RVHGPMConditionalPrior::set_default_priors(const RVData &rv_data)
+{
+    auto defaults = DefaultPriors(rv_data);
+    if (!Pprior) Pprior = defaults.get("Pprior");
+    if (!Kprior) Kprior = defaults.get("Kprior");
+    if (!eprior) eprior = defaults.get("eprior");
+    if (!phiprior) phiprior = defaults.get("phiprior");
+    if (!wprior) wprior = defaults.get("wprior");
+    // TOOD: move to defaults
+    if (!iprior) iprior = defaults.get("iprior");
+    if (!Omegaprior) Omegaprior = defaults.get("Ωprior");
+}
+
+void RVHGPMConditionalPrior::from_prior(RNG& rng)
+{}
+
+double RVHGPMConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    return 0.0; // logH
+}
+
+double RVHGPMConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+    return Pprior->log_pdf(vec[0]) +
+           Kprior->log_pdf(vec[1]) +
+           phiprior->log_pdf(vec[2]) +
+           eprior->log_pdf(vec[3]) +
+           wprior->log_pdf(vec[4]) +
+           iprior->log_pdf(vec[5]) +
+           Omegaprior->log_pdf(vec[6]);
+}
+
+void RVHGPMConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf_inverse(vec[0]);
+    vec[1] = Kprior->cdf_inverse(vec[1]);
+    vec[2] = phiprior->cdf_inverse(vec[2]);
+    vec[3] = eprior->cdf_inverse(vec[3]);
+    vec[4] = wprior->cdf_inverse(vec[4]);
+    vec[5] = iprior->cdf_inverse(vec[5]);
+    vec[6] = Omegaprior->cdf_inverse(vec[6]);
+}
+
+void RVHGPMConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf(vec[0]);
+    vec[1] = Kprior->cdf(vec[1]);
+    vec[2] = phiprior->cdf(vec[2]);
+    vec[3] = eprior->cdf(vec[3]);
+    vec[4] = wprior->cdf(vec[4]);
+    vec[5] = iprior->cdf(vec[5]);
+    vec[6] = Omegaprior->cdf(vec[6]);
+}
+
+void RVHGPMConditionalPrior::print(std::ostream& out) const
+{}
+
+
 
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
@@ -717,6 +786,40 @@ void bind_ETVConditionalPrior(nb::module_ &m) {
             [](ETVConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)");
 }
+
+void bind_RVHGPMConditionalPrior(nb::module_ &m) {            
+    nb::class_<RVHGPMConditionalPrior>(m, "RVHGPMConditionalPrior")
+        .def(nb::init<>())
+        .def_prop_rw("Pprior",
+            [](RVHGPMConditionalPrior &c) { return c.Pprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.Pprior = d; },
+            "Prior for the orbital period(s)")
+        .def_prop_rw("Kprior",
+            [](RVHGPMConditionalPrior &c) { return c.Kprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.Kprior = d; },
+            "Prior for the semi-amplitude(s)")
+        .def_prop_rw("eprior",
+            [](RVHGPMConditionalPrior &c) { return c.eprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.eprior = d; },
+            "Prior for the orbital eccentricity(ies)")
+        .def_prop_rw("wprior",
+            [](RVHGPMConditionalPrior &c) { return c.wprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.wprior = d; },
+            "Prior for the argument(s) of periastron")
+        .def_prop_rw("phiprior",
+            [](RVHGPMConditionalPrior &c) { return c.phiprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.phiprior = d; },
+            "Prior for the mean anomaly(ies)")
+        .def_prop_rw("Omegaprior",
+            [](RVHGPMConditionalPrior &c) { return c.Omegaprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+            "Prior for the longitude(s) of ascending node")
+        .def_prop_rw("iprior",
+            [](RVHGPMConditionalPrior &c) { return c.iprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.iprior = d; },
+            "Prior for the orbital inclination");
+}
+
 
 // NB_MODULE(ConditionalPrior, m) {
 // }
