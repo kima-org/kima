@@ -1,22 +1,4 @@
-#include <sstream>
-
-#include <nanobind/nanobind.h>
-#include <nanobind/stl/tuple.h>
-#include <nanobind/stl/string.h>
-#include <nanobind/stl/vector.h>
-namespace nb = nanobind;
-using namespace nb::literals;
-
-#include "DNest4.h"
-
-#include "distributions/InverseGamma.h"
-#include "distributions/InverseMoment.h"
-#include "distributions/ExponentialRayleighMixture.h"
-#include "distributions/GaussianMixture.h"
-#include "distributions/PowerLaw.h"
-
-// the types of objects in the distributions state (for pickling)
-using _state_type = std::tuple<double, double, double, double>;
+#include "distributions.h"
 
 
 auto CDF_DOC = R"D(
@@ -54,10 +36,16 @@ NB_MODULE(distributions, m)
     // nb::class_<DNest4::DiscreteDistribution>(m, "DiscreteDistribution");
 
     // Cauchy.cpp
-    nb::class_<DNest4::Cauchy, DNest4::ContinuousDistribution>(m, "Cauchy", "Cauchy distribution")
-        .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Cauchy::center, "Location parameter")
-        .def_rw("scale", &DNest4::Cauchy::width, "Scale parameter")
+    nb::class_<DNest4::Cauchy, DNest4::ContinuousDistribution>(m, "Cauchy")
+        .def(nb::init<double, double>(), "loc"_a, "scale"_a, R"D(
+        Cauchy distribution
+
+        Args:
+            loc (float): location parameter
+            scale (float): scale parameter
+        )D")
+        .def_rw("loc", &DNest4::Cauchy::center, "location parameter")
+        .def_rw("scale", &DNest4::Cauchy::width, "scale parameter")
         .def("__repr__", [](const DNest4::Cauchy &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Cauchy::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Cauchy::cdf_inverse, "q"_a, PPF_DOC)
@@ -73,10 +61,18 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::TruncatedCauchy, DNest4::ContinuousDistribution>(m, "TruncatedCauchy", "docs")
-        .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a)
-        .def_ro("loc", &DNest4::TruncatedCauchy::center, "Location parameter")
-        .def_ro("scale", &DNest4::TruncatedCauchy::width, "Scale parameter")
+    nb::class_<DNest4::TruncatedCauchy, DNest4::ContinuousDistribution>(m, "TruncatedCauchy")
+        .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a, R"D(
+        Truncated Cauchy distribution
+
+        Args:
+            loc (float): location parameter
+            scale (float): scale parameter
+            lower (float): lower truncation limit
+            upper (float): upper truncation limit
+        )D")
+        .def_ro("loc", &DNest4::TruncatedCauchy::center, "location parameter")
+        .def_ro("scale", &DNest4::TruncatedCauchy::width, "scale parameter")
         .def_ro("lower", &DNest4::TruncatedCauchy::lower)
         .def_ro("upper", &DNest4::TruncatedCauchy::upper)
         .def("__repr__", [](const DNest4::TruncatedCauchy &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -96,8 +92,14 @@ NB_MODULE(distributions, m)
         );
 
     // Exponential.cpp
-    nb::class_<DNest4::Exponential, DNest4::ContinuousDistribution>(m, "Exponential", "Exponential distribution")
-        .def(nb::init<double>(), "scale"_a)
+    nb::class_<DNest4::Exponential, DNest4::ContinuousDistribution>(m, "Exponential")
+        .def(nb::init<double>(), "scale"_a, R"D(
+        Exponential distribution
+
+        Args:
+            scale (float): scale parameter
+        )D")
+        .def_ro("scale", &DNest4::Exponential::scale)
         .def("__repr__", [](const DNest4::Exponential &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Exponential::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Exponential::cdf_inverse, "q"_a, PPF_DOC)
@@ -113,8 +115,15 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::TruncatedExponential, DNest4::ContinuousDistribution>(m, "TruncatedExponential", "Exponential distribution truncated to [lower, upper]")
-        .def(nb::init<double, double, double>(), "scale"_a, "lower"_a, "upper"_a)
+    nb::class_<DNest4::TruncatedExponential, DNest4::ContinuousDistribution>(m, "TruncatedExponential")
+        .def(nb::init<double, double, double>(), "scale"_a, "lower"_a, "upper"_a, R"D(
+        Truncated Exponential distribution
+
+        Args:
+            scale (float): scale parameter
+            lower (float): lower truncation limit
+            upper (float): upper truncation limit
+        )D")
         .def_ro("scale", &DNest4::TruncatedExponential::scale)
         .def_ro("lower", &DNest4::TruncatedExponential::lower)
         .def_ro("upper", &DNest4::TruncatedExponential::upper)
@@ -134,9 +143,14 @@ NB_MODULE(distributions, m)
         );
     
     // Fixed.cpp
-    nb::class_<DNest4::Fixed, DNest4::ContinuousDistribution>(m, "Fixed", "'Fixed' distribution")
-        .def(nb::init<double>(), "value"_a)
-        .def_rw("val", &DNest4::Fixed::val, "Fixed value of the parameter")
+    nb::class_<DNest4::Fixed, DNest4::ContinuousDistribution>(m, "Fixed")
+        .def(nb::init<double>(), "value"_a, R"D(
+        A 'Fixed' distribution (akin to a Dirac delta distribution)
+
+        Args:
+            value (float): fixed value
+        )D")
+        .def_rw("val", &DNest4::Fixed::val, "fixed value of the parameter")
         .def("__repr__", [](const DNest4::Fixed &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Fixed::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Fixed::cdf_inverse, "q"_a, PPF_DOC)
@@ -153,10 +167,18 @@ NB_MODULE(distributions, m)
         );
 
     // Gaussian.cpp
-    nb::class_<DNest4::Gaussian, DNest4::ContinuousDistribution>(m, "Gaussian", "Gaussian distribution")
-        .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Gaussian::center, "Location parameter")
-        .def_rw("scale", &DNest4::Gaussian::width, "Scale parameter")
+    nb::class_<DNest4::Gaussian, DNest4::ContinuousDistribution>(m, "Gaussian")
+        .def(nb::init<double, double>(), "loc"_a, "scale"_a, R"D(
+        Gaussian distribution
+
+        Args:
+            loc (float):
+                location parameter (mean)
+            scale (float):
+                scale parameter (standard deviation)
+        )D")
+        .def_rw("loc", &DNest4::Gaussian::center, "location parameter")
+        .def_rw("scale", &DNest4::Gaussian::width, "scale parameter")
         .def("__repr__", [](const DNest4::Gaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Gaussian::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Gaussian::cdf_inverse, "q"_a, PPF_DOC)
@@ -172,9 +194,15 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::HalfGaussian, DNest4::ContinuousDistribution>(m, "HalfGaussian", "Half-Gaussian distribution")
-        .def(nb::init<double>(), "scale"_a)
-        .def_rw("scale", &DNest4::HalfGaussian::width, "Scale parameter")
+    nb::class_<DNest4::HalfGaussian, DNest4::ContinuousDistribution>(m, "HalfGaussian")
+        .def(nb::init<double>(), "scale"_a, R"D(
+        Half-Gaussian distribution, with support in [0, inf)
+
+        Args:
+            scale (float):
+                scale parameter (standard deviation)
+        )D")
+        .def_rw("scale", &DNest4::HalfGaussian::width, "scale parameter")
         .def("__repr__", [](const DNest4::HalfGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::HalfGaussian::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::HalfGaussian::cdf_inverse, "q"_a, PPF_DOC)
@@ -190,12 +218,24 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::TruncatedGaussian, DNest4::ContinuousDistribution>(m, "TruncatedGaussian", "Gaussian distribution truncated to [lower, upper] interval")
-        .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a)
-        .def_ro("loc", &DNest4::TruncatedGaussian::center, "Location parameter")
-        .def_ro("scale", &DNest4::TruncatedGaussian::width, "Scale parameter")
-        .def_ro("lower", &DNest4::TruncatedGaussian::lower, "Lower truncation boundary")
-        .def_ro("upper", &DNest4::TruncatedGaussian::upper, "Upper truncation boundary")
+    nb::class_<DNest4::TruncatedGaussian, DNest4::ContinuousDistribution>(m, "TruncatedGaussian")
+        .def(nb::init<double, double, double, double>(), "loc"_a, "scale"_a, "lower"_a, "upper"_a, R"D(
+        "Gaussian distribution truncated to [lower, upper] interval
+
+        Args:
+            loc (float):
+                location parameter (mean)
+            scale (float):
+                scale parameter (standard deviation)
+            lower (float):
+                lower truncation limit
+            upper (float):
+                upper truncation limit
+        )D")
+        .def_ro("loc", &DNest4::TruncatedGaussian::center, "location parameter")
+        .def_ro("scale", &DNest4::TruncatedGaussian::width, "scale parameter")
+        .def_ro("lower", &DNest4::TruncatedGaussian::lower, "lower truncation limit")
+        .def_ro("upper", &DNest4::TruncatedGaussian::upper, "upper truncation limit")
         .def("__repr__", [](const DNest4::TruncatedGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::TruncatedGaussian::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::TruncatedGaussian::cdf_inverse, "q"_a, PPF_DOC)
@@ -213,8 +253,16 @@ NB_MODULE(distributions, m)
         );
 
     // Kumaraswamy.cpp
-    nb::class_<DNest4::Kumaraswamy, DNest4::ContinuousDistribution>(m, "Kumaraswamy", "Kumaraswamy distribution (similar to a Beta distribution)")
-        .def(nb::init<double, double>(), "a"_a, "b"_a)
+    nb::class_<DNest4::Kumaraswamy, DNest4::ContinuousDistribution>(m, "Kumaraswamy")
+        .def(nb::init<double, double>(), "a"_a, "b"_a, R"D(
+        "Kumaraswamy distribution (similar to a Beta distribution)
+
+        Args:
+            a (float):
+                first shape parameter
+            b (float):
+                second shape parameter
+        )D")
         .def_rw("a", &DNest4::Kumaraswamy::a)
         .def_rw("b", &DNest4::Kumaraswamy::b)
         .def("__repr__", [](const DNest4::Kumaraswamy &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -233,10 +281,18 @@ NB_MODULE(distributions, m)
         );
 
     // Laplace.cpp
-    nb::class_<DNest4::Laplace, DNest4::ContinuousDistribution>(m, "Laplace", "Laplace distribution")
-        .def(nb::init<double, double>(), "loc"_a, "scale"_a)
-        .def_rw("loc", &DNest4::Laplace::center, "Location parameter")
-        .def_rw("scale", &DNest4::Laplace::width, "Scale parameter")
+    nb::class_<DNest4::Laplace, DNest4::ContinuousDistribution>(m, "Laplace")
+        .def(nb::init<double, double>(), "loc"_a, "scale"_a, R"D(
+        "Laplace distribution
+
+        Args:
+            loc (float):
+                location parameter
+            scale (float):
+                scale parameter
+        )D")
+        .def_rw("loc", &DNest4::Laplace::center, "location parameter")
+        .def_rw("scale", &DNest4::Laplace::width, "scale parameter")
         .def("__repr__", [](const DNest4::Laplace &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Laplace::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Laplace::cdf_inverse, "q"_a, PPF_DOC)
@@ -253,8 +309,16 @@ NB_MODULE(distributions, m)
         );
 
     // LogUniform.cpp
-    nb::class_<DNest4::LogUniform, DNest4::ContinuousDistribution>(m, "LogUniform", "LogUniform distribution (sometimes called reciprocal or Jeffrey's distribution)")
-        .def(nb::init<double, double>(), "lower"_a, "upper"_a)
+    nb::class_<DNest4::LogUniform, DNest4::ContinuousDistribution>(m, "LogUniform")
+        .def(nb::init<double, double>(), "lower"_a, "upper"_a, R"D(
+        "LogUniform distribution (sometimes called reciprocal or Jeffrey's distribution)
+
+        Args:
+            lower (float):
+                lower limit (> 0)
+            upper (float):
+                upper limit (> lower)
+        )D")
         .def_ro("lower", &DNest4::LogUniform::lower)
         .def_ro("upper", &DNest4::LogUniform::upper)
         .def("__repr__", [](const DNest4::LogUniform &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -272,8 +336,16 @@ NB_MODULE(distributions, m)
             }
         );
 
-    nb::class_<DNest4::ModifiedLogUniform, DNest4::ContinuousDistribution>(m, "ModifiedLogUniform", "ModifiedLogUniform distribution")
-        .def(nb::init<double, double>(), "knee"_a, "upper"_a)
+    nb::class_<DNest4::ModifiedLogUniform, DNest4::ContinuousDistribution>(m, "ModifiedLogUniform")
+        .def(nb::init<double, double>(), "knee"_a, "upper"_a, R"D(
+        "Modified Log-Uniform distribution, with support [0, upper]
+
+        Args:
+            knee (float):
+                knee parameter
+            upper (float):
+                upper limit
+        )D")
         .def_ro("knee", &DNest4::ModifiedLogUniform::knee)
         .def_ro("upper", &DNest4::ModifiedLogUniform::upper)
         .def("__repr__", [](const DNest4::ModifiedLogUniform &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -313,8 +385,8 @@ NB_MODULE(distributions, m)
     // PowerLaw.cpp
     nb::class_<DNest4::TruncatedPareto, DNest4::ContinuousDistribution>(m, "TruncatedPareto", "Pareto distribution truncated to [lower, upper] interval")
     .def(nb::init<double, double, double, double>(), "min"_a, "alpha"_a, "lower"_a, "upper"_a)
-    .def_ro("min", &DNest4::TruncatedPareto::min, "Location parameter")
-    .def_ro("alpha", &DNest4::TruncatedPareto::alpha, "Scale parameter")
+    .def_ro("min", &DNest4::TruncatedPareto::min, "location parameter")
+    .def_ro("alpha", &DNest4::TruncatedPareto::alpha, "scale parameter")
     .def_ro("lower", &DNest4::TruncatedPareto::lower)
     .def_ro("upper", &DNest4::TruncatedPareto::upper)
     .def("__repr__", [](const DNest4::TruncatedPareto &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -355,8 +427,13 @@ NB_MODULE(distributions, m)
 
 
     // Rayleigh.cpp
-    nb::class_<DNest4::Rayleigh, DNest4::ContinuousDistribution>(m, "Rayleigh", "Rayleigh distribution")
-        .def(nb::init<double>(), "scale"_a)
+    nb::class_<DNest4::Rayleigh, DNest4::ContinuousDistribution>(m, "Rayleigh")
+        .def(nb::init<double>(), "scale"_a, R"D(
+        Rayleigh distribution
+
+        Args:
+            scale (float): scale parameter
+        )D")
         .def_rw("scale", &DNest4::Rayleigh::scale)
         .def("__repr__", [](const DNest4::Rayleigh &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Rayleigh::cdf, "x"_a, CDF_DOC)
@@ -394,8 +471,15 @@ NB_MODULE(distributions, m)
         );
 
     // Triangular.cpp
-    nb::class_<DNest4::Triangular, DNest4::ContinuousDistribution>(m, "Triangular", "Triangular distribution")
-        .def(nb::init<double, double, double>(), "lower"_a, "center"_a, "upper"_a)
+    nb::class_<DNest4::Triangular, DNest4::ContinuousDistribution>(m, "Triangular")
+        .def(nb::init<double, double, double>(), "lower"_a, "center"_a, "upper"_a, R"D(
+        Triangular distribution
+
+        Args:
+            lower (float): lower bound
+            center (float): center
+            upper (float): upper bound
+        )D")
         .def_rw("lower", &DNest4::Triangular::lower)
         .def_rw("center", &DNest4::Triangular::centre)
         .def_rw("upper", &DNest4::Triangular::upper)
@@ -415,8 +499,14 @@ NB_MODULE(distributions, m)
         );
 
     // Uniform.cpp
-    nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform", "Uniform distribuion in [lower, upper]")
-        .def(nb::init<double, double>(), "lower"_a, "upper"_a)
+    nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform")
+        .def(nb::init<double, double>(), "lower"_a, "upper"_a, R"D(
+        "Uniform distribuion in [lower, upper]
+
+        Args:
+            lower (float): lower bound
+            upper (float): upper bound
+        )D")
         .def_rw("lower", &DNest4::Uniform::lower)
         .def_rw("upper", &DNest4::Uniform::upper)
         .def("__repr__", [](const DNest4::Uniform &d){ std::ostringstream out; d.print(out); return out.str(); })
@@ -434,8 +524,8 @@ NB_MODULE(distributions, m)
             }
         );
     
-    nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle", "Uniform distribuion in [0, 2*PI]")
-        .def(nb::init<>())
+    nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle")
+        .def(nb::init<>(), "Uniform distribuion in [0, 2*PI]")
         .def("__repr__", [](const DNest4::UniformAngle &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::UniformAngle::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::UniformAngle::cdf_inverse, "q"_a, PPF_DOC)
@@ -489,7 +579,7 @@ NB_MODULE(distributions, m)
     nb::class_<DNest4::InverseGamma, DNest4::ContinuousDistribution>(m, "InverseGamma", "Inverse gamma distribution")
         .def(nb::init<double, double>(), "alpha"_a, "beta"_a, "Inverse gamma distribution")
         .def_rw("alpha", &DNest4::InverseGamma::alpha, "Shape parameter α")
-        .def_rw("beta", &DNest4::InverseGamma::beta, "Scale parameter β")
+        .def_rw("beta", &DNest4::InverseGamma::beta, "scale parameter β")
         .def("__repr__", [](const DNest4::InverseGamma &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::InverseGamma::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::InverseGamma::cdf_inverse, "q"_a, PPF_DOC)
@@ -506,8 +596,15 @@ NB_MODULE(distributions, m)
         );
 
     // ExponentialRayleighMixture
-    nb::class_<DNest4::ExponentialRayleighMixture, DNest4::ContinuousDistribution>(m, "ExponentialRayleighMixture", "docs")
-        .def(nb::init<double, double, double>(), "weight"_a, "scale"_a, "sigma"_a, "docs")
+    nb::class_<DNest4::ExponentialRayleighMixture, DNest4::ContinuousDistribution>(m, "ExponentialRayleighMixture")
+        .def(nb::init<double, double, double>(), "weight"_a, "scale"_a, "sigma"_a, R"D(
+        Mixture of Exponential and Rayleigh distributions
+
+        Args:
+            weight (float): weight parameter
+            scale (float): scale parameter
+            sigma (float): sigma parameter
+        )D")
         .def_rw("weight", &DNest4::ExponentialRayleighMixture::weight, "")
         .def_rw("scale", &DNest4::ExponentialRayleighMixture::scale, "")
         .def_rw("sigma", &DNest4::ExponentialRayleighMixture::sigma, "")
@@ -538,5 +635,25 @@ NB_MODULE(distributions, m)
         .def("cdf", &DNest4::GaussianMixture::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::GaussianMixture::cdf_inverse, "q"_a, PPF_DOC)
         .def("logpdf", &DNest4::GaussianMixture::log_pdf, "x"_a, LOG_PDF_DOC);
+
+    // BivariateGaussian
+    nb::class_<DNest4::BivariateGaussian, DNest4::ContinuousDistribution>(m, "BivariateGaussian", 
+        "Bivariate Gaussian distribution for X and Y")
+        .def(nb::init<double, double, double, double, double>(), "mean_x"_a, "mean_y"_a, "sigma_x"_a, "sigma_y"_a, "rho"_a, "docs")
+        .def_rw("mean_x", &DNest4::BivariateGaussian::mean_x, "")
+        .def_rw("mean_y", &DNest4::BivariateGaussian::mean_y, "")
+        .def_rw("sigma_x", &DNest4::BivariateGaussian::sigma_x, "")
+        .def_rw("sigma_y", &DNest4::BivariateGaussian::sigma_y, "")
+        .def_rw("rho", &DNest4::BivariateGaussian::rho, "")
+        .def("__repr__", [](const DNest4::BivariateGaussian &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("logpdf", [](const DNest4::BivariateGaussian &d, double x, double y){ return d.log_pdf(x, y); }, "x"_a, "y"_a, LOG_PDF_DOC);
+
+    // Sine
+    nb::class_<DNest4::Sine, DNest4::ContinuousDistribution>(m, "Sine", "docs")
+        .def(nb::init<>(), "A Sine distribution with support in [0, pi]")
+        .def("__repr__", [](const DNest4::Sine &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::Sine::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Sine::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Sine::log_pdf, "x"_a, LOG_PDF_DOC);
 
 }

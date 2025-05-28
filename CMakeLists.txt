@@ -74,7 +74,11 @@ set(DISTRIBUTION_UNITS
     src/kima/distributions/InverseMoment.cpp
     src/kima/distributions/ExponentialRayleighMixture.cpp
     src/kima/distributions/GaussianMixture.cpp
-    src/kima/distributions/PowerLaw.cpp)
+    src/kima/distributions/BivariateGaussian.cpp
+    src/kima/distributions/PowerLaw.cpp
+    src/kima/distributions/Sine.cpp)
+
+set(COMMON_UNITS ${COMMON_UNITS} ${DISTRIBUTION_UNITS})
 
 # compile the extension modules
 # this will make them available as kima.module
@@ -86,7 +90,7 @@ nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/distributions.cpp ${DISTRIBUTION_UNITS})
 
 nanobind_add_module(default_priors STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/default_priors.cpp src/kima/Data.cpp)
+                    src/kima/default_priors.cpp src/kima/Data.cpp ${DISTRIBUTION_UNITS})
 
 nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
@@ -132,6 +136,10 @@ nanobind_add_module(ETVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/ETVmodel.cpp ${COMMON_UNITS})
 
 
+nanobind_add_module(RVHGPMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
+                    src/kima/RVHGPMmodel.cpp ${COMMON_UNITS})
+
+
 # compile the Sampler module to create the kima.run function
 nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/run.cpp
@@ -146,10 +154,12 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMRHKmodel.cpp
                     src/kima/ETVmodel.cpp
                     src/kima/SPLEAFmodel.cpp
+                    src/kima/RVHGPMmodel.cpp
                     ${COMMON_UNITS}
                     src/kima/postkepler.cpp 
                     src/kima/transits.cpp
                     ${GP_UNITS}
+                    ${DISTRIBUTION_UNITS}
                     )
 
 
@@ -176,7 +186,8 @@ target_compile_features(transits PRIVATE cxx_std_17)
 
 # compilation settings for each module
 foreach(targ distributions default_priors Data ConditionalPrior 
-        RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel)
+        RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel
+        RVHGPMmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -212,8 +223,9 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel TRANSITmodel 
-        GPmodel RVFWHMmodel RVFWHMRHKmodel BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel SPLEAFmodel)
+foreach(module RVmodel OutlierRVmodel RVHGPMmodel TRANSITmodel 
+        GPmodel RVFWHMmodel RVFWHMRHKmodel SPLEAFmodel
+        BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
