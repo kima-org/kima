@@ -536,7 +536,7 @@ class KimaResults:
         self._current_column = 0
 
         # read jitters
-        if self.multi and self.model is MODELS.RVmodel:
+        if self.multi and self.model in (MODELS.RVmodel, MODELS.RVHGPMmodel):
             self.n_jitters = 1  # stellar jitter
         else:
             self.n_jitters = 0
@@ -575,7 +575,10 @@ class KimaResults:
         self._read_trend()
 
         # does the model enforce AMD stability?
-        self.enforce_stability = model.enforce_stability
+        try:
+            self.enforce_stability = model.enforce_stability
+        except AttributeError:
+            self.enforce_stability = False
 
         # multiple instruments? read offsets
         self._read_multiple_instruments()
@@ -616,6 +619,9 @@ class KimaResults:
             self._read_studentt()
         except AttributeError:
             self.studentt = False
+
+        if self.model is MODELS.RVHGPMmodel:
+            self._read_pm()
 
         if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             self.cfwhm = self.posterior_sample[:, self._current_column]
@@ -669,7 +675,7 @@ class KimaResults:
         self.indices['jitter_end'] = i2
         self.indices['jitter'] = slice(i1, i2)
         if self._debug:
-            print('finished reading jitters')
+            print(f'finished reading ({self.n_jitters}) jitters')
 
     def _read_astrometric_solution(self):
         self.n_astrometric_solution = 5
@@ -803,9 +809,14 @@ class KimaResults:
         iend = istart + n_planet_pars
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
-        
+
         if self.model is MODELS.GAIAmodel:
             for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
+                iend = istart + self.max_components
+                self.indices[f'planets.{p}'] = slice(istart, iend)
+                istart += self.max_components
+        elif self.model is MODELS.RVHGPMmodel:
+            for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'w', 'i', 'W')):
                 iend = istart + self.max_components
                 self.indices[f'planets.{p}'] = slice(istart, iend)
                 istart += self.max_components
@@ -820,6 +831,12 @@ class KimaResults:
             self.nu = self.posterior_sample[:, self._current_column]
             self.indices['nu'] = self._current_column
             self._current_column += 1
+
+    def _read_pm(self):
+        self.indices['pm_ra_bary'] = self._current_column
+        self.indices['pm_dec_bary'] = self._current_column + 1
+        self.indices['parallax'] = self._current_column + 2
+        self._current_column += 3
 
     @property
     def _GP_par_indices(self):
@@ -1307,6 +1324,9 @@ class KimaResults:
         if not hasattr(self, '_ESS'):
             self._ESS = self.posterior_sample.shape[0]
         
+        if not hasattr(self, 'logZ'):
+            self.logZ = self.evidence
+
         try:
             from .. import GPmodel
             if self.model is MODELS.GPmodel:
@@ -1493,42 +1513,43 @@ class KimaResults:
 
         if max_components > 0:
             # periods
-            i1 = 0 * max_components + index_component + 1
-            i2 = 0 * max_components + index_component + max_components + 1
-            s = np.s_[i1:i2]
+            s = self.indices['planets.P']
             self.posteriors.P = self.posterior_sample[:, s]
             self._priors.P = self.priors['Pprior']
 
             # amplitudes
-            i1 = 1 * max_components + index_component + 1
-            i2 = 1 * max_components + index_component + max_components + 1
-            s = np.s_[i1:i2]
+            s = self.indices['planets.K']
             self.posteriors.K = self.posterior_sample[:, s]
             self._priors.K = self.priors['Kprior']
 
             # phases
-            i1 = 2 * max_components + index_component + 1
-            i2 = 2 * max_components + index_component + max_components + 1
-            s = np.s_[i1:i2]
+            s = self.indices['planets.φ']
             self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
             self._priors.φ = self.priors['phiprior']
 
             # eccentricities
-            i1 = 3 * max_components + index_component + 1
-            i2 = 3 * max_components + index_component + max_components + 1
-            s = np.s_[i1:i2]
+            s = self.indices['planets.e']
             self.posteriors.e = self.posterior_sample[:, s]
             self._priors.e = self.priors['eprior']
 
             # omegas
-            i1 = 4 * max_components + index_component + 1
-            i2 = 4 * max_components + index_component + max_components + 1
-            s = np.s_[i1:i2]
+            s = self.indices['planets.w']
             self.posteriors.w = self.posterior_sample[:, s]
             self._priors.w = self.priors['wprior']
 
             # times of periastron
             self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+
+            
+            if self.model is MODELS.RVHGPMmodel:
+                s = self.indices['planets.i']
+                self.posteriors.i = self.posterior_sample[:, s]
+                self._priors.i = self.priors['iprior']
+
+                s = self.indices['planets.W']
+                self.posteriors.W = self.posterior_sample[:, s]
+                self._priors.W = self.priors['Wprior']
+
 
         if self.KO:
             self.posteriors.KO = posterior_holder()
@@ -1566,7 +1587,6 @@ class KimaResults:
         # Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
         # self.posteriors.Tc = Tc
         self._make_named_arrays()
-
 
     def get_medians(self):
         """ return the median values of all the parameters """
@@ -2103,9 +2123,12 @@ class KimaResults:
     def _get_ttGP(self, N=1000, over=0.1):
         """ Create array of times for GP prediction plots. """
         kde = gaussian_kde(self.data.t)
-        ttGP = kde.resample(N - self.data.N).reshape(-1)
-        # constrain ttGP within observed times, to not waste
-        ttGP = (ttGP + self.data.t[0]) % np.ptp(self.data.t) + self.data.t[0]
+        if N > self.data.N:
+            ttGP = kde.resample(N - self.data.N).reshape(-1)
+        else:
+            ttGP = kde.resample(N).reshape(-1)
+        # constrain ttGP within observed times (+- over), to not waste
+        ttGP = (ttGP + self.data.t[0]) % ((1 + over) * np.ptp(self.data.t)) + self.data.t[0]
         # add the observed times as well
         ttGP = np.r_[ttGP, self.data.t]
         ttGP.sort()  # in-place
@@ -2184,6 +2207,8 @@ class KimaResults:
         else:
             v = np.zeros_like(t)
 
+        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel)
+
         if include_planets:
             if single_planet and except_planet:
                 raise ValueError("'single_planet' and 'except_planet' "
@@ -2217,7 +2242,7 @@ class KimaResults:
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
+                    if self.model not in ONE_D_MODELS:
                         v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
                         v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
@@ -2243,7 +2268,7 @@ class KimaResults:
                     f = np.pi/2 - w # true anomaly at conjunction
                     E = 2.0 * np.arctan(np.tan(f/2) * np.sqrt((1-ecc)/(1+ecc))) # eccentric anomaly at conjunction
                     M = E - ecc * np.sin(E) # mean anomaly at conjunction
-                    if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
+                    if self.model not in ONE_D_MODELS:
                         v[0] += keplerian(t, P, K, ecc, w, M, Tc)
                     else:
                         v += keplerian(t, P, K, ecc, w, M, Tc)
@@ -2270,13 +2295,11 @@ class KimaResults:
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
-                # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
-                if self.model not in (MODELS.RVmodel, MODELS.GPmodel):
-                    v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
-                else:
+
+                if self.model in ONE_D_MODELS:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         ni = self.n_instruments
