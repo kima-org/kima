@@ -14,6 +14,7 @@
 
 using namespace std;
 
+template <typename T=double>
 struct loadtxt {
     // Mandatory arguments
     loadtxt(string fname) : _fname(fname) {}
@@ -26,7 +27,20 @@ struct loadtxt {
     loadtxt& usecols(vector<int> usecols) { _usecols = usecols; return *this; }
     loadtxt& max_rows(int max_rows) { _max_rows = max_rows; return *this; }
 
-    vector<vector<double>> operator()()
+    T convert(const string& s) {
+        if constexpr (std::is_same_v<T, int>)
+            return stoi(s);
+        else if constexpr (std::is_same_v<T, long>)
+            return stol(s);
+        else if constexpr (std::is_same_v<T, long long>)
+            return stoll(s);
+        else if constexpr (std::is_same_v<T, unsigned long long>)
+            return stoull(s);
+        
+        return stod(s);
+    }
+
+    vector<vector<T>> operator()()
     {
         if (_fname.empty()) {
             string msg = "loadtxt: filename is empty";
@@ -45,7 +59,7 @@ struct loadtxt {
         for (size_t i = 0; i < _skiprows; i++)
             infile.ignore(max_line, '\n');
 
-        vector<double> record;
+        vector<T> record;
         size_t rows_read = 0;
 
         // read each line
@@ -68,13 +82,15 @@ struct loadtxt {
             // stringstream ss(line);
 
             size_t found = line.find_first_of(_delimiters);
+
             while (found != string::npos) {
                 string cell = line.substr(0, found);
+
                 if (!cell.empty()) {
                     // convert the field to a double
                     try
                     {
-                        double val = stod(cell);
+                        T val = convert(cell);
                         record.push_back(val);
                     }
                     catch(const std::invalid_argument& e)
@@ -90,10 +106,12 @@ struct loadtxt {
                 found = line.find_first_of(_delimiters);
 
                 if (found == string::npos) {
-                    if (line.empty()) continue;
+                    if (line.empty())
+                        continue;
+
                     try
                     {
-                        double val = stod(line);
+                        T val = convert(line);
                         record.push_back(val);
                     }
                     catch(const std::invalid_argument& e)
@@ -177,7 +195,7 @@ struct loadtxt {
     ~loadtxt(){};
 
     public:
-        vector<vector<double>> data;
+        vector<vector<T>> data;
 
     private:
         string _fname;
@@ -186,12 +204,12 @@ struct loadtxt {
         size_t _skiprows = 0;
         vector<int> _usecols;
         size_t _max_rows = 0;
-        vector<vector<double>> _filedata;
+        vector<vector<T>> _filedata;
 };
 
 
-struct loadrdb : loadtxt {
-    loadrdb(string fname) : loadtxt(fname), _fname(fname) { skiprows(2); }
+struct loadrdb : loadtxt<double> {
+    loadrdb(string fname) : loadtxt<double>(fname), _fname(fname) { skiprows(2); }
 
     private:
         string _fname;
