@@ -1150,14 +1150,14 @@ using _state_type = std::tuple<std::string, std::vector<std::string>, std::strin
 
 NB_MODULE(Data, m) {
     // 
-    nb::class_<loadtxt>(m, "loadtxt")
+    nb::class_<loadtxt<double>>(m, "loadtxt")
         .def(nb::init<std::string>())
-        .def("skiprows", &loadtxt::skiprows)
-        .def("comments", &loadtxt::comments)
-        .def("delimiters", &loadtxt::delimiters)
-        .def("usecols", &loadtxt::usecols)
-        .def("max_rows", &loadtxt::max_rows)
-        .def("__call__", &loadtxt::operator());
+        .def("skiprows", &loadtxt<double>::skiprows)
+        .def("comments", &loadtxt<double>::comments)
+        .def("delimiters", &loadtxt<double>::delimiters)
+        .def("usecols", &loadtxt<double>::usecols)
+        .def("max_rows", &loadtxt<double>::max_rows)
+        .def("__call__", &loadtxt<double>::operator());
 
     // 
     nb::class_<RVData>(m, "RVData", "Load and store RV data")
