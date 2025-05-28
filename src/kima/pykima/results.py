@@ -2901,6 +2901,17 @@ class KimaResults:
 
         return v
 
+    def individual_logZ(self):
+        """
+        Calculates individual log-evidences for each Np value. When Np is fixed,
+        simply return the full model log-evidence.
+        """
+        if self.fix:
+            return self.evidence
+        else:
+            from .analysis import compute_values_from_ratios
+            return np.log(compute_values_from_ratios(np.exp(self.evidence), self.ratios))
+
     def residuals(self, sample, full=False):
         if self.model is MODELS.RVFWHMmodel:
             D = np.vstack([self.data.y, self.data.y2])

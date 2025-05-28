@@ -87,6 +87,32 @@ def np_posterior_threshold(results: KimaResults, threshold: float = 0.9):
         return np.where(above, np.arange(values.size), 0).max(axis=1)
 
 
+def compute_values_from_ratios(S, ratios):
+    """
+    Given a value for the sum S and a list of ratios between consecutive terms,
+    returns the values of all terms a_1, a_2, ..., a_n.
+
+    Args:
+        S (float): sum of all terms
+        ratios (list): 
+            [r1, r2, ..., r_{n-1}] such that:
+                a_2 = r1 * a_1,
+                a_3 = r2 * a_2,
+                ...
+                a_n = r_{n-1} * a_{n-1}
+    Returns:
+        [a_1, a_2, ..., a_n] (list):
+            individual values
+    """
+    terms = [1]  # T_0 = 1
+    for r in ratios:
+        terms.append(terms[-1] * r)
+    sum_T = sum(terms)
+    a1 = S / sum_T
+    values = [a1 * t for t in terms]
+    return values
+
+
 def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
                     e: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0,
                     full_output=False):
@@ -283,8 +309,12 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
 def get_bins(res, start=None, end=None, nbins=100):
     try:
         _start, _end = distribution_support(res.priors['Pprior'])
-        if _start == 0.0:
-            _start = res.posteriors.P[res.posteriors.P > 0].min()
+        if _start in (0.0, -np.inf):
+            raise KeyError
+            # _start = res.posteriors.P[res.posteriors.P > 0].min()
+        if _end in (np.inf, 0.0):
+            raise KeyError
+            # _end = res.posteriors.P.max()
     except KeyError:
         _start, _end = 1e-1, 1e7
 
