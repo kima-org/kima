@@ -535,23 +535,24 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
 
     if show_prior:
         kw_prior = dict(ms=2, color='k', alpha=0.05, zorder=-10)
+        n = prior_samples or max(10_000, res.ESS)
         
         if include_known_object:
             P_KO_prior, K_KO_prior, E_KO_prior = [], [], []
             for i in range(res.nKO):
                 if f'KO_Pprior_{i}' in res.priors:
-                    P_KO_prior.append(distribution_rvs(res.priors[f'KO_Pprior_{i}'], max(10_000, res.ESS)))
-                    K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], max(10_000, res.ESS)))
-                    E_KO_prior.append(distribution_rvs(res.priors[f'KO_eprior_{i}'], max(10_000, res.ESS)))
+                    P_KO_prior.append(distribution_rvs(res.priors[f'KO_Pprior_{i}'], n))
+                    K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], n))
+                    E_KO_prior.append(distribution_rvs(res.priors[f'KO_eprior_{i}'], n))
                 else:
                     break
             ax1.plot(np.ravel(P_KO_prior), np.ravel(K_KO_prior), '.', **kw_prior)
             ax2.plot(np.ravel(P_KO_prior), np.ravel(E_KO_prior), '.', **kw_prior)
 
         try:
-            P_prior = distribution_rvs(res.priors['Pprior'], max(10_000, res.ESS))
-            K_prior = distribution_rvs(res.priors['Kprior'], max(10_000, res.ESS))
-            E_prior = distribution_rvs(res.priors['eprior'], max(10_000, res.ESS))
+            P_prior = distribution_rvs(res.priors['Pprior'], n)
+            K_prior = distribution_rvs(res.priors['Kprior'], n)
+            E_prior = distribution_rvs(res.priors['eprior'], n)
             ax1.plot(P_prior, K_prior, '.', **kw_prior)
             ax2.plot(P_prior, E_prior, '.', **kw_prior)
         except KeyError:
@@ -1898,6 +1899,42 @@ def plot_RVData(data, **kwargs):
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
     return fig, ax
 
+def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, **kwargs):
+    fig, axs = plt.subplots(1, 4, width_ratios=[4, 1, 4, 1], #height_ratios=[4, 2], 
+                            constrained_layout=True, figsize=(7, 3))
+
+    if pm_ra_bary is None and pm_dec_bary is None:
+        f1, f2 = 1.0, 1.0
+    else:
+        f1, f2 = pm_ra_bary, pm_dec_bary
+
+    kw = dict(fmt='o', ms=4, color='C0')
+
+    axs[0].errorbar(data.epoch_ra_hip - 5e4, data.pm_ra_hip, data.sig_hip_ra, **kw)
+    axs[0].errorbar(data.epoch_ra_gaia - 5e4, data.pm_ra_gaia, data.sig_gaia_ra, **kw)
+    axs[1].errorbar(0.5, data.pm_ra_hg, data.sig_hg_ra, **kw, mfc="w")
+    axs[1].axhline(data.pm_ra_hg, color="k", zorder=-1)
+    axs[1].set(yticks=[], xticks=[], xlim=(0, 1))
+    axs[1].sharey(axs[0])
+    axs[1].tick_params(left=False, labelleft=False)
+
+    axs[2].errorbar(data.epoch_dec_hip - 5e4, data.pm_dec_hip, data.sig_hip_dec, **kw)
+    axs[2].errorbar(data.epoch_dec_gaia - 5e4, data.pm_dec_gaia, data.sig_gaia_dec, **kw)
+    axs[3].errorbar(0.5, data.pm_dec_hg, data.sig_hg_dec, **kw, mfc='w')
+    axs[3].axhline(data.pm_dec_hg, color='k', zorder=-1)
+    axs[3].set(yticks=[], xticks=[])
+    axs[3].sharey(axs[2])
+    axs[3].tick_params(left=False, labelleft=False)
+
+    axs[0].set(xlabel='Epoch [BJD - 2450000]', ylabel=r'$\mu$ RA [mas/yr]')
+    axs[2].set(xlabel='Epoch [BJD - 2450000]', ylabel=r'$\mu$ Dec [mas/yr]')
+    # mi, ma = min(axs[0].get_ylim()[0], axs[1].get_ylim()[0]), max(axs[0].get_ylim()[1], axs[1].get_ylim()[1])
+    # axs[0].set(ylim=(mi, ma))
+    # axs[1].set(ylim=(mi, ma))
+    # axs[1, 1].axis('off')
+    # axs[1, 3].axis('off')
+    return fig, axs
+
 
 def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
@@ -1935,7 +1972,10 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
     assert y.size == res.data.N, 'wrong dimensions!'
 
     if extract_offset:
-        y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
+        if isinstance(extract_offset, float):
+            y_offset = extract_offset
+        else:
+            y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
         if fwhm_model or rhk_model:
             y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
         if rhk_model:

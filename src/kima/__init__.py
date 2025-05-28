@@ -13,7 +13,7 @@ __all__ = [
 import sys
 from enum import Enum
 
-from .Data import RVData, PHOTdata, GAIAdata, ETVData
+from .Data import RVData, PHOTdata, GAIAdata, ETVData, HGPMdata
 
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
@@ -30,6 +30,7 @@ from .BINARIESmodel import BINARIESmodel
 from .GAIAmodel import GAIAmodel
 from .RVGAIAmodel import RVGAIAmodel
 from .ETVmodel import ETVmodel
+from .RVHGPMmodel import RVHGPMmodel
 
 __models__ = (
     RVmodel,
@@ -43,13 +44,16 @@ __models__ = (
     GAIAmodel,
     RVGAIAmodel,
     ETVmodel,
+    RVHGPMmodel,
 )
 MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
 
 
 # add plot method to data classes
-from .pykima.display import plot_RVData
+from .pykima.display import plot_RVData, plot_HGPMdata
 RVData.plot = plot_RVData
+HGPMdata.plot = plot_HGPMdata
+
 
 
 # kima.run
@@ -63,6 +67,7 @@ from .pykima.cli import cli_clean as cleanup
 from .kepler import keplerian
 #from . import spleaf
 from . import distributions
+from . import kmath
 from . import GP
 
 
