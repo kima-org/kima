@@ -58,6 +58,7 @@ class  KIMA_API RVData {
   friend class BINARIESmodel;
   friend class RVGAIAmodel;
   friend class RVFWHMRHKmodel;
+  friend class RVHGPMmodel;
 
   private:
     vector<double> t, y, sig, y2, sig2;
@@ -365,6 +366,28 @@ class KIMA_API GAIAdata {
   //  public:
   //   static RVData& get_instance() { return instance; }
 };
+
+class KIMA_API HGPMdata {
+
+  friend class RVHGPMmodel;
+
+  public:
+    HGPMdata();
+    HGPMdata(unsigned long long gaia_id) { load(gaia_id); };
+    void load(unsigned long long gaia_id);
+
+    double parallax_gaia, parallax_gaia_error;
+    double epoch_ra_hip, epoch_dec_hip;   // epochs for Hipparcos proper motions
+    double epoch_ra_gaia, epoch_dec_gaia; // epochs for Gaia proper motions
+    // proper motion measurements
+    double pm_ra_hip, pm_dec_hip, pm_ra_gaia, pm_dec_gaia, pm_ra_hg, pm_dec_hg;
+    // Hipparcos measurement uncertainties and correlation
+    double sig_hip_ra, sig_hip_dec, rho_hip;
+    // Hipparcos - Gaia measurement uncertainties and correlation
+    double sig_hg_ra, sig_hg_dec, rho_hg;
+    // Gaia measurement uncertainties and correlation
+    double sig_gaia_ra, sig_gaia_dec, rho_gaia;
+};  
 
 class ETVData {
 

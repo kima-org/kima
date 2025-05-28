@@ -989,6 +989,88 @@ GAIAdata::GAIAdata() {};
 
 /*****************************************************************************/
 
+HGPMdata::HGPMdata() {};
+
+    void HGPMdata::load(unsigned long long gaia_id)
+    {
+        auto catalog_file = "C://Users/joaof/Work/HGCA_catalog.dat";
+        auto gaia_ids = loadtxt<unsigned long long>(catalog_file).delimiters("|").usecols({2})();
+
+        auto catalog = loadtxt(catalog_file).delimiters("|")();
+        
+        size_t nrows = catalog[0].size();
+        std::cout << "read " << nrows << " rows from HGPM catalog" << std::endl;
+
+        auto index = find(gaia_ids[0].begin(), gaia_ids[0].end(), gaia_id);
+        size_t found = index - gaia_ids[0].begin();
+        std::cout << "found gaia_id in row " << found << std::endl;
+
+        // store parallax
+        parallax_gaia = catalog[6][found];
+        parallax_gaia_error = catalog[7][found];
+
+
+        // Convert measurement epochs to MJD
+        // The HGCA doesn't say, but we assume these are actually Julian years and not decimal years.
+        size_t i_epoch_ra_hip = 25, i_epoch_dec_hip = 26, i_epoch_ra_gaia = 23, i_epoch_dec_gaia = 24; // column numbers
+        double J2000_mjd = 51544.5; // year J2000 in MJD
+        double epoch_ra_hip_mjd = (catalog[i_epoch_ra_hip][found] - 2000)*365.25 + J2000_mjd;
+        double epoch_dec_hip_mjd = (catalog[i_epoch_dec_hip][found] - 2000)*365.25 + J2000_mjd;
+        double epoch_ra_gaia_mjd = (catalog[i_epoch_ra_gaia][found] - 2000)*365.25 + J2000_mjd;
+        double epoch_dec_gaia_mjd = (catalog[i_epoch_dec_gaia][found] - 2000)*365.25 + J2000_mjd;
+        
+        // Roughly over what time period were the observations made?
+        double dt_gaia = 1038; // EDR3: days between  Date("2017-05-28") - Date("2014-07-25")
+        double dt_hip = 4 * 365.25; // 4 years for Hipparcos
+
+        // How many points over Δt should we average the proper motion and stellar position
+        // at each epoch? This is because the PM is not an instantaneous measurement.
+        // δt_hip = δt_gaia = 0.
+
+        // Hipparcos
+        epoch_ra_hip = epoch_ra_hip_mjd + 0.0;
+        epoch_dec_hip = epoch_dec_hip_mjd + 0.0;
+        // Gaia
+        epoch_ra_gaia = epoch_ra_gaia_mjd + 0.0;
+        epoch_dec_gaia = epoch_dec_gaia_mjd + 0.0;
+
+        // column numbers
+        size_t i_pmra_hip = 18, i_pmdec_hip = 19, i_pmra_hg = 13, i_pmdec_hg = 14, i_pmra_gaia = 8, i_pmdec_gaia = 9;
+        // proper motions
+        pm_ra_hip = catalog[i_pmra_hip][found];
+        pm_dec_hip = catalog[i_pmdec_hip][found];
+        pm_ra_hg = catalog[i_pmra_hg][found];
+        pm_dec_hg = catalog[i_pmdec_hg][found];
+        pm_ra_gaia = catalog[i_pmra_gaia][found];
+        pm_dec_gaia = catalog[i_pmdec_gaia][found];
+
+        // column numbers
+        size_t i_pmra_pmdec_hip = 22, i_pmra_hip_error = 20, i_pmdec_hip_error = 21;
+        size_t i_pmra_pmdec_hg = 17, i_pmra_hg_error = 15, i_pmdec_hg_error = 16;
+        size_t i_pmra_pmdec_gaia = 12, i_pmra_gaia_error = 10, i_pmdec_gaia_error = 11;
+        // Hipparcos epoch
+        rho_hip = catalog[i_pmra_pmdec_hip][found]; // * catalog[i_pmra_hip_error][found] * catalog[i_pmdec_hip_error][found];
+        sig_hip_ra = catalog[i_pmra_hip_error][found];
+        sig_hip_dec = catalog[i_pmdec_hip_error][found];
+        // Hipparcos - GAIA epoch
+        rho_hg = catalog[i_pmra_pmdec_hg][found]; // * catalog[i_pmra_hg_error][found] * catalog[i_pmdec_hg_error][found];
+        sig_hg_ra = catalog[i_pmra_hg_error][found];
+        sig_hg_dec = catalog[i_pmdec_hg_error][found];
+        // GAIA epoch
+        rho_gaia = catalog[i_pmra_pmdec_gaia][found]; // * catalog[i_pmra_gaia_error][found] * catalog[i_pmdec_gaia_error][found];
+        sig_gaia_ra = catalog[i_pmra_gaia_error][found];
+        sig_gaia_dec = catalog[i_pmdec_gaia_error][found];
+
+        // cout << "Hipparcos epoch: " << epoch_ra_hip << ", " << epoch_dec_hip << endl;
+        // cout << "GAIA epoch: " << epoch_ra_gaia << ", " << epoch_dec_gaia << endl;
+        // cout << "Hipparcos: " << dist_hip[0] << ", " << dist_hip[1] << ", " << dist_hip[2] << ", " << dist_hip[3] << endl;
+        // cout << "Hipparcos - GAIA: " << dist_hg[0] << ", " << dist_hg[1] << ", " << dist_hg[2] << ", " << dist_hg[3] << endl;
+        // cout << "GAIA: " << dist_gaia[0] << ", " << dist_gaia[1] << ", " << dist_gaia[2] << ", " << dist_gaia[3] << endl;
+    };
+
+
+/*****************************************************************************/
+
 ETVData::ETVData() {};
     /**
       * @brief Load Gaia epoch astrometry data from a file.
@@ -1198,7 +1280,36 @@ Args:
         //
         .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly");
         //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
-        
+    
+    // 
+
+    nb::class_<HGPMdata>(m, "HGPMdata", "docs")
+        // constructor
+        .def(nb::init<unsigned long long>(),
+             "gaia_id"_a,
+             "Load the Hipparcos-Gaia Catalog of Accelerations")
+        // 
+        .def_ro("parallax_gaia", &HGPMdata::parallax_gaia, "Gaia DR3 parallax")
+        .def_ro("parallax_gaia_error", &HGPMdata::parallax_gaia_error, "Gaia DR3 parallax error")
+        // 
+        .def_ro("epoch_ra_hip", &HGPMdata::epoch_ra_hip, "Central epoch of Hipparcos RA measurement")
+        .def_ro("epoch_dec_hip", &HGPMdata::epoch_dec_hip, "Central epoch of Hipparcos DEC measurement")
+        .def_ro("epoch_ra_gaia", &HGPMdata::epoch_ra_gaia, "Central epoch of Gaia RA measurement")
+        .def_ro("epoch_dec_gaia", &HGPMdata::epoch_dec_gaia, "Central epoch of Gaia DEC measurement")
+        // proper motion measurements
+        .def_ro("pm_ra_hip", &HGPMdata::pm_ra_hip, "Calibrated proper motion in RA from the composite Hipparcos catalog")
+        .def_ro("pm_dec_hip", &HGPMdata::pm_dec_hip, "Calibrated proper motion in DEC from the composite Hipparcos catalog")
+        .def_ro("pm_ra_gaia", &HGPMdata::pm_ra_gaia, "Gaia EDR3 proper motion in RA")
+        .def_ro("pm_dec_gaia", &HGPMdata::pm_dec_gaia, "Gaia EDR3 proper motion in DEC")
+        .def_ro("pm_ra_hg", &HGPMdata::pm_ra_hg, "Calibrated proper motion in RA from the Hipparcos-Gaia positional difference")
+        .def_ro("pm_dec_hg", &HGPMdata::pm_dec_hg, "Calibrated proper motion in DEC from the Hipparcos-Gaia positional difference")
+        // uncertainties and correlations
+        .def_ro("sig_hip_ra", &HGPMdata::sig_hip_ra, "").def_ro("sig_hip_dec", &HGPMdata::sig_hip_dec, "").def_ro("rho_hip", &HGPMdata::rho_hip, "")
+        .def_ro("sig_gaia_ra", &HGPMdata::sig_gaia_ra, "").def_ro("sig_gaia_dec", &HGPMdata::sig_gaia_dec, "").def_ro("rho_gaia", &HGPMdata::rho_gaia, "")
+        .def_ro("sig_hg_ra", &HGPMdata::sig_hg_ra, "").def_ro("sig_hg_dec", &HGPMdata::sig_hg_dec, "").def_ro("rho_hg", &HGPMdata::rho_hg, "");
+
+
+
     nb::class_<ETVData>(m, "ETVData", "docs")
         // constructor
         .def(nb::init<const string&, const string& , int, int, const string&>(),
