@@ -8,6 +8,7 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/stl/tuple.h>
 #include <nanobind/ndarray.h>
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -28,6 +29,8 @@ const double TWO_PI = 2 * M_PI;
     #define sincos(x,s,c) (*s = sin(x), *c = cos(x))
 #endif
 
+using vec = std::vector<double>;
+using vec2d = std::vector<std::vector<double>>;
 
 double mod2pi(const double &angle);
 
@@ -78,6 +81,11 @@ namespace brandt
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
                                   const double &M0_epoch);
+    std::tuple<vec, vec2d> keplerian_rvpm(const std::vector<double> &t_rv, const std::vector<double> &t_pm,
+                                          const double &parallax,
+                                          const double &P, const double &K, const double &ecc,
+                                          const double &w, const double &M0, const double &M0_epoch,
+                                          const double &i, const double &Omega);
     std::vector<double> keplerian_gaia(const std::vector<double> &t, const std::vector<double> &psi, const double &A,
                                   const double &B, const double &F, const double &G,
                                   const double &ecc, const double P, const double &M0,

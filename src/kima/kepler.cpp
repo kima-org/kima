@@ -686,8 +686,7 @@ namespace brandt
         }
     }
 
-    void solve_kepler(const double &M, const double &ecc, double *sinf,
-                      double *cosf)
+    void solve_kepler(const double &M, const double &ecc, double *sinf, double *cosf)
     {
         solver(M, ecc, sinf, cosf);
         to_f(ecc, 1 - ecc, sinf, cosf);
@@ -739,7 +738,136 @@ namespace brandt
 
         return rv;
     }
-    
+
+    std::tuple<vec, vec2d> keplerian_rvpm(const std::vector<double> &t_rv, const std::vector<double> &t_pm,
+                                       const double &parallax,
+                                       const double &P, const double &K, const double &ecc,
+                                       const double &w, const double &M0, const double &M0_epoch,
+                                       const double &inc, const double &Omega)
+    {
+        // allocate model vectors
+
+        // rv(t1), rv(t2), ...
+        std::vector<double> rv(t_rv.size());
+
+        // pm(ra_hip), 0,           pm(ra_gaia), 0
+        // 0,          pm(dec_hip), 0,           pm(dec_gaia)
+        // pm(ra_hg),  pm(dec_hg),  0,           0
+        std::vector<std::vector<double>> pm(3, std::vector<double> (t_pm.size(), 0)) ;
+
+        // mean motion, once per orbit
+        double n = TWO_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
+        // sin and cos of inclination, once per orbit
+        double sini, cosi;
+        sincos(inc, &sini, &cosi);
+        // sin and cos of longitude of periastron, once per orbit
+        double sinOmega, cosOmega;
+        sincos(Omega, &sinOmega, &cosOmega);
+
+        double kappa = K / sini;
+        double a_star = kappa * P * sqrt(1 - ecc * ecc) / TWO_PI;
+
+        // unit conversion factor (paper Eq. 9-11)
+        double conv_factor = parallax / 4740.5;
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        for (size_t i = 0; i < t_rv.size(); i++)
+        {
+            double sinEf, cosEf;
+            double M = n * (t_rv[i] - M0_epoch) + M0;
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
+            to_f(ecc, 1 - ecc, &sinEf, &cosEf);
+            rv[i] = K * (cosw * cosEf - sinw * sinEf + ecc * cosw);
+        }
+
+        // RA, for Hipparcos and Gaia epochs
+        for (size_t i = 0; i < t_pm.size(); i += 2)
+        {
+            double sinEf, cosEf;
+            double M = n * (t_pm[i] - M0_epoch) + M0;
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
+            to_f(ecc, 1 - ecc, &sinEf, &cosEf);
+            // Tangential velocities in orbital plane (paper Eq. 6)
+            double vx = -kappa * sinEf;
+            double vy = kappa * (cosEf + ecc);
+            
+            // Rotate to observer's frame (paper Eq. 7-8)
+            double v_ra  = -vx * (cosw * sinOmega + sinw * cosOmega * cosi) - vy * (-sinw * sinOmega + cosw * cosOmega * cosi);
+            pm[0][i] = v_ra * conv_factor;
+        }
+        // DEC, for Hipparcos and Gaia epochs
+        for (size_t i = 1; i < t_pm.size(); i += 2)
+        {
+            double sinEf, cosEf;
+            double M = n * (t_pm[i] - M0_epoch) + M0;
+            solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinEf, &cosEf);
+            to_f(ecc, 1 - ecc, &sinEf, &cosEf);
+            // Tangential velocities in orbital plane (paper Eq. 6)
+            double vx = -kappa * sinEf;
+            double vy = kappa * (cosEf + ecc);
+            
+            // Rotate to observer's frame (paper Eq. 7-8)
+            double v_dec = -vx * (cosw * cosOmega - sinw * sinOmega * cosi) - vy * (-sinw * cosOmega - cosw * sinOmega * cosi);
+            pm[1][i] = v_dec * conv_factor;
+        }
+
+        // Hipparcos-Gaia epoch and proper motion
+        double pm_ra_hg, pm_dec_hg;
+        if (t_pm.size() == 4)
+        {
+            double epoch_ra_hip = t_pm[0], epoch_ra_gaia = t_pm[2];
+            double epoch_dec_hip = t_pm[1], epoch_dec_gaia = t_pm[3];
+            double epoch_ra_hg = epoch_ra_gaia - epoch_ra_hip;
+            double epoch_dec_hg = epoch_dec_gaia - epoch_dec_hip;
+            double r_ra_hip, r_dec_hip, r_ra_gaia, r_dec_gaia;
+            { // RA, Hipparcos
+                double sinE, cosE, M;
+                M = n * (epoch_ra_hip - M0_epoch) + M0;
+                solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+                double x = a_star * (cosE - ecc);
+                double y = a_star * sqrt(1 - ecc * ecc) * sinE;
+                r_ra_hip = -x * (cosw * sinOmega + sinw * cosOmega * cosi) - y * (-sinw * sinOmega + cosw * cosOmega * cosi);
+            }
+            { // Dec, Hipparcos
+                double sinE, cosE, M;
+                M = n * (epoch_dec_hip - M0_epoch) + M0;
+                solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+                double x = a_star * (cosE - ecc);
+                double y = a_star * sqrt(1 - ecc * ecc) * sinE;
+                r_dec_hip = -x * (cosw * cosOmega - sinw * sinOmega * cosi) - y * (-sinw * cosOmega - cosw * sinOmega * cosi);
+            }
+            { // RA, Gaia
+                double sinE, cosE, M;
+                M = n * (epoch_ra_gaia - M0_epoch) + M0;
+                solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+                double x = a_star * (cosE - ecc);
+                double y = a_star * sqrt(1 - ecc * ecc) * sinE;
+                r_ra_gaia = -x * (cosw * sinOmega + sinw * cosOmega * cosi) - y * (-sinw * sinOmega + cosw * cosOmega * cosi);
+            }
+            { // Dec, Gaia
+                double sinE, cosE, M;
+                M = n * (epoch_dec_gaia - M0_epoch) + M0;
+                solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+                double x = a_star * (cosE - ecc);
+                double y = a_star * sqrt(1 - ecc * ecc) * sinE;
+                r_dec_gaia = -x * (cosw * cosOmega - sinw * sinOmega * cosi) - y * (-sinw * cosOmega - cosw * sinOmega * cosi);
+            }
+            pm_ra_hg = (r_ra_gaia - r_ra_hip) / (epoch_ra_gaia - epoch_ra_hip);
+            pm_dec_hg = (r_dec_gaia - r_dec_hip) / (epoch_dec_gaia - epoch_dec_hip);
+            pm[2][0] = pm_ra_hg * conv_factor;
+            pm[2][1] = pm_dec_hg * conv_factor;
+        }
+
+        return std::make_tuple(rv, pm);
+    }
+
     std::vector<double> keplerian_etv(const std::vector<double> &epochs, const double &P,
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
@@ -1119,7 +1247,7 @@ namespace contour
 
 
 auto KEPLERIAN_DOC = R"D(
-Calculate the Keplerian curve at times `t`
+Calculate the Keplerian curve of one planet at times `t`
 
 Args:
     t (array):
@@ -1191,6 +1319,36 @@ NB_MODULE(kepler, m) {
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
         return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
     }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_DOC);
+
+    m.def("keplerian_rvpm", [](const std::vector<double> &t_rv, const std::vector<double> &t_pm,
+                               const double &parallax,
+                               const double &P, const double &K, const double &ecc,
+                               const double &w, const double &M0, const double &M0_epoch,
+                               const double &inc, const double &Omega)
+    {
+        auto [rv, pm] = brandt::keplerian_rvpm(t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, Omega);
+        struct Temp { 
+            std::vector<double> rv;
+            std::vector<double> pm_ra;
+            std::vector<double> pm_dec;
+            std::vector<double> pm_hg; // not always used
+        };
+        Temp *temp = new Temp();
+        temp->rv = rv;
+        temp->pm_ra = pm[0];
+        temp->pm_dec = pm[1];
+        temp->pm_hg = pm[2];
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        size_t size_rv = t_rv.size();
+        size_t size_pm = t_pm.size();
+        return std::make_tuple(
+            nb::ndarray<nb::numpy, double>(temp->rv.data(), {size_rv}, owner),
+            nb::ndarray<nb::numpy, double>(temp->pm_ra.data(), {size_pm}, owner),
+            nb::ndarray<nb::numpy, double>(temp->pm_dec.data(), {size_pm}, owner),
+            nb::ndarray<nb::numpy, double>(temp->pm_hg.data(), {size_pm}, owner)
+        );
+    }, "t_rv"_a, "t_pm"_a, "parallax"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a, "inc"_a, "Omega"_a, KEPLERIAN_DOC);
+
 
     m.def("keplerian2", &brandt::keplerian2,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
