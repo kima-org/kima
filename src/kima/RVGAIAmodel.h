@@ -90,6 +90,10 @@ class KIMA_API RVGAIAmodel
         std::vector<double> KO_cosi;
         std::vector<double> KO_Omega;
 
+        // Vectors to hold the masses of objects inside the orbit of each body
+        std::vector<double> KO_Mints;
+        std::vector<double> Mints;
+
         // The signal
         std::vector<double> mu_GAIA;// = the astrometric model
                             //std::vector<double>(GaiaData::get_instance().N());
@@ -98,6 +102,7 @@ class KIMA_API RVGAIAmodel
                             //std::vector<double>(GaiaData::get_instance().N());
                             
         void calculate_mu();
+        void get_interior_masses();
         void add_known_object();
         void remove_known_object();
 
