@@ -43,7 +43,7 @@ void RVGAIAmodel::set_known_object(size_t n)
     KO_cosiprior.resize(n);
     KO_Omegaprior.resize(n);
 
-    KO_mints.resize(n);
+    KO_Mints.resize(n);
 }
 
 /* set default priors if the user didn't change them */
@@ -291,7 +291,7 @@ void RVGAIAmodel::calculate_mu()
         cosi = components[j][5];
         Omega = components[j][6];
 
-        Mint = Mints[j]
+        Mint = Mints[j];
         
         K = MassConv::SemiAmp(P,ecc,Mint,M,cosi);
         a0 = MassConv::SemiPhotPl(P,Mint,M,plx);
@@ -321,7 +321,8 @@ void RVGAIAmodel::get_interior_masses()
 {
     // Calculate and save the total mass interior to each orbit by comparing periods
     double M, P;
-    size_t NP = planets.get_components().size();
+    const vector< vector<double> >& components = planets.get_components();
+    size_t NP = components.size();
     if (known_object)
     {
         for (int j = 0; j < n_known_object; j++)
@@ -1067,12 +1068,6 @@ NB_MODULE(RVGAIAmodel, m) {
                      "whether the model includes (better) known extra Keplerian curve(s)")
         .def_prop_ro("n_known_object", [](RVGAIAmodel &m) { return m.get_n_known_object(); },
                      "how many known objects")
-                     
-        //
-        .def_rw("star_mass", &RVGAIAmodel_publicist::star_mass,
-                "stellar mass [Msun]")
-//         .def_rw("enforce_stability", &RVGAIAmodel_publicist::enforce_stability, 
-//                 "whether to enforce AMD-stability")
         
         //
         .def_rw("indicator_correlations", &RVGAIAmodel_publicist::indicator_correlations, 

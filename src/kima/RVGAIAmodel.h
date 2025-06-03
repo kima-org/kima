@@ -42,7 +42,6 @@ class KIMA_API RVGAIAmodel
         bool trend {false};
         /// degree of the polynomial trend
         int degree {0};
-        
 
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
