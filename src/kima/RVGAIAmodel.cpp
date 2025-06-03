@@ -319,6 +319,7 @@ void RVGAIAmodel::calculate_mu()
 
 void RVGAIAmodel::get_interior_masses()
 {
+    // Calculate and save the total mass interior to each orbit by comparing periods
     double M, P;
     size_t NP = planets.get_components().size();
     if (known_object)
