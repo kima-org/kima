@@ -43,8 +43,7 @@ class KIMA_API RVGAIAmodel
         /// degree of the polynomial trend
         int degree {0};
         
-        /// stellar mass (in units of Msun)
-        double star_mass = 1.0;
+
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
         
@@ -74,6 +73,9 @@ class KIMA_API RVGAIAmodel
         double mua;
         double mud;
         double plx;
+
+        /// stellar mass (in units of Msun)
+        double star_mass = 1.0;
         
         double nu_GAIA;
         double jitter_GAIA;
@@ -121,6 +123,9 @@ class KIMA_API RVGAIAmodel
         distribution J_RV_prior;
         /// prior for student-t degree of freedom for RV data
         distribution nu_RV_prior;
+
+        ///prior for central star mass
+        distribution star_mass_prior;
         
         // priors for RV solution
         /// Prior for the systemic velocity.

@@ -62,6 +62,9 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     
     if (!J_GAIA_prior)
         J_GAIA_prior = make_prior<ModifiedLogUniform>(0.1,100.);
+
+    if (!star_mass_prior)
+        star_mass_prior = make_prior<Gaussian>(1.0,0.5);
     
     if (trend){
         if (degree == 0)
@@ -411,10 +414,13 @@ double RVGAIAmodel::perturb(RNG& rng)
     auto actind = RV_data.get_actind();
     double tmid = RV_data.get_t_middle();
 
-    if(rng.rand() <= 0.4) // perturb planet parameters
+    if(rng.rand() <= 0.4) // perturb planet parameters and star mass
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
+
+        star_mass_prior->perturb(star_mass,rng);
+
         calculate_mu();
     }
     else if(rng.rand() <= 0.4) // perturb jitter(s) + known_object
@@ -691,6 +697,8 @@ void RVGAIAmodel::print(std::ostream& out) const
     }
 
     out.precision(24);
+
+    out << star_mass << '\t';
     
     out << da << '\t';
     out << dd << '\t';
@@ -760,6 +768,8 @@ string RVGAIAmodel::description() const
             desc += "beta" + std::to_string(j+1) + sep;
         }
     }
+
+    desc += "star_mass" + sep;
 
     desc += "da" + sep;
     desc += "dd" + sep;
@@ -885,6 +895,8 @@ void RVGAIAmodel::save_setup() {
         }
     }
 
+    fout << "star_mass_prior: " << *star_mass_prior <<endl;
+
     fout << "da_prior: " << *da_prior << endl;
     fout << "dd_prior: " << *dd_prior << endl;
     fout << "mua_prior: " << *mua_prior << endl;
@@ -931,7 +943,7 @@ using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 auto RVGAIAMODEL_DOC = R"D(
 Combined analysis of Gaia epoch astrometry and radial velocity timeseries. Implements a sum-of-Keplerians model where the number of Keplerians can be free.
-This model assumes white, uncorrelated noise. Planets are to be given Mass priors in Solar-Mass.
+This model assumes white, uncorrelated noise. Both the central star and potential planets are to be given Mass priors in Solar-Mass.
 
 Args:
     fix (bool, default=True):
@@ -948,7 +960,6 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
 {
     public:
         using RVGAIAmodel::studentt;
-        using RVGAIAmodel::star_mass;
         using RVGAIAmodel::fix;
         using RVGAIAmodel::npmax;
         using RVGAIAmodel::known_object;
@@ -1028,6 +1039,10 @@ NB_MODULE(RVGAIAmodel, m) {
             [](RVGAIAmodel &m) { return m.nu_RV_prior; },
             [](RVGAIAmodel &m, distribution &d) { m.nu_RV_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood for RV data")
+        .def_prop_rw("star_mass_prior",
+            [](RVGAIAmodel &m) { return m.star_mass_prior; },
+            [](RVGAIAmodel &m, distribution &d) { m.star_mass_prior = d; },
+            "Prior for mass of the central star")
             
         .def_prop_rw("slope_prior",
             [](RVGAIAmodel &m) { return m.slope_prior; },
