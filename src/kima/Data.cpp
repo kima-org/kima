@@ -15,6 +15,33 @@ double median(vector<double> v)
   return med;    
 }
 
+template <typename T>
+T read_value(std::ifstream &file) {
+    T value;
+    file.read(reinterpret_cast<char *>(&value), sizeof(value));
+    value = swap_endian<T>(value);
+    return value;
+}
+
+template <typename T>
+T swap_endian(T u)
+{
+    static_assert (CHAR_BIT == 8, "CHAR_BIT != 8");
+
+    union 
+    {
+        T u;
+        unsigned char u8[sizeof(T)];
+    } source, dest;
+
+    source.u = u;
+
+    for (size_t k = 0; k < sizeof(T); k++)
+        dest.u8[k] = source.u8[sizeof(T) - k - 1];
+
+    return dest.u;
+}
+
 
 /// @brief Load data from a single filename
 RVData::RVData(const string& filename, const string& units, int skip, int max_rows, bool multi,
