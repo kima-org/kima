@@ -991,41 +991,42 @@ GAIAdata::GAIAdata() {};
 
 HGPMdata::HGPMdata() {};
 
-    void HGPMdata::load(unsigned long long gaia_id)
+    void HGPMdata::load(uint64_t gaia_id)
     {
-        auto catalog_file = "C://Users/joaof/Work/HGCA_catalog.dat";
-        auto gaia_ids = loadtxt<unsigned long long>(catalog_file).delimiters("|").usecols({2})();
+        auto data = get_data(gaia_id);
 
-        auto catalog = loadtxt(catalog_file).delimiters("|")();
+        if (!data.found) {
+            std::string msg = "kima: HGPMdata: no data for gaia_id " + std::to_string(gaia_id);
+            throw std::runtime_error(msg);
+        }
+        // // auto catalog_file = "C://Users/joaof/Work/HGCA_catalog.dat";
+        // // auto gaia_ids = loadtxt<unsigned long long>(catalog_file).delimiters("|").usecols({2})();
+        // // auto catalog = loadtxt(catalog_file).delimiters("|")();
         
-        size_t nrows = catalog[0].size();
-        std::cout << "read " << nrows << " rows from HGPM catalog" << std::endl;
+        // size_t nrows = catalog.size();
+        // std::cout << "read " << nrows << " rows from HGPM catalog" << std::endl;
 
-        auto index = find(gaia_ids[0].begin(), gaia_ids[0].end(), gaia_id);
-        size_t found = index - gaia_ids[0].begin();
-        std::cout << "found gaia_id in row " << found << std::endl;
+        // auto index = find(gaia_ids.begin(), gaia_ids.end(), gaia_id);
+        // size_t found = index - gaia_ids.begin();
+        // std::cout << "found gaia_id in row " << found << std::endl;
 
         // store parallax
-        parallax_gaia = catalog[6][found];
-        parallax_gaia_error = catalog[7][found];
+        parallax_gaia = data.parallax_gaia;
+        parallax_gaia_error = data.parallax_gaia_error;
+        // parallax_gaia = catalog[found][5];
+        // parallax_gaia_error = catalog[found][6];
 
 
-        // Convert measurement epochs to MJD
-        // The HGCA doesn't say, but we assume these are actually Julian years and not decimal years.
-        size_t i_epoch_ra_hip = 25, i_epoch_dec_hip = 26, i_epoch_ra_gaia = 23, i_epoch_dec_gaia = 24; // column numbers
+        // Convert measurement epochs to MJD, assuming dates are Julian years
         double J2000_mjd = 51544.5; // year J2000 in MJD
-        double epoch_ra_hip_mjd = (catalog[i_epoch_ra_hip][found] - 2000)*365.25 + J2000_mjd;
-        double epoch_dec_hip_mjd = (catalog[i_epoch_dec_hip][found] - 2000)*365.25 + J2000_mjd;
-        double epoch_ra_gaia_mjd = (catalog[i_epoch_ra_gaia][found] - 2000)*365.25 + J2000_mjd;
-        double epoch_dec_gaia_mjd = (catalog[i_epoch_dec_gaia][found] - 2000)*365.25 + J2000_mjd;
+        double epoch_ra_hip_mjd = (data.epoch_ra_hip - 2000)*365.25 + J2000_mjd;
+        double epoch_dec_hip_mjd = (data.epoch_dec_hip - 2000)*365.25 + J2000_mjd;
+        double epoch_ra_gaia_mjd = (data.epoch_ra_gaia - 2000)*365.25 + J2000_mjd;
+        double epoch_dec_gaia_mjd = (data.epoch_dec_gaia - 2000)*365.25 + J2000_mjd;
         
-        // Roughly over what time period were the observations made?
-        double dt_gaia = 1038; // EDR3: days between  Date("2017-05-28") - Date("2014-07-25")
-        double dt_hip = 4 * 365.25; // 4 years for Hipparcos
-
-        // How many points over Δt should we average the proper motion and stellar position
-        // at each epoch? This is because the PM is not an instantaneous measurement.
-        // δt_hip = δt_gaia = 0.
+        // Rough timespans for Hipparcos and Gaia
+        double dt_gaia = 1038; // EDR3: days between 2017-05-28 and 2014-07-25
+        double dt_hip = 4 * 365.25; // 4 years
 
         // Hipparcos
         epoch_ra_hip = epoch_ra_hip_mjd + 0.0;
@@ -1034,39 +1035,104 @@ HGPMdata::HGPMdata() {};
         epoch_ra_gaia = epoch_ra_gaia_mjd + 0.0;
         epoch_dec_gaia = epoch_dec_gaia_mjd + 0.0;
 
-        // column numbers
-        size_t i_pmra_hip = 18, i_pmdec_hip = 19, i_pmra_hg = 13, i_pmdec_hg = 14, i_pmra_gaia = 8, i_pmdec_gaia = 9;
         // proper motions
-        pm_ra_hip = catalog[i_pmra_hip][found];
-        pm_dec_hip = catalog[i_pmdec_hip][found];
-        pm_ra_hg = catalog[i_pmra_hg][found];
-        pm_dec_hg = catalog[i_pmdec_hg][found];
-        pm_ra_gaia = catalog[i_pmra_gaia][found];
-        pm_dec_gaia = catalog[i_pmdec_gaia][found];
+        pm_ra_hip = data.pmra_hip;
+        pm_dec_hip = data.pmdec_hip;
+        pm_ra_hg = data.pmra_hg;
+        pm_dec_hg = data.pmdec_hg;
+        pm_ra_gaia = data.pmra_gaia;
+        pm_dec_gaia = data.pmdec_gaia;
 
-        // column numbers
-        size_t i_pmra_pmdec_hip = 22, i_pmra_hip_error = 20, i_pmdec_hip_error = 21;
-        size_t i_pmra_pmdec_hg = 17, i_pmra_hg_error = 15, i_pmdec_hg_error = 16;
-        size_t i_pmra_pmdec_gaia = 12, i_pmra_gaia_error = 10, i_pmdec_gaia_error = 11;
         // Hipparcos epoch
-        rho_hip = catalog[i_pmra_pmdec_hip][found]; // * catalog[i_pmra_hip_error][found] * catalog[i_pmdec_hip_error][found];
-        sig_hip_ra = catalog[i_pmra_hip_error][found];
-        sig_hip_dec = catalog[i_pmdec_hip_error][found];
+        rho_hip = data.pmra_pmdec_hip; // * data.pmra_hip_error * data.pmdec_hip_error;
+        sig_hip_ra = data.pmra_hip_error;
+        sig_hip_dec = data.pmdec_hip_error;
         // Hipparcos - GAIA epoch
-        rho_hg = catalog[i_pmra_pmdec_hg][found]; // * catalog[i_pmra_hg_error][found] * catalog[i_pmdec_hg_error][found];
-        sig_hg_ra = catalog[i_pmra_hg_error][found];
-        sig_hg_dec = catalog[i_pmdec_hg_error][found];
+        rho_hg = data.pmra_pmdec_hg; // * data.pmra_hg_error * data.pmdec_hg_error;
+        sig_hg_ra = data.pmra_hg_error;
+        sig_hg_dec = data.pmdec_hg_error;
         // GAIA epoch
-        rho_gaia = catalog[i_pmra_pmdec_gaia][found]; // * catalog[i_pmra_gaia_error][found] * catalog[i_pmdec_gaia_error][found];
-        sig_gaia_ra = catalog[i_pmra_gaia_error][found];
-        sig_gaia_dec = catalog[i_pmdec_gaia_error][found];
-
-        // cout << "Hipparcos epoch: " << epoch_ra_hip << ", " << epoch_dec_hip << endl;
-        // cout << "GAIA epoch: " << epoch_ra_gaia << ", " << epoch_dec_gaia << endl;
-        // cout << "Hipparcos: " << dist_hip[0] << ", " << dist_hip[1] << ", " << dist_hip[2] << ", " << dist_hip[3] << endl;
-        // cout << "Hipparcos - GAIA: " << dist_hg[0] << ", " << dist_hg[1] << ", " << dist_hg[2] << ", " << dist_hg[3] << endl;
-        // cout << "GAIA: " << dist_gaia[0] << ", " << dist_gaia[1] << ", " << dist_gaia[2] << ", " << dist_gaia[3] << endl;
+        rho_gaia = data.pmra_pmdec_gaia; // * data.pmra_gaia_error * data.pmdec_gaia_error;
+        sig_gaia_ra = data.pmra_gaia_error;
+        sig_gaia_dec = data.pmdec_gaia_error;
     };
+
+    hgca_data HGPMdata::get_data(uint64_t target_id)
+    {
+        const size_t BLOCK_SIZE = 2880;
+        const size_t ROW_SIZE = 172;
+        const size_t NROWS = 115346;
+        auto data = hgca_data();
+        data.found = false;
+
+        // bit of a hack...
+        std::string HGCA_file = __FILE__;
+        HGCA_file.replace(HGCA_file.find("Data.cpp"), 8, "HGCA_vEDR3.fits");
+
+        std::ifstream file(HGCA_file, std::ios::binary);
+        if (file) {
+            // skip primary HDU header and first extension HDU header
+            file.seekg(4 * BLOCK_SIZE);
+
+            for (size_t i = 0; i < NROWS; i++)
+            {
+                uint32_t id = read_value<uint32_t>(file);
+                uint64_t gaia_id = read_value<uint64_t>(file);
+                // std::cout << id << " ";
+                // std::cout << gaia_id << std::endl;
+        
+                if (gaia_id == target_id) {
+                    data.found = true;
+                    data.row = i;
+                    data.gaia_id = gaia_id;
+                    data.gaia_ra = read_value<double>(file);
+                    data.gaia_dec = read_value<double>(file);
+                    data.radial_velocity = read_value<float>(file);
+                    data.radial_velocity_error = read_value<float>(file);
+        
+                    // ignore radial_velocity_source
+                    file.seekg(8, std::ios::cur);
+        
+                    data.parallax_gaia = read_value<float>(file);
+                    data.parallax_gaia_error = read_value<float>(file);
+                    data.pmra_gaia = read_value<float>(file);
+                    data.pmdec_gaia = read_value<float>(file);
+                    data.pmra_gaia_error = read_value<float>(file);
+                    data.pmdec_gaia_error = read_value<float>(file);
+                    data.pmra_pmdec_gaia = read_value<float>(file);
+                    data.pmra_hg = read_value<float>(file);
+                    data.pmdec_hg = read_value<float>(file);
+                    data.pmra_hg_error = read_value<float>(file);
+                    data.pmdec_hg_error = read_value<float>(file);
+                    data.pmra_pmdec_hg = read_value<float>(file);
+                    data.pmra_hip = read_value<float>(file);
+                    data.pmdec_hip = read_value<float>(file);
+                    data.pmra_hip_error = read_value<float>(file);
+                    data.pmdec_hip_error = read_value<float>(file);
+                    data.pmra_pmdec_hip = read_value<float>(file);
+                    data.epoch_ra_gaia = read_value<double>(file);
+                    data.epoch_dec_gaia = read_value<double>(file);
+                    data.epoch_ra_hip = read_value<double>(file);
+                    data.epoch_dec_hip = read_value<double>(file);
+                    data.crosscal_pmra_hip = read_value<float>(file);
+                    data.crosscal_pmdec_hip = read_value<float>(file);
+                    data.crosscal_pmra_hg = read_value<float>(file);
+                    data.crosscal_pmdec_hg = read_value<float>(file);
+                    data.nonlinear_dpmra = read_value<float>(file);
+                    data.nonlinear_dpmdec = read_value<float>(file);
+                    data.chisq = read_value<float>(file);
+                    break;
+                }
+                file.seekg(ROW_SIZE - sizeof(id) - sizeof(gaia_id), std::ios::cur);
+            }
+            file.close();
+        }
+        else {
+            std::cout << "Unable to open file" << std::endl;
+        }
+        return data;
+    }
+
 
 
 /*****************************************************************************/

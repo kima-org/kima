@@ -12,12 +12,15 @@
 #include <string>
 #include <vector>
 #include <exception>
+#include <filesystem>
+#include <climits>
 
 #include "loadtxt.hpp"
 
 #define VERBOSE false
 
 using namespace std;
+namespace fs = std::filesystem;
 
 // for nanobind
 #include <nanobind/nanobind.h>
@@ -47,8 +50,35 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 
 double median(vector<double> v);
 
+template <typename T>
+T read_value(std::ifstream &file) {
+    T value;
+    file.read(reinterpret_cast<char *>(&value), sizeof(value));
+    value = swap_endian<T>(value);
+    return value;
+}
 
-class  KIMA_API RVData {
+template <typename T>
+T swap_endian(T u)
+{
+    static_assert (CHAR_BIT == 8, "CHAR_BIT != 8");
+
+    union 
+    {
+        T u;
+        unsigned char u8[sizeof(T)];
+    } source, dest;
+
+    source.u = u;
+
+    for (size_t k = 0; k < sizeof(T); k++)
+        dest.u8[k] = source.u8[sizeof(T) - k - 1];
+
+    return dest.u;
+}
+
+
+class KIMA_API RVData {
 
   friend class RVmodel;
   friend class GPmodel;
@@ -367,14 +397,37 @@ class KIMA_API GAIAdata {
   //   static RVData& get_instance() { return instance; }
 };
 
+
+// hold data from the Hipparcos-Gaia catalog of accelerations (Brandt 2021)
+struct hgca_data {
+    bool found;
+    size_t row;
+    uint64_t gaia_id;
+    double gaia_ra, gaia_dec;
+    float radial_velocity, radial_velocity_error;
+    float parallax_gaia, parallax_gaia_error;
+    float pmra_gaia, pmdec_gaia;
+    float pmra_gaia_error, pmdec_gaia_error, pmra_pmdec_gaia;
+    float pmra_hg, pmdec_hg;
+    float pmra_hg_error, pmdec_hg_error, pmra_pmdec_hg;
+    float pmra_hip, pmdec_hip;
+    float pmra_hip_error, pmdec_hip_error, pmra_pmdec_hip;
+    double epoch_ra_gaia, epoch_dec_gaia, epoch_ra_hip, epoch_dec_hip;
+    float crosscal_pmra_hip, crosscal_pmdec_hip;
+    float crosscal_pmra_hg, crosscal_pmdec_hg;
+    float nonlinear_dpmra, nonlinear_dpmdec;
+    float chisq;
+};
+
 class KIMA_API HGPMdata {
 
   friend class RVHGPMmodel;
 
   public:
     HGPMdata();
-    HGPMdata(unsigned long long gaia_id) { load(gaia_id); };
-    void load(unsigned long long gaia_id);
+    HGPMdata(uint64_t gaia_id) { load(gaia_id); };
+    void load(uint64_t gaia_id);
+    hgca_data get_data(uint64_t target_id);
 
     double parallax_gaia, parallax_gaia_error;
     double epoch_ra_hip, epoch_dec_hip;   // epochs for Hipparcos proper motions
