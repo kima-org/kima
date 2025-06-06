@@ -1092,10 +1092,17 @@ HGPMdata::HGPMdata() {};
         auto data = hgca_data();
         data.found = false;
 
-        // bit of a hack...
+        // this is a bit of a hack...
+        // fs::temp_directory_path provides a platform independent path to a
+        // temporary directory, which is guaranteed to exist. This path is
+        // stored in the `temp_path` property of HGPMdata. On the Python side,
+        // we use pooch to download (only once) the HGCA fits file and place it
+        // in this temporary directory, so that it exists and can be opened
+        // below. We go through all this trouble just to not add the fits file
+        // to the kima package/wheels/repository/etc.
+        // I am almost sure this code will come back to haunt me one day...
+
         fs::path HGCA_file = fs::temp_directory_path() / "HGCA_vEDR3.fits";
-        // std::string HGCA_file = __FILE__;
-        // HGCA_file.replace(HGCA_file.find("Data.cpp"), 8, "HGCA_vEDR3.fits");
 
         std::ifstream file(HGCA_file.string(), std::ios::binary);
         if (file) {
@@ -1157,7 +1164,6 @@ HGPMdata::HGPMdata() {};
         }
         else {
             std::cout << "Unable to open file (" << HGCA_file << ")" << std::endl;
-            std::cout << "__FILE__ = " << __FILE__ << std::endl;
         }
         return data;
     }

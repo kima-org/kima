@@ -408,6 +408,8 @@ class KIMA_API HGPMdata {
     void load(uint64_t gaia_id);
     hgca_data get_data(uint64_t target_id);
 
+    // store the path to a temporary directory, which will be accessible in the
+    // Python bindings
     inline static std::string temp_path = fs::temp_directory_path().string();
 
     double parallax_gaia, parallax_gaia_error;
