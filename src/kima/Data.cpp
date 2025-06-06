@@ -1155,7 +1155,8 @@ HGPMdata::HGPMdata() {};
             file.close();
         }
         else {
-            std::cout << "Unable to open file" << std::endl;
+            std::cout << "Unable to open file (" << HGCA_file << ")" << std::endl;
+            std::cout << "__FILE__ = " << __FILE__ << std::endl;
         }
         return data;
     }
