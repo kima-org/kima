@@ -2,10 +2,10 @@
 # ruff: noqa
 
 __all__ = [
-    'RVData', 'PHOTdata', 'GAIAdata', 'ETVData',
+    'RVData', 'PHOTdata', 'GAIAdata', 'ETVData', 'HGPMdata',
     'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 'BINARIESmodel',
     'GAIAmodel', 'RVGAIAmodel',
-    '__models__',
+    'MODELS',
     'keplerian', 'distributions',
     'run', 'load_results',
 ]
@@ -13,7 +13,8 @@ __all__ = [
 import sys
 from enum import Enum
 
-from .Data import RVData, PHOTdata, GAIAdata, ETVData, HGPMdata
+from .Data import RVData, PHOTdata, GAIAdata, ETVData
+from .Data import HGPMdata as HGPMdata_original
 
 from .RVmodel import RVmodel
 from .GPmodel import GPmodel
@@ -52,7 +53,23 @@ MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
 # add plot method to data classes
 from .pykima.display import plot_RVData, plot_HGPMdata
 RVData.plot = plot_RVData
-HGPMdata.plot = plot_HGPMdata
+
+class HGPMdata(HGPMdata_original):
+    def __init__(self, *args, **kwargs):
+        from os.path import dirname
+        import pooch
+        current_path = dirname(__file__)
+        file_path = pooch.retrieve(
+            url="https://cdsarc.cds.unistra.fr/ftp/J/ApJS/254/42/HGCA_vEDR3.fits",
+            known_hash='23684d583baaa236775108b360c650e79770a695e16914b1201f290c1826065c',
+            path=current_path,
+            fname='HGCA_vEDR3.fits'
+        )
+        return super().__init__(*args, **kwargs)
+
+    def plot(self, *args, **kwargs):
+        plot_HGPMdata(self, *args, **kwargs)
+
 
 
 
