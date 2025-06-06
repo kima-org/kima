@@ -27,6 +27,11 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
         {"eprior", make_prior<DNest4::Uniform>(0.0, 1.0)},
         {"phiprior", make_prior<DNest4::UniformAngle>()},
         {"wprior", make_prior<DNest4::UniformAngle>()},
+        // 
+        // for astrometry models
+        {"iprior", make_prior<DNest4::Sine>()},
+        {"Ωprior", make_prior<DNest4::UniformAngle>()},
+        // 
         // GP hyperparameters
         {"eta1_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_max_RV_span() )},
         // another possibility?

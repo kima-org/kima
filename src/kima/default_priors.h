@@ -7,6 +7,8 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "utils.h"
+#include "distributions.h"
+
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 // for nanobind
