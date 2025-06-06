@@ -1157,7 +1157,8 @@ HGPMdata::HGPMdata() {};
         else {
             std::cout << "Unable to open file (" << HGCA_file << ")" << std::endl;
             std::cout << "__FILE__ = " << __FILE__ << std::endl;
-            std::cout << "Temp directory is " << fs::temp_directory_path() << '\n';
+            fs::path HGCA_file_2 = fs::temp_directory_path() / "HGCA_vEDR3.fits";
+            std::cout << "Temp directory is " << HGCA_file_2 << '\n';
         }
         return data;
     }
