@@ -1093,10 +1093,11 @@ HGPMdata::HGPMdata() {};
         data.found = false;
 
         // bit of a hack...
-        std::string HGCA_file = __FILE__;
-        HGCA_file.replace(HGCA_file.find("Data.cpp"), 8, "HGCA_vEDR3.fits");
+        fs::path HGCA_file = fs::temp_directory_path() / "HGCA_vEDR3.fits";
+        // std::string HGCA_file = __FILE__;
+        // HGCA_file.replace(HGCA_file.find("Data.cpp"), 8, "HGCA_vEDR3.fits");
 
-        std::ifstream file(HGCA_file, std::ios::binary);
+        std::ifstream file(HGCA_file.string(), std::ios::binary);
         if (file) {
             // skip primary HDU header and first extension HDU header
             file.seekg(4 * BLOCK_SIZE);
@@ -1157,8 +1158,6 @@ HGPMdata::HGPMdata() {};
         else {
             std::cout << "Unable to open file (" << HGCA_file << ")" << std::endl;
             std::cout << "__FILE__ = " << __FILE__ << std::endl;
-            fs::path HGCA_file_2 = fs::temp_directory_path() / "HGCA_vEDR3.fits";
-            std::cout << "Temp directory is " << HGCA_file_2 << '\n';
         }
         return data;
     }
@@ -1384,6 +1383,8 @@ Args:
         .def(nb::init<unsigned long long>(),
              "gaia_id"_a,
              "Load the Hipparcos-Gaia Catalog of Accelerations")
+        // 
+        .def_ro_static("_temp_path", &HGPMdata::temp_path)
         // 
         .def_ro("parallax_gaia", &HGPMdata::parallax_gaia, "Gaia DR3 parallax")
         .def_ro("parallax_gaia_error", &HGPMdata::parallax_gaia_error, "Gaia DR3 parallax error")
