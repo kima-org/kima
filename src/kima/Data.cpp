@@ -1157,6 +1157,7 @@ HGPMdata::HGPMdata() {};
         else {
             std::cout << "Unable to open file (" << HGCA_file << ")" << std::endl;
             std::cout << "__FILE__ = " << __FILE__ << std::endl;
+            std::cout << "Temp directory is " << fs::temp_directory_path() << '\n';
         }
         return data;
     }
