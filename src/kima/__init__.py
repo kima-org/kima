@@ -55,10 +55,9 @@ from .pykima.display import plot_RVData, plot_HGPMdata
 RVData.plot = plot_RVData
 
 class HGPMdata(HGPMdata_original):
+    __doc__ = HGPMdata_original.__doc__
     def __init__(self, *args, **kwargs):
-        from os.path import dirname
         import pooch
-        # current_path = dirname(__file__)
         file_path = pooch.retrieve(
             url="https://cdsarc.cds.unistra.fr/ftp/J/ApJS/254/42/HGCA_vEDR3.fits",
             known_hash='23684d583baaa236775108b360c650e79770a695e16914b1201f290c1826065c',
@@ -68,7 +67,7 @@ class HGPMdata(HGPMdata_original):
         return super().__init__(*args, **kwargs)
 
     def plot(self, *args, **kwargs):
-        plot_HGPMdata(self, *args, **kwargs)
+        return plot_HGPMdata(self, *args, **kwargs)
 
 
 
