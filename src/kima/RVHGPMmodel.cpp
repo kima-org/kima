@@ -100,9 +100,9 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
 
     // TODO: change these priors
     if (!pm_ra_bary_prior)
-        pm_ra_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_ra_gaia), max(0.0, 1.5*pm_data.pm_ra_gaia));
+        pm_ra_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_ra_hg), max(0.0, 1.5*pm_data.pm_ra_hg));
     if (!pm_dec_bary_prior)
-        pm_dec_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_dec_gaia), max(0.0, 1.5*pm_data.pm_dec_gaia));
+        pm_dec_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_dec_hg), max(0.0, 1.5*pm_data.pm_dec_hg));
     if (!parallax_prior)
         parallax_prior = make_prior<Gaussian>(pm_data.parallax_gaia, pm_data.parallax_gaia_error);
 
