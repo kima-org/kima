@@ -1238,6 +1238,7 @@ class RVHGPMmodel_publicist : public RVHGPMmodel
         using RVHGPMmodel::fix;
         using RVHGPMmodel::npmax;
         using RVHGPMmodel::data;
+        using RVHGPMmodel::pm_data;
         //
         using RVHGPMmodel::trend;
         using RVHGPMmodel::degree;
@@ -1261,12 +1262,10 @@ NB_MODULE(RVHGPMmodel, m) {
         .def_rw("directory", &RVHGPMmodel::directory,
                 "directory where the model ran")
         // 
-        .def_rw("fix", &RVHGPMmodel_publicist::fix,
-                "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &RVHGPMmodel_publicist::npmax,
-                "maximum number of Keplerians")
-        .def_ro("data", &RVHGPMmodel_publicist::data,
-                "the data")
+        .def_rw("fix", &RVHGPMmodel_publicist::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &RVHGPMmodel_publicist::npmax, "maximum number of Keplerians")
+        .def_ro("data", &RVHGPMmodel_publicist::data, "the RV data")
+        .def_ro("pm_data", &RVHGPMmodel_publicist::pm_data, "the H-G proper motion data")
 
         //
         .def_rw("trend", &RVHGPMmodel_publicist::trend,
