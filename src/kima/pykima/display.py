@@ -1899,8 +1899,9 @@ def plot_RVData(data, **kwargs):
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
     return fig, ax
 
-def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, **kwargs):
-    fig, axs = plt.subplots(1, 4, width_ratios=[4, 1, 4, 1], #height_ratios=[4, 2], 
+def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, 
+                  show_legend=True, **kwargs):
+    fig, axs = plt.subplots(1, 4, width_ratios=[4, 0.6, 4, 0.6], #height_ratios=[4, 2], 
                             constrained_layout=True, figsize=(7, 3))
 
     if pm_ra_bary is None and pm_dec_bary is None:
@@ -1908,18 +1909,20 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, **kwargs):
     else:
         f1, f2 = pm_ra_bary, pm_dec_bary
 
-    kw = dict(fmt='o', ms=4, color='C0')
+    kwH = dict(fmt='o', ms=4, color='C0')
+    kwG = dict(fmt='o', ms=4, color='C1')
+    kw = dict(fmt='o', ms=4, color='k')
 
-    axs[0].errorbar(data.epoch_ra_hip - 5e4, data.pm_ra_hip, data.sig_hip_ra, **kw)
-    axs[0].errorbar(data.epoch_ra_gaia - 5e4, data.pm_ra_gaia, data.sig_gaia_ra, **kw)
+    axs[0].errorbar(data.epoch_ra_hip - 5e4, data.pm_ra_hip, data.sig_hip_ra, **kwH)
+    axs[0].errorbar(data.epoch_ra_gaia - 5e4, data.pm_ra_gaia, data.sig_gaia_ra, **kwG)
     axs[1].errorbar(0.5, data.pm_ra_hg, data.sig_hg_ra, **kw, mfc="w")
     axs[1].axhline(data.pm_ra_hg, color="k", zorder=-1)
     axs[1].set(yticks=[], xticks=[], xlim=(0, 1))
     axs[1].sharey(axs[0])
     axs[1].tick_params(left=False, labelleft=False)
 
-    axs[2].errorbar(data.epoch_dec_hip - 5e4, data.pm_dec_hip, data.sig_hip_dec, **kw)
-    axs[2].errorbar(data.epoch_dec_gaia - 5e4, data.pm_dec_gaia, data.sig_gaia_dec, **kw)
+    axs[2].errorbar(data.epoch_dec_hip - 5e4, data.pm_dec_hip, data.sig_hip_dec, **kwH)
+    axs[2].errorbar(data.epoch_dec_gaia - 5e4, data.pm_dec_gaia, data.sig_gaia_dec, **kwG)
     axs[3].errorbar(0.5, data.pm_dec_hg, data.sig_hg_dec, **kw, mfc='w')
     axs[3].axhline(data.pm_dec_hg, color='k', zorder=-1)
     axs[3].set(yticks=[], xticks=[])
@@ -1933,6 +1936,10 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, **kwargs):
     # axs[1].set(ylim=(mi, ma))
     # axs[1, 1].axis('off')
     # axs[1, 3].axis('off')
+
+    if show_legend:
+        axs[0].legend(['Hipparcos', 'Gaia'], ncols=2,
+                      bbox_to_anchor=(0, 1.11), loc='upper left')
     return fig, axs
 
 
