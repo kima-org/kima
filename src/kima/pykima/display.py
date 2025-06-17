@@ -73,7 +73,7 @@ def make_plots(res, options, save_plots=False):
 
 def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
                       show_detected=True, show_probabilities=False,
-                      show_title=True, **kwargs):
+                      show_title=True, verbose=True, **kwargs):
     """ Plot the histogram of the posterior for Np
 
     Args:
@@ -92,6 +92,8 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
             Display the probabilities on top of the histogram bars.
         show_title (bool, optional):
             Display the title on the plot
+        verbose (bool, optional):
+            Print the posterior ratios
         **kwargs:
             Keyword arguments to pass to the `ax.bar` method
 
@@ -148,7 +150,10 @@ def plot_posterior_np(res, ax=None, errors=False, show_ESS=True,
     )
 
     nn = n[np.nonzero(n)]
-    print('Np probability ratios: ', nn.flat[1:] / nn.flat[:-1])
+
+    if verbose:
+        print('Np probability ratios: ', nn.flat[1:] / nn.flat[:-1])
+
     if errors:
         from scipy.stats import multinomial
         rs = multinomial(res.ESS, prob).rvs(10000)
@@ -1978,6 +1983,9 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
 
     assert y.size == res.data.N, 'wrong dimensions!'
 
+    if offsets is not None:
+        extract_offset = False
+
     if extract_offset:
         if isinstance(extract_offset, float):
             y_offset = extract_offset
@@ -1998,6 +2006,10 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
     kw.update(**kwargs)
 
     if res.multi:
+        if offsets is not None:
+            msg = f'expected {res.n_instruments} offsets, got {offsets.size}'
+            assert offsets.size == res.n_instruments, msg
+
         for j in range(res.n_instruments):
             inst = res.instruments[j]
             m = res.data.obs == j + 1
@@ -2008,6 +2020,9 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
                     kw.update(alpha=1)
                 else:
                     kw.update(alpha=0.1)
+
+            if offsets is not None:
+                y[m] -= offsets[j]
 
             if outliers is None:
                 ax.errorbar(t[m] - time_offset, y[m] - y_offset, e[m], **kw)
@@ -2026,6 +2041,9 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
                 raise AttributeError
         except AttributeError:
             kw.update(label=res.instruments)
+
+        if offsets is not None:
+            y -= offsets
 
         if outliers is None:
             ax.errorbar(t - time_offset, y - y_offset, e, **kw)
@@ -2983,10 +3001,12 @@ def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
     fig.subplots_adjust(wspace=0.25, hspace=0.15)
     return fig
 
-def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
-                        show_vsys=False, isolate_known_object=True, isolate_transiting_planet=True,
-                        include_jitters_in_points=False, include_jitters_in_predict=True, 
-                        full_plot=False, show_outliers=False, **kwargs):
+
+def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=5000,
+                        subtract_offsets=False,
+                        show_vsys=False, show_gp=True, isolate_known_object=True, isolate_transiting_planet=True,
+                        isolate_apodized_keplerians=True, include_jitters_in_points=False, 
+                        include_jitters_in_predict=True, full_plot=False, show_outliers=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive. 
 
@@ -2995,6 +3015,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
             Number of posterior predictive curves to show. Defaults to 50.
         samples (array, optional):
             Specific posterior sample(s) to plot. Defaults to None.
+        tt (array, optional):
+            Time grid for the plots. Defaults to using `res._get_tt` or `res._get_ttGP`.
         over (float, optional):
             Curves are calculated covering 100*(1 + `over`)% of the timespan of
             the data. Defaults to 0.1.
@@ -3002,6 +3024,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
             Number of points for the time grid. Defaults to 5000.
         show_vsys (bool, optional):
             Show the systemic velocity for each sample. Defaults to False.
+        show_gp (bool, optional):
+            Show the GP prediction for each sample. Defaults to True.
         isolate_known_object (bool, optional):
             Show the Keplerian curves for the known object(s), if present in the
             model. Defaults to True.
@@ -3042,9 +3066,10 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         t -= 24e5
         M0_epoch -= 24e5
 
-    tt = res._get_tt(ntt, over)
-    if res.has_gp:
-        tt = res._get_ttGP()
+    if tt is None:
+        tt = res._get_tt(ntt, over)
+        if res.has_gp:
+            tt = res._get_ttGP(ntt, over)
 
     if t.size > 100:
         ncurves = min(10, ncurves)
@@ -3054,6 +3079,10 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
     if full_plot and ncurves > 1:
         print('full_plot can only be used when ncurves=1')
         full_plot = False
+    
+    if subtract_offsets and ncurves > 1:
+        print('subtract_offsets can only be used when ncurves=1')
+        subtract_offsets = False
 
     if samples.shape[0] == 1:
         ii = np.zeros(1, dtype=int)
@@ -3086,6 +3115,13 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
     cc = kwargs.pop('curve_color', 'k')
     gpc = kwargs.pop('gp_color', 'plum')
     actc = kwargs.pop('act_color', 'tomato')
+
+    if subtract_offsets:
+        # provide offsets and vsys to plot_data so they can be subtracted
+        kwargs['offsets'] = np.r_[
+            samples[0][res.indices['inst_offsets']],
+            samples[0][res.indices['vsys']]
+        ]
 
     _, y_offset = plot_data(res, ax, **kwargs)
 
@@ -3124,7 +3160,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         model = np.atleast_2d(res.eval_model(sample, tt))
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
-        if res.multi:
+        if res.multi and not subtract_offsets:
             model = res.burst_model(sample, tt, model)
             offset_model = res.burst_model(sample, tt, offset_model)
 
@@ -3137,7 +3173,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         ax.plot(tt, (stoc_model + model).T - y_offset,
                 color=color, alpha=alpha, zorder=-1)
 
-        if res.has_gp:
+        if res.has_gp and show_gp:
             m = (stoc_model + offset_model).T - y_offset
             ax.plot(tt, m, color=gpc, alpha=alpha)
 
