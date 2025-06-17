@@ -1950,7 +1950,7 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
 
 def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
-              legend=True, show_rms=False, outliers=None, **kwargs):
+              legend=True, show_rms=False, outliers=None, offsets=None, **kwargs):
 
     fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
     rhk_model = res.model is MODELS.RVFWHMRHKmodel and not (ignore_y3 or ignore_y2)
