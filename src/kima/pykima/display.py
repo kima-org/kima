@@ -3116,7 +3116,7 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
     gpc = kwargs.pop('gp_color', 'plum')
     actc = kwargs.pop('act_color', 'tomato')
 
-    if subtract_offsets:
+    if res.multi and subtract_offsets:
         # provide offsets and 0 to plot_data: the data will appear around vsys
         kwargs['offsets'] = np.r_[
             samples[0][res.indices['inst_offsets']],
