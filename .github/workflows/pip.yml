@@ -77,9 +77,9 @@ jobs:
         summary-always: true
         comment-always: true
 
-    # - uses: actions/upload-artifact@v4
-    #   if: always()
-    #   with:
-    #     name: mpl-results-${{ matrix.platform }}
-    #     path: tests/baseline
-    #     retention-days: 2
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mpl-results-${{ matrix.platform }}
+        path: tests/baseline
+        retention-days: 2
