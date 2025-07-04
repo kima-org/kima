@@ -74,6 +74,7 @@ jobs:
         external-data-json-path: ./cache/benchmark-data.json
         auto-push: false
         summary-always: true
+        comment-always: true
 
     # - uses: actions/upload-artifact@v4
     #   if: always()
