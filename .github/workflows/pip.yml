@@ -39,7 +39,6 @@ jobs:
     - name: Dependencies
       run: |
         pip install pip -U
-        pip install pytest pytest-mpl pytest-benchmark
 
     - name: Check versions
       run: |
@@ -47,14 +46,14 @@ jobs:
         pip --version
         cmake --version
 
-    # - name: Build and install kima
-    #   run: |
-    #     pip install --verbose .[test]
+    - name: Build and install kima
+      run: |
+        pip install --verbose .[test]
 
-    # - name: Test
-    #   run: |
-    #     python -m pytest -s tests/ 
-    #     python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
+    - name: Test
+      run: |
+        python -m pytest -s tests/ 
+        python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
 
     - name: Run benchmark
       run: |
