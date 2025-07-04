@@ -39,7 +39,6 @@ jobs:
     - name: Dependencies
       run: |
         pip install pip -U
-        pip install pytest pytest-mpl
 
     - name: Check versions
       run: |
@@ -49,12 +48,34 @@ jobs:
 
     - name: Build and install kima
       run: |
-        pip install --verbose .
+        pip install --verbose .[test]
 
     - name: Test
       run: |
         python -m pytest -s tests/ 
         python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
+
+    - name: Run benchmark
+      run: |
+        python -m pytest -s tests/test_benchmarks.py --benchmark-json output.json
+
+    - name: Download previous benchmark data
+      uses: actions/cache@v4
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark
+
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        tool: 'pytest'
+        output-file-path: output.json
+        external-data-json-path: ./cache/benchmark-data.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        skip-fetch-gh-pages: true
+        auto-push: false
+        summary-always: true
+        # comment-always: true
 
     - uses: actions/upload-artifact@v4
       if: always()
