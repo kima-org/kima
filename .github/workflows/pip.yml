@@ -72,6 +72,8 @@ jobs:
         tool: 'pytest'
         output-file-path: output.json
         external-data-json-path: ./cache/benchmark-data.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        skip-fetch-gh-pages: true
         auto-push: false
         summary-always: true
         comment-always: true
