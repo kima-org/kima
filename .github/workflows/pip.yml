@@ -65,7 +65,6 @@ jobs:
       with:
         tool: 'pytest'
         output-file-path: output.json
-        summary-always: true
         auto-push: false
 
     # - uses: actions/upload-artifact@v4
