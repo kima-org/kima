@@ -47,6 +47,12 @@ dev = [
     "mkdocs-git-revision-date-localized-plugin",
 ]
 
+test = [
+    "pytest",
+    "pytest-mpl",
+    "pytest-benchmark",
+]
+
 [project.urls]
 Homepage = "http://www.kima.science"
 Documentation = "http://www.kima.science/docs/"

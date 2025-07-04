@@ -39,7 +39,7 @@ jobs:
     - name: Dependencies
       run: |
         pip install pip -U
-        pip install pytest pytest-mpl
+        #pip install pytest pytest-mpl
 
     - name: Check versions
       run: |
@@ -49,7 +49,7 @@ jobs:
 
     - name: Build and install kima
       run: |
-        pip install --verbose .
+        pip install --verbose .[test]
 
     - name: Test
       run: |
