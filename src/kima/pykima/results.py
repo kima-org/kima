@@ -395,6 +395,7 @@ class KimaResults:
     information: float
     ESS: int
 
+    _star = None
     _debug = False
 
     def __init__(self, model, data=None, diagnostic=False, 
@@ -3050,10 +3051,17 @@ class KimaResults:
 
     @property
     def star(self):
+        if self._star:
+            return self._star
         if self.multi:
-            return get_star_name(self.data_file[0])
+            self._star = get_star_name(self.data_file[0])
         else:
-            return get_star_name(self.data_file)
+            self._star = get_star_name(self.data_file)
+        return self._star
+
+    @star.setter
+    def star(self, star):
+        self._star = star
 
     @property
     def instruments(self):
