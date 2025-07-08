@@ -3871,36 +3871,57 @@ def interactive_plotter(res):
 
 
 def report(res):
+    from .utils import distribution_support
     fig, axs = plt.subplot_mosaic('aaab\npppt\nccc.\nddde', figsize=(8.3, 11.7), constrained_layout=True)
 
     res.plot_random_samples(ax=axs['a'])
     axs['a'].set(title='')
+    axs['a'].legend(ncol=3, fontsize=8, loc='upper right', bbox_to_anchor=(1.0, 1.0))
 
-    res.plot1(ax=axs['b'], show_ESS=False)
-    axs['b'].set(ylabel='posterior', title='')
+    if res.fix:
+        axs['b'].axis('off')
+    else:
+        res.plot1(ax=axs['b'], show_ESS=False, verbose=False)
+        axs['b'].set(ylabel='posterior', title='')
 
-    res.plot2(ax=axs['p'])
-    axs['p'].set(title='', ylabel='posterior')
+    if res.max_components == 0 and not res.KO and not res.TR:
+        axs['p'].axis('off')
+        axs['c'].axis('off')
+        axs['d'].axis('off')
+    else:
+        res.plot2(ax=axs['p'])
+        axs['p'].set(title='', ylabel='posterior')
 
-    res.plot3(ax1=axs['c'], ax2=axs['d'])
-    axs['c'].set(title='')
-    axs['d'].set(title='')
+        res.plot3(ax1=axs['c'], ax2=axs['d'])
+        if res.ESS < 1000:
+            for line in axs['c'].get_lines():
+                line.set_alpha(1.0)
+            for line in axs['d'].get_lines():
+                line.set_alpha(1.0)
 
-    res.hist_jitter(ax=axs['e'])
+        for ax in (axs['c'], axs['d']):
+            ax.set_title('')
+            ax.sharex(axs['p'])
+        axs['c'].set_ylim(distribution_support(res.priors['Kprior']))
+        axs['d'].set_ylim(0, 1)
+
+    res.hist_jitter(ax=axs['e'], show_title=False, show_stellar_jitter=False)
     axs['e'].set(title='')
 
     axs['t'].axis('off')
     y = 0
-    axs['t'].text(0, y, res.model); y -= 1
+    axs['t'].text(0, y, str(res.model).replace('MODELS.', '')); y -= 1
     axs['t'].text(0, y, f'logZ: {res.evidence:.2f}'); y -= 1
     axs['t'].text(0, y, f'ESS: {res.ESS}'); y -= 1
     axs['t'].text(0, y, f'fix: {res.fix}, $N_{{p, max}}: {res.npmax}$'); y -= 1
     if res.KO:
-        axs['t'].text(0, y, f'KO: True'); y -= 1
+        axs['t'].text(0, y, 'KO: True'); y -= 1
     if res.TR:
-        axs['t'].text(0, y, f'TR: True'); y -= 1
+        axs['t'].text(0, y, 'TR: True'); y -= 1
     if res.trend:
         axs['t'].text(0, y, f'trend: True, degree: {res.trend_degree}'); y -= 1
+    if res.studentt:
+        axs['t'].text(0, y, 'student-t: True'); y -= 1
     axs['t'].set(ylim=(y-1, 1))
 
 
