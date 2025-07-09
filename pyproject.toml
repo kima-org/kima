@@ -82,7 +82,7 @@ cmake.minimum-version = "3.17"
 
 # The build type to use when building the project. 
 # Valid options are: "Debug", "Release", "RelWithDebInfo", "MinSizeRel"
-cmake.build-type = "Release"
+cmake.build-type = "Debug"
 
 [tool.cibuildwheel]
 # Necessary to see build output from the actual compilation
