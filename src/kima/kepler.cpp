@@ -1321,8 +1321,8 @@ Args:
         Reference epoch for the mean anomaly (M=0 at this time) [days]
 
 Returns:
-    w (array):
-        Gaia along-scan 'abscissa' function evaluated at input times `t`
+    wk (array):
+        Gaia along-scan 'abscissa' function for a keplerian orbit evaluated at input times `t`
 )D";
 
 
@@ -1434,11 +1434,11 @@ NB_MODULE(kepler, m) {
                                   const double &M0_epoch)
     {
         size_t size = t.size();
-        struct Temp { std::vector<double> w; };
+        struct Temp { std::vector<double> wk; };
         Temp *temp = new Temp();
-        temp->w = brandt::keplerian_gaia(t, psi, A, B, F, G, ecc, P, M0, M0_epoch);
+        temp->wk = brandt::keplerian_gaia(t, psi, A, B, F, G, ecc, P, M0, M0_epoch);
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
-        return nb::ndarray<nb::numpy, double>(temp->w.data(), {size}, owner);
+        return nb::ndarray<nb::numpy, double>(temp->wk.data(), {size}, owner);
     }, "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_GAIA_DOC);
 
 }

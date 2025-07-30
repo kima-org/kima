@@ -46,6 +46,48 @@ def test_keplerian_is_array():
     v = keplerian(t, P, K, ecc, w, M0, M0_epoch)
     assert isinstance(v, np.ndarray)
 
+    from kima.kepler import keplerian_etv
+
+    epochs = np.linspace(0,10,11,dtype=int)
+    P, K, ecc, w, M0, ephem1 = 1.0, 1.0, 0.0, 0.0, 0.0, 0.1
+    tau = keplerian_etv(epochs, P, K, ecc, w, M0, ephem1)
+    assert isinstance(tau, np.ndarray)
+
+    from kima.kepler import keplerian_gaia
+
+    t = np.linspace(0, 1, 10)
+    psi = np.linspace(0,2*np.pi,10)
+    A, B, F, G, ecc, P, M0, M0_epoch = 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0
+    wk = keplerian_gaia(t, psi, A, B, F, G, ecc, P, M0, M0_epoch)
+    assert isinstance(wk, np.ndarray)
+
+    from kima.postkepler import post_keplerian
+
+    t = np.linspace(0, 1, 10)
+    P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid = 1.0, 1.0, 0.2, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, True, True
+    v = post_keplerian(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid)
+    assert isinstance(v, np.ndarray)
+
+    from kima.postkepler import post_keplerian_sb2
+
+    t = np.linspace(0, 1, 10)
+    P, K, q, ecc, w, wdot, M0, M0_epoch, cosi, R1, R2, GR, Tid = 1.0, 1.0, 1.0, 0.2, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, True, True
+    v1, v2 = post_keplerian_sb2(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid)
+    assert isinstance(v1, np.ndarray)
+    assert isinstance(v2, np.ndarray)
+
+    from kima.kepler import keplerian_rvpm
+
+    t_rv = np.linspace(0, 1, 10)
+    t_pm = np.array([0,0,1,1])
+    parallax,P, K, ecc, w, M0, M0_epoch, inc, Omega = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, np.pi/2, 0.0
+    v,pmra,pmdec,pmhg = keplerian_rvpm(t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, Omega)
+    assert isinstance(v, np.ndarray)
+    assert isinstance(pmra, np.ndarray)
+    assert isinstance(pmdec, np.ndarray)
+    assert isinstance(pmhg, np.ndarray)
+
+
 
 def test_keplerian_etv():
     from kima.kepler import keplerian_etv
