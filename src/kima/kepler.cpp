@@ -1416,7 +1416,7 @@ NB_MODULE(kepler, m) {
                                   const double &w, const double &M0,
                                   const double &ephem1)
     {
-        size_t size = t.size();
+        size_t size = epochs.size();
         struct Temp { std::vector<double> tau; };
         Temp *temp = new Temp();
         temp->tau = brandt::keplerian_etv(epochs, P, K, ecc, w, M0, ephem1);

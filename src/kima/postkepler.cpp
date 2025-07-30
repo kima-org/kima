@@ -387,8 +387,10 @@ Args:
         Whether to include the radial velocity correction from Tides (only suitable for circular orbits)
 
 Returns:
-    v (array):
-        Keplerian function with potential corrections evaluated at input times `t`
+    rv1 (array):
+        Keplerian function for the radial velocity of the primary star in the binary orbit, with potential corrections, evaluated at input times `t`
+    rv2 (array):
+        Keplerian function for the radial velocity of the secondary star in the binary orbit, with potential corrections, evaluated at input times `t`
 )D";
 
 
@@ -405,7 +407,7 @@ NB_MODULE(postkepler, m) {
         size_t size = t.size();
         struct Temp { std::vector<double> v; };
         Temp *temp = new Temp();
-        temp->v = brandt::keplerian_prec(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid);
+        temp->v = postKep::keplerian_prec(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid);
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
         return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
     }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_DOC);
@@ -420,11 +422,19 @@ NB_MODULE(postkepler, m) {
                                   const double &R1, const double &R2, bool GR, bool Tid)
     {
         size_t size = t.size();
-        struct Temp { std::vector<double> v; };
+        auto[rv1,rv2] = postKep::keplerian_prec_sb2(t, P, K, q, ecc, w, wdot, M0, M0_epoch, cosi, R1, R2, GR, Tid);
+        struct Temp { 
+            std::vector<double> rv1; 
+            std::vector<double> rv2;
+        };
         Temp *temp = new Temp();
-        temp->v = brandt::keplerian_prec_sb2(t, P, K, q, ecc, w, wdot, M0, M0_epoch, cosi, R1, GR, Tid);
+        temp->rv1 = rv1;
+        temp->rv2 = rv2;
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
-        return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
+        return std::make_tuple(
+            nb::ndarray<nb::numpy, double>(temp->rv1.data(), {size}, owner),
+            nb::ndarray<nb::numpy, double>(temp->rv2.data(), {size}, owner)
+        );
     }, "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_SB2_DOC);
 
 }

@@ -6,7 +6,7 @@ __all__ = [
     'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 'BINARIESmodel',
     'GAIAmodel', 'RVGAIAmodel',
     'MODELS',
-    'keplerian', 'distributions',
+    'keplerian', 'post_keplerian', 'distributions',
     'run', 'load_results',
 ]
 
@@ -81,6 +81,7 @@ from .pykima.cli import cli_clean as cleanup
 
 # sub-packages
 from .kepler import keplerian
+from .postkepler import post_keplerian
 #from . import spleaf
 from . import distributions
 from . import kmath

@@ -65,7 +65,7 @@ set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
 set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp 
                  src/kima/default_priors.cpp
-                 src/kima/kepler.cpp src/kima/AMDstability.cpp src/kima/kmath.cpp)
+                 src/kima/kepler.cpp src/kima/postkepler.cpp src/kima/AMDstability.cpp src/kima/kmath.cpp)
 
 set(GP_UNITS src/kima/GP.cpp src/kima/bessel-library.cpp)
 
@@ -215,7 +215,7 @@ target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module kmath distributions default_priors kepler GP transits AMDstability)
+foreach(module kmath distributions default_priors kepler postkepler GP transits AMDstability)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
