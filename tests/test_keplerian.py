@@ -5,6 +5,8 @@ import numpy as np
 def test_import():
     from kima import keplerian
     from kima import kepler
+    from kima import postkepler
+    from kima import post_keplerian
 
 def test_keplerian():
     from kima import keplerian, kepler
