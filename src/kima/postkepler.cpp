@@ -314,10 +314,117 @@ namespace MassConv
     }
 }
 
+auto KEPLERIAN_PREC_DOC = R"D(
+Calculate the Keplerian curve of the orbit of a dark companion around a star at times `t` with post-Keplerian additions. Suited to the orbit of a close binary star.
+
+Args:
+    t (array):
+        Times at which to calculate the Keplerian function
+    P (float):
+        Orbital period [days]
+    K (float):
+        Semi-amplitude
+    ecc (float):
+        Orbital eccentricity
+    w (float):
+        Argument of pericentre [rad]
+    wdot (float):
+        Pericentre precession rate [arcsecs/year]
+    M0 (float):
+        Mean anomaly at the epoch [rad]
+    M0_epoch (float):
+        Reference epoch for the mean anomaly (M=0 at this time) [days]
+    cosi (float):
+        Cosine of the inclination angle of the orbit (=0 for an edge-on orbit)
+    M1 (float):
+        Mass of primary star [Msun]
+    M2 (float):
+        Mass of secondary star [Msun]
+    R1 (float):
+        Radius of primary star [Rsun] If not specfied and tidal correction included the relation R = M^0.8 will be used.
+    GR (bool):
+        Whether to include the radial velocity corrections from General Relativity (Transverse Doppler, Light Travel-Time, and Graviatational Redshift)
+    Tid (bool):
+        Whether to include the radial velocity correction from Tides (only suitable for circular orbits)
+
+Returns:
+    v (array):
+        Keplerian function with potential corrections evaluated at input times `t`
+)D";
+
+auto KEPLERIAN_PREC_SB2_DOC = R"D(
+Calculate the Keplerian curve a double-lined binary star at times `t` with post-Keplerian additions. Suited to the orbit of a close double-lined binary stars. 
+Masses of the individual stars do not need to be provided as they can be calculated, but knowledge of the inclination of the system is important to be able to make use of the corrections.
+
+Args:
+    t (array):
+        Times at which to calculate the Keplerian function
+    P (float):
+        Orbital period [days]
+    K (float):
+        Semi-amplitude
+    q (float):
+        Binary mass ratio (defined as M2/M1)
+    ecc (float):
+        Orbital eccentricity
+    w (float):
+        Argument of pericentre [rad]
+    wdot (float):
+        Pericentre precession rate [arcsecs/year]
+    M0 (float):
+        Mean anomaly at the epoch [rad]
+    M0_epoch (float):
+        Reference epoch for the mean anomaly (M=0 at this time) [days]
+    cosi (float):
+        Cosine of the inclination angle of the orbit (=0 for an edge-on orbit)
+    R1 (float):
+        Radius of primary star [Rsun] If not specfied and tidal correction included the relation R = M^0.8 will be used.
+    R2 (float):
+        Radius of secondary star [Rsun] If not specfied and tidal correction included the relation R = M^0.8 will be used.
+    GR (bool):
+        Whether to include the radial velocity corrections from General Relativity (Transverse Doppler, Light Travel-Time, and Graviatational Redshift)
+    Tid (bool):
+        Whether to include the radial velocity correction from Tides (only suitable for circular orbits)
+
+Returns:
+    v (array):
+        Keplerian function with potential corrections evaluated at input times `t`
+)D";
+
+
 NB_MODULE(postkepler, m) {
-    m.def("keplerian_prec", &postKep::keplerian_prec,
-          "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a);
-    m.def("keplerian_prec_sb2", &postKep::keplerian_prec_sb2,
-          "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a);
+    // m.def("post_keplerian", &postKep::keplerian_prec,
+    //       "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a);
+
+    m.def("post_keplerian", [](const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
+                                  const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
+                                  const double &R1, bool GR, bool Tid)
+    {
+        size_t size = t.size();
+        struct Temp { std::vector<double> v; };
+        Temp *temp = new Temp();
+        temp->v = brandt::keplerian_prec(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
+    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_DOC);
+
+    // m.def("post_keplerian_sb2", &postKep::keplerian_prec_sb2,
+    //       "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a);
+    
+    m.def("post_keplerian_sb2", [](const std::vector<double> &t, const double &P,
+                                  const double &K, const double &q, const double &ecc,
+                                  const double &w, const double &wdot, const double &M0,
+                                  const double &M0_epoch, const double &cosi, 
+                                  const double &R1, const double &R2, bool GR, bool Tid)
+    {
+        size_t size = t.size();
+        struct Temp { std::vector<double> v; };
+        Temp *temp = new Temp();
+        temp->v = brandt::keplerian_prec_sb2(t, P, K, q, ecc, w, wdot, M0, M0_epoch, cosi, R1, GR, Tid);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
+    }, "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_SB2_DOC);
 
 }

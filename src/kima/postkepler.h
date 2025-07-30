@@ -4,6 +4,12 @@
 #include <iostream>
 #include "kepler.h"
 
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/ndarray.h>
+namespace nb = nanobind;
+using namespace nb::literals;
+
 namespace postKep
 {
     double period_correction(double p_obs, double wdot);
