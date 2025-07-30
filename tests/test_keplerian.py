@@ -8,36 +8,6 @@ def test_import():
     from kima import postkepler
     from kima import post_keplerian
 
-def test_keplerian():
-    from kima import keplerian, kepler
-
-    t = np.linspace(0, 1, 10)
-    P, K, ecc, w = 1.0, 1.0, 0.0, 0.0
-
-    assert np.isfinite(keplerian([0.0], P, K, ecc, w, 0.0, 0.0))
-    assert np.isfinite(keplerian(t, P, K, ecc, w, 0.0, 0.0)).all()
-    np.testing.assert_allclose(
-        keplerian([0.0, P/2, P], P, K, ecc, w, 0.0, 0.0),
-        [K, -K, K]
-    )
-
-    ecc = 0.1
-    np.testing.assert_allclose(
-        keplerian([0.0, P/2, P], P, K, ecc, w, 0.0, 0.0),
-        [K+ecc, -K+ecc, K+ecc]
-    )
-
-    t = np.sort(np.random.uniform(0, 1, size=100))
-    for _ in range(10):
-        P = np.random.uniform(2, 8)
-        K = np.random.uniform(0.1, 10.0)
-        ecc = np.random.uniform(0, 1)
-        w = np.random.uniform(0, 2*np.pi)
-        np.testing.assert_allclose(
-            keplerian(t, P, K, ecc, w, 0.0, 0.0),
-            kepler.keplerian2(t, P, K, ecc, w, 0.0, 0.0)
-        )
-
 def test_keplerian_is_array():
     from kima import keplerian
 
@@ -87,12 +57,87 @@ def test_keplerian_is_array():
     assert isinstance(pmdec, np.ndarray)
     assert isinstance(pmhg, np.ndarray)
 
+def test_keplerian():
+    from kima import keplerian, kepler
+
+    t = np.linspace(0, 1, 10)
+    P, K, ecc, w = 1.0, 1.0, 0.0, 0.0
+
+    assert np.isfinite(keplerian([0.0], P, K, ecc, w, 0.0, 0.0))
+    assert np.isfinite(keplerian(t, P, K, ecc, w, 0.0, 0.0)).all()
+    np.testing.assert_allclose(
+        keplerian([0.0, P/2, P], P, K, ecc, w, 0.0, 0.0),
+        [K, -K, K]
+    )
+
+    ecc = 0.1
+    np.testing.assert_allclose(
+        keplerian([0.0, P/2, P], P, K, ecc, w, 0.0, 0.0),
+        [K+ecc, -K+ecc, K+ecc]
+    )
+
+    t = np.sort(np.random.uniform(0, 1, size=100))
+    for _ in range(10):
+        P = np.random.uniform(2, 8)
+        K = np.random.uniform(0.1, 10.0)
+        ecc = np.random.uniform(0, 1)
+        w = np.random.uniform(0, 2*np.pi)
+        np.testing.assert_allclose(
+            keplerian(t, P, K, ecc, w, 0.0, 0.0),
+            kepler.keplerian2(t, P, K, ecc, w, 0.0, 0.0)
+        )
+
+def test_post_keplerians():
+    from kima.postkepler import post_keplerian, post_keplerian_sb2
+    
+    t = np.linspace(0, 1, 10)
+    P, K, q, ecc, w, wdot = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0
+    cosi, M1, M2, R1, R2, GR, Tid = 0.0, 1.0, 1.0, 1.0, 1.0, False, False
+
+    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid))
+    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True))
+    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid)).all()
+    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True)).all()
+
+    assert np.isfinite(post_keplerian_sb2([0.0],P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,GR,Tid)).all()
+    assert np.isfinite(post_keplerian_sb2([0.0],P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,True,True)).all()
+    assert np.isfinite(post_keplerian_sb2(t,P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,GR,Tid)).all()
+    assert np.isfinite(post_keplerian_sb2(t,P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,True,True)).all()
+
+    np.testing.assert_allclose(
+        post_keplerian([0.0, P/2, P], P, K, ecc, w, wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid),
+        [K, -K, K]
+    )
+
+    q = 0.5
+    np.testing.assert_allclose(
+        post_keplerian_sb2([0.0, P/2, P], P, K, q, ecc, w, wdot,0.0,0.0,cosi,R1,R2,GR,Tid),
+        ([K, -K, K],[-K/q,K/q,-K/q])
+    )
+
+    ecc = 0.1
+    np.testing.assert_allclose(
+        post_keplerian([0.0, P/2, P], P, K, ecc, w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid),
+        [K+ecc, -K+ecc, K+ecc]
+    )
+
+    np.testing.assert_allclose(
+        post_keplerian_sb2([0.0, P/2, P], P, K, q, ecc, w, wdot,0.0,0.0,cosi,R1,R2,GR,Tid),
+        ([K*(1+ecc), K*(-1 + ecc), K*(1+ecc)],[-K/q*(1+ecc), -K/q*(-1 + ecc), -K/q*(1+ecc)])
+    )
+    
+
+    # ecc = 0.1
+    # np.testing.assert_allclose(
+    #     post_keplerian_sb2([0.0, P/2, P], P, K, ecc, w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid),
+    #     [K+ecc, -K+ecc, K+ecc]
+    # )
 
 
 def test_keplerian_etv():
     from kima.kepler import keplerian_etv
 
-    epochs = np.linspace(0, 1, 10)
+    epochs = np.linspace(0, 10, 11, dtype=int)
     P, K, ecc, w, eph1 = 1.0, 1.0, 0.0, np.pi/2, 0.01
     
     assert np.isfinite(keplerian_etv([0.0], P, K, ecc, w, 0.0, eph1))
