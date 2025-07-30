@@ -1295,6 +1295,37 @@ Returns:
 )D";
 
 
+auto KEPLERIAN_GAIA_DOC = R"D(
+Calculate the Keplerian curve of one planet at times `t`
+
+Args:
+    t (array):
+        Times at which to calculate the Keplerian function
+    psi (array):
+        Scan angle of the Gaia satellite at time t [rad]
+    A (float):
+        Thiele-innes parameter A [mas]
+    B (float):
+        Thiele-innes parameter B [mas]
+    F (float):
+        Thiele-innes parameter F [mas]
+    G (float):
+        Thiele-innes parameter G [mas]
+    ecc (float):
+        Orbital eccentricity
+    P (float):
+        Orbital period P [days]
+    M0 (float):
+        Mean anomaly at the epoch [rad]
+    M0_epoch (float):
+        Reference epoch for the mean anomaly (M=0 at this time) [days]
+
+Returns:
+    w (array):
+        Gaia along-scan 'abscissa' function evaluated at input times `t`
+)D";
+
+
 NB_MODULE(kepler, m) {
     m.def("murison_solver", 
           [](double M, double ecc) { return murison::solver(M, ecc); },
@@ -1394,7 +1425,20 @@ NB_MODULE(kepler, m) {
     }, "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a, KEPLERIAN_ETV_DOC);
 
 
-    m.def("keplerian_gaia", &brandt::keplerian_gaia,
-          "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a);
+    // m.def("keplerian_gaia", &brandt::keplerian_gaia,
+    //       "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a);
+
+    m.def("keplerian_gaia", [](const std::vector<double> &t, const std::vector<double> &psi, const double &A,
+                                  const double &B, const double &F, const double &G,
+                                  const double &ecc, const double P, const double &M0,
+                                  const double &M0_epoch)
+    {
+        size_t size = t.size();
+        struct Temp { std::vector<double> w; };
+        Temp *temp = new Temp();
+        temp->w = brandt::keplerian_gaia(t, psi, A, B, F, G, ecc, P, M0, M0_epoch);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->w.data(), {size}, owner);
+    }, "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a, KEPLERIAN_GAIA_DOC);
 
 }
