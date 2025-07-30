@@ -1270,6 +1270,30 @@ Returns:
         Keplerian function evaluated at input times `t`
 )D";
 
+auto KEPLERIAN_ETV_DOC = R"D(
+Calculate the LTTE Keplerian curve of one planet at each epoch
+
+Args: 
+    epochs (array):
+        epochs at which to calculate the Keplerian function, i.e. the numbering of the eclipses
+    P (float):
+        Orbital period of planet[days]
+    K (float):
+        Semi-amplitude [s]
+    ecc (float):
+        Orbital eccentricity
+    w (float):
+        Argument of periastron [rad]
+    M0 (float):
+        Mean anomaly at the epoch [rad]
+    ephem1 (float):
+        Linear ephemeris term, i.e. orbital period of the binary at reference epoch = 0 [days]
+
+Returns:
+    tau (array):
+        Keplerian function evaluated at input epochs [s]
+)D";
+
 
 NB_MODULE(kepler, m) {
     m.def("murison_solver", 
@@ -1353,8 +1377,22 @@ NB_MODULE(kepler, m) {
     m.def("keplerian2", &brandt::keplerian2,
           "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "M0_epoch"_a);
 
-    m.def("keplerian_etv", &brandt::keplerian_etv,
-          "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a);
+    // m.def("keplerian_etv", &brandt::keplerian_etv,
+    //       "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a);
+
+    m.def("keplerian_etv", [](const std::vector<double> &epochs, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &M0,
+                                  const double &ephem1)
+    {
+        size_t size = t.size();
+        struct Temp { std::vector<double> tau; };
+        Temp *temp = new Temp();
+        temp->tau = brandt::keplerian_etv(epochs, P, K, ecc, w, M0, ephem1);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->tau.data(), {size}, owner);
+    }, "epochs"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "M0"_a, "ephem1"_a, KEPLERIAN_ETV_DOC);
+
 
     m.def("keplerian_gaia", &brandt::keplerian_gaia,
           "t"_a, "psi"_a, "A"_a, "B"_a,"F"_a, "G"_a, "ecc"_a, "P"_a, "M0"_a, "M0_epoch"_a);
