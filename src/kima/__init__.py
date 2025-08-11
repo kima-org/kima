@@ -69,6 +69,7 @@ class HGPMdata(HGPMdata_original):
     def plot(self, *args, **kwargs):
         return plot_HGPMdata(self, *args, **kwargs)
 
+HGPMdata_original.plot = HGPMdata.plot
 
 
 
