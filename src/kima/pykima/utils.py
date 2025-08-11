@@ -23,6 +23,32 @@ mjup2msun = 0.0009545942339693249     # 1 Jupiter mass in solar masses
 mearth2msun = 3.0034893488507934e-06  # 1 Earth mass in solar masses
 
 
+def sounds(on=True):
+    import chime
+    chime.theme('material')
+    import kima
+    kima._SOUNDS_ = on
+
+def sounds_off():
+    sounds(False)
+
+def maybe_success_sound():
+    import kima
+    if kima._SOUNDS_:
+        import chime
+        chime.success(sync=False)
+
+def maybe_error_sound():
+    import kima
+    if kima._SOUNDS_:
+        import chime
+        chime.error(sync=False)
+
+def is_interactive():
+    import __main__ as main
+    return not hasattr(main, '__file__')
+
+
 def get_kima_dir():
     here = os.path.dirname(os.path.dirname(__file__))
     return here
