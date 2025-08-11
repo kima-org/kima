@@ -72,9 +72,26 @@ class HGPMdata(HGPMdata_original):
 HGPMdata_original.plot = HGPMdata.plot
 
 
+this = sys.modules[__name__]
+this._SOUNDS_ = False
+from .pykima.utils import sounds, maybe_success_sound, maybe_error_sound
 
-# kima.run
-from .Sampler import run
+# kima.run, and wrapper with sounds
+from .Sampler import run as _run_really
+
+def run(*args, **kwargs):
+    try:
+        _ = _run_really(*args, **kwargs)
+    except Exception as e:
+        maybe_error_sound()
+        print()
+        raise e from None
+    else:
+        maybe_success_sound()
+
+run.__doc__ = _run_really.__doc__
+
+
 # kima.load_results
 from .pykima.results import load_results, KimaResults
 # kima.cleanup
