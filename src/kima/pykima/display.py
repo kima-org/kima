@@ -1557,13 +1557,16 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     RVFWHM = res.model is MODELS.RVFWHMmodel
     RVFWHMRHK = res.model is MODELS.RVFWHMRHKmodel
     SPLEAF = res.model is MODELS.SPLEAFmodel
+    _models_with_stellar_jitter = (
+        MODELS.RVmodel, MODELS.RVHGPMmodel
+    )
 
     all_in_one_plot = False
 
     n_jitters = res.n_jitters
 
     if not show_stellar_jitter:
-        if res.model is MODELS.RVmodel and res.multi:
+        if res.model in _models_with_stellar_jitter and res.multi:
             n_jitters -= 1
 
     if ax is None:
@@ -1611,7 +1614,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
 
     # trick the loop with a None axis
     if not show_stellar_jitter:
-        if res.model is MODELS.RVmodel and res.multi:
+        if res.model in _models_with_stellar_jitter and res.multi:
             axs = np.r_[None, axs]
 
     for i, ax in enumerate(axs):
@@ -1641,7 +1644,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                 prior_name = 'Jprior' if j==0 else f'J{j+1}prior'
                 prior = distribution_rvs(res.priors[prior_name], size=res.ESS)
             else:
-                if res.model is MODELS.RVmodel and res.multi and i==0:
+                if res.model in _models_with_stellar_jitter and res.multi and i==0:
                     prior = distribution_rvs(res.priors['stellar_jitter_prior'], size=res.ESS)
                 else:
                     prior = distribution_rvs(res.priors['Jprior'], size=res.ESS)
@@ -1672,7 +1675,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                 ax.text(s, 0.2, r'SD RV', color='g', **kw)
 
     if not show_stellar_jitter:
-        if res.model is MODELS.RVmodel and res.multi:
+        if res.model in _models_with_stellar_jitter and res.multi:
             axs = axs[1:]
 
     for ax in axs:
@@ -2999,6 +3002,85 @@ def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
 
     fig.tight_layout()
     fig.subplots_adjust(wspace=0.25, hspace=0.15)
+    return fig
+
+
+def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
+              include_planets=None, **kwargs):
+    if res.model != MODELS.RVHGPMmodel:
+        print('Model is not RVHGPMmodel! plot_hgpm() doing nothing...')
+        return
+    from ..kepler import keplerian_rvpm
+
+    t_ra = np.linspace(pm_data.epoch_ra_hip-1000, pm_data.epoch_ra_gaia+1000, 500)
+    t_dec = np.linspace(pm_data.epoch_dec_hip-1000, pm_data.epoch_dec_gaia+1000, 500)
+    t_pm = np.empty((t_ra.size + t_dec.size,), dtype=t_ra.dtype)
+    t_pm[0::2] = t_ra
+    t_pm[1::2] = t_dec
+
+    if normalize:
+        p = res.maximum_likelihood_sample(printit=False)
+        pm_ra_bary = p[res.indices['pm_ra_bary']]
+        pm_dec_bary = p[res.indices['pm_dec_bary']]
+        fig, axs = pm_data.plot(pm_ra_bary=pm_ra_bary, pm_dec_bary=pm_dec_bary)
+    else:
+        fig, axs = pm_data.plot()
+
+    fig.set_size_inches(10, 4)
+
+    if include_planets is None:
+        include_planets = np.arange(res.max_components)
+
+    ncurves = min(ncurves, res.ESS)
+
+    # handles, labels = axs[0].get_legend_handles_labels()
+    # print(handles)
+
+    for i in np.random.choice(np.arange(res.ESS), size=ncurves, replace=False):
+    # for i in range(res.ESS):
+        p = res.posterior_sample[i]
+
+        model_ra = np.zeros_like(t_pm)
+        model_dec = np.zeros_like(t_pm)
+
+        for j in range(int(p[res.indices['np']])):
+            if j not in include_planets:
+                continue
+            model = keplerian_rvpm(
+                res.data.t, t_pm, 
+                p[res.indices['parallax']], 
+                p[res.indices['planets.P']][j], 
+                p[res.indices['planets.K']][j],
+                p[res.indices['planets.e']][j],
+                p[res.indices['planets.w']][j],
+                p[res.indices['planets.φ']][j],
+                res.M0_epoch, 
+                p[res.indices['planets.i']][j],
+                p[res.indices['planets.W']][j]
+            )
+            model_ra += model[1]
+            model_dec += model[2]
+
+        pm_ra_bary = p[res.indices['pm_ra_bary']]
+        pm_dec_bary = p[res.indices['pm_dec_bary']]
+
+
+        kw = dict(color='k', alpha=0.1 if ncurves > 10 else 1.0, zorder=-1, lw=0.5)
+        kw_line = dict(ls='--', color='tomato', alpha=0.1)
+
+        if normalize:
+            axs[0].plot(t_pm[0::2] - 5e4, model_ra[0::2] + pm_ra_bary, **kw)
+            axs[2].plot(t_pm[1::2] - 5e4, model_dec[1::2] + pm_dec_bary, **kw)
+        else:
+            axs[0].axhline(pm_ra_bary, **kw_line)
+            axs[2].axhline(pm_dec_bary, **kw_line)
+            axs[0].plot(t_pm[0::2] - 5e4, pm_ra_bary + model_ra[0::2], **kw)
+            axs[2].plot(t_pm[1::2] - 5e4, pm_dec_bary + model_dec[1::2], **kw)
+    
+    for ax in axs[::2]:
+        ax.set_xlim(-4000, 10_000)
+        # ax.set_ylim(-40, 40)
+    
     return fig
 
 
