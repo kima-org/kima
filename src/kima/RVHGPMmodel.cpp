@@ -32,17 +32,11 @@ void RVHGPMmodel::set_known_object(size_t n)
     // planet_perturb_prob = 0.5;
     // jitKO_perturb_prob = 0.3;
 
-    KO_Pprior.resize(n);
-    KO_Kprior.resize(n);
-    KO_eprior.resize(n);
-    KO_phiprior.resize(n);
-    KO_wprior.resize(n);
+    KO_Pprior.resize(n); KO_Kprior.resize(n); KO_eprior.resize(n); KO_phiprior.resize(n); KO_wprior.resize(n);
+    KO_iprior.resize(n); KO_Omegaprior.resize(n);
 
-    KO_P.resize(n);
-    KO_K.resize(n);
-    KO_e.resize(n);
-    KO_phi.resize(n);
-    KO_w.resize(n);
+    KO_P.resize(n); KO_K.resize(n); KO_e.resize(n); KO_phi.resize(n); KO_w.resize(n);
+    KO_i.resize(n); KO_Omega.resize(n);
 }
 
 void RVHGPMmodel::set_transiting_planet(size_t n)
@@ -52,17 +46,9 @@ void RVHGPMmodel::set_transiting_planet(size_t n)
     // planet_perturb_prob = 0.5;
     // jitKO_perturb_prob = 0.3;
 
-    TR_Pprior.resize(n);
-    TR_Kprior.resize(n);
-    TR_eprior.resize(n);
-    TR_Tcprior.resize(n);
-    TR_wprior.resize(n);
+    TR_Pprior.resize(n); TR_Kprior.resize(n); TR_eprior.resize(n); TR_Tcprior.resize(n); TR_wprior.resize(n);
 
-    TR_P.resize(n);
-    TR_K.resize(n);
-    TR_e.resize(n);
-    TR_Tc.resize(n);
-    TR_w.resize(n);
+    TR_P.resize(n); TR_K.resize(n); TR_e.resize(n); TR_Tc.resize(n); TR_w.resize(n);
 }
 
 void RVHGPMmodel::set_apodized_keplerians(size_t n)
@@ -70,27 +56,21 @@ void RVHGPMmodel::set_apodized_keplerians(size_t n)
     apodized_keplerians = true;
     n_apodized_keplerians = n;
 
-    AK_Pprior.resize(n);
-    AK_Kprior.resize(n);
-    AK_eprior.resize(n);
-    AK_phiprior.resize(n);
-    AK_wprior.resize(n);
-    AK_tauprior.resize(n);
-    AK_t0prior.resize(n);
+    AK_Pprior.resize(n); AK_Kprior.resize(n); AK_eprior.resize(n); AK_phiprior.resize(n); AK_wprior.resize(n); 
+    AK_tauprior.resize(n); AK_t0prior.resize(n);
 
-    AK_P.resize(n);
-    AK_K.resize(n);
-    AK_e.resize(n);
-    AK_phi.resize(n);
-    AK_w.resize(n);
-    AK_tau.resize(n);
-    AK_t0.resize(n);
+    AK_P.resize(n); AK_K.resize(n); AK_e.resize(n); AK_phi.resize(n); AK_w.resize(n);
+    AK_tau.resize(n); AK_t0.resize(n);
 }
 
 
 /* set default priors if the user didn't change them */
 void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
 {
+    #if DEBUG
+    std::cout << std::endl << "setPriors started... " << std::endl;
+    #endif
+
     auto defaults = DefaultPriors(data);
 
     beta_prior = defaults.get("beta_prior");
@@ -146,7 +126,7 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
         {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
             {
-                std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
+                std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_iprior, KO_Omegaprior";
                 std::string msg = "When known_object=true, must set explicit priors for each of " + p;
                 throw std::logic_error(msg);
             }
@@ -181,7 +161,7 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
             nu_prior = defaults.get("nu_prior");
 
     #if DEBUG
-    std::cout << std::endl << "setPriors done" << std::endl;
+    std::cout << "setPriors done" << std::endl;
     #endif
 
 }
@@ -241,6 +221,8 @@ void RVHGPMmodel::from_prior(RNG& rng)
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
+            KO_i[i] = KO_iprior[i]->generate(rng);
+            KO_Omega[i] = KO_Omegaprior[i]->generate(rng);
         }
     }
 
@@ -658,6 +640,8 @@ double RVHGPMmodel::perturb(RNG& rng)
                 logH += KO_eprior[i]->perturb(KO_e[i], rng);
                 logH += KO_phiprior[i]->perturb(KO_phi[i], rng);
                 logH += KO_wprior[i]->perturb(KO_w[i], rng);
+                logH += KO_iprior[i]->perturb(KO_i[i], rng);
+                logH += KO_Omegaprior[i]->perturb(KO_Omega[i], rng);
             }
 
             add_known_object();
@@ -898,6 +882,10 @@ double RVHGPMmodel::log_likelihood() const
 
 void RVHGPMmodel::print(std::ostream& out) const
 {
+    #if DEBUG
+    std::cout << std::endl << "print started... " << std::endl;
+    #endif
+
     // output precision
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
@@ -942,6 +930,8 @@ void RVHGPMmodel::print(std::ostream& out) const
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e)     out << e << "\t";
         for (auto w: KO_w)     out << w << "\t";
+        for (auto i: KO_i)     out << i << "\t";
+        for (auto W: KO_Omega) out << W << "\t";
     }
 
     if(transiting_planet){
@@ -975,7 +965,7 @@ void RVHGPMmodel::print(std::ostream& out) const
     out << background;
 
     #if DEBUG
-    std::cout << std::endl << "print finished" << std::endl;
+    std::cout << "print finished" << std::endl;
     #endif
 }
 
@@ -1024,6 +1014,8 @@ string RVHGPMmodel::description() const
         for (int i = 0; i < n_known_object; i++) desc += "KO_phi" + std::to_string(i) + sep;
         for (int i = 0; i < n_known_object; i++) desc += "KO_ecc" + std::to_string(i) + sep;
         for (int i = 0; i < n_known_object; i++) desc += "KO_w" + std::to_string(i) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_i" + std::to_string(i) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_Omega" + std::to_string(i) + sep;
     }
 
     if(transiting_planet) {
@@ -1165,7 +1157,7 @@ void RVHGPMmodel::save_setup() {
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
         fout << "iprior: " << *conditional->iprior << endl;
-        fout << "Wprior: " << *conditional->Omegaprior << endl;
+        fout << "Omegaprior: " << *conditional->Omegaprior << endl;
     }
 
     if (known_object) {
