@@ -184,6 +184,8 @@ class posterior_holder:
     w: np.ndarray = field(init=False)
     φ: np.ndarray = field(init=False)
     Tc: np.ndarray = field(init=False)
+    i: np.ndarray = field(init=False)
+    Ω: np.ndarray = field(init=False)
     # 
     jitter: named_array = field(init=False)
     stellar_jitter: np.ndarray = field(init=False)
@@ -224,6 +226,10 @@ class posterior_holder:
         fields = self._get_set_fields()
         fields = ', '.join(fields)
         return f'posterior_holder({fields})'
+
+    def _all(self):
+        fields = self._get_set_fields()
+        return np.hstack([getattr(self, f) for f in fields if f not in ('TR', 'KO')])
 
 def _get_pdf(prior, x=None, N=300):
     if x is None:
@@ -425,10 +431,11 @@ class KimaResults:
                 raise ValueError('Something went wrong reading the posterior samples. Try again')
 
         self.model = MODELS(model.__class__.__name__)
+
         self.fix = model.fix
         self.npmax = model.npmax
-        self.evidence = evidence
-        self.information = H
+        self.evidence = self.logZ = evidence
+        self.information = self.KL = H
 
         with SimpleTimer() as timer:
             self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
@@ -471,6 +478,9 @@ class KimaResults:
 
         self._extra_data = np.array(np.copy(data.actind))
         self._extra_data_names = np.array(np.copy(data.indicator_names))
+
+        if self.model is MODELS.RVHGPMmodel:
+            self.pm_data = model.pm_data
 
         self.M0_epoch = data.M0_epoch
         self.n_instruments = np.unique(data.obsi).size
@@ -537,7 +547,7 @@ class KimaResults:
         self._current_column = 0
 
         # read jitters
-        if self.multi and self.model in (MODELS.RVmodel, MODELS.RVHGPMmodel):
+        if self.multi and self.model in (MODELS.RVmodel, MODELS.ApodizedRVmodel, MODELS.RVHGPMmodel):
             self.n_jitters = 1  # stellar jitter
         else:
             self.n_jitters = 0
@@ -1235,7 +1245,7 @@ class KimaResults:
             res (KimaResults): An object holding the results
         """
         if filename is None:
-            from showresults import showresults
+            from .showresults import showresults
             return showresults(force_return=True, **kwargs)
 
         try:
@@ -1483,7 +1493,7 @@ class KimaResults:
         
         if self.model != MODELS.GAIAmodel:
             # systemic velocity
-            self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']]
+            self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']].reshape(-1, 1)
             self._priors.vsys = self.priors['Cprior']
             if self.model is MODELS.RVFWHMmodel:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
@@ -1535,7 +1545,7 @@ class KimaResults:
 
             # omegas
             s = self.indices['planets.w']
-            self.posteriors.w = self.posterior_sample[:, s]
+            self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
             self._priors.w = self.priors['wprior']
 
             # times of periastron
@@ -1545,11 +1555,13 @@ class KimaResults:
             if self.model is MODELS.RVHGPMmodel:
                 s = self.indices['planets.i']
                 self.posteriors.i = self.posterior_sample[:, s]
+                self.posteriors.i_deg = np.rad2deg(self.posterior_sample[:, s])
                 self._priors.i = self.priors['iprior']
 
                 s = self.indices['planets.W']
-                self.posteriors.W = self.posterior_sample[:, s]
-                self._priors.W = self.priors['Wprior']
+                W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
+                self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
+                self._priors.W = self.priors['Omegaprior']
 
 
         if self.KO:
@@ -1919,6 +1931,8 @@ class KimaResults:
 
             if self.model is MODELS.GAIAmodel:
                 pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
+            elif self.model is MODELS.RVHGPMmodel:
+                pars = ['P', 'K', 'M0', 'e', 'w', 'i', 'W']
             else:
                 pars = ['P', 'K', 'M0', 'e', 'w']
 
@@ -2533,10 +2547,11 @@ class KimaResults:
 
         return v
 
-    def stochastic_model(self, sample, t=None, return_std=False, derivative=False,
-                         include_jitters=True, **kwargs):
+    def stochastic_model(self, sample, t=None, return_std=False, return_cov=False,
+                         derivative=False, include_jitters=True, **kwargs):
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
+        This function returns the mean of the GP predictive distribution.
         
         If `t` is None, use the observed times.  
 
@@ -2553,6 +2568,9 @@ class KimaResults:
             return_std (bool, optional):
                 Whether to return the standard deviation of the predictive.
                 Default is False.
+            return_cov (bool, optional):
+                Whether to return the full covariance matrix of the predictive.
+                Default is False
             derivative (bool, optional):
                 Return the first time derivative of the GP prediction instead
             include_jitters (bool, optional):
@@ -2800,11 +2818,11 @@ class KimaResults:
             #     return mu
             # else:
             GPpars = sample[self.indices['GPpars']].copy()
-            if self.kernel is GP.KernelType.spleaf_esp:
+            if self.kernel is GP.spleaf_esp:
                 GPpars[-1] /= 2.0
             self.GP.kernel.pars = GPpars
-            return self.GP.predict(r, t, return_std=return_std)
 
+            return self.GP.predict(r, t, return_std=return_std, return_cov=return_cov)
 
     def full_model(self, sample, t=None, **kwargs):
         """
@@ -3100,8 +3118,9 @@ class KimaResults:
     def ratios(self):
         bins = np.arange(self.max_components + 2) - 0.5
         n, _ = np.histogram(self.Np, bins=bins)
-        with np.errstate(divide='ignore'):
-            return n[1:] / n[:-1]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            r = n[1:] / n[:-1]
+            return r
 
     @property
     def _error_ratios(self):
@@ -3478,6 +3497,8 @@ class KimaResults:
             print('    - planets')
             for i in range(self.max_components):
                 Np_mask = self.Np > i
+                if not Np_mask.any():
+                    continue
                 print_line(f'{i+1}: P', self.posteriors.P[Np_mask, i], self.priors['Pprior'], show_prior)
                 print_line(f'{i+1}: K', self.posteriors.K[Np_mask, i], self.priors['Kprior'], show_prior)
                 print_line(f'{i+1}: M0', self.posteriors.φ[Np_mask, i], self.priors['phiprior'], show_prior)
@@ -3527,6 +3548,10 @@ class KimaResults:
             self.plot_random_samples = self.plot6 = partial(display.plot_random_samples, res=self)
         self.plot_random_samples.__doc__ = display.plot_random_samples.__doc__
         self.plot6.__doc__ = display.plot_random_samples.__doc__
+
+        if self.model is MODELS.RVHGPMmodel:
+            self.plot_hgpm = partial(display.plot_hgpm,
+                                     res=self, pm_data=self.pm_data)
 
     #
     hist_vsys = display.hist_vsys
