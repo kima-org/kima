@@ -229,6 +229,10 @@ class posterior_holder:
     def _all(self):
         fields = self._get_set_fields()
         return np.hstack([getattr(self, f) for f in fields if f not in ('TR', 'KO')])
+    
+    def msini(self, star_mass=1.0):
+        return get_planet_mass(self.P, self.K, self.e, star_mass,
+                               full_output=True)[-1]
 
 def _get_pdf(prior, x=None, N=300):
     if x is None:
