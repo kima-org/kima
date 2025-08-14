@@ -5,7 +5,6 @@ This module defines the `KimaResults` class to hold results from a run.
 from functools import lru_cache
 import os
 import sys
-import pickle
 from typing import List, Union
 from typing_extensions import Self
 import zipfile
@@ -1378,31 +1377,80 @@ class KimaResults:
             id += get_timestamp()
         return id
 
-    def save_pickle(self, filename: str=None, postfix: str=None, verbose: bool=True):
+    def save_pickle(self, filename: str=None, directory: str=None,
+                    postfix: str=None, compress=False, verbose: bool=True):
         """ Pickle this KimaResults object into a file.
 
         Args:
             filename (str, optional):
                 The name of the file where to save the model. If not given, a
                 unique name will be generated from the properties of the model.
+            directory (str, optional):
+                The directory where to save the file.
             postfix (str, optional):
-                A string to add to the filename, after the timestamp.
+                A string to add to the filename, before the extension.
+            compress (bool or str, optional):
+                Compress the pickle file. Requires the `compress_pickle`
+                package. If a string, use the specified compression method. If
+                True, uses bz2 compression by default.
+
+                | method | speed, size    |
+                |--------|----------------|
+                | bz2    | fast, small    |
+                | gzip   | fast, small    |
+                | lz4    | very fast, big |
+                | lzma   | slow, smallest |
+                | zipfile| very fast, big |
+
             verbose (bool, optional):
                 Print a message. Defaults to True.
         Returns:
             filename (str): The name of the pickle file where the model was saved
         """
+
+        ending = '.pkl'
+        dump_kwargs = {}
+
+        if compress is False:
+            import pickle
+            dump_kwargs['protocol'] = 2
+        else:
+            try:
+                import compress_pickle as pickle
+                if compress is True:
+                    dump_kwargs['compression'] = 'bz2'
+                    ending = '.pkl.bz2'
+                elif isinstance(compress, str):
+                    available = list(filter(None, pickle.compressers.registry.get_known_compressions()))
+                    if compress not in available:
+                        print('available compression methods: ', available)
+                        return
+                    dump_kwargs['compression'] = compress
+                    ends = {'bz2': '.bz2', 'gzip': '.gz', 'lz4': '.lz4', 'lzma': '.lzma', 'pickle': '', 'zipfile': '.zip'}
+                    ending = ending + ends[compress]
+            except (ImportError, ModuleNotFoundError):
+                print('compression requires the `compress_pickle` package')
+                return
+
         if filename is None:
             filename = self.get_model_id(add_timestamp=True)
 
         if postfix is not None:
             filename += '_' + postfix
 
-        if not filename.endswith('.pkl'):
-            filename = filename + '.pkl'
+        if filename.endswith('.pkl'):
+            filename = filename.replace('.pkl', ending)
+        elif filename.endswith('.pickle'):
+            ending = ending.replace('.pkl', '.pickle')
+            filename = filename.replace('.pickle', ending)
+        else:
+            filename += ending
+
+        if directory is not None:
+            filename = os.path.join(directory, filename)
 
         with open(filename, 'wb') as f:
-            pickle.dump(self, f, protocol=2)
+            pickle.dump(self, f, **dump_kwargs)
 
         if verbose:
             print('Wrote to file "%s"' % filename)
