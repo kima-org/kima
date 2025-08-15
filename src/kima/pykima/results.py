@@ -3212,37 +3212,59 @@ class KimaResults:
 
     @property
     def _time_overlaps(self):
-        # check for overlaps in the time from different instruments
-        if not self.multi:
-            raise ValueError('Model is not multi_instrument')
+        """
+        This function checks for time overlaps between the observations from
+        different instruments. It returns a two-tuple
+            (True, indices of overlapping instruments) or
+            (False, [])
+        """
+        from itertools import combinations
+        from .utils import Interval
 
-        def minmax(x):
-            return x.min(), x.max()
+        intervals = [
+            Interval.from_array(self.data.t[self.data.obs == i + 1])
+            for i in range(self.n_instruments)
+        ]
 
-        # are the instrument identifiers all sorted?
-        # st = np.lexsort(np.vstack([self.t, self.data.obs]))
-        obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
+        overlaps = [
+            (i + 1, j + 1)
+            for i, j in combinations(range(self.n_instruments), 2)
+            if self.data.t[self.data.obs == i + 1] in intervals[j]
+        ]
 
-        # if not, which ones are not sorted?
-        if not obs_is_sorted:
-            which_not_sorted = np.unique(
-                self.data.obs[1:][np.diff(self.data.obs) < 0])
+        return len(overlaps) > 0, overlaps
 
-        overlap = []
-        for i in range(1, self.n_instruments):
-            t1min, t1max = minmax(self.data.t[self.data.obs == i])
-            t2min, t2max = minmax(self.data.t[self.data.obs == i + 1])
-            # if the instrument IDs are sorted or these two instruments
-            # (i and i+1) are not the ones not-sorted
-            if obs_is_sorted or i not in which_not_sorted:
-                if t2min < t1max:
-                    overlap.append((i, i + 1))
-            # otherwise the check is different
-            else:
-                if t1min < t2max:
-                    overlap.append((i, i + 1))
+        # # check for overlaps in the time from different instruments
+        # if not self.multi:
+        #     raise ValueError('Model is not multi_instrument')
 
-        return len(overlap) > 0, overlap
+        # def minmax(x):
+        #     return x.min(), x.max()
+
+        # # are the instrument identifiers all sorted?
+        # # st = np.lexsort(np.vstack([self.t, self.data.obs]))
+        # obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
+
+        # # if not, which ones are not sorted?
+        # if not obs_is_sorted:
+        #     which_not_sorted = np.unique(self.data.obs[1:][np.diff(self.data.obs) < 0])
+
+        # overlap = []
+        # for i in range(1, self.n_instruments):
+        #     t1min, t1max = minmax(self.data.t[self.data.obs == i])
+        #     t2min, t2max = minmax(self.data.t[self.data.obs == i + 1])
+        #     # if the instrument IDs are sorted or these two instruments
+        #     # (i and i+1) are not the ones not-sorted
+        #     print(i, i not in which_not_sorted, t1max, t2min)
+        #     if obs_is_sorted or i not in which_not_sorted:
+        #         if t2min < t1max:
+        #             overlap.append((i, i + 1))
+        #     # otherwise the check is different
+        #     else:
+        #         if t1min < t2max:
+        #             overlap.append((i, i + 1))
+
+        # return len(overlap) > 0, overlap
 
     @property
     def _offset_times(self):
