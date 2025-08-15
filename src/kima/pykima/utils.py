@@ -218,6 +218,24 @@ def _show_kima_setup():
             print(f.read())
 
 
+class Interval:
+    def __init__(self, low, high):
+        self.low = low
+        self.high = high
+    
+    @classmethod
+    def from_array(cls, arr: np.ndarray):
+        return cls(arr.min(), arr.max())
+
+    def __repr__(self):
+        return f'Interval({self.low}, {self.high})'
+
+    def __contains__(self, x):
+        if isinstance(x, np.ndarray):
+            return (self.low <= x).any() and (x <= self.high).any()
+        return self.low <= x <= self.high
+
+
 def rms(array):
     """ Root mean square of array """
     return np.sqrt(np.sum(array**2) / array.size)
