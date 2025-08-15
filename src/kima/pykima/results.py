@@ -1673,6 +1673,8 @@ class KimaResults:
             return self.sample[mask].copy()
         else:
             mask_Np = self.sample[:, self.index_component] == Np
+            if not mask_Np.any():
+                raise ValueError(f'No samples with {Np} Keplerians')
             if return_indices:
                 return np.where(mask & mask_Np)[0]
             return self.sample[mask & mask_Np].copy()
@@ -1688,7 +1690,7 @@ class KimaResults:
         else:
             mask_Np = self.posterior_sample[:, self.index_component] == Np
             if not mask_Np.any():
-                raise ValueError(f'No samples with {Np} Keplerians')
+                raise ValueError(f'No posterior samples with {Np} Keplerians')
             if return_indices:
                 return np.where(mask & mask_Np)[0]
             return self.posterior_sample[mask & mask_Np].copy()
@@ -1831,6 +1833,28 @@ class KimaResults:
             self.print_sample(map_sample)
 
         return map_sample
+    
+    def maximum_likelihood(self, Np=None, from_posterior=False):
+        """ Get the maximum log-likelihood value
+        
+        Args:
+            Np (int, optional):
+                If given, select only samples with that number of planets.
+            from_posterior (bool, optional): 
+                If True, return the highest likelihood value *from samples that
+                represent the posterior*.
+        """
+        if self.sample_info is None and not self._lnlike_available:
+            print('log-likelihoods are not available! '
+                  'max_log_likelihood() doing nothing...')
+            return
+
+        if from_posterior:
+            ind = self._select_posterior_samples(Np, return_indices=True)
+            return self.posterior_lnlike[ind, 1].max()
+        else:
+            ind = self._select_samples(Np, return_indices=True)
+            return self.sample_info[ind, 1].max()
 
     def maximum_likelihood_sample(self, Np=None, printit=True, mask=None,
                                   from_posterior=False, optimize=False):
