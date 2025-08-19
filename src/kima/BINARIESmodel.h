@@ -29,6 +29,8 @@ class KIMA_API BINARIESmodel
 
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -59,13 +61,11 @@ class KIMA_API BINARIESmodel
         bool double_lined = false;
         
         bool eclipsing = true;
-    
+
+
+        RVData data;
     private:
         
-        RVData data;
-        
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
 
         DNest4::RJObject<KeplerianConditionalPrior> planets =
             DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());

@@ -652,6 +652,9 @@ class GAIAmodel_publicist : public GAIAmodel
 {
     public:
         using GAIAmodel::studentt;
+        using GAIAmodel::fix;
+        using GAIAmodel::npmax;
+        using GAIAmodel::data;
 //         using GAIAmodel::star_mass;
 //         using GAIAmodel::enforce_stability;
 //         using GAIAmodel::known_object;
@@ -667,6 +670,12 @@ NB_MODULE(GAIAmodel, m) {
     nb::class_<GAIAmodel>(m, "GAIAmodel")
         .def(nb::init<bool&, int&, GAIAdata&>(), "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
         //
+        .def_rw("fix", &GAIAmodel_publicist::fix,
+                "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &GAIAmodel_publicist::npmax,
+                "maximum number of Keplerians")
+        .def_ro("data", &GAIAmodel_publicist::data,
+                "the data")
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
