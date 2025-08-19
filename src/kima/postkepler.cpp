@@ -6,6 +6,9 @@ const double c_light = 299792458;//m/s
 const double G = 6.6743 * pow(10.0,-11.0);
 const double Msun = 1.988409870698051 * pow(10.0,30.0);
 const double days = 24*3600;
+const double AU = 149597870700;
+const double sectoyr = 3600*24*365.25;
+const double G_ast = G * pow(AU,-3.0) * Msun * pow(sectoyr,2.0);
 
 namespace postKep
 {
@@ -310,6 +313,12 @@ namespace MassConv
     double SemiPhotSt(double P, double M0, double M1, double plx, double eps)
     {
         double a0 = plx * pow((P/365.25),2.0/3) * pow((M0 + M1),1.0/3) * (M1/(M0+M1) - eps/(1+eps));
+        return a0;
+    }
+    double SemiPhotfromK(double P, double K, double ecc, double cosi, double plx)
+    {
+        double sini = pow((1.0-pow(cosi,2.0)),0.5);
+        double a0 = plx * P/365.25 * K/AU*sectoyr * pow(1 - pow(ecc,2.0),0.5) /(TWO_PI * sini);
         return a0;
     }
 }

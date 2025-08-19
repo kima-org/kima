@@ -1379,8 +1379,9 @@ Args:
         .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
         .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors")
         //
-        .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly");
+        .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly")
         //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
+        .def_ro("units", &GAIAdata::_units, "Units of the Gaia data and uncertainties");
     
     // 
 
