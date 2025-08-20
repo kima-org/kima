@@ -452,6 +452,7 @@ class KimaResults:
         else:
             self.arbitrary_units = False
 
+        ##### Issue here where data is assumed to be RV data, could do cases for each type, but what if there are multiple types?
         if data is None:
             data = model.data
 
@@ -480,6 +481,12 @@ class KimaResults:
 
         if self.model is MODELS.RVHGPMmodel:
             self.pm_data = model.pm_data
+
+        if self.model is MODELS.BINARIESmodel:
+            self.double_lined = model.double_lined
+            self.eclipsing = model.eclipsing
+            self.relativistic_correction = model.relativistic_correction
+            self.tidal_correction = model.tidal_correction
 
         self.M0_epoch = data.M0_epoch
         self.n_instruments = np.unique(data.obsi).size
@@ -545,8 +552,9 @@ class KimaResults:
         self.indices = {}
         self._current_column = 0
 
+        #### Probably no need to specify what the jitter datatype is so okay
         # read jitters
-        if self.multi and self.model in (MODELS.RVmodel, MODELS.ApodizedRVmodel, MODELS.RVHGPMmodel):
+        if self.multi and self.model in (MODELS.RVmodel, MODELS.RVHGPMmodel):
             self.n_jitters = 1  # stellar jitter
         else:
             self.n_jitters = 0
@@ -555,6 +563,9 @@ class KimaResults:
 
         if self.model is MODELS.RVFWHMmodel:
             self.n_jitters *= 2
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                self.n_jitters *= 2
         elif self.model is MODELS.RVFWHMRHKmodel:
             self.n_jitters *= 3
         elif self.model is MODELS.SPLEAFmodel:
@@ -569,11 +580,12 @@ class KimaResults:
             self.jitter_propto_indicator = False
 
         self._read_jitters()
-
+        
         # read limb-darkening coefficients
         if self.model is MODELS.TRANSITmodel:
             self._read_limb_dark()
-
+        
+        #### this is only for RV models
         # read trend
         self.trend = model.trend
         self.trend_degree = model.degree
@@ -581,32 +593,32 @@ class KimaResults:
         if self.model is MODELS.RVFWHMmodel:
             self.trend_fwhm = model.trend_fwhm
             self.trend_fwhm_degree = model.degree_fwhm
-
+        
         self._read_trend()
-
+        
         # does the model enforce AMD stability?
         try:
             self.enforce_stability = model.enforce_stability
         except AttributeError:
             self.enforce_stability = False
-
+        
         # multiple instruments? read offsets
         self._read_multiple_instruments()
-
+        
         # activity indicator correlations?
         self._read_actind_correlations()
-
+        
         # find GP in the compiled model
         self._read_GP()
-
+        
         # # find MA in the compiled model
         # self._read_MA()
-
+        
         # find KO in the compiled model
         self.KO = model.known_object
         self.nKO = model.n_known_object
         self._read_KO()
-
+        
         # find transiting planet in the compiled model
         try:
             self.TR = model.transiting_planet
@@ -615,12 +627,12 @@ class KimaResults:
             self.TR = False
             self.nTR = 0
         self._read_TR()
-
+        
         if self.model is MODELS.OutlierRVmodel:
             self._read_outlier()
-
+        
         self._read_components()
-
+        
         # staleness (ignored)
         self._current_column += 1
 
@@ -652,7 +664,10 @@ class KimaResults:
             self.zero_points = self.posterior_sample[:, istart:iend]
             self._current_column += self.n_zero_points
 
-
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                self.vsys_sec = self.posterior_sample[:, -2]
+                self.indices['vsys_sec'] = -2
         self.vsys = self.posterior_sample[:, -1]
         self.indices['vsys'] = -1
 
@@ -734,6 +749,11 @@ class KimaResults:
             # there are n instruments and n-1 offsets per output
             if self.model is MODELS.RVFWHMmodel:
                 n_inst_offsets = 2 * (self.n_instruments - 1)
+            elif self.model is MODELS.BINARIESmodel:
+                if self.double_lined:
+                    n_inst_offsets = 2 * (self.n_instruments - 1)
+                else:
+                    n_inst_offsets = self.n_instruments - 1
             elif self.model is MODELS.RVFWHMRHKmodel:
                 n_inst_offsets = 3 * (self.n_instruments - 1)
             else:
@@ -812,13 +832,15 @@ class KimaResults:
 
         self.indices['np'] = self.index_component
         self._current_column += 1
-
+        
+        
         # indices of the planet parameters
         n_planet_pars = self.max_components * self.n_dimensions
         istart = self._current_column
         iend = istart + n_planet_pars
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
+        
 
         if self.model is MODELS.GAIAmodel:
             for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
@@ -1019,6 +1041,11 @@ class KimaResults:
         if self.KO:
             if self.model is MODELS.TRANSITmodel:
                 n_KOparameters = 6 * self.nKO
+            elif self.model is MODELS.BINARIESmodel:
+                if self.double_lined:
+                    n_KOparameters = 8 * self.nKO
+                else:
+                    n_KOparameters = 7 * self.nKO
             else:
                 n_KOparameters = 5 * self.nKO
             start = self._current_column
