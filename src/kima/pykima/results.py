@@ -492,11 +492,21 @@ class KimaResults:
         self.data = data_holder()
         self.data.t = np.array(np.copy(data.t))
         self.data.y = np.array(np.copy(data.y))
-        self.data.e = np.array(np.copy(data.sig))
+        self.data.e = np.array(np.copy(data.sig))            
         self.data.obs = np.array(np.copy(data.obsi))
         self.data.N = data.N
 
         self.series = ('RV',)
+
+        if self.model is MODELS.BINARIESmodel:
+            self.double_lined = model.double_lined
+            self.eclipsing = model.eclipsing
+            self.relativistic_correction = model.relativistic_correction
+            self.tidal_correction = model.tidal_correction
+            if self.double_lined:
+                self.data.y2 = np.array(np.copy(data.y2))
+                self.data.e2 = np.array(np.copy(data.sig2))
+                self.series = ('RV1','RV2')
 
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
@@ -515,11 +525,7 @@ class KimaResults:
         if self.model is MODELS.RVHGPMmodel:
             self.pm_data = model.pm_data
 
-        if self.model is MODELS.BINARIESmodel:
-            self.double_lined = model.double_lined
-            self.eclipsing = model.eclipsing
-            self.relativistic_correction = model.relativistic_correction
-            self.tidal_correction = model.tidal_correction
+        
 
         self.M0_epoch = data.M0_epoch
         self.n_instruments = np.unique(data.obsi).size
@@ -1698,9 +1704,24 @@ class KimaResults:
             self.posteriors.KO.__doc__ = self._priors.KO.__doc__ = 'Known object parameters'
             self.posteriors.KO.P = self.KOpars[:, range(0*self.nKO, 1*self.nKO)]
             self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
-            self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
-            self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
-            self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+            if self.model is MODELS.BINARIESmodel:
+                if self.double_lined:
+                    self.posteriors.KO.q = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                    self.posteriors.KO.φ = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                    self.posteriors.KO.e = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+                    self.posteriors.KO.w = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
+                    self.posteriors.KO.wdot = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
+                    self.posteriors.KO.cosi = self.KOpars[:, range(7*self.nKO, 8*self.nKO)]
+                else:
+                    self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                    self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                    self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+                    self.posteriors.KO.wdot = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
+                    self.posteriors.KO.cosi = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
+            else:
+                self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
             for i in range(self.nKO):
                 setattr(self._priors.KO, f'P{i}', self.priors[f'KO_Pprior_{i}'])
 
@@ -2145,9 +2166,19 @@ class KimaResults:
         if self.KO:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
-
-            pars = ('P', 'K', 'M0', 'e', 'w')
-            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+            extra_n = 0
+            if self.model is MODELS.GAIAmodel:
+                pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
+            elif self.model is MODELS.BINARIESmodel:
+                if self.double_lined:
+                    pars = ['P', 'K', 'q', 'M0', 'e', 'w', 'wdot','cosi']
+                    extra_n = 3
+                else:
+                    pars = ['P', 'K', 'M0', 'e', 'w', 'wdot','cosi']
+                    extra_n = 2
+            else:
+                pars = ('P', 'K', 'M0', 'e', 'w')
+            print(((self.n_dimensions + extra_n) * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
                 formatter = {'all': lambda v: f'{v:11.5f}'}
@@ -2365,16 +2396,24 @@ class KimaResults:
             t = self.data.t.copy()
             data_t = True
 
+        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel)
+
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
         elif self.model is MODELS.RVFWHMRHKmodel:
             v = np.zeros((3, t.size))
         elif self.model is MODELS.SPLEAFmodel:
             v = np.zeros((self.nseries, t.size))
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                v = np.zeros((2,t.size))
+            else:
+                v = np.zeros_like(t)
+                ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel,MODELS.BINARIESmodel)
         else:
             v = np.zeros_like(t)
 
-        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel)
+        
 
         if include_planets:
             if single_planet and except_planet:
@@ -2390,7 +2429,8 @@ class KimaResults:
                         raise ValueError("'except_planet' should not be 0")
                     except_planet = [except_planet]
 
-            # known_object ?
+            # known_object ? 
+            # For BINARIESmodel and double_lined especially, need to deal with the extra parameters in those models and using the correct Keplerian
             pj = 0
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
@@ -2405,12 +2445,32 @@ class KimaResults:
 
                     P = pars[j + 0 * self.nKO]
                     K = pars[j + 1 * self.nKO]
-                    phi = pars[j + 2 * self.nKO]
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
-                    ecc = pars[j + 3 * self.nKO]
-                    w = pars[j + 4 * self.nKO]
+                    if self.model is MODELS.BINARIESmodel:
+                        if self.double_lined:
+                            q = pars[j + 2 * self.nKO]
+                            phi = pars[j + 3 * self.nKO]
+                            ecc = pars[j + 4 * self.nKO]
+                            w = pars[j + 5 * self.nKO]
+                            wdot = pars[j + 6 * self.nKO]
+                            cosi = pars[j + 7 * self.nKO]
+                        else:
+                            phi = pars[j + 2 * self.nKO]
+                            ecc = pars[j + 3 * self.nKO]
+                            w = pars[j + 4 * self.nKO]
+                            wdot = pars[j + 5 * self.nKO]
+                            cosi = pars[j + 6 * self.nKO]
+                    else:
+                        phi = pars[j + 2 * self.nKO]
+                        ecc = pars[j + 3 * self.nKO]
+                        w = pars[j + 4 * self.nKO]
                     if self.model not in ONE_D_MODELS:
-                        v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                        if self.model is MODELS.BINARIESmodel:
+                            print(P, K, ecc, w, phi, self.M0_epoch)
+                            v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                            v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch) #Needs changing
+                        else:
+                            v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
                         v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 

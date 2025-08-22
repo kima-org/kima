@@ -2426,9 +2426,24 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         for i, k in enumerate(ko.keys()):
             ko[k]['P'] = P = sample[res.indices['KOpars']][i]
             ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
-            ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
-            ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
-            ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+            if res.model is MODELS.BINARIESmodel:
+                if res.double_lined:
+                    ko[k]['q'] = q = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                    ko[k]['wdot'] = wdot = sample[res.indices['KOpars']][i + 6 * res.nKO]
+                    ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 7 * res.nKO]
+                else:
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                    ko[k]['wdot'] = wdot = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                    ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 6 * res.nKO]
+            else:
+                ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
@@ -2460,7 +2475,10 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     if sort_by_increasing_P:
         keys = sorted(params, key=lambda i: params[i]['P'])
-
+    
+    print(nplanets)
+    print(params)
+    print(keys)
     return nplanets, params, keys
 
 
@@ -2524,6 +2542,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            y2, e2 = res.data.y2.copy(), res.data.e2.copy()
     obs = res.data.obs.copy()
 
     if t[0] > 24e5:
@@ -2553,6 +2574,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
         v = v[0]
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            v = v[0]
+            v2 = v[1]
+            y2 = y2 - v2
 
     y = y - v
 
@@ -2659,9 +2685,13 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         ax.axvline(np.pi, ls='--', color='k', alpha=0.2, zorder=-5)
         ax.axhline(0.0, ls='--', color='k', alpha=0.2, zorder=-5)
 
+        print(letter)
         P = params[letter]['P']
+        print(P)
         w = params[letter]['w']
+        print(w)
         M0 = params[letter]['φ']
+        print(M0)
         # Tp = params[letter]['Tp']
 
         # plot the keplerian curve in phase (3 times)
@@ -2688,6 +2718,10 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
             vv = vv[0]
             offset_model = offset_model[0]
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                vv = vv[0]
+                offset_model = offset_model[0]
 
 
         for j in (-1, 0, 1):
