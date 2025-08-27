@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <unordered_map>
 
 #include "DNest4.h"
 #include "Data.h"
