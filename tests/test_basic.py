@@ -1,10 +1,8 @@
-from matplotlib import pyplot as plt
+# ruff: noqa: F401, F811
 import pytest
-from common import cleanup_after_running
+from common import cleanup_after_running, path_to_test_data
 
 import numpy as np
-from numpy.testing import assert_allclose, assert_equal
-
 import kima
 
 
@@ -17,8 +15,9 @@ def test_extensions_exist():
     kima.RVFWHMmodel
     kima.run
 
-def test_simple_api():
-    D = kima.RVData('tests/simulated1.txt')
+
+def test_simple_api(path_to_test_data):
+    D = kima.RVData(path_to_test_data("simulated1.txt"))
     # print(D.N)
     m = kima.RVmodel(True, 0, D)
     m.trend = True
@@ -28,44 +27,64 @@ def test_simple_api():
 def test_RVData_reductions():
     pass
 
-def test_RVmodel():
-    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
 
-def test_GPmodel():
-    m = kima.GPmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+def test_RVmodel(path_to_test_data):
+    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    m = kima.RVmodel(True, 0, data)
 
-def test_RVFWHMmodel():
+
+def test_GPmodel(path_to_test_data):
+    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    m = kima.GPmodel(True, 0, data)
+
+
+def test_RVFWHMmodel(path_to_test_data):
     # should fail because it doesn't read 4th and 5th column
     with pytest.raises(RuntimeError):
-        m = kima.RVFWHMmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+        data = kima.RVData(path_to_test_data("simulated1.txt"))
+        m = kima.RVFWHMmodel(True, 0, data)
+
     # this one should work
-    m = kima.RVFWHMmodel(True, 0, 
-                         kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
-    
-def test_BINARIESmodel():
-    m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+    data = kima.RVData(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
+    m = kima.RVFWHMmodel(True, 0, data)
+
+
+def test_BINARIESmodel(path_to_test_data):
+    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    m = kima.BINARIESmodel(True, 0, data)
+
     # should fail because it doesn't read 4th and 5th column
     with pytest.raises(RuntimeError):
-        m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated1.txt',double_lined=True))
+        data = kima.RVData(path_to_test_data("simulated1.txt"), double_lined=True)
+        m = kima.BINARIESmodel(True, 0, data)
+
     # this one should work
-    m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated2.txt',double_lined=True))
-    
-def test_ETVmodel():
-    D = kima.ETVData("tests/simulated3.txt")
+    data = kima.RVData(path_to_test_data("simulated2.txt"), double_lined=True)
+    m = kima.BINARIESmodel(True, 0, data)
+
+
+def test_ETVmodel(path_to_test_data):
+    D = kima.ETVData(path_to_test_data("simulated3.txt"))
     m = kima.ETVmodel(True, 0, D)
 
-def test_GAIAmodel():
-    D = kima.GAIAdata("tests/simulated4.txt")
+
+def test_GAIAmodel(path_to_test_data):
+    D = kima.GAIAdata(path_to_test_data("simulated4.txt"))
     m = kima.GAIAmodel(True, 0, D)
 
-def test_run(cleanup_after_running):
-    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
-    kima.run(m, steps=1)
-    m = kima.GPmodel(True, 0, kima.RVData('tests/simulated1.txt'))
-    kima.run(m, steps=1)
-    m = kima.RVFWHMmodel(True, 0, kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
+
+def test_run(cleanup_after_running, path_to_test_data):
+    data = kima.RVData(path_to_test_data("simulated1.txt"))
+
+    m = kima.RVmodel(True, 0, data)
     kima.run(m, steps=1)
 
+    m = kima.GPmodel(True, 0, data)
+    kima.run(m, steps=1)
+
+    data = kima.RVData(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
+    m = kima.RVFWHMmodel(True, 0, data)
+    kima.run(m, steps=1)
 
 
 @pytest.mark.parametrize('include, KO, nKO, TR, nTR, nP',

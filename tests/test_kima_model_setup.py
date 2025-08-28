@@ -1,13 +1,14 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
+from common import path_to_test_data, simulated1
 
 import kima
 from kima.distributions import Uniform, UniformAngle
 
 
-def test_RVmodel_setup():
-    m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+def test_RVmodel_setup(simulated1):
+    m = kima.RVmodel(True, 0, simulated1)
     kima.run(m, steps=1)
 
     setup_file = open('kima_model_setup.txt').read()
@@ -15,7 +16,7 @@ def test_RVmodel_setup():
         assert p in setup_file
 
     # with planets
-    m = kima.RVmodel(True, 1, kima.RVData('tests/simulated1.txt'))
+    m = kima.RVmodel(True, 1, simulated1)
     kima.run(m, steps=1)
 
     setup_file = open('kima_model_setup.txt').read()
@@ -25,7 +26,7 @@ def test_RVmodel_setup():
         assert p in setup_file
 
     # with planets and known object
-    m = kima.RVmodel(True, 1, kima.RVData('tests/simulated1.txt'))
+    m = kima.RVmodel(True, 1, simulated1)
     m.set_known_object(2)
     m.KO_Pprior = [Uniform(1,2), Uniform(2,3)]
     m.KO_Kprior = [Uniform(1,2), Uniform(2,3)]
@@ -52,8 +53,8 @@ def test_RVmodel_setup():
     cli_clean(check=False, output=True)
 
 
-def test_GPmodel_setup():
-    m = kima.GPmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+def test_GPmodel_setup(simulated1):
+    m = kima.GPmodel(True, 0, simulated1)
     kima.run(m, steps=1)
 
     setup_file = open('kima_model_setup.txt').read()

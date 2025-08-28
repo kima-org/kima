@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 from kima import RVData, keplerian
@@ -9,6 +10,17 @@ def cleanup_after_running():
     from kima.pykima.cli import cli_clean
     yield
     cli_clean(check=False, output=True)
+
+
+@pytest.fixture(scope="session")
+def path_to_test_data():
+    return lambda file: (Path(__file__).parent / file).as_posix()
+
+
+@pytest.fixture
+def simulated1(path_to_test_data):
+    from kima import RVData
+    return RVData(path_to_test_data('simulated1.txt'))
 
 
 def create_data(plot=False, include=(1, 2, 4, 6), seed=24):
