@@ -286,15 +286,16 @@ void RVGAIAmodel::calculate_mu()
         P = components[j][0];
         phi = components[j][1];
         ecc = components[j][2];
-        M = components[j][3];
+        K = components[j][3];
         omega = components[j][4];
         cosi = components[j][5];
         Omega = components[j][6];
 
         Mint = Mints[j];
         
-        K = MassConv::SemiAmp(P,ecc,Mint,M,cosi);
-        a0 = MassConv::SemiPhotPl(P,Mint,M,plx);
+        // K = MassConv::SemiAmp(P,ecc,Mint,M,cosi);
+        // a0 = MassConv::SemiPhotPl(P,Mint,M,plx);
+        a0 = MassConv::SemiPhotfromK(P,K,ecc,cosi,plx);
         
         A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
         B = a0*(cos(omega) * sin(Omega) + sin(omega) * cos(Omega) * cosi);
@@ -867,7 +868,7 @@ string RVGAIAmodel::description() const
         for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "M" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "cosi" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "W" + std::to_string(i) + sep;
@@ -978,7 +979,7 @@ void RVGAIAmodel::save_setup() {
         fout << "Pprior: " << *conditional->Pprior << endl;
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "eprior: " << *conditional->eprior << endl;
-        fout << "Mprior: " << *conditional->Mprior << endl;
+        fout << "Kprior: " << *conditional->Kprior << endl;
         fout << "omegaprior: " << *conditional->omegaprior << endl;
         fout << "cosiprior: " << *conditional->cosiprior << endl;
         fout << "Omegaprior: " << *conditional->Omegaprior << endl;

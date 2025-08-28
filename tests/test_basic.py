@@ -120,7 +120,20 @@ def test_RVFWHMmodel():
     # this one should work
     m = kima.RVFWHMmodel(True, 0, 
                          kima.RVData('tests/simulated2.txt', indicators=['i', 'j']))
+    
+def test_BINARIESmodel():
+    m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated1.txt'))
+    # should fail because it doesn't read 4th and 5th column
+    with pytest.raises(RuntimeError):
+        m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated1.txt',double_lined=True))
+    # this one should work
+    m = kima.BINARIESmodel(True, 0, kima.RVData('tests/simulated2.txt',double_lined=True))
+    
+def test_ETVmodel():
+    m = kima.ETVmodel(True,0,kima.ETVData('tests/simulated3.txt'))
 
+def test_GAIAmodel():
+    m = kima.GAIAmodel(True,0,kima.GAIAdata('tests/simulated4.txt'))
 
 def test_run(cleanup_after_running):
     m = kima.RVmodel(True, 0, kima.RVData('tests/simulated1.txt'))

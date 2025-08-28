@@ -44,4 +44,5 @@ namespace MassConv
     double SemiAmp(double P, double ecc, double M0, double M1, double cosi);
     double SemiPhotPl(double P, double M0, double M1, double plx);
     double SemiPhotSt(double P, double M0, double M1, double plx, double eps);
+    double SemiPhotfromK(double P, double K, double ecc, double cosi, double plx);
 }

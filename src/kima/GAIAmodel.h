@@ -42,10 +42,8 @@ class KIMA_API GAIAmodel
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
         
-    
-    private:
-    
         GAIAdata data;
+    private:
         
 
         DNest4::RJObject<GAIAConditionalPrior> planets =

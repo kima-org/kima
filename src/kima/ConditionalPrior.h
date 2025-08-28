@@ -175,6 +175,7 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
 
 };
 
+
 class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
 {
      private:
@@ -195,8 +196,8 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
         distribution eprior;
         /// Prior for the phases (maybe do T0s instead?).
         distribution phiprior;
-        /// Prior for the photocentre semi major axes (in ...).
-        distribution Mprior;
+        /// Prior for the RV semi-amplitude.
+        distribution Kprior;
         /// Prior for the arguments of periastron.
         distribution omegaprior;
         /// Prior for cos of the inclination.

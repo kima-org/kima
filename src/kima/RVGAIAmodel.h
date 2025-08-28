@@ -97,7 +97,7 @@ class KIMA_API RVGAIAmodel
         std::vector<double> mu_GAIA;// = the astrometric model
                             //std::vector<double>(GaiaData::get_instance().N());
         
-        std::vector<double> mu_RV;// = the astrometric model
+        std::vector<double> mu_RV;// = the radial velocity model
                             //std::vector<double>(GaiaData::get_instance().N());
                             
         void calculate_mu();

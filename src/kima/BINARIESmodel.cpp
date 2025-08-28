@@ -549,7 +549,7 @@ double BINARIESmodel::perturb(RNG& rng)
 
     
 
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(rng.rand() <= 0.6) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
@@ -564,7 +564,7 @@ double BINARIESmodel::perturb(RNG& rng)
 //             calculate_mu_2();
 
     }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
+    else if(rng.rand() <= 0.6) // perturb jitter(s) + known_object
     {
         if(data._multi)
         {
@@ -1135,6 +1135,9 @@ class BINARIESmodel_publicist : public BINARIESmodel
 {
     public:
         using BINARIESmodel::fix;
+        using BINARIESmodel::npmax;
+        using BINARIESmodel::data;
+        //
         using BINARIESmodel::trend;
         using BINARIESmodel::degree;
         using BINARIESmodel::studentt;
@@ -1162,6 +1165,11 @@ NB_MODULE(BINARIESmodel, m) {
         // 
         .def_rw("fix", &BINARIESmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &BINARIESmodel_publicist::npmax,
+                "maximum number of Keplerians")
+        .def_ro("data", &BINARIESmodel_publicist::data,
+                "the data")
+
         .def_rw("trend", &BINARIESmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &BINARIESmodel_publicist::degree,
