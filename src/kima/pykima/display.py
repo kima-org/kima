@@ -3085,7 +3085,7 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
 
 
 def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=5000,
-                        subtract_offsets=False,
+                        subtract_offsets=False, clip_curves_to_data=False,
                         show_vsys=False, show_gp=True, isolate_known_object=True, isolate_transiting_planet=True,
                         isolate_apodized_keplerians=True, include_jitters_in_points=False, 
                         include_jitters_in_predict=True, full_plot=False, show_outliers=False, **kwargs):
@@ -3094,38 +3094,42 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
 
     Args:
         ncurves (int, optional):
-            Number of posterior predictive curves to show. Defaults to 50.
+            Number of posterior predictive curves to show.
         samples (array, optional):
-            Specific posterior sample(s) to plot. Defaults to None.
+            Specific posterior sample(s) to plot.
         tt (array, optional):
-            Time grid for the plots. Defaults to using `res._get_tt` or `res._get_ttGP`.
+            Time grid for the plots. By default uses `res._get_tt` or
+            `res._get_ttGP` depending on the model.
         over (float, optional):
             Curves are calculated covering 100*(1 + `over`)% of the timespan of
-            the data. Defaults to 0.1.
+            the data.
         ntt (int, optional):
-            Number of points for the time grid. Defaults to 5000.
+            Number of points for the time grid.
+        subtract_offsets (bool, optional):
+            Subtract the RV offsets from the data. Only used when `ncurves = 1`.
+        clip_curves_to_data (bool, optional):
+            Clip the curves to the time span of the data.
         show_vsys (bool, optional):
-            Show the systemic velocity for each sample. Defaults to False.
+            Show the systemic velocity for each sample.
         show_gp (bool, optional):
-            Show the GP prediction for each sample. Defaults to True.
+            Show the GP prediction for each sample.
         isolate_known_object (bool, optional):
             Show the Keplerian curves for the known object(s), if present in the
-            model. Defaults to True.
+            model.
         isolate_transiting_planet (bool, optional):
             Show the Keplerian curves for the transiting planet(s), if present
-            in the model. Defaults to True.
+            in the model.
         include_jitters_in_points (bool, optional):
             Include an extra error bar for each point which takes into account
-            the jitter(s). This only works when ncurves=1. Defaults to False.
+            the jitter(s). This only works when ncurves=1.
         include_jitters_in_predict (bool, optional):
             Include the jitters in the GP prediction (if model has a GP). This
-            should almost always be True! Defaults to True.
+            should almost always be True!
         full_plot (bool, optional):
             If True (and ncurves=1), adds panels with the residuals from the
-            given sample and their GLS periodogram. Defaults to False.
+            given sample and their GLS periodogram.
         show_outliers (bool, optional):
-            Highlight the outliers (if likelihood is Student-t). Defaults to
-            False.
+            Highlight the outliers (if likelihood is Student-t).
 
     Returns:
         fig (matplotlib.figure.Figure):
@@ -3228,7 +3232,17 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
 
 
     # plot the Keplerian curves
-    alpha = 0.1 if ncurves > 1 else 0.8
+    alpha = kwargs.pop('alpha', 0.1 if ncurves > 1 else 0.8)
+
+    if clip_curves_to_data:
+        tt_plot = np.tile(tt, (res.n_instruments, 1)).T
+        from .utils import Interval
+        for i in range(res.n_instruments):
+            time_mask = res.data.t[res.data.obs == i + 1]
+            m = Interval.from_array(time_mask).mask(tt_plot[:, i])
+            tt_plot[~m, i] = np.nan
+    else:
+        tt_plot = tt
 
     for icurve, i in enumerate(ii):
         sample = samples[i]
@@ -3247,13 +3261,13 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
             offset_model = res.burst_model(sample, tt, offset_model)
 
         ax.set_prop_cycle(None)
-        if model.shape[0] == 1:
-            color = cc
-        else:
-            color = None
+        # if model.shape[0] == 1:
+        #     color = cc
+        # else:
+        #     color = None
 
-        ax.plot(tt, (stoc_model + model).T - y_offset,
-                color=color, alpha=alpha, zorder=-1)
+        ax.plot(tt_plot, (stoc_model + model).T - y_offset,
+                color=cc, alpha=alpha, zorder=-1)
 
         if res.has_gp and show_gp:
             m = (stoc_model + offset_model).T - y_offset
