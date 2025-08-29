@@ -133,6 +133,12 @@ RVData::RVData(const vector<vector<double>> _t,
         throw invalid_argument(msg);
     }
 
+    if (_t.size() != instruments.size()) 
+    {
+        string msg = "RVData: data and instruments must have the same size size(t) != size(instruments)";
+        throw invalid_argument(msg);
+    }
+
     for (size_t i = 0; i < _t.size(); i++)
     {
         t.insert(t.end(), _t[i].begin(), _t[i].end());
@@ -239,6 +245,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     }
 
     auto data = loadtxt(filename)
+                    .max_errors(0)
                     .skiprows(skip)
                     .max_rows(max_rows)
                     .delimiters(delimiter)();
@@ -364,6 +371,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     }
 
     auto data = loadtxt(filename)
+                    .max_errors(0)
                     .skiprows(skip)
                     .max_rows(max_rows)
                     .delimiters(delimiter)();
@@ -537,8 +545,10 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
     int filecount = 1;
     for (auto& filename : filenames) {
         auto data = loadtxt(filename)
+                        .max_errors(0)
                         .skiprows(skip)
-                        .max_rows(max_rows)();
+                        .max_rows(max_rows)
+                        .delimiters(delimiter)();
 
         if (data.size() < 3) {
             std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
@@ -877,6 +887,7 @@ void PHOTdata::load(const string filename, int skip, const string delimiter)
     }
 
     auto data = loadtxt(filename)
+                    .max_errors(0)
                     .skiprows(skip)
                     .delimiters(delimiter)();
 
@@ -982,6 +993,7 @@ GAIAdata::GAIAdata() {};
         }
 
         auto data = loadtxt(filename)
+                        .max_errors(0)
                         .skiprows(skip)
                         .max_rows(max_rows)
                         .delimiters(delimiter)();
@@ -1202,6 +1214,7 @@ ETVData::ETVData() {};
         }
 
         auto data = loadtxt(filename)
+                        .max_errors(0)
                         .skiprows(skip)
                         .max_rows(max_rows)
                         .delimiters(delimiter)();
@@ -1258,6 +1271,7 @@ NB_MODULE(Data, m) {
         .def("delimiters", &loadtxt<double>::delimiters)
         .def("usecols", &loadtxt<double>::usecols)
         .def("max_rows", &loadtxt<double>::max_rows)
+        .def("max_errors", &loadtxt<double>::max_errors)
         .def("__call__", &loadtxt<double>::operator());
 
     // 
