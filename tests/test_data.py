@@ -105,8 +105,8 @@ def test_RVData_normalized_actind(path_to_test_data):
 
 
 def test_bad_file(path_to_test_data):
-    with pytest.raises(ValueError):
-        D = kima.RVData(path_to_test_data('bad_file.txt'), skip=1)
+    D = kima.RVData(path_to_test_data('bad_file.txt'), skip=1)
+    assert_equal(D.N, 2)
 
     D = kima.RVData(path_to_test_data('bad_file.txt'), skip=1, delimiter='\t')
     assert_equal(D.N, 2)
