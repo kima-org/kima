@@ -740,20 +740,21 @@ namespace brandt
     }
 
     std::tuple<vec, vec2d> keplerian_rvpm(const std::vector<double> &t_rv, const std::vector<double> &t_pm,
-                                       const double &parallax,
-                                       const double &P, const double &K, const double &ecc,
-                                       const double &w, const double &M0, const double &M0_epoch,
-                                       const double &inc, const double &Omega)
+                                          const double &parallax,
+                                          const double &P, const double &K, const double &ecc,
+                                          const double &w, const double &M0, const double &M0_epoch,
+                                          const double &inc, const double &Omega)
     {
         // allocate model vectors
 
         // rv(t1), rv(t2), ...
         std::vector<double> rv(t_rv.size());
 
-        // pm(ra_hip), 0,           pm(ra_gaia), 0
-        // 0,          pm(dec_hip), 0,           pm(dec_gaia)
-        // pm(ra_hg),  pm(dec_hg),  0,           0
-        std::vector<std::vector<double>> pm(3, std::vector<double> (t_pm.size(), 0)) ;
+        // This is the organization of the pm vector
+        // pm(ra_hip), pm(ra_gaia)
+        // pm(dec_hip), pm(dec_gaia)
+        // pm(ra_hg),  pm(dec_hg)
+        std::vector<std::vector<double>> pm(3, std::vector<double> (t_pm.size() / 2, 0)) ;
 
         // mean motion, once per orbit
         double n = TWO_PI / P;
@@ -788,6 +789,7 @@ namespace brandt
         }
 
         // RA, for Hipparcos and Gaia epochs
+        size_t j = 0;
         for (size_t i = 0; i < t_pm.size(); i += 2)
         {
             double sinEf, cosEf;
@@ -800,9 +802,10 @@ namespace brandt
             
             // Rotate to observer's frame (paper Eq. 7-8)
             double v_ra  = -vx * (cosw * sinOmega + sinw * cosOmega * cosi) - vy * (-sinw * sinOmega + cosw * cosOmega * cosi);
-            pm[0][i] = v_ra * conv_factor;
+            pm[0][j++] = v_ra * conv_factor;
         }
         // DEC, for Hipparcos and Gaia epochs
+        j = 0;
         for (size_t i = 1; i < t_pm.size(); i += 2)
         {
             double sinEf, cosEf;
@@ -815,7 +818,7 @@ namespace brandt
             
             // Rotate to observer's frame (paper Eq. 7-8)
             double v_dec = -vx * (cosw * cosOmega - sinw * sinOmega * cosi) - vy * (-sinw * cosOmega - cosw * sinOmega * cosi);
-            pm[1][i] = v_dec * conv_factor;
+            pm[1][j++] = v_dec * conv_factor;
         }
 
         // Hipparcos-Gaia epoch and proper motion
@@ -1395,7 +1398,7 @@ NB_MODULE(kepler, m) {
         temp->pm_hg = pm[2];
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
         size_t size_rv = t_rv.size();
-        size_t size_pm = t_pm.size();
+        size_t size_pm = t_pm.size() / 2;
         return std::make_tuple(
             nb::ndarray<nb::numpy, double>(temp->rv.data(), {size_rv}, owner),
             nb::ndarray<nb::numpy, double>(temp->pm_ra.data(), {size_pm}, owner),
