@@ -3040,8 +3040,8 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
     # for i in range(res.ESS):
         p = res.posterior_sample[i]
 
-        model_ra = np.zeros_like(t_pm)
-        model_dec = np.zeros_like(t_pm)
+        model_ra = np.zeros_like(t_ra)
+        model_dec = np.zeros_like(t_dec)
 
         for j in range(int(p[res.indices['np']])):
             if j not in include_planets:
@@ -3069,13 +3069,13 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
         kw_line = dict(ls='--', color='tomato', alpha=0.1)
 
         if normalize:
-            axs[0].plot(t_pm[0::2] - 5e4, model_ra[0::2] + pm_ra_bary, **kw)
-            axs[2].plot(t_pm[1::2] - 5e4, model_dec[1::2] + pm_dec_bary, **kw)
+            axs[0].plot(t_ra - 5e4, model_ra + pm_ra_bary, **kw)
+            axs[2].plot(t_dec - 5e4, model_dec + pm_dec_bary, **kw)
         else:
             axs[0].axhline(pm_ra_bary, **kw_line)
             axs[2].axhline(pm_dec_bary, **kw_line)
-            axs[0].plot(t_pm[0::2] - 5e4, pm_ra_bary + model_ra[0::2], **kw)
-            axs[2].plot(t_pm[1::2] - 5e4, pm_dec_bary + model_dec[1::2], **kw)
+            axs[0].plot(t_ra - 5e4, pm_ra_bary + model_ra, **kw)
+            axs[2].plot(t_dec - 5e4, pm_dec_bary + model_dec, **kw)
     
     for ax in axs[::2]:
         ax.set_xlim(-4000, 10_000)
