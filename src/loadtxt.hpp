@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -26,6 +27,7 @@ struct loadtxt {
     loadtxt& skiprows(size_t skiprows) { _skiprows = skiprows; return *this; }
     loadtxt& usecols(vector<int> usecols) { _usecols = usecols; return *this; }
     loadtxt& max_rows(int max_rows) { _max_rows = max_rows; return *this; }
+    loadtxt& max_errors(int max_errors) { _max_errors = max_errors; return *this; }
 
     T convert(const string& s) {
         if constexpr (std::is_same_v<T, int>)
@@ -61,6 +63,8 @@ struct loadtxt {
 
         vector<T> record;
         size_t rows_read = 0;
+        size_t min_cols = numeric_limits<size_t>::max();
+        size_t _errors = 0;
 
         // read each line
         while (rows_read < _max_rows || _max_rows == 0)
@@ -95,10 +99,21 @@ struct loadtxt {
                     }
                     catch(const std::invalid_argument& e)
                     {
-                        std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
-                        std::cerr << "could not convert field '" << cell << "' to double ";
-                        std::cerr << "at row " << rows_read << " column " << record.size() + 1 << "\n";
-                        throw;
+                        if (_errors < _max_errors) {
+                            std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
+                            std::cerr << "could not convert field '" << cell << "' to double ";
+                            std::cerr << "at row " << rows_read + 1 << " column " << record.size() + 1 << "\n";
+                        }
+                        else if (_errors == _max_errors) {
+                            std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
+                            if (_errors == 0) 
+                                std::cerr << "errors omitted\n";
+                            else
+                                std::cerr << "other errors omitted\n";
+                        }
+                        _errors++;
+                        record.push_back(std::nan(""));
+                        // throw;
                     }
                     
                 }
@@ -116,13 +131,26 @@ struct loadtxt {
                     }
                     catch(const std::invalid_argument& e)
                     {
-                        std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
-                        std::cerr << "could not convert field '" << line << "' to double ";
-                        std::cerr << "at row " << rows_read << " column " << record.size() + 1 << "\n";
+                        if (_errors < _max_errors) {
+                            std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
+                            std::cerr << "could not convert field '" << line << "' to double ";
+                            std::cerr << "at row " << rows_read + 1 << " column " << record.size() + 1 << "\n";
+                        }
+                        else if (_errors == _max_errors) {
+                            std::cerr << "loadtxt: while reading file \"" << _fname << "\", ";
+                            if (_errors == 0) 
+                                std::cerr << "errors omitted\n";
+                            else
+                                std::cerr << "other errors omitted\n";
+                        }
+                        _errors++;
                         // throw;
                     }
                 }
             }
+
+            min_cols = min(min_cols, record.size());
+
             // // convert each field to a double
             // // and add the newly-converted field to the end of the record
             // string cell;
@@ -153,12 +181,12 @@ struct loadtxt {
         infile.close();
 
         size_t nlines = _filedata.size();
-
+        
         // only read _max_rows of content
         if (_max_rows != 0)
-            nlines = min(nlines, _max_rows);
-
-        size_t ncols = _filedata[0].size();
+        nlines = min(nlines, _max_rows);
+        
+        size_t ncols = min_cols;
 
         vector<int> cols;
         if (_usecols.size() == 0)
@@ -205,6 +233,8 @@ struct loadtxt {
         vector<int> _usecols;
         size_t _max_rows = 0;
         vector<vector<T>> _filedata;
+
+        size_t _max_errors = -1;
 };
 
 

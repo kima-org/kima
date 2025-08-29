@@ -69,6 +69,17 @@ int main() {
         assert(data[1].size() == 20 && "should have read 20 rows");
         assert(data[2].size() == 20 && "should have read 20 rows");
     }
+    { // test 7
+        auto fname = "complicated_data.rdb";
+        auto data = loadtxt(fname).max_errors(1)();
+        std::cout << "Read " << data.size() << " columns, each with " << data[0].size() << " rows from file '" << fname << "'\n";
+
+        assert(data.size() == 74 && "should have read 74 columns");
+        assert(data[0].size() == 3 && "should have read 3 rows");
+        assert(data[1].size() == 3 && "should have read 3 rows");
+        assert(data[2].size() == 3 && "should have read 3 rows");
+        assert(std::isnan(data[7][0]) && "should have found NaN in column 8");
+    }
 
     std::cout << "Done reading!\n";
     return 0;
