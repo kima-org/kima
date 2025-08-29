@@ -1877,7 +1877,7 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 def plot_RVData(data, **kwargs):
-    """ Simple plot of RV data """
+    """ Simple plot of RV data. **kwargs are passed to plt.errorbar() """
     t = np.array(data.t).copy()
     y = np.array(data.y).copy()
     e = np.array(data.sig).copy()
@@ -1888,7 +1888,7 @@ def plot_RVData(data, **kwargs):
         time_offset = True
         t -= 24e5
 
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, constrained_layout=True)
 
     kw = dict(fmt='o', ms=3)
     kw.update(**kwargs)
