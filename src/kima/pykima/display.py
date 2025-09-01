@@ -3232,7 +3232,7 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
 
 
     # plot the Keplerian curves
-    alpha = kwargs.pop('alpha', 0.1 if ncurves > 1 else 0.8)
+    alpha = kwargs.pop('alpha', 0.2 if ncurves > 1 else 0.8)
 
     if clip_curves_to_data:
         tt_plot = np.tile(tt, (res.n_instruments, 1)).T
