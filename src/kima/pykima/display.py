@@ -3968,25 +3968,43 @@ def interactive_plotter(res):
 
 def report(res):
     from .utils import distribution_support
-    fig, axs = plt.subplot_mosaic('aaab\npppt\nccc.\nddde', figsize=(8.3, 11.7), constrained_layout=True)
 
-    res.plot_random_samples(ax=axs['a'])
+    short_instruments = [
+        i.replace('ESPRESSO', 'E').replace('HARPS', 'H').replace('CORALIE', 'C')
+        for i in res.instruments
+    ]
+
+    fig, axs = plt.subplot_mosaic('aaab\npppt\nccco\nddde', figsize=(8.3, 11.7),
+                                  constrained_layout=True)
+
+    res.plot_random_samples(ax=axs['a'], ncurves=20,
+                            clip_curves_to_data=True)
     axs['a'].set(title='')
-    axs['a'].legend(ncol=3, fontsize=8, loc='upper right', bbox_to_anchor=(1.0, 1.0))
+    axs['a'].legend(ncol=np.ceil(res.n_instruments / 2), fontsize=8,
+                    loc='lower right', bbox_to_anchor=(1.0, 1.0))
 
     if res.fix:
         axs['b'].axis('off')
     else:
         res.plot1(ax=axs['b'], show_ESS=False, verbose=False)
-        axs['b'].set(ylabel='posterior', title='')
+        axs['b'].set(ylabel='posterior', title='', yticks=[])
+
 
     if res.max_components == 0 and not res.KO and not res.TR:
         axs['p'].axis('off')
         axs['c'].axis('off')
         axs['d'].axis('off')
     else:
-        res.plot2(ax=axs['p'])
-        axs['p'].set(title='', ylabel='posterior')
+        res.plot2(ax=axs['p'], alpha=0.6)
+        axs['p'].set(title='', ylabel='posterior', xlabel='')
+
+        from .analysis import FIP
+        f_width = 1 / res.priors['Pprior'].upper
+        ax_ = axs['p'].twinx()
+        FIP(res, f_width=f_width, ax=ax_, just_tip=True, show_ESS=False,
+            color='k', alpha=0.4)
+        
+        axs['p'].set_ylim(ax_.get_ylim())
 
         res.plot3(ax1=axs['c'], ax2=axs['d'])
         if res.ESS < 1000:
@@ -3998,11 +4016,51 @@ def report(res):
         for ax in (axs['c'], axs['d']):
             ax.set_title('')
             ax.sharex(axs['p'])
-        axs['c'].set_ylim(distribution_support(res.priors['Kprior']))
+        # axs['c'].set_ylim(distribution_support(res.priors['Kprior']))
         axs['d'].set_ylim(0, 1)
 
-    res.hist_jitter(ax=axs['e'], show_title=False, show_stellar_jitter=False)
-    axs['e'].set(title='')
+    # vsys, offsets violin plots
+    if res.n_instruments > 1:
+        axs['o'].violinplot(res.posteriors.offset, showmedians=True,
+                            showextrema=False, vert=False)
+        axs['o'].xaxis.minorticks_on()
+        axs['o'].set_xlabel('offsets [m/s]')
+        axs['o'].yaxis.tick_right()
+        axs['o'].set_yticks(range(1, res.n_instruments))
+        axs["o"].set_title(f"relative to {short_instruments[-1]}", loc="left",
+                        fontsize=10)
+        labels = short_instruments[:-1]
+        axs['o'].set_yticklabels(labels)
+        estimates = [percentile68_ranges_latex(o) for o in res.posteriors.offset.T]
+        xlim = axs['o'].get_xlim()
+        axs['o'].margins(x=0.4, tight=False)
+        axs['o'].set_xlim(xlim[0], None)
+        xlim = axs['o'].get_xlim()
+        for i, est in enumerate(estimates):
+            axs["o"].text(xlim[1] - 0.05*np.ptp(xlim), i + 1, est, 
+                          ha="right", va="center", fontsize=10)
+    else:
+        axs['o'].axis('off')
+
+    # jitter violin plots
+    axs['e'].violinplot(res.jitter[:, 1:], showmedians=True,
+                        showextrema=False, vert=False)
+    axs['e'].xaxis.minorticks_on()
+    axs['e'].set_xlabel('jitter [m/s]')
+    axs['e'].yaxis.tick_right()
+    axs['e'].set_yticks(range(1, len(res.instruments) + 1))
+    labels = short_instruments
+    axs['e'].set_yticklabels(labels)
+    estimates = [percentile68_ranges_latex(j) for j in res.jitter[:, 1:].T]
+
+    xlim = axs['e'].get_xlim()
+    axs['e'].margins(x=0.4, tight=False)
+    axs['e'].set_xlim(xlim[0], None)
+    xlim = axs['e'].get_xlim()
+
+    for i, est in enumerate(estimates, start=1):
+        axs['e'].text(xlim[1] - 0.05*np.ptp(xlim), i, est, 
+                      ha='right', va='center', fontsize=10, )
 
     axs['t'].axis('off')
     y = 0
