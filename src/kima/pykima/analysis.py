@@ -10,8 +10,8 @@ from typing import Tuple, Union
 import numpy as np
 from scipy.stats import norm, t as T, binned_statistic
 
+from .. import MODELS
 from .utils import mjup2mearth, distribution_support
-
 
 def np_most_probable(results: KimaResults):
     """
@@ -192,7 +192,7 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         P = np.atleast_1d(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
 
         m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
@@ -324,6 +324,7 @@ def get_bins(res, start=None, end=None, nbins=100):
         end = _end
     
     bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
+
     return bins
 
 def aliases(P):
@@ -334,92 +335,219 @@ def aliases(P):
     # alias_synodic_month = [abs(1 / (synodic_monthly + i / P)) for i in [1, -1]]
     return alias_year, alias_solar_day, alias_sidereal_day #, alias_synodic_month
 
-def FIP(results, plot=True, show_peaks=True, oversampling=1, include_aliases=False,
-        show_ESS=True):
-    """ Calculate (and plot) the True and False Inclusion Probability (TIP/FIP)
+# def FIP(results, plot=True, show_peaks=True, oversampling=1, include_aliases=False,
+#         include_known_object=False, include_transiting_planet=False,
+#         peak_ndigits=None, show_ESS=True, just_tip=False, fig=None):
+#     """ Calculate (and plot) the True and False Inclusion Probability (TIP/FIP)
 
-    Args:
-        res (kima.KimaResults):
-            The `KimaResults` instance
-        plot (bool, optional): 
-            Plot the TIP and FIP. Defaults to True.
-        show_peaks (bool, optional): 
-            Identify and show prominent TIP peaks. Defaults to True.
-        oversampling (int, optional): 
-            Oversampling factor for the period binning. Defaults to 1.
+#     Args:
+#         res (kima.KimaResults):
+#             The `KimaResults` instance
+#         plot (bool, optional): 
+#             Plot the TIP and FIP. Defaults to True.
+#         show_peaks (bool, optional): 
+#             Identify and show prominent TIP peaks. Defaults to True.
+#         oversampling (int, optional): 
+#             Oversampling factor for the period binning. Defaults to 1.
 
-    Returns:
-        bins (np.ndarray):
-            The period bins
-        FIP (np.ndarray):
-            The False Inclusion Probability
+#     Returns:
+#         bins (np.ndarray):
+#             The period bins
+#         FIP (np.ndarray):
+#             The False Inclusion Probability
+#     """
+#     Tobs = np.ptp(results.data.t)
+#     Δf = 1 / Tobs / oversampling
+#     bins = 1 / np.arange(Δf, 1.0, Δf / oversampling)
+#     bins = bins[:5]
+
+#     # # alias limits, in frequency
+#     # a, b = 1/bins - Δf, 1/bins + Δf
+#     # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
+#     # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
+
+#     P = results.posteriors.P.copy()
+
+#     if include_known_object:
+#         P = np.c_[P, results.posteriors.KO.P.copy()]
+#     if include_transiting_planet:
+#         P = np.concatenate([P, results.posteriors.TR.P.ravel()])
+
+#     if include_aliases:
+#         P = np.array(aliases(P)).reshape(-1, P.shape[1])
+
+#     TIP = np.zeros_like(bins)
+#     dig = np.digitize(P, bins)
+#     i, c = np.unique(dig, return_counts=True)
+#     TIP[i-1] = c
+#     with np.errstate(divide='ignore'):
+#         dig = np.digitize(P, 1/(1/bins - Δf))
+#     i, c = np.unique(dig, return_counts=True)
+#     TIP[i - 1] += c
+
+#     TIP[-1] = 0
+
+#     TIP /= results.ESS
+
+#     # TIP /= TIP.max()
+
+#     # very memory intensive and slower:
+#     # with np.errstate(divide='ignore'):
+#     #     c = np.logical_and(
+#     #         # 
+#     #             a[:, None, None] < 1.0 / P, 
+#     #             1.0 / P < b[:, None, None]
+#     #         # 
+#     #     ).any(axis=2).sum(axis=1)
+#     # TIP = c / results.ESS
+#     # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
+#     # _21 = np.logical_and(a_alias_year1[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year1[:,None,None])
+#     # _22 = np.logical_and(a_alias_year2[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year2[:,None,None])
+#     # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
+
+#     FIP = 1.0 - TIP
+#     FIP = np.clip(FIP, 0, 1)
+#     with np.errstate(divide='ignore'):
+#         mlog10FIP = -np.log10(FIP)
+
+#     if plot:
+#         import matplotlib.pyplot as plt
+#         from scipy.signal import find_peaks
+#         if fig is None:
+#             if just_tip:
+#                 fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(6, 3))
+#                 axs = [axs]
+#             else:
+#                 fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
+#         else:
+#             axs = fig.axes
+
+#         axs[0].semilogx(bins, TIP)
+#         if not just_tip:
+#             axs[1].semilogx(bins, mlog10FIP)
+
+#         if show_peaks:
+#             ndigits = peak_ndigits or len(str(results.ESS))
+#             peaks, _peaks_info = find_peaks(TIP, height=0.9)
+#             for peak in peaks:
+#                 axs[0].plot(bins[peak], TIP[peak], 'ro', ms=3)
+#                 axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
+#                                 xy=(bins[peak], TIP[peak]), xytext=(5, 0), 
+#                                 xycoords='data', textcoords='offset points', 
+#                                 ha='left', va='top')
+#         if show_ESS:
+#             ess = f'{results.ESS:,}'.replace(',', r'$\,$')
+#             axs[0].set_title(f'ESS: {ess}', loc='right')
+#         axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1.05))
+
+#         if not just_tip:
+#             axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
+
+#         return bins, FIP, (fig, axs)
+
+#     return bins, FIP
+
+
+def FIP(results, f_center=None, f_width=None, oversampling=5, 
+        plot=True, show_peaks=True, peak_indices=None, include_aliases=False,
+        include_known_object=False, include_transiting_planet=False,
+        peak_ndigits=None, show_ESS=True, just_tip=False, ax=None, **kwargs):
+    r"""
+    Compute and plot the TIP and FIP (true / false inclusion probability) based
+    on (weighted) posterior samples.
+
+    Arguments:
+        results (KimaResults): A results instance
+        f_center (ndarray, optional):
+            Array of (linear) frequencies at which to compute the T/FIP.
+        f_width (float, optional):
+            Width of the frequency bins.
     """
-    Tobs = np.ptp(results.data.t)
-    Δf = 1 / Tobs / oversampling
-    bins = 1 / np.arange(Δf, 1.0, Δf)
-
-    # # alias limits, in frequency
-    # a, b = 1/bins - Δf, 1/bins + Δf
-    # a_alias_year1, a_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/a)[0])
-    # b_alias_year1, b_alias_year2 = 1 / np.array(kima.pykima.analysis.aliases(1/b)[0])
-
+    if f_center is None and f_width is None:
+        Tobs = np.ptp(results.data.t)
+        f_width = 1.0 / Tobs
+        f_center = np.arange(f_width, 1.0, f_width / oversampling)
+    
+    if f_center is None:
+        f_center = np.arange(f_width, 1.0, f_width / oversampling)
+    
     P = results.posteriors.P.copy()
-    if include_aliases:
-        P = np.array(aliases(P)).reshape(-1, P.shape[1])
 
-    TIP = np.zeros_like(bins)
-    dig = np.digitize(P, bins)
-    i, c = np.unique(dig, return_counts=True)
-    TIP[i-1] = c
+    if include_known_object:
+        P = np.c_[P, results.posteriors.KO.P.copy()]
+    if include_transiting_planet:
+        P = np.concatenate([P, results.posteriors.TR.P.ravel()])
+
+    if np.any(np.diff(f_center) > f_width):
+        msg = "Non-overlapping windows in FIP calculation. "
+        msg += "Some samples might be completely ignored."
+        raise Exception(msg)
+
+    FIP = np.ones_like(f_center)
+    fa = f_center - f_width / 2
+    fb = f_center + f_width / 2
+    weights = np.ones(P.shape[0])
+    weights = weights / np.sum(weights)
+
     with np.errstate(divide='ignore'):
-        dig = np.digitize(P, 1/(1/bins - Δf))
-    i, c = np.unique(dig, return_counts=True)
-    TIP[i - 1] += c
-    TIP[-1] = 0
+        for fk, wk in zip(1 / P, weights):
+            beg = np.atleast_1d(np.searchsorted(fb, fk, "right"))
+            end = np.atleast_1d(np.searchsorted(fa, fk, "left"))
+            listind = []
+            for bi, ei in zip(beg, end):
+                listind += range(bi, ei)
+            FIP[listind] -= wk
 
-    TIP /= results.ESS
-
-    # very memory intensive and slower:
-    # with np.errstate(divide='ignore'):
-    #     c = np.logical_and(
-    #         # 
-    #             a[:, None, None] < 1.0 / P, 
-    #             1.0 / P < b[:, None, None]
-    #         # 
-    #     ).any(axis=2).sum(axis=1)
-    # TIP = c / results.ESS
-    # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
-    # _21 = np.logical_and(a_alias_year1[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year1[:,None,None])
-    # _22 = np.logical_and(a_alias_year2[:,None,None] < 1/results.posteriors.P, 1/results.posteriors.P < b_alias_year2[:,None,None])
-    # c1 = (_1 | _21 | _22).any(axis=2).sum(axis=1)
-
-    FIP = 1.0 - TIP
-    FIP = np.clip(FIP, 0, 1)
-    with np.errstate(divide='ignore'):
-        mlog10FIP = -np.log10(FIP)
+    TIP = 1.0 - FIP
+    mlog10FIP = -np.log10(FIP)
+    pcenter = 1.0 / f_center
 
     if plot:
         import matplotlib.pyplot as plt
         from scipy.signal import find_peaks
-        fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
-        axs[0].semilogx(bins, TIP)
-        axs[1].semilogx(bins, mlog10FIP)
+        if ax is None:
+            if just_tip:
+                fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(6, 3))
+                axs = [axs]
+            else:
+                fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
+        else:
+            if just_tip:
+                axs = [ax]
+                fig = ax.figure
+            else:
+                ax = np.atleast_1d(ax)
+                assert len(ax) == 2, "axs must have length 2"
+                axs = ax
+
+        axs[0].semilogx(pcenter, TIP, **kwargs)
+        if not just_tip:
+            axs[1].semilogx(pcenter, mlog10FIP, **kwargs)
+
         if show_peaks:
-            ndigits = len(str(results.ESS))
-            peaks, peaks_info = find_peaks(TIP, height=0.95)
+            ndigits = peak_ndigits or len(str(results.ESS))
+
+            peaks, _peaks_info = find_peaks(TIP, height=0.9)
+            if peak_indices is not None:
+                peaks = peaks[peak_indices]
+
             for peak in peaks:
-                axs[0].plot(bins[peak], TIP[peak], 'ro', ms=3)
-                axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
-                                xy=(bins[peak], TIP[peak]), xytext=(5, 0), 
+                axs[0].plot(pcenter[peak], TIP[peak], 'ro', ms=3)
+                axs[0].annotate(f'{pcenter[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
+                                xy=(pcenter[peak], TIP[peak]), xytext=(5, 0), 
                                 xycoords='data', textcoords='offset points', 
                                 ha='left', va='top')
         if show_ESS:
             ess = f'{results.ESS:,}'.replace(',', r'$\,$')
-            axs[0].text(0.95, 0.9, f'ESS: {ess}', ha='right', transform=axs[0].transAxes)
+            axs[0].set_title(f'ESS: {ess}', loc='right')
         axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1.05))
-        axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
 
-    return bins, FIP
+        if not just_tip:
+            axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
+
+        return pcenter, FIP, (fig, axs)
+
+    return pcenter, FIP
 
 
 def FIP_count_detections(results, alpha=0.05, Ptrue=None):
