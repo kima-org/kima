@@ -234,6 +234,9 @@ class Interval:
         if isinstance(x, np.ndarray):
             return (self.low <= x).any() and (x <= self.high).any()
         return self.low <= x <= self.high
+    
+    def mask(self, arr: np.ndarray):
+        return (self.low <= arr) & (arr <= self.high)
 
 
 def rms(array):
