@@ -34,6 +34,7 @@ from . import display
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.stats import norm, t as students_t, gaussian_kde, randint as discrete_uniform
+
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -41,6 +42,15 @@ except ImportError:
 
 pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+
+COMPRESSED_FILE_EXT = {
+    "bz2": ".bz",
+    "gzip": ".gz",
+    "lz4": ".lz4",
+    "lzma": ".lzma",
+    "pickle": "",
+    "zipfile": ".zip",
+}
 
 
 
@@ -230,9 +240,27 @@ class posterior_holder:
         fields = self._get_set_fields()
         return np.hstack([getattr(self, f) for f in fields if f not in ('TR', 'KO')])
     
-    def msini(self, star_mass=1.0):
-        return get_planet_mass(self.P, self.K, self.e, star_mass,
-                               full_output=True)[-1]
+    def msini(self, star_mass=1.0, units=None):
+        """ planet minimum mass [Mjup by default] """
+        allowed = ('mj', 'mjup', 'jupiter', 'jup', 'me', 'mearth', 'earth')
+        if units and units.lower() not in allowed:
+            raise ValueError(f'`units` must be one of {allowed}')
+        units = units or 'mjup'
+        m = get_planet_mass(self.P, self.K, self.e, star_mass, full_output=True)[-1]
+        if units.lower() in ('me', 'mearth', 'earth'):
+            m *= mjup2mearth
+        return m
+
+    def asini(self, star_mass=1.0):
+        """ planet semi-major axis [AU] """
+        return get_planet_semimajor_axis(self.P, self.K, star_mass,
+                                         full_output=True)[-1]
+    
+    def λ0(self, fold=True):
+        """ mean longitude at the epoch [rad] """
+        from .utils import get_mean_longitude
+        return get_mean_longitude(self.φ, self.w, fold=fold)
+
 
 def _get_pdf(prior, x=None, N=300):
     if x is None:
@@ -244,6 +272,7 @@ def _get_pdf(prior, x=None, N=300):
         x = np.linspace(_min - 0.1 * support, _max + 0.1 * support, N)
         return x, np.exp(np.vectorize(prior.logpdf)(x))
     return np.exp(np.vectorize(prior.logpdf)(x))
+
 
 @dataclass
 class prior_holder:
@@ -1337,7 +1366,9 @@ class KimaResults:
 
                         # from classic import postprocess
                         # postprocess()
-            else:
+
+            elif filename.endswith('.pkl'):
+                import pickle
                 try:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f)
@@ -1345,13 +1376,23 @@ class KimaResults:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f, encoding='latin1')
 
-            res._update()
+            elif filename.endswith(tuple(COMPRESSED_FILE_EXT.values())):
+                try:
+                    import compress_pickle as pickle
+                except (ImportError, ModuleNotFoundError):
+                    print('reading compressed file requires the `compress-pickle` package')
+                    return
+                
+                res = pickle.load(filename)
+
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
             raise
 
+        res._update()
         res._set_plots()
+        res.get_marginals()
         return res
 
     def _update(self):
@@ -1391,7 +1432,7 @@ class KimaResults:
         return _show_kima_setup()
 
     def get_model_id(self, add_timestamp=True):
-        if self.star == 'unknown':
+        if self.star in (None, '', 'unknown'):
             id = 'kima_'
         else: 
             id = self.star + '_'
@@ -1449,18 +1490,21 @@ class KimaResults:
             try:
                 import compress_pickle as pickle
                 if compress is True:
+                    # use bz2 compression by default, good compromise between
+                    # speed and file size
                     dump_kwargs['compression'] = 'bz2'
-                    ending = '.pkl.bz2'
+                    ending = '.pkl' + COMPRESSED_FILE_EXT['bz2']
+
                 elif isinstance(compress, str):
                     available = list(filter(None, pickle.compressers.registry.get_known_compressions()))
                     if compress not in available:
                         print('available compression methods: ', available)
                         return
                     dump_kwargs['compression'] = compress
-                    ends = {'bz2': '.bz2', 'gzip': '.gz', 'lz4': '.lz4', 'lzma': '.lzma', 'pickle': '', 'zipfile': '.zip'}
-                    ending = ending + ends[compress]
+                    ending = ending + COMPRESSED_FILE_EXT[compress]
+
             except (ImportError, ModuleNotFoundError):
-                print('compression requires the `compress_pickle` package')
+                print('compression requires the `compress-pickle` package')
                 return
 
         if filename is None:
