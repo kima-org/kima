@@ -1636,6 +1636,10 @@ class KimaResults:
                 setattr(self.posteriors, name, self.posterior_sample[:, i])
                 setattr(self._priors, name, self.priors[f'{name}_prior'])
 
+        if self.model is MODELS.RVHGPMmodel:
+            self.posteriors.pm_ra_bary = self.posterior_sample[:, self.indices['pm_ra_bary']]
+            self.posteriors.pm_dec_bary = self.posterior_sample[:, self.indices['pm_dec_bary']]
+
         # parameters of the outlier model
         if self.model is MODELS.OutlierRVmodel:
             self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = \
@@ -1658,7 +1662,8 @@ class KimaResults:
 
             # phases
             s = self.indices['planets.φ']
-            self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+            φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+            self.posteriors.φ_deg = np.rad2deg(φ)
             self._priors.φ = self.priors['phiprior']
 
             # eccentricities
