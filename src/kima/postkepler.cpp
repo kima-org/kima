@@ -406,6 +406,7 @@ Returns:
 NB_MODULE(postkepler, m) {
     // m.def("post_keplerian", &postKep::keplerian_prec,
     //       "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a);
+    m.def("period_correction", [](double Pobs, double wdot) {return postKep::period_correction(Pobs, wdot); }, "Pobs"_a, "wdot"_a);
 
     m.def("post_keplerian", [](const std::vector<double> &t, const double &P,
                                   const double &K, const double &ecc,

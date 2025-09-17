@@ -18,6 +18,7 @@ from copy import copy, deepcopy
 
 from .. import __models__, MODELS
 from ..kepler import keplerian
+from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkernel, Matern32kernel, SHOkernel, 
@@ -503,6 +504,10 @@ class KimaResults:
             self.eclipsing = model.eclipsing
             self.relativistic_correction = model.relativistic_correction
             self.tidal_correction = model.tidal_correction
+            self.star_mass = model.star_mass
+            self.binary_mass = model.binary_mass
+            self.star_radius = model.star_radius
+            self.binary_radius = model.binary_radius
             if self.double_lined:
                 self.data.y2 = np.array(np.copy(data.y2))
                 self.data.e2 = np.array(np.copy(data.sig2))
@@ -2466,13 +2471,22 @@ class KimaResults:
                         w = pars[j + 4 * self.nKO]
                     if self.model not in ONE_D_MODELS:
                         if self.model is MODELS.BINARIESmodel:
-                            print(P, K, ecc, w, phi, self.M0_epoch)
-                            v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
-                            v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch) #Needs changing
+                            if j==0:
+                                Panom = period_correction(P,wdot)
+                                v0,v1 = post_keplerian_sb2(t, Panom, K, q, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_radius, self.binary_radius, self.relativistic_correction, self.tidal_correction)
+                                v[0] += v0
+                                v[1] += v1
+                            else:
+                                v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                                v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                         else:
                             v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     else:
-                        v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                        if self.model is MODELS.BINARIESmodel and j==0:
+                            Panom = period_correction(P,wdot)
+                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
+                        else:
+                            v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
             # transiting planet ?
             if hasattr(self, 'TR') and self.TR and include_transiting_planet:
@@ -2526,7 +2540,11 @@ class KimaResults:
                 w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
 
-                if self.model in ONE_D_MODELS:
+                if self.model not in ONE_D_MODELS:
+                    v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    if self.model is MODELS.BINARIESmodel:
+                        v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         ni = self.n_instruments
@@ -2542,6 +2560,12 @@ class KimaResults:
             zp = sample[self.indices['zero_points']]
             C = np.r_[sample[self.indices['vsys']], zp[ni - 1::ni]]
             v += C.reshape(-1, 1)
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                C = np.c_[sample[self.indices['vsys']], sample[self.indices['vsys_sec']]]
+                v += C.reshape(-1, 1)
+            else:
+                v += sample[self.indices['vsys']]
         else:
             v += sample[self.indices['vsys']]
 
@@ -2562,6 +2586,13 @@ class KimaResults:
                 offsets = np.r_[offsets, 0.0, zero_points]
                 offsets = np.pad(-np.diff(offsets)[::ni].reshape(-1, 1), ((0, 0), (0, 1)))
                 v += np.take(offsets.reshape(-1, ni), ii, axis=1)
+            elif self.model is MODELS.BINARIESmodel:
+                if self.double_lined:
+                    offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
+                    v += np.take(offsets, ii, axis=1)
+                else:
+                    offsets = np.pad(offsets, (0, 1))
+                    v += np.take(offsets, ii)
             else:
                 offsets = np.pad(offsets, (0, 1))
                 v += np.take(offsets, ii)
@@ -2670,6 +2701,11 @@ class KimaResults:
             v = np.zeros((2, t.size))
         elif self.model is MODELS.RVFWHMRHKmodel:
             v = np.zeros((3, t.size))
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                v = np.zeros((2,t.size))
+            else:
+                v = np.zeros_like(t)
         else:
             v = np.zeros_like(t)
 
@@ -2693,16 +2729,59 @@ class KimaResults:
                     if pj != -single_planet:
                         continue
                 if except_planet is not None:
-                    if -pj in except_planet:
+                    if self.model is MODELS.BINARIESmodel and j==0:
+                        pass
+                    elif -pj in except_planet:
                         continue
 
                 P = pars[j + 0 * self.nKO]
                 K = pars[j + 1 * self.nKO]
-                phi = pars[j + 2 * self.nKO]
                 # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
-                ecc = pars[j + 3 * self.nKO]
-                w = pars[j + 4 * self.nKO]
-                v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                if self.model is MODELS.BINARIESmodel:
+                    if self.double_lined:
+                        q = pars[j + 2 * self.nKO]
+                        phi = pars[j + 3 * self.nKO]
+                        ecc = pars[j + 4 * self.nKO]
+                        w = pars[j + 5 * self.nKO]
+                        wdot = pars[j + 6 * self.nKO]
+                        cosi = pars[j + 7 * self.nKO]
+                    else:
+                        phi = pars[j + 2 * self.nKO]
+                        ecc = pars[j + 3 * self.nKO]
+                        w = pars[j + 4 * self.nKO]
+                        wdot = pars[j + 5 * self.nKO]
+                        cosi = pars[j + 6 * self.nKO]
+                else:
+                    phi = pars[j + 2 * self.nKO]
+                    ecc = pars[j + 3 * self.nKO]
+                    w = pars[j + 4 * self.nKO]
+                if self.model is MODELS.BINARIESmodel:
+                    if self.double_lined:
+                        if j==0:
+                            Panom = period_correction(P,wdot)
+                            v0,v1 = post_keplerian_sb2(t, Panom, K, q, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_radius, self.binary_radius, self.relativistic_correction, self.tidal_correction)
+                            v[0] += v0
+                            v[1] += v1
+                            if except_planet is not None:
+                                if -pj in except_planet:
+                                    v2,v3 = post_keplerian_sb2(t, P, K, q, ecc, w, 0, phi, self.M0_epoch, cosi, self.star_radius, self.binary_radius, False, False)
+                                    v[0] -= v2
+                                    v[1] -= v3
+
+                        else:
+                            v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                            v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    else:
+                        if j==0:
+                            Panom = period_correction(P,wdot)
+                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
+                            if except_planet is not None:
+                                if -pj in except_planet:
+                                    v -= post_keplerian(t, P, K, ecc, w, 0, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, False, False)
+                        else:
+                            v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                else:
+                    v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         # transiting planet ?
         if hasattr(self, 'TR') and self.TR and include_transiting_planet:
@@ -3148,6 +3227,11 @@ class KimaResults:
             D = np.vstack([self.data.y, self.data.y2])
         elif self.model is MODELS.RVFWHMRHKmodel:
             D = np.vstack([self.data.y, self.data.y2, self.data.y3])
+        elif self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                D = np.vstack([self.data.y, self.data.y2])
+            else:
+                D = self.data.y
         else:
             D = self.data.y
 
@@ -3157,54 +3241,111 @@ class KimaResults:
             return D - self.eval_model(sample)
 
     def residual_std(self, sample, per_instrument=True, printit=True):
+        sb2 = False
         r = self.residuals(sample, full=True)
         if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             r = r[0]
+        if self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                sb2 = True
+                r2 = r[1]
+                r = r[0]
 
         vals = []
         val = np.std(r)
+        vals.append(val)
+
+        vals2 = []
+        if sb2:
+            val2 = np.std(r2)
+            vals2.append(val2)
 
         if printit:
-            print(f'full: {val:.3f} m/s')
-
-        vals.append(val)
+            if sb2:
+                print(f'full primary: {val:.3f} m/s')
+                print(f'full secondary: {val2:.3f} m/s')
+            else:
+                print(f'full: {val:.3f} m/s')
+        
 
         if per_instrument and self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = np.std(r[self.data.obs == o])
-                if printit:
-                    print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
+                if sb2:
+                    val2 = np.std(r2[self.data.obs == o])
+                    vals2.append(val2)
+                if printit:
+                    if sb2:
+                        print(f'{inst} primary: {val:.3f} m/s')
+                        print(f'{inst} secondary: {val:.3f} m/s')
+                    else:
+                        print(f'{inst}: {val:.3f} m/s')
+                
+        ret = np.array(vals)
+        if sb2:
+            ret = (np.array(vals),np.array(vals2))
 
-        return np.array(vals)
+        return ret
 
     # residual_std = partialmethod(_residual_quantity, np.std)
 
     def residual_rms(self, sample, per_instrument=True, weighted=True, printit=True):
+        sb2 = False
         r = self.residuals(sample, full=True)
         if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             r = r[0]
+        if self.model is MODELS.BINARIESmodel:
+            if self.double_lined:
+                sb2 = True
+                r2 = r[1]
+                r = r[0]
 
         vals = []
         if weighted:
             val = wrms(r, weights=1 / self.data.e**2)
         else:
             val = rms(r)
+        vals.append(val)
+
+        vals2 = []
+        if sb2:
+            if weighted:
+                val2 = wrms(r2, weights=1 / self.data.e2**2)
+            else:
+                val2 = rms(r2)
+            vals2.append(val2)
 
         if printit:
-            print(f'full: {val:.3f} m/s')
+            if sb2:
+                print(f'full primary: {val:.3f} m/s')
+                print(f'full secondary: {val2:.3f} m/s')
+            else:
+                print(f'full: {val:.3f} m/s')
 
-        vals.append(val)
+        
 
         if per_instrument and self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = wrms(r[self.data.obs == o],
                            weights=1 / self.data.e[self.data.obs == o]**2)
-                if printit:
-                    print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
+                if sb2:
+                    val2 = wrms(r2[self.data.obs == o],
+                           weights=1 / self.data.e2[self.data.obs == o]**2)
+                    vals2.append(val2)
+                if printit:
+                    if sb2:
+                        print(f'{inst} primary: {val:.3f} m/s')
+                        print(f'{inst} secondary: {val:.3f} m/s')
+                    else:
+                        print(f'{inst}: {val:.3f} m/s')
+                
+        ret = np.array(vals)
+        if sb2:
+            ret = (np.array(vals),np.array(vals2))
 
-        return np.array(vals)
+        return ret
 
     def _planet_i_indices(self, i):
         start, stop, _ = self.indices['planets'].indices(self.posterior_sample.shape[1])
