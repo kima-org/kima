@@ -80,9 +80,9 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
 
     // TODO: change these priors
     if (!pm_ra_bary_prior)
-        pm_ra_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_ra_hg), max(0.0, 1.5*pm_data.pm_ra_hg));
+        pm_ra_bary_prior = make_prior<Gaussian>(pm_data.pm_ra_hg, pm_data.sig_hg_ra);
     if (!pm_dec_bary_prior)
-        pm_dec_bary_prior = make_prior<Uniform>(min(0.0, 1.5*pm_data.pm_dec_hg), max(0.0, 1.5*pm_data.pm_dec_hg));
+        pm_dec_bary_prior = make_prior<Gaussian>(pm_data.pm_dec_hg, pm_data.sig_hg_dec);
     if (!parallax_prior)
         parallax_prior = make_prior<Gaussian>(pm_data.parallax_gaia, pm_data.parallax_gaia_error);
 
@@ -1146,6 +1146,10 @@ void RVHGPMmodel::save_setup() {
 
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
+
+    fout << "pm_ra_bary_prior: " << *pm_ra_bary_prior << endl;
+    fout << "pm_dec_bary_prior: " << *pm_dec_bary_prior << endl;
+    fout << "parallax_prior: " << *parallax_prior << endl;
 
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
