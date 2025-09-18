@@ -2599,7 +2599,6 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     # errorbar plot arguments
     colors = kwargs.pop('colors', None)
     ekwargs = kwargs
-    # ekwargs.setdefault('mec', 'none')
     ekwargs.setdefault('ms', 4)
     ekwargs.setdefault('capsize', 0)
     ekwargs.setdefault('elinewidth', 0.8)
@@ -2609,7 +2608,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     e2kwargs.setdefault('fmt', 'o')
     e2kwargs.setdefault('mfc', 'none')
 
+    #now set default marker
     ekwargs.setdefault('fmt', 'o')
+    ekwargs.setdefault('mec', 'none')
 
     # very complicated logic just to make the figure the right size
     fs = [
