@@ -2,6 +2,13 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from .loading import my_loadtxt, loadtxt_rows
+from .utils import SimpleTimer
+try:
+    from pandas import read_csv
+    pandas_available = True
+except ImportError:
+    pandas_available = False
+
 
 try:
     from tqdm import trange
@@ -24,97 +31,14 @@ def logdiffexp(x1, x2):
     result = np.log(np.exp(xx1) - np.exp(xx2)) + biggest
     return result
 
-
-def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
-                save=True, zoom_in=True, compression_bias_min=1.0,
-                verbose=True, compression_scatter=0.0, moreSamples=1,
-                compression_assert=None, single_precision=False):
-
-
+def log_diff_exp(logX_top, logX_bottom):
+    """Stable computation of log(exp(a) - exp(b))"""
+    if logX_bottom > logX_top:
+        logX_top, logX_bottom = logX_bottom, logX_top
+    return logX_top + np.log1p(-np.exp(logX_bottom - logX_top))
 
 
-def calculate_ESS(max=None):
-    levels_orig = np.atleast_2d(my_loadtxt("levels.txt"))
-    sample_info = np.atleast_2d(my_loadtxt("sample_info.txt"))[:max]
-
-    # for nn in np.linspace(0, sample_info_full.shape[0] + 1, 5).astype(int)[1:]:
-    # for nn in np.linspace(0, sample_info_full.shape[0] + 1, sample_info_full.shape[0]+1).astype(int)[1:]:
-    # nn = None
-    # sample_info = sample_info[:1]
-
-    # Convert to lists of tuples
-    #               logl,              tiebreaker
-    logl_levels = [(levels_orig[i, 1], levels_orig[i, 2]) for i in range(0, levels_orig.shape[0])]
-    #                logl,              tiebreaker,        id
-    logl_samples = [(sample_info[i, 1], sample_info[i, 2], i) for i in range(0, sample_info.shape[0])]
-    logp_samples = np.zeros(sample_info.shape[0])
-
-    sandwich = sample_info[:, 0].copy().astype('int')
-    for i in range(0, sample_info.shape[0]):
-        while (sandwich[i] < levels_orig.shape[0] - 1) and (logl_samples[i] > logl_levels[sandwich[i] + 1]):
-            sandwich[i] += 1
-    
-    nlevels = levels_orig.shape[0]
-
-    # For each level
-    for i in range(0, nlevels):
-        # Find the samples sandwiched by this level
-        which = np.nonzero(sandwich == i)[0]
-        logl_samples_thisLevel = []  # (logl, tieBreaker, ID)
-        for j in range(0, len(which)):
-            logl_samples_thisLevel.append(copy.deepcopy(logl_samples[which[j]]))
-        logl_samples_thisLevel = sorted(logl_samples_thisLevel)
-        N = len(logl_samples_thisLevel)
-
-        # Generate intermediate logx values
-        logx_max = levels_orig[i, 0]
-        if i == nlevels - 1:
-            logx_min = MIN_LOGL
-        else:
-            logx_min = levels_orig[i + 1, 0]
-        Umin = np.exp(logx_min - logx_max)
-
-        if N == 0:
-            U = Umin + (1 - Umin) * np.random.rand(len(which))
-        else:
-            U = Umin + (1 - Umin) * np.linspace(1 / (N + 1), 1 - 1 / (N + 1), N)
-        logx_samples_thisLevel = np.sort(logx_max + np.log(U))[::-1]
-        print(i, logx_samples_thisLevel.size)#, logx_samples_thisLevel)
-
-        for j in range(0, which.size):
-            if j != which.size - 1:
-                left = logx_samples_thisLevel[j + 1]
-            elif i == nlevels - 1:
-                left = MIN_LOGL
-            else:
-                left = levels_orig[i + 1, 0]
-
-            if j != 0:
-                right = logx_samples_thisLevel[j - 1]
-            else:
-                right = levels_orig[i, 0]
-            # print(f'{i=} {which} {right} {left}')
-
-            logp_samples[logl_samples_thisLevel[j][2]] = np.log(0.5) + logdiffexp(right, left)
-
-    logL = sample_info[:, 1]
-    # print(logp_samples)
-
-    # logp_samples = logp_samples - logsumexp(logp_samples)
-    # print(logp_samples)
-
-    stream_ess = StreamingLogESS()
-    for lw, lL in zip(logp_samples, logL):
-        stream_ess.update(lw)
-    ESS = stream_ess.ess()
-    print(f"Current ESS: {ESS:.4f}")
-
-    logP_samples = logp_samples + logL
-    P_samples = np.exp(logP_samples - logsumexp(logP_samples))
-    ESS = np.exp(-np.sum(P_samples * np.log(P_samples + 1E-300)))
-    print(f"ESS = {ESS:.1f}")
-
-    return ESS, logp_samples
+MIN_LOGL = -1e300
 
 
 def plot_diagnostic_1(sample_info, ax=None):
@@ -130,7 +54,76 @@ def plot_diagnostic_2(levels_orig, ax=None):
     if ax is None:
         fig, (ax1, ax2) = plt.subplots(2, 1, constrained_layout=True)
     else:
-        levels_orig, sample_info = loaded[0], loaded[1]
+        ax1, ax2 = ax
+    fig = ax1.figure
+    ax1.plot(np.diff(levels_orig[:, 0]), "k")
+    ax1.set(ylabel="Compression", xlabel="Level",
+            title='DNest4: compression factor between levels')
+    xlim = ax1.get_xlim()
+    ax1.axhline(-1., color='g')
+    ax1.axhline(-np.log(10.), color='g', linestyle="--")
+    ax1.set_ylim(ymax=0.05)
+
+    good = np.nonzero(levels_orig[:, 4] > 0)[0]
+    ax2.plot(levels_orig[good, 3] / levels_orig[good, 4], "ko-")
+    ax2.set(xlim=xlim, ylim=[0, 1], xlabel="Level", ylabel="MH Acceptance",
+            title='DNest4: MCMC acceptance fraction for each level')
+    return fig, (ax1, ax2)
+
+def plot_diagnostic_3(sample_info, logx_samples, levels, logz_estimates, 
+                      P_samples, z, zoom_in=True):
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    ax1.plot(logx_samples[:, z], sample_info[:, 1], 'k.',
+                label='Samples')
+    ax1.plot(levels[1:, 0], levels[1:, 1], 'g.', label='Levels')
+    ax1.legend(numpoints=1, loc='lower left')
+    title = ('DNest4: Log-likelihood vs enclosed prior mass '
+                'for each sample/level')
+    ax1.set(ylabel='log(L)', title=title)
+
+    # fig.suptitle(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
+    fig.suptitle("log(Z) = %7.3f" % logz_estimates[z][0])
+
+    # Use all plotted logl values to set ylim
+    combined_logl = np.hstack([sample_info[:, 1], levels[1:, 1]])
+    combined_logl = np.sort(combined_logl)
+    lower = combined_logl[int(0.1 * combined_logl.size)]
+    upper = combined_logl[-1]
+    diff = upper - lower
+    lower -= 0.05 * diff
+    upper += 0.05 * diff
+    if zoom_in:
+        ax1.set_ylim([lower, upper])
+    xlim = ax1.get_xlim()
+
+    ax2.plot(logx_samples[:, z], P_samples[:, z], 'k.')
+    ax2.set(ylabel='Posterior Weights', xlabel='log(X)', xlim=xlim,
+            title='DNest4: Posterior weight of each sample')
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    return fig, (ax1, ax2)
+
+
+def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded={}, cut=0,
+                save=True, zoom_in=True, compression_bias_min=1.0,
+                verbose=True, debug=False, compression_scatter=0.0, moreSamples=1,
+                compression_assert=None, single_precision=False, resample=True):
+
+    with SimpleTimer() as timer:
+        if len(loaded) == 0:
+            if False:
+                    levels_orig = read_csv('levels.txt', delimiter=' ', comment='#', engine='c', 
+                                        names=['log_X', 'log_likelihood', 'tiebreaker', 'accepts', 'tries', 'exceeds', 'visits']).to_numpy()
+                    sample_info = read_csv('sample_info.txt', delimiter=' ', comment='#', engine='c', 
+                                        names=['level_assignment', 'log_likelihood', 'tiebreaker', 'id']).to_numpy()
+            else:
+                levels_orig = np.atleast_2d(my_loadtxt("levels.txt"))
+                sample = np.atleast_2d(my_loadtxt("sample.txt"))
+                sample_info = np.atleast_2d(my_loadtxt("sample_info.txt"))
+        else:
+            sample = loaded['sample']
+            levels_orig, sample_info = loaded['levels'], loaded['sample_info']
+    if debug:
+        print(f'Loading files took {timer.interval:.2f} seconds')
 
     # Remove regularisation from levels_orig if we asked for it
     if compression_assert is not None:
@@ -140,26 +133,14 @@ def plot_diagnostic_2(levels_orig, ax=None):
     cut = int(cut * sample_info.shape[0])
     sample_info = sample_info[cut:, :]
 
+    # unique_idx = np.unique(sample, axis=0, return_index=True)[1]
+    # sample = sample[unique_idx]
+    # sample_info = sample_info[unique_idx]
+
+
     if plot:
-        _, ax = plt.subplots(1, 1)
-        ax.plot(sample_info[:, 0], "k")
-        ax.set(xlabel="Iteration", ylabel="Level",
-               title='DNest4: level of each saved particle')
-
-        fig, (ax1, ax2) = plt.subplots(2, 1)
-        ax1.plot(np.diff(levels_orig[:, 0]), "k")
-        ax1.set(ylabel="Compression", xlabel="Level",
-                title='DNest4: compression factor between levels')
-        xlim = ax1.get_xlim()
-        ax1.axhline(-1., color='g')
-        ax1.axhline(-np.log(10.), color='g', linestyle="--")
-        ax1.set_ylim(ymax=0.05)
-
-        good = np.nonzero(levels_orig[:, 4] > 0)[0]
-        ax2.plot(levels_orig[good, 3] / levels_orig[good, 4], "ko-")
-        ax2.set(xlim=xlim, ylim=[0, 1], xlabel="Level", ylabel="MH Acceptance",
-                title='DNest4: MCMC acceptance fraction for each level')
-        fig.tight_layout()
+        figd1, _ = plot_diagnostic_1(sample_info)
+        figd2, _ = plot_diagnostic_2(levels_orig)
 
     # Convert to lists of tuples
     logl_levels = [(levels_orig[i, 1], levels_orig[i, 2])
@@ -250,14 +231,9 @@ def plot_diagnostic_2(levels_orig, ax=None):
         H_estimates[z] = np.sum(P_samples[:, z] * S)
 
         if plot:
-            fig, (ax1, ax2) = plt.subplots(2, 1)
-            ax1.plot(logx_samples[:, z], sample_info[:, 1], 'k.',
-                     label='Samples')
-            ax1.plot(levels[1:, 0], levels[1:, 1], 'g.', label='Levels')
-            ax1.legend(numpoints=1, loc='lower left')
-            title = ('DNest4: Log-likelihood vs enclosed prior mass '
-                     'for each sample/level')
-            ax1.set(ylabel='log(L)', title=title)
+            figd3, _ = plot_diagnostic_3(sample_info, logx_samples, levels, 
+                                         logz_estimates, P_samples, z,
+                                         zoom_in=zoom_in)
 
         if debug:
             print('.', end='', flush=True)
@@ -265,10 +241,7 @@ def plot_diagnostic_2(levels_orig, ax=None):
     if debug:
         print('')
 
-            ax2.plot(logx_samples[:, z], P_samples[:, z], 'k.')
-            ax2.set(ylabel='Posterior Weights', xlabel='log(X)', xlim=xlim,
-                    title='DNest4: Posterior weight of each sample')
-            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    P_samples_copy = P_samples.copy()
 
     P_samples = np.mean(P_samples, 1)
     P_samples = P_samples / np.sum(P_samples)
@@ -278,49 +251,61 @@ def plot_diagnostic_2(levels_orig, ax=None):
     H_error = np.std(H_estimates)
     ESS = np.exp(-np.sum(P_samples * np.log(P_samples + 1E-300)))
 
-    errorbar1 = ""
     errorbar2 = ""
     if numResampleLogX > 1:
-        errorbar1 += " +- " + str(logz_error)
         errorbar2 += " +- " + str(H_error)
 
     if verbose:
-        print("log(Z) = " + str(logz_estimate) + errorbar1)
-        print("Information = " + str(H_estimate) + errorbar2 + " nats.")
-        print("Effective sample size = " + str(ESS))
+        if numResampleLogX > 1:
+            from urepr import uformat
+            est = uformat(logz_estimate, logz_error).replace('+/-', ' +/- ')
+            print(f"log(Z) = {est}")
+            est = uformat(H_estimate, H_error).replace('+/-', ' +/- ')
+            print(f"Information = {est} nats")
+        else:
+            print(f"log(Z) = {logz_estimate:.2f}")
+            print(f"Information = {H_estimate:.2f} nats")
+        print(f"Effective sample size = {ESS:.1f}")
 
     # print(f'up to here: {time() - start} sec')
+    if not resample:
+        return
 
     # Resample to uniform weight
     N = int(moreSamples * ESS)
     w = P_samples
     w = w / np.max(w)
-    rows = np.empty(N, dtype="int64")
-    for i in trange(0, N):
-        while True:
-            which = np.random.randint(sample_info.shape[0])
-            if np.random.rand() <= w[which]:
-                break
-        rows[i] = which + cut
+    rows = np.random.choice(np.arange(sample_info.shape[0]), size=N, 
+                            replace=False, p=w / np.sum(w))
+    # rows = unique_idx[rows]
+    # print(unique_idx.shape)
+    # print(rows.shape)
+    # rows = np.empty(N, dtype="int64")
+    # for i in trange(0, N):
+    #     while True:
+    #         which = np.random.randint(sample_info.shape[0])
+    #         if np.random.rand() <= w[which]:
+    #             break
+    #     rows[i] = which + cut
 
     # Get header rows
-    f1 = open("sample.txt", "r")
-    line = f1.readline()
-    if line[0] == "#":
-        header = line[1:]
-    else:
-        header = ""
-    f1.close()
-    f2 = open("sample_info.txt", "r")
-    line = f2.readline()
-    if line[0] == "#":
-        header_info = line[1:]
-    else:
-        header_info = ""
-    f2.close()
+    with open("sample.txt", "r") as f1:
+        line = f1.readline()
+        if line[0] == "#":
+            header = line[1:]
+        else:
+            header = ""
+    with open("sample_info.txt", "r") as f2:
+        line = f2.readline()
+        if line[0] == "#":
+            header_info = line[1:]
+        else:
+            header_info = ""
 
-    sample = loadtxt_rows("sample.txt", set(rows), single_precision)
-    sample_info = loadtxt_rows("sample_info.txt", set(rows), single_precision)
+    with SimpleTimer() as timer:
+        sample = loadtxt_rows("sample.txt", set(rows), single_precision)
+        sample_info = loadtxt_rows("sample_info.txt", set(rows), single_precision)
+
     posterior_sample = None
     posterior_sample_lnlike = None
     if single_precision:
@@ -346,11 +331,13 @@ def plot_diagnostic_2(levels_orig, ax=None):
             np.savetxt("posterior_sample_info.txt", posterior_sample_lnlike,
                        fmt=['%d', '%f', '%f', '%d'], header=header_info)
 
+    to_return = [
+        logz_estimate, H_estimate, BMD_estimate, logx_samples, P_samples_copy   
+    ]
     if plot:
-        plt.show()
+        to_return.append((figd1, figd2, figd3))
 
-    # print(f'up to here: {time() - start} sec')
-    return [logz_estimate, H_estimate, logx_samples]
+    return to_return
 
 
 def postprocess_abc(temperature=1., numResampleLogX=1, plot=True, loaded=[],
@@ -569,9 +556,6 @@ def postprocess_abc(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         else:
             np.savetxt("posterior_sample.txt", posterior_sample)
 
-    if plot:
-        plt.show()
-
     return [logz_estimate, H_estimate, logx_samples]
 
 
@@ -592,7 +576,6 @@ def diffusion_plot():
 
     plt.xlabel('Iteration')
     plt.ylabel('Level')
-    plt.show()
 
 
 def levels_plot():
