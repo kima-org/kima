@@ -30,9 +30,105 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
                 verbose=True, compression_scatter=0.0, moreSamples=1,
                 compression_assert=None, single_precision=False):
 
-    if len(loaded) == 0:
-        levels_orig = np.atleast_2d(my_loadtxt("levels.txt"))
-        sample_info = np.atleast_2d(my_loadtxt("sample_info.txt"))
+
+
+
+def calculate_ESS(max=None):
+    levels_orig = np.atleast_2d(my_loadtxt("levels.txt"))
+    sample_info = np.atleast_2d(my_loadtxt("sample_info.txt"))[:max]
+
+    # for nn in np.linspace(0, sample_info_full.shape[0] + 1, 5).astype(int)[1:]:
+    # for nn in np.linspace(0, sample_info_full.shape[0] + 1, sample_info_full.shape[0]+1).astype(int)[1:]:
+    # nn = None
+    # sample_info = sample_info[:1]
+
+    # Convert to lists of tuples
+    #               logl,              tiebreaker
+    logl_levels = [(levels_orig[i, 1], levels_orig[i, 2]) for i in range(0, levels_orig.shape[0])]
+    #                logl,              tiebreaker,        id
+    logl_samples = [(sample_info[i, 1], sample_info[i, 2], i) for i in range(0, sample_info.shape[0])]
+    logp_samples = np.zeros(sample_info.shape[0])
+
+    sandwich = sample_info[:, 0].copy().astype('int')
+    for i in range(0, sample_info.shape[0]):
+        while (sandwich[i] < levels_orig.shape[0] - 1) and (logl_samples[i] > logl_levels[sandwich[i] + 1]):
+            sandwich[i] += 1
+    
+    nlevels = levels_orig.shape[0]
+
+    # For each level
+    for i in range(0, nlevels):
+        # Find the samples sandwiched by this level
+        which = np.nonzero(sandwich == i)[0]
+        logl_samples_thisLevel = []  # (logl, tieBreaker, ID)
+        for j in range(0, len(which)):
+            logl_samples_thisLevel.append(copy.deepcopy(logl_samples[which[j]]))
+        logl_samples_thisLevel = sorted(logl_samples_thisLevel)
+        N = len(logl_samples_thisLevel)
+
+        # Generate intermediate logx values
+        logx_max = levels_orig[i, 0]
+        if i == nlevels - 1:
+            logx_min = MIN_LOGL
+        else:
+            logx_min = levels_orig[i + 1, 0]
+        Umin = np.exp(logx_min - logx_max)
+
+        if N == 0:
+            U = Umin + (1 - Umin) * np.random.rand(len(which))
+        else:
+            U = Umin + (1 - Umin) * np.linspace(1 / (N + 1), 1 - 1 / (N + 1), N)
+        logx_samples_thisLevel = np.sort(logx_max + np.log(U))[::-1]
+        print(i, logx_samples_thisLevel.size)#, logx_samples_thisLevel)
+
+        for j in range(0, which.size):
+            if j != which.size - 1:
+                left = logx_samples_thisLevel[j + 1]
+            elif i == nlevels - 1:
+                left = MIN_LOGL
+            else:
+                left = levels_orig[i + 1, 0]
+
+            if j != 0:
+                right = logx_samples_thisLevel[j - 1]
+            else:
+                right = levels_orig[i, 0]
+            # print(f'{i=} {which} {right} {left}')
+
+            logp_samples[logl_samples_thisLevel[j][2]] = np.log(0.5) + logdiffexp(right, left)
+
+    logL = sample_info[:, 1]
+    # print(logp_samples)
+
+    # logp_samples = logp_samples - logsumexp(logp_samples)
+    # print(logp_samples)
+
+    stream_ess = StreamingLogESS()
+    for lw, lL in zip(logp_samples, logL):
+        stream_ess.update(lw)
+    ESS = stream_ess.ess()
+    print(f"Current ESS: {ESS:.4f}")
+
+    logP_samples = logp_samples + logL
+    P_samples = np.exp(logP_samples - logsumexp(logP_samples))
+    ESS = np.exp(-np.sum(P_samples * np.log(P_samples + 1E-300)))
+    print(f"ESS = {ESS:.1f}")
+
+    return ESS, logp_samples
+
+
+def plot_diagnostic_1(sample_info, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, constrained_layout=True)
+    fig = ax.figure
+    ax.plot(sample_info[:, 0], "k")
+    ax.set(xlabel="Iteration", ylabel="Level",
+           title='DNest4: level of each saved particle')
+    return fig, ax
+
+def plot_diagnostic_2(levels_orig, ax=None):
+    if ax is None:
+        fig, (ax1, ax2) = plt.subplots(2, 1, constrained_layout=True)
     else:
         levels_orig, sample_info = loaded[0], loaded[1]
 
@@ -69,8 +165,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
     logl_levels = [(levels_orig[i, 1], levels_orig[i, 2])
                    for i in range(0, levels_orig.shape[0])]  # logl, tiebreaker
     logl_samples = [(sample_info[i, 1], sample_info[i, 2], i)
-                    for i in range(0, sample_info.shape[0])
-                    ]  # logl, tiebreaker, id
+                    for i in range(0, sample_info.shape[0])]  # logl, tiebreaker, id
     logx_samples = np.zeros((sample_info.shape[0], numResampleLogX))
     logp_samples = np.zeros((sample_info.shape[0], numResampleLogX))
     logP_samples = np.zeros((sample_info.shape[0], numResampleLogX))
@@ -79,20 +174,23 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
     H_estimates = np.zeros((numResampleLogX, 1))
 
     # Find sandwiching level for each sample
+    if debug:
+        print('Finding sandwiching level for each sample')
+
     sandwich = sample_info[:, 0].copy().astype('int')
     for i in range(0, sample_info.shape[0]):
-        while (sandwich[i] < levels_orig.shape[0] - 1) and (
-                logl_samples[i] > logl_levels[sandwich[i] + 1]):
+        while (sandwich[i] < levels_orig.shape[0] - 1) and (logl_samples[i] > logl_levels[sandwich[i] + 1]):
             sandwich[i] += 1
+
+    if debug:
+        print(f'Resampling logx values {numResampleLogX} times', end='', flush=True)
 
     for z in range(0, numResampleLogX):
         # Make a monte carlo perturbation of the level compressions
         levels = levels_orig.copy()
         compressions = -np.diff(levels[:, 0])
-        compressions *= compression_bias_min + (
-            1.0 - compression_bias_min) * np.random.rand()
-        compressions *= np.exp(compression_scatter *
-                               np.random.randn(compressions.size))
+        compressions *= compression_bias_min + (1.0 - compression_bias_min) * np.random.rand()
+        compressions *= np.exp(compression_scatter * np.random.randn(compressions.size))
         levels[1:, 0] = -compressions
         levels[:, 0] = np.cumsum(levels[:, 0])
 
@@ -102,8 +200,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
             which = np.nonzero(sandwich == i)[0]
             logl_samples_thisLevel = []  # (logl, tieBreaker, ID)
             for j in range(0, len(which)):
-                logl_samples_thisLevel.append(
-                    copy.deepcopy(logl_samples[which[j]]))
+                logl_samples_thisLevel.append(copy.deepcopy(logl_samples[which[j]]))
             logl_samples_thisLevel = sorted(logl_samples_thisLevel)
             N = len(logl_samples_thisLevel)
 
@@ -118,13 +215,11 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
             if N == 0 or numResampleLogX > 1:
                 U = Umin + (1 - Umin) * np.random.rand(len(which))
             else:
-                U = Umin + (1 - Umin) * np.linspace(1 / (N + 1), 1 - 1 /
-                                                    (N + 1), N)
+                U = Umin + (1 - Umin) * np.linspace(1 / (N + 1), 1 - 1 / (N + 1), N)
             logx_samples_thisLevel = np.sort(logx_max + np.log(U))[::-1]
 
             for j in range(0, which.size):
-                logx_samples[logl_samples_thisLevel[j]
-                             [2]][z] = logx_samples_thisLevel[j]
+                logx_samples[logl_samples_thisLevel[j][2]][z] = logx_samples_thisLevel[j]
 
                 if j != which.size - 1:
                     left = logx_samples_thisLevel[j + 1]
@@ -138,17 +233,21 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
                 else:
                     right = levels[i][0]
 
-                logp_samples[logl_samples_thisLevel[j]
-                             [2]][z] = np.log(0.5) + logdiffexp(right, left)
+                logp_samples[logl_samples_thisLevel[j][2]][z] = np.log(0.5) + logdiffexp(right, left)
 
-        logl = sample_info[:, 1] / temperature
+        logL = sample_info[:, 1] / temperature
 
         logp_samples[:, z] = logp_samples[:, z] - logsumexp(logp_samples[:, z])
-        logP_samples[:, z] = logp_samples[:, z] + logl
+        # logw
+        logP_samples[:, z] = logp_samples[:, z] + logL
+        # logZ = Σ logw
         logz_estimates[z] = logsumexp(logP_samples[:, z])
-        logP_samples[:, z] -= logz_estimates[z]
-        P_samples[:, z] = np.exp(logP_samples[:, z])
-        H_estimates[z] = -logz_estimates[z] + np.sum(P_samples[:, z] * logl)
+        # w
+        P_samples[:, z] = np.exp(logP_samples[:, z] - logz_estimates[z])
+        # S = logL - logZ
+        S = logL - logz_estimates[z]
+        # H_estimates[z] = np.sum(P_samples[:, z] * logL) - logz_estimates[z]
+        H_estimates[z] = np.sum(P_samples[:, z] * S)
 
         if plot:
             fig, (ax1, ax2) = plt.subplots(2, 1)
@@ -160,20 +259,11 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
                      'for each sample/level')
             ax1.set(ylabel='log(L)', title=title)
 
-            # fig.suptitle(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
-            fig.suptitle("log(Z) = %7.3f" % logz_estimates[z][0])
+        if debug:
+            print('.', end='', flush=True)
 
-            # Use all plotted logl values to set ylim
-            combined_logl = np.hstack([sample_info[:, 1], levels[1:, 1]])
-            combined_logl = np.sort(combined_logl)
-            lower = combined_logl[int(0.1 * combined_logl.size)]
-            upper = combined_logl[-1]
-            diff = upper - lower
-            lower -= 0.05 * diff
-            upper += 0.05 * diff
-            if zoom_in:
-                ax1.set_ylim([lower, upper])
-            xlim = ax1.get_xlim()
+    if debug:
+        print('')
 
             ax2.plot(logx_samples[:, z], P_samples[:, z], 'k.')
             ax2.set(ylabel='Posterior Weights', xlabel='log(X)', xlim=xlim,
@@ -235,8 +325,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], cut=0,
     posterior_sample_lnlike = None
     if single_precision:
         posterior_sample = np.empty((N, sample["ncol"]), dtype="float32")
-        posterior_sample_lnlike = np.empty((N, sample_info["ncol"]),
-                                           dtype="float32")
+        posterior_sample_lnlike = np.empty((N, sample_info["ncol"]), dtype="float32")
     else:
         posterior_sample = np.empty((N, sample["ncol"]))
         posterior_sample_lnlike = np.empty((N, sample_info["ncol"]))
