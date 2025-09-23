@@ -128,6 +128,8 @@ class KIMA_API RVData {
     /// docs for M0_epoch
     double M0_epoch;
 
+    double trend_epoch;
+
     /// store medians of each instrument's RVs
     vector<double> medians;
 
@@ -423,6 +425,11 @@ class KIMA_API HGPMdata {
     double sig_hg_ra, sig_hg_dec, rho_hg;
     // Gaia measurement uncertainties and correlation
     double sig_gaia_ra, sig_gaia_dec, rho_gaia;
+    // chi square value
+    double chisq;
+
+    vector<double> get_epochs(size_t n_average=1) const;
+
 };  
 
 class ETVData {

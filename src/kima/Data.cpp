@@ -96,6 +96,8 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
@@ -332,6 +334,8 @@ void RVData::load(const string filename, const string units, int skip, int max_r
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
@@ -493,6 +497,8 @@ void RVData::load_multi(const string filename, const string units, int skip, int
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
 }
 
 /**
@@ -680,6 +686,8 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
 
     // normalize the activity indicators
     normalize_actind();
@@ -1094,7 +1102,17 @@ HGPMdata::HGPMdata() {};
         rho_gaia = data.pmra_pmdec_gaia; // * data.pmra_gaia_error * data.pmdec_gaia_error;
         sig_gaia_ra = data.pmra_gaia_error;
         sig_gaia_dec = data.pmdec_gaia_error;
+
+        // chi square
+        chisq = data.chisq;
     };
+
+    vector<double> HGPMdata::get_epochs(size_t n_average) const
+    {
+        if (n_average == 1) {
+            return {epoch_ra_hip, epoch_dec_hip, epoch_ra_gaia, epoch_dec_gaia};
+        }
+    }
 
     hgca_data HGPMdata::get_data(uint64_t target_id)
     {
@@ -1317,6 +1335,7 @@ NB_MODULE(Data, m) {
         .def_rw("indicator_names", &RVData::_indicator_names, "names of activity indicators")
         //
         .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
+        .def_rw("trend_epoch", &RVData::trend_epoch, "reference epoch for the trend")
         .def_rw("double_lined", &RVData::sb2, "if the data is for a double-lined binary")
 
         // to un/pickle RVData
@@ -1401,11 +1420,9 @@ Args:
     
     // 
 
-    nb::class_<HGPMdata>(m, "HGPMdata", "docs")
+    nb::class_<HGPMdata>(m, "HGPMdata")
         // constructor
-        .def(nb::init<unsigned long long>(),
-             "gaia_id"_a,
-             "Load the Hipparcos-Gaia Catalog of Accelerations")
+        .def(nb::init<unsigned long long>(), "gaia_id"_a, "Load the Hipparcos-Gaia Catalog of Accelerations")
         // 
         .def_ro_static("_temp_path", &HGPMdata::temp_path)
         // 
@@ -1426,7 +1443,9 @@ Args:
         // uncertainties and correlations
         .def_ro("sig_hip_ra", &HGPMdata::sig_hip_ra, "").def_ro("sig_hip_dec", &HGPMdata::sig_hip_dec, "").def_ro("rho_hip", &HGPMdata::rho_hip, "")
         .def_ro("sig_gaia_ra", &HGPMdata::sig_gaia_ra, "").def_ro("sig_gaia_dec", &HGPMdata::sig_gaia_dec, "").def_ro("rho_gaia", &HGPMdata::rho_gaia, "")
-        .def_ro("sig_hg_ra", &HGPMdata::sig_hg_ra, "").def_ro("sig_hg_dec", &HGPMdata::sig_hg_dec, "").def_ro("rho_hg", &HGPMdata::rho_hg, "");
+        .def_ro("sig_hg_ra", &HGPMdata::sig_hg_ra, "").def_ro("sig_hg_dec", &HGPMdata::sig_hg_dec, "").def_ro("rho_hg", &HGPMdata::rho_hg, "")
+        // chi square value
+        .def_ro("chisq", &HGPMdata::chisq, "");
 
 
 
