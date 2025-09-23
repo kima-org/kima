@@ -645,7 +645,12 @@ class KimaResults:
             self.enforce_stability = model.enforce_stability
         except AttributeError:
             self.enforce_stability = False
-        
+
+        try:
+            self.star_mass = model.star_mass
+        except AttributeError:
+            self.star_mass = 1.0
+
         # multiple instruments? read offsets
         self._read_multiple_instruments()
         
@@ -1136,13 +1141,13 @@ class KimaResults:
         if self.model is MODELS.RVFWHMmodel:
             columns += [i + '_FWHM' for i in columns]
 
-        if self.jitter_propto_indicator:
+        if hasattr(self, 'jitter_propto_indicator') and self.jitter_propto_indicator:
             columns.append('slope')
-        self.posteriors.jitter.set_columns(columns)
+        self.posteriors.jitter.set_columns(tuple(columns))
 
         if self.multi:
             self.posteriors.offset = self.posteriors.offset.view(named_array)
-            self.posteriors.offset.set_columns(self.instruments[:-1])
+            self.posteriors.offset.set_columns(tuple(self.instruments[:-1]))
 
     @property
     def _mc(self):
@@ -1684,7 +1689,8 @@ class KimaResults:
 
             # omegas
             s = self.indices['planets.w']
-            self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+            w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+            self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
             self._priors.w = self.priors['wprior']
 
             # times of periastron
@@ -2418,7 +2424,7 @@ class KimaResults:
         else:
             v = np.zeros_like(t)
 
-        
+        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.ApodizedRVmodel, MODELS.RVHGPMmodel)
 
         if include_planets:
             if single_planet and except_planet:
@@ -3428,15 +3434,18 @@ class KimaResults:
     def star(self):
         if self._star:
             return self._star
-        if self.multi:
-            self._star = get_star_name(self.data_file[0])
-        else:
-            self._star = get_star_name(self.data_file)
+        try:
+            if self.multi:
+                self._star = get_star_name(self.data_file[0])
+            else:
+                self._star = get_star_name(self.data_file)
+        except IndexError:
+            pass
         return self._star
 
     @star.setter
     def star(self, star):
-        self._star = star
+        self._star = str(star)
 
     @property
     def instruments(self):
@@ -3931,6 +3940,7 @@ class KimaResults:
         if self.model is MODELS.RVHGPMmodel:
             self.plot_hgpm = partial(display.plot_hgpm,
                                      res=self, pm_data=self.pm_data)
+            self.hist_pm_bary = partial(display.hist_pm_bary, res=self)
 
     #
     hist_vsys = display.hist_vsys
