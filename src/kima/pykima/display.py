@@ -1953,10 +1953,14 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
 
 def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
-              legend=True, show_rms=False, outliers=None, offsets=None, **kwargs):
+              legend=True, show_rms=False, outliers=None, offsets=None, secondary_star=False, **kwargs):
 
     fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
     rhk_model = res.model is MODELS.RVFWHMRHKmodel and not (ignore_y3 or ignore_y2)
+    sb2 = False
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            sb2 = True
 
     if ax is None:
         if fwhm_model:
@@ -2017,6 +2021,11 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
             inst = res.instruments[j]
             m = res.data.obs == j + 1
             kw.update(label=inst)
+            if sb2:
+                if secondary_star:
+                    kw.update(label=inst+'_sec')
+                else:
+                    kw.update(label=inst+'_pri')
 
             if highlight is not None:
                 if highlight in inst:
@@ -2040,6 +2049,11 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
     else:
         try:
             kw.update(label=res.data.instrument)
+            if sb2:
+                if secondary_star:
+                    kw.update(label=res.data.instrument+'_sec')
+                else:
+                    kw.update(label=res.data.instrument+'_pri')
             if kw['label'] == '':
                 raise AttributeError
         except AttributeError:
@@ -2426,9 +2440,24 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         for i, k in enumerate(ko.keys()):
             ko[k]['P'] = P = sample[res.indices['KOpars']][i]
             ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
-            ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
-            ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
-            ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+            if res.model is MODELS.BINARIESmodel:
+                if res.double_lined:
+                    ko[k]['q'] = q = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                    ko[k]['wdot'] = wdot = sample[res.indices['KOpars']][i + 6 * res.nKO]
+                    ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 7 * res.nKO]
+                else:
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                    ko[k]['wdot'] = wdot = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                    ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 6 * res.nKO]
+            else:
+                ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
@@ -2460,7 +2489,10 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     if sort_by_increasing_P:
         keys = sorted(params, key=lambda i: params[i]['P'])
-
+    
+    # print(nplanets)
+    # print(params)
+    # print(keys)
     return nplanets, params, keys
 
 
@@ -2524,6 +2556,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     # make copies to not change attributes
     t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            y2, e2 = res.data.y2.copy(), res.data.e2.copy()
     obs = res.data.obs.copy()
 
     if t[0] > 24e5:
@@ -2553,18 +2588,29 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
         v = v[0]
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            v2 = v[1]
+            v = v[0]
+            y2 = y2 - v2
 
     y = y - v
-
 
     # errorbar plot arguments
     colors = kwargs.pop('colors', None)
     ekwargs = kwargs
-    ekwargs.setdefault('fmt', 'o')
-    ekwargs.setdefault('mec', 'none')
     ekwargs.setdefault('ms', 4)
     ekwargs.setdefault('capsize', 0)
     ekwargs.setdefault('elinewidth', 0.8)
+
+    #sb2 change marker
+    e2kwargs = ekwargs.copy()
+    e2kwargs.setdefault('fmt', 'o')
+    e2kwargs.setdefault('mfc', 'none')
+
+    #now set default marker
+    ekwargs.setdefault('fmt', 'o')
+    ekwargs.setdefault('mec', 'none')
 
     # very complicated logic just to make the figure the right size
     fs = [
@@ -2681,24 +2727,41 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         # keplerian for this planet
         planet_index = params[letter]['index']
         vv = res.eval_model(sample, tt, single_planet=planet_index)
-
         # the background model at these times
         offset_model = res.eval_model(sample, tt, include_planets=False)
 
         if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel, MODELS.SPLEAFmodel):
             vv = vv[0]
             offset_model = offset_model[0]
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                vv2 = vv[1]
+                offset_model2 = offset_model[1]
+                vv = vv[0]
+                offset_model = offset_model[0]
 
 
         for j in (-1, 0, 1):
             alpha = 0.2 if j in (-1, 1) else 1
             ax.plot(np.sort(phase) + j * tau, vv[np.argsort(phase)] - offset_model,
                     color='k', alpha=alpha, zorder=100)
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                for j in (-1, 0, 1):
+                    alpha = 0.2 if j in (-1, 1) else 1
+                    ax.plot(np.sort(phase) + j * tau, vv2[np.argsort(phase)] - offset_model2,
+                            color='k', alpha=alpha, zorder=100)
 
         # subtract the other planets from the data and plot it (the data)
         vv = res.planet_model(sample, except_planet=planet_index)
+
         if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
             vv = vv[0]
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                vv2 = vv[1]
+                vv = vv[0]
+
 
         if res.studentt and show_outliers:
             outliers = find_outliers(res, sample)
@@ -2716,6 +2779,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
+
+                if res.model is MODELS.BINARIESmodel:
+                    if res.double_lined:
+                        yy2 = (y2 - vv2)[m]
+                        ee2 = e2[m].copy()
 
                 if colors is None:
                     # one color for each instrument
@@ -2740,18 +2808,38 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                     _e = ee[np.argsort(phase)]
                     ax.errorbar(_phi, _y, _e,
                                 label=label, color=color, alpha=alpha, **ekwargs)
+                    
+                    if res.model is MODELS.BINARIESmodel:
+                        if res.double_lined:
+                            _phi = np.sort(phase) + j * tau
+                            _y = yy2[np.argsort(phase)]
+                            _e = ee2[np.argsort(phase)]
+                            ax.errorbar(_phi, _y, _e,
+                                        label=label, color=color, alpha=alpha, **e2kwargs)
                 
                     if res.studentt and show_outliers:
                         _phi = np.sort(phase[outliers[m]]) + j * tau
                         _y = yy[outliers[m]][np.argsort(phase[outliers[m]])]
                         _e = ee[outliers[m]][np.argsort(phase[outliers[m]])]
                         ax.errorbar(_phi, _y, _e, fmt='xr', alpha=alpha, zorder=-10)
+                        if res.model is MODELS.BINARIESmodel:
+                            if res.double_lined:
+                                _phi = np.sort(phase[outliers[m]]) + j * tau
+                                _y = yy2[outliers[m]][np.argsort(phase[outliers[m]])]
+                                _e = ee2[outliers[m]][np.argsort(phase[outliers[m]])]
+                                ax.errorbar(_phi, _y, _e, fmt='xr', alpha=alpha, zorder=-10)
 
                     if highlight_points:
                         hlm = (m & hl)[m]
                         ax.errorbar(np.sort(phase[hlm]) + j,
                                     yy[np.argsort(phase[hlm])],
                                     ee[np.argsort(phase[hlm])],
+                                    alpha=alpha, **hlkw)
+                        if res.model is MODELS.BINARIESmodel:
+                            if res.double_lined:
+                                ax.errorbar(np.sort(phase[hlm]) + j,
+                                    yy2[np.argsort(phase[hlm])],
+                                    ee2[np.argsort(phase[hlm])],
                                     alpha=alpha, **hlkw)
 
         else:
@@ -2767,6 +2855,15 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                 alpha = 0.3 if j in (-1, 1) else 1
                 ax.errorbar(np.sort(phase) + j * tau, yy[np.argsort(phase)], e[np.argsort(phase)],
                             color='C0', alpha=alpha, **ekwargs)
+                
+            if res.model is MODELS.BINARIESmodel:
+                if res.double_lined:
+                    yy2 = y2 - vv2
+
+                    for j in (-1, 0, 1):
+                        alpha = 0.3 if j in (-1, 1) else 1
+                        ax.errorbar(np.sort(phase) + j * tau, yy2[np.argsort(phase)], e2[np.argsort(phase)],
+                                    color='C0', alpha=alpha, **e2kwargs)
 
         ax.set(xlabel=xaxis, ylabel="RV [m/s]")
         # ax.set_xlim(-0.1, 1.1)
@@ -2839,19 +2936,36 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     ############
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
+
     if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
         residuals = residuals[0]
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            residuals2 = residuals[1]
+            residuals = residuals[0]
 
     if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     res.data.e[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                # outliers = find_outliers(res, sample) #Maybe necessary to edit the function for sb2s and include again
+                ax.errorbar(res.data.t[outliers] - time_offset, residuals2[outliers],
+                    res.data.e2[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
     else:
         outliers = None
 
     plot_data(res, ax=ax, y=residuals, e=res.data.e, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
               highlight=highlight, **ekwargs)
+
+    if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                plt.gca().set_prop_cycle(None)
+                plot_data(res, ax=ax, y=residuals2, e=res.data.e2, ignore_y2=True, legend=True,
+              show_rms=True, time_offset=time_offset, outliers=outliers,
+              highlight=highlight, secondary_star=True, **e2kwargs)
 
     # legend in the residual plot?
     hand, lab = ax.get_legend_handles_labels()
