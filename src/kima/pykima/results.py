@@ -452,9 +452,9 @@ class KimaResults:
 
         with redirect_stdout(stdout):
             try:
-                evidence, H, logx_samples = postprocess(plot=diagnostic, 
-                                                        moreSamples=moreSamples,
-                                                        numResampleLogX=n_resample_logX)
+                out = postprocess(plot=diagnostic, moreSamples=moreSamples,
+                                  numResampleLogX=n_resample_logX)
+                evidence, H, logx_samples, P_samples = out
             except FileNotFoundError as e:
                 if e.filename == 'levels.txt':
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
@@ -2407,7 +2407,7 @@ class KimaResults:
             t = self.data.t.copy()
             data_t = True
 
-        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel)
+        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel]
 
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
@@ -2420,11 +2420,9 @@ class KimaResults:
                 v = np.zeros((2,t.size))
             else:
                 v = np.zeros_like(t)
-                ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel,MODELS.BINARIESmodel)
+                ONE_D_MODELS.append(MODELS.BINARIESmodel)
         else:
             v = np.zeros_like(t)
-
-        ONE_D_MODELS = (MODELS.RVmodel, MODELS.GPmodel, MODELS.ApodizedRVmodel, MODELS.RVHGPMmodel)
 
         if include_planets:
             if single_planet and except_planet:
@@ -2441,7 +2439,8 @@ class KimaResults:
                     except_planet = [except_planet]
 
             # known_object ? 
-            # For BINARIESmodel and double_lined especially, need to deal with the extra parameters in those models and using the correct Keplerian
+            # For BINARIESmodel and double_lined especially, need to deal with
+            # the extra parameters in those models and using the correct Keplerian
             pj = 0
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
