@@ -332,7 +332,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded={}, cut=0,
                        fmt=['%d', '%f', '%f', '%d'], header=header_info)
 
     to_return = [
-        logz_estimate, H_estimate, BMD_estimate, logx_samples, P_samples_copy   
+        logz_estimate, H_estimate, logx_samples, P_samples_copy   
     ]
     if plot:
         to_return.append((figd1, figd2, figd3))
