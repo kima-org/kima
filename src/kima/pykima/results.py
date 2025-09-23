@@ -3188,14 +3188,18 @@ class KimaResults:
                     v[i, t > obst.max()] = np.nan
 
         else:
+            # the first time, plus the times that separate each instrument
             time_bins = np.sort(np.r_[t[0], self._offset_times])
+
+            # which time "bin" each time belongs to
             ii = np.digitize(t, time_bins) - 1
 
-            #! HACK!
-            obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
-            if not obs_is_sorted:
-                ii = -ii.max() * (ii - ii.max())
-            #! end HACK!
+            # reorder the indices so they are in the same order as the
+            # instruments, as set by data.obs
+            ii_copy = ii.copy()
+            ind = np.unique(self.data.obs, return_index=True)[1]
+            for a, b in zip(self.data.obs[ind] - 1, self.data.obs[np.sort(ind)] - 1):
+                ii[ii_copy == a] = b
 
             if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 offsets = np.pad(offsets.reshape(-1, ni - 1), ((0, 0), (0, 1)))
