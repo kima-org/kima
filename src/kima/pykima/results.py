@@ -454,7 +454,10 @@ class KimaResults:
             try:
                 out = postprocess(plot=diagnostic, moreSamples=moreSamples,
                                   numResampleLogX=n_resample_logX)
-                evidence, H, logx_samples, P_samples = out
+                if diagnostic:
+                    evidence, H, logx_samples, P_samples, figs = out
+                else:
+                    evidence, H, logx_samples, P_samples = out
             except FileNotFoundError as e:
                 if e.filename == 'levels.txt':
                     msg = f'No levels.txt file found in {os.getcwd()}. Did you run the model?'
