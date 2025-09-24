@@ -135,6 +135,8 @@ nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
 nanobind_add_module(ETVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/ETVmodel.cpp ${COMMON_UNITS})
 
+nanobind_add_module(ApodizedRVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
+                    src/kima/ApodizedRVmodel.cpp ${COMMON_UNITS})
 
 nanobind_add_module(RVHGPMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVHGPMmodel.cpp ${COMMON_UNITS})
@@ -154,6 +156,7 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/RVFWHMRHKmodel.cpp
                     src/kima/ETVmodel.cpp
                     src/kima/SPLEAFmodel.cpp
+                    src/kima/ApodizedRVmodel.cpp
                     src/kima/RVHGPMmodel.cpp
                     ${COMMON_UNITS}
                     src/kima/postkepler.cpp 
@@ -187,7 +190,7 @@ target_compile_features(transits PRIVATE cxx_std_17)
 # compilation settings for each module
 foreach(targ distributions default_priors Data ConditionalPrior 
         RVmodel OutlierRVmodel TRANSITmodel BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel
-        RVHGPMmodel)
+        ApodizedRVmodel RVHGPMmodel)
   target_compile_features(${targ} PRIVATE cxx_std_17)
   target_include_directories(${targ} PRIVATE ${INCLUDES})
   target_link_libraries(${targ} PRIVATE dnest4)
@@ -223,7 +226,7 @@ foreach(module Data ConditionalPrior)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
 endforeach()
 
-foreach(module RVmodel OutlierRVmodel RVHGPMmodel TRANSITmodel 
+foreach(module RVmodel OutlierRVmodel ApodizedRVmodel RVHGPMmodel TRANSITmodel 
         GPmodel RVFWHMmodel RVFWHMRHKmodel SPLEAFmodel
         BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel)
   install(TARGETS ${module} LIBRARY DESTINATION kima)  
