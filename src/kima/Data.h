@@ -67,6 +67,7 @@ class KIMA_API RVData {
   friend class BINARIESmodel;
   friend class RVGAIAmodel;
   friend class RVFWHMRHKmodel;
+  friend class ApodizedRVmodel;
   friend class RVHGPMmodel;
 
   private:
