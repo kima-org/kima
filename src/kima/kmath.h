@@ -13,3 +13,4 @@ double standard_deviation(nb::ndarray<double, nb::ndim<1>> a);
 
 std::vector<double> gaussian(const std::vector<double> &x, double x0, double width);
 std::vector<double> boxcar(const std::vector<double> &x, double x0, double width);
+std::vector<double> plateau(const std::vector<double> &x, double x0, double width, double shape);

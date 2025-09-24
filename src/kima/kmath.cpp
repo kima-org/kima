@@ -45,6 +45,16 @@ std::vector<double> boxcar(const std::vector<double> &x, double x0, double width
     return y;
 }
 
+std::vector<double> plateau(const std::vector<double> &x, double x0, double width, double shape)
+{
+    std::vector<double> y(x.size());
+    for (size_t i = 0; i < x.size(); i++)
+    {
+        y[i] = 1.0 / (1.0 + pow(2.0 * abs(x[i] - x0) / width, 2.0 * shape));
+    }
+    return y;
+}
+
 NB_MODULE(kmath, m)
 {
     m.def("mean", &mean);
@@ -52,4 +62,5 @@ NB_MODULE(kmath, m)
 
     m.def("gaussian", &gaussian);
     m.def("boxcar", &boxcar);
+    m.def("plateau", &plateau);
 }
