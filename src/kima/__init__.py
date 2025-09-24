@@ -31,6 +31,7 @@ from .BINARIESmodel import BINARIESmodel
 from .GAIAmodel import GAIAmodel
 from .RVGAIAmodel import RVGAIAmodel
 from .ETVmodel import ETVmodel
+from .ApodizedRVmodel import ApodizedRVmodel
 from .RVHGPMmodel import RVHGPMmodel
 
 __models__ = (
@@ -45,6 +46,7 @@ __models__ = (
     GAIAmodel,
     RVGAIAmodel,
     ETVmodel,
+    ApodizedRVmodel,
     RVHGPMmodel,
 )
 MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
@@ -62,7 +64,8 @@ class HGPMdata(HGPMdata_original):
             url="https://cdsarc.cds.unistra.fr/ftp/J/ApJS/254/42/HGCA_vEDR3.fits",
             known_hash='23684d583baaa236775108b360c650e79770a695e16914b1201f290c1826065c',
             path=self._temp_path,
-            fname='HGCA_vEDR3.fits'
+            fname='HGCA_vEDR3.fits',
+            progressbar=True
         )
         return super().__init__(*args, **kwargs)
 
