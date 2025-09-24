@@ -316,6 +316,19 @@ _spleaf_ESP_PKernel::_spleaf_ESP_PKernel(const VectorXd &t, std::array<double, 2
     eta2 = eta * eta;
     f = 1.0 / (4 * eta2);
 
+    // for (int i = 0; i <= nharm; i++) {
+    //     double _i1 = std::cyl_bessel_i(i, f) * exp(-abs(f));
+    //     double _i2 = bessel::cyl_i(i, f, true);
+    //     if (!approx_equal(_i1, _i2, 1e-14)) {
+    //         std::cout << std::setprecision(20);
+    //         std::cout << std::endl;
+    //         std::cout << f << std::endl;
+    //         std::cout << _i1 << std::endl;
+    //         std::cout << _i2 << std::endl;
+    //         throw std::domain_error("cyl_bessel_i and cyl_i differ.");
+    //     }
+    // }
+
 #ifdef __APPLE__
     for (int i = 0; i <= nharm; i++)
         a[i] = bessel::cyl_i(i, f, true);
