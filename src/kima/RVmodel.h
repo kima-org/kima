@@ -6,6 +6,7 @@
 #include "Data.h"
 #include "ConditionalPrior.h"
 #include "utils.h"
+#include "kmath.h"
 #include "kepler.h"
 #include "AMDstability.h"
 #include "default_priors.h"
@@ -90,6 +91,15 @@ class KIMA_API RVmodel
         std::vector<double> TR_Tc;
         std::vector<double> TR_w;
 
+        // Parameters for the apodized Keplerian, if set
+        std::vector<double> AK_P;
+        std::vector<double> AK_K;
+        std::vector<double> AK_e;
+        std::vector<double> AK_phi;
+        std::vector<double> AK_w;
+        std::vector<double> AK_tau;
+        std::vector<double> AK_t0;
+
         // The signal
         std::vector<double> mu;
         double planet_perturb_prob = 0.75;
@@ -100,6 +110,8 @@ class KIMA_API RVmodel
         void remove_known_object();
         void add_transiting_planet();
         void remove_transiting_planet();
+        void add_apodized_keplerians();
+        void remove_apodized_keplerians();
 
         // // Solve the label switching degeneracy by mapping
 		// // the orbital period P to the hypertriangle where
@@ -207,6 +219,35 @@ class KIMA_API RVmodel
         /// Prior for the TR argument(s) of pericenter
         std::vector<distribution> TR_wprior;
 
+
+        /* Apodized Keplerians */
+
+        /// include extra apodized Keplerian curve(s)?
+        bool apodized_keplerians {false};
+        bool get_apodized_keplerians() { return apodized_keplerians; }
+
+        /// how many apodized keplerians
+        size_t n_apodized_keplerians {0};
+        size_t get_n_apodized_keplerians() { return n_apodized_keplerians; }
+
+        void set_apodized_keplerians(size_t apodized_keplerians);
+
+        /// Prior for the AK orbital period(s)
+        std::vector<distribution> AK_Pprior;
+        /// Prior for the AK semi-amplitude(s)
+        std::vector<distribution> AK_Kprior;
+        /// Prior for the AK eccentricity(ies)
+        std::vector<distribution> AK_eprior;
+        /// Prior for the AK mean anomaly(ies)
+        std::vector<distribution> AK_phiprior;
+        /// Prior for the AK argument(s) of pericenter
+        std::vector<distribution> AK_wprior;
+        /// Prior for the AK apodization width τ (days)
+        std::vector<distribution> AK_tauprior;
+        /// Prior for the AK center of the apodizing window (days)
+        std::vector<distribution> AK_t0prior;
+        
+        /* ******************* */
 
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;

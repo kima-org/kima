@@ -62,6 +62,29 @@ void RVmodel::set_transiting_planet(size_t n)
     TR_w.resize(n);
 }
 
+void RVmodel::set_apodized_keplerians(size_t n)
+{
+    apodized_keplerians = true;
+    n_apodized_keplerians = n;
+
+    AK_Pprior.resize(n);
+    AK_Kprior.resize(n);
+    AK_eprior.resize(n);
+    AK_phiprior.resize(n);
+    AK_wprior.resize(n);
+    AK_tauprior.resize(n);
+    AK_t0prior.resize(n);
+
+    AK_P.resize(n);
+    AK_K.resize(n);
+    AK_e.resize(n);
+    AK_phi.resize(n);
+    AK_w.resize(n);
+    AK_tau.resize(n);
+    AK_t0.resize(n);
+}
+
+
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -124,6 +147,18 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
             {
                 std::string msg = "When transiting_planet=true, must set priors for each of TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
+                throw std::logic_error(msg);
+            }
+        }
+    }
+
+    if (apodized_keplerians)
+    {
+        for (size_t i = 0; i < n_apodized_keplerians; i++)
+        {
+            if (!AK_Pprior[i] || !AK_Kprior[i] || !AK_eprior[i] || !AK_phiprior[i] || !AK_wprior[i] || !AK_tauprior[i] || !AK_t0prior[i])
+            {
+                std::string msg = "When apodized_keplerians=true, must set priors for each of AK_Pprior, AK_Kprior, AK_eprior, AK_phiprior, AK_wprior, AK_tauprior, AK_t0prior";
                 throw std::logic_error(msg);
             }
         }
@@ -203,6 +238,19 @@ void RVmodel::from_prior(RNG& rng)
         }
     }
 
+    if (apodized_keplerians) {
+        for (int i = 0; i < n_apodized_keplerians; i++)
+        {
+            AK_P[i] = AK_Pprior[i]->generate(rng);
+            AK_K[i] = AK_Kprior[i]->generate(rng);
+            AK_e[i] = AK_eprior[i]->generate(rng);
+            AK_phi[i] = AK_phiprior[i]->generate(rng);
+            AK_w[i] = AK_wprior[i]->generate(rng);
+            AK_tau[i] = AK_tauprior[i]->generate(rng);
+            AK_t0[i] = AK_t0prior[i]->generate(rng);
+        }
+    }
+
     if (studentt)
         nu = nu_prior->generate(rng);
 
@@ -275,6 +323,10 @@ void RVmodel::calculate_mu()
 
         if (transiting_planet) {
             add_transiting_planet();
+        }
+
+        if (apodized_keplerians) {
+            add_apodized_keplerians();
         }
     }
 
@@ -365,17 +417,50 @@ void RVmodel::add_transiting_planet()
     }
 }
 
+void RVmodel::remove_apodized_keplerians()
+{
+    for (int j = 0; j < n_apodized_keplerians; j++) {
+        auto v = brandt::keplerian(data.t, AK_P[j], AK_K[j], AK_e[j], AK_w[j], AK_phi[j], data.M0_epoch);
+        auto apod = gaussian(data.t, AK_t0[j], AK_tau[j]);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] -= apod[i] * v[i];
+        }
+    }
+}
 
-// void RVmodel::solve_label_switching()
-// {
-//     if (npmax <= 1) // nothing to do
-//         return;
+void RVmodel::add_apodized_keplerians()
+{
+    for (int j = 0; j < n_apodized_keplerians; j++) {
+        auto v = brandt::keplerian(data.t, AK_P[j], AK_K[j], AK_e[j], AK_w[j], AK_phi[j], data.M0_epoch);
+        auto apod = gaussian(data.t, AK_t0[j], AK_tau[j]);
+        for (size_t i = 0; i < data.N(); i++) {
+            mu[i] += apod[i] * v[i];
+        }
+    }
+}
 
-//     auto components = planets.get_components();
-//     auto K = components.size();
 
-//     if (K <= 1) // nothing to do
-//         return;
+void RVmodel::solve_label_switching(RNG& rng)
+{
+    // if (npmax <= 1) // nothing to do
+    //     return;
+
+    // auto components = planets.get_components();
+    // auto K = components.size();
+
+    // if (K <= 1) // nothing to do
+    //     return;
+
+    // if (K == 2 && rng.rand() <= 1.0 / K)
+    // {
+    //     // cout << "swapping!" << endl;
+    //     std::swap(components[0][0], components[1][0]);
+    //     std::swap(components[0][1], components[1][1]);
+    //     std::swap(components[0][2], components[1][2]);
+    //     std::swap(components[0][3], components[1][3]);
+    //     std::swap(components[0][4], components[1][4]);
+    //     planets.set_components(components);
+    // }
 
 //     cout << staleness << endl;
 //     cout << "P: " << components[0][0] << '\t' << components[1][0] << endl;
@@ -424,7 +509,7 @@ void RVmodel::add_transiting_planet()
 
 //     planets.set_components(components);
 //     cout << "out of solve_label_switching" << endl;
-// }
+}
 
 int RVmodel::is_stable() const
 {
@@ -550,10 +635,27 @@ double RVmodel::perturb(RNG& rng)
             add_transiting_planet();
         }
 
+        if (apodized_keplerians)
+        {
+            remove_apodized_keplerians();
+
+            for (int i = 0; i < n_apodized_keplerians; i++)
+            {
+                logH += AK_Pprior[i]->perturb(AK_P[i], rng);
+                logH += AK_Kprior[i]->perturb(AK_K[i], rng);
+                logH += AK_eprior[i]->perturb(AK_e[i], rng);
+                logH += AK_phiprior[i]->perturb(AK_phi[i], rng);
+                logH += AK_wprior[i]->perturb(AK_w[i], rng);
+                logH += AK_tauprior[i]->perturb(AK_tau[i], rng);
+                logH += AK_t0prior[i]->perturb(AK_t0[i], rng);
+            }
+
+            add_apodized_keplerians();
+        }
     }
     else
     {
-        for(size_t i=0; i<mu.size(); i++)
+        for (size_t i = 0; i < mu.size(); i++)
         {
             mu[i] -= background;
             if(trend) {
@@ -793,6 +895,17 @@ void RVmodel::print(std::ostream& out) const
         for (auto w: TR_w)   out << w  << "\t";
     }
 
+    if (apodized_keplerians)
+    {
+        for (auto P: AK_P)     out << P   << "\t";
+        for (auto K: AK_K)     out << K   << "\t";
+        for (auto phi: AK_phi) out << phi << "\t";
+        for (auto e: AK_e)     out << e   << "\t";
+        for (auto w: AK_w)     out << w   << "\t";
+        for (auto tau: AK_tau) out << tau << "\t";
+        for (auto t0: AK_t0)   out << t0  << "\t";
+    }
+
     planets.print(out);
 
     out << staleness << '\t';
@@ -843,29 +956,29 @@ string RVmodel::description() const
     }
 
     if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_w" + std::to_string(i) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_P" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_K" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_phi" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_ecc" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_w" + std::to_string(i+1) + sep;
     }
 
     if(transiting_planet) {
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_P" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_K" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_Tc" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_ecc" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_w" + std::to_string(i) + sep;
+        for (int i = 0; i < n_transiting_planet; i++) desc += "TR_P" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_transiting_planet; i++) desc += "TR_K" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_transiting_planet; i++) desc += "TR_Tc" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_transiting_planet; i++) desc += "TR_ecc" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_transiting_planet; i++) desc += "TR_w" + std::to_string(i+1) + sep;
+    }
+
+    if (apodized_keplerians) {
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_P" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_K" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_phi" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_ecc" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_w" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_tau" + std::to_string(i+1) + sep;
+        for (int i = 0; i < n_apodized_keplerians; i++) desc += "AK_t0" + std::to_string(i+1) + sep;
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -876,11 +989,11 @@ string RVmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i+1) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i+1) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i+1) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i+1) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i+1) + sep;
     }
 
     desc += "staleness" + sep;
@@ -916,6 +1029,8 @@ void RVmodel::save_setup() {
     fout << "n_known_object: " << n_known_object << endl;
     fout << "transiting_planet: " << transiting_planet << endl;
     fout << "n_transiting_planet: " << n_transiting_planet << endl;
+    fout << "apodized_keplerians: " << apodized_keplerians << endl;
+    fout << "n_apodized_keplerians: " << n_apodized_keplerians << endl;
     fout << "studentt: " << studentt << endl;
     fout << "indicator_correlations: " << indicator_correlations << endl;
     fout << "jitter_propto_indicator: " << jitter_propto_indicator << endl;
@@ -1008,6 +1123,20 @@ void RVmodel::save_setup() {
         }
     }
 
+    if (apodized_keplerians) {
+        fout << endl << "[priors.apodized_keplerians]" << endl;
+        for (int i = 0; i < n_apodized_keplerians; i++)
+        {
+            fout << "Pprior_" << i << ": " << *AK_Pprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *AK_Kprior[i] << endl;
+            fout << "eprior_" << i << ": " << *AK_eprior[i] << endl;
+            fout << "phiprior_" << i << ": " << *AK_phiprior[i] << endl;
+            fout << "wprior_" << i << ": " << *AK_wprior[i] << endl;
+            fout << "tauprior_" << i << ": " << *AK_tauprior[i] << endl;
+            fout << "t0prior_" << i << ": " << *AK_t0prior[i] << endl;
+        }
+    }
+
     fout << endl;
 	fout.close();
 
@@ -1090,6 +1219,14 @@ NB_MODULE(RVmodel, m) {
                      "whether the model includes transiting planet(s)")
         .def_prop_ro("n_transiting_planet", [](RVmodel &m) { return m.get_n_transiting_planet(); },
                      "how many transiting planets")
+
+
+        // apodized Keplerians
+        .def("set_apodized_keplerians", &RVmodel::set_apodized_keplerians)
+        .def_prop_ro("apodized_keplerians", [](RVmodel &m) { return m.get_apodized_keplerians(); },
+                     "whether the model includes apodized Keplerian(s)")
+        .def_prop_ro("n_apodized_keplerians", [](RVmodel &m) { return m.get_n_apodized_keplerians(); },
+                     "how many apodized Keplerians")
 
 
         //
@@ -1223,6 +1360,37 @@ NB_MODULE(RVmodel, m) {
                      [](RVmodel &m) { return m.TR_Tcprior; },
                      [](RVmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
                      "Prior for TR mean anomaly(ies)")
+
+        // apodized Keplerian priors
+        .def_prop_rw("AK_Pprior",
+                     [](RVmodel &m) { return m.AK_Pprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_Pprior = vd; },
+                     "Prior for AK orbital period")
+        .def_prop_rw("AK_Kprior",
+                     [](RVmodel &m) { return m.AK_Kprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_Kprior = vd; },
+                     "Prior for AK semi-amplitude")
+        .def_prop_rw("AK_eprior",
+                     [](RVmodel &m) { return m.AK_eprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_eprior = vd; },
+                     "Prior for AK eccentricity")
+        .def_prop_rw("AK_wprior",
+                     [](RVmodel &m) { return m.AK_wprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_wprior = vd; },
+                     "Prior for AK argument of periastron")
+        .def_prop_rw("AK_phiprior",
+                     [](RVmodel &m) { return m.AK_phiprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_phiprior = vd; },
+                     "Prior for AK mean anomaly(ies)")
+        .def_prop_rw("AK_tauprior",
+                     [](RVmodel &m) { return m.AK_tauprior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_tauprior = vd; },
+                     "Prior for AK apodization widths τ (days)")
+        .def_prop_rw("AK_t0prior",
+                     [](RVmodel &m) { return m.AK_t0prior; },
+                     [](RVmodel &m, std::vector<distribution>& vd) { m.AK_t0prior = vd; },
+                     "Prior for AK center of apodizing windows (days)")
+
 
         .def("set_loguniform_prior_Np", &RVmodel::set_loguniform_prior_Np)
 
