@@ -551,6 +551,19 @@ def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, lower_limit=1
 #     else:
 #         return '$%f$' % out[0]
 
+def get_semi_amplitude(P, mpsini, ecc=0.0, star_mass=1.0):
+    from astropy.constants import G
+    from astropy.units import solMass, earthMass, day, meter, second
+    P <<= day
+    mpsini <<= earthMass
+    star_mass <<= solMass
+    f1 = (2 * np.pi * G / P) ** (1 / 3)
+    f2 = mpsini / (star_mass + mpsini)**(2 / 3)
+    f3 = np.sqrt(1 - ecc**2)
+    K = f1 * f2 / f3
+    return K.to(meter / second).value
+
+
 
 def get_planet_teq(Tstar: float = 5777, Rstar: float = 1, a: float = 1,
                    A: float = 0, f: float = 1):
