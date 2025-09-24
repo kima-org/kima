@@ -30,6 +30,7 @@ using namespace nb::literals;
 #include "RVFWHMRHKmodel.h"
 #include "ETVmodel.h"
 #include "SPLEAFmodel.h"
+#include "ApodizedRVmodel.h"
 #include "RVHGPMmodel.h"
 
 void catch_signals() {
@@ -145,6 +146,8 @@ NB_MODULE(Sampler, m)
     m.def("run", RUN_SIGNATURE(ETVmodel) { RUN_BODY(ETVmodel) }, RUN_ARGS);
 
     m.def("run", RUN_SIGNATURE(SPLEAFmodel) { RUN_BODY(SPLEAFmodel) }, RUN_ARGS);
+
+    m.def("run", RUN_SIGNATURE(ApodizedRVmodel) { RUN_BODY(ApodizedRVmodel) }, RUN_ARGS);
 
     m.def("run", RUN_SIGNATURE(RVHGPMmodel) { RUN_BODY(RVHGPMmodel) }, RUN_ARGS);
 }
