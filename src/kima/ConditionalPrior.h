@@ -307,6 +307,71 @@ class ETVConditionalPrior:public DNest4::ConditionalPrior
 };
 
 
+class ApodizedKeplerianConditionalPrior : public DNest4::ConditionalPrior
+{
+    private:
+        /// whether the model includes hyper-priors for the orbital period and
+        /// semi-amplitude
+        bool hyperpriors;
+        // Parameters of bi-exponential hyper-distribution for log-periods
+        double center, width;
+        // Mean of exponential hyper-distribution for semi-amplitudes
+        double muK;
+        double perturb_hyperparameters(DNest4::RNG& rng);
+
+    public:
+        ApodizedKeplerianConditionalPrior();
+
+        void set_default_priors(const RVData &data);
+
+        // priors for all planet parameters
+        using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
+        
+        /// Prior for the orbital periods.
+        distribution Pprior;
+        /// Prior for the semi-amplitudes (in m/s).
+        distribution Kprior;
+        /// Prior for the eccentricities.
+        distribution eprior;
+        /// Prior for the mean anomalies
+        distribution phiprior;
+        /// Prior for the arguments of periastron
+        distribution wprior;
+        /// Prior for the apodization width τ (days)
+        distribution tauprior;
+        /// Prior for the center of the apodizing window (days)
+        distribution t0prior;
+        /// Prior for the shape of the apodizing function (if plateau)
+        distribution sprior;
+
+
+        // hyperpriors
+
+        // turn on hyperpriors
+        void use_hyperpriors();
+
+        /// Prior for the log of the median orbital period
+        distribution log_muP_prior;
+        /// Prior for the diversity of orbital periods
+        distribution wP_prior;
+        /// Prior for the log of the mean semi-amplitude
+        distribution log_muK_prior;
+
+
+        /// Generate a point from the prior
+        void from_prior(DNest4::RNG& rng);
+        /// Get the log prob density at a position `vec`
+        double log_pdf(const std::vector<double>& vec) const;
+        /// Get parameter sample from a uniform sample (CDF)
+        void from_uniform(std::vector<double>& vec) const;
+        /// Get uniform sample from a parameter sample (inverse CDF)
+        void to_uniform(std::vector<double>& vec) const;
+
+        void print(std::ostream& out) const;
+        static const int weight_parameter = 1;
+};
+
+
 
 void bind_KeplerianConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
