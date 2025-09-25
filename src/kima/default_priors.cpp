@@ -28,6 +28,10 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
         {"phiprior", make_prior<DNest4::UniformAngle>()},
         {"wprior", make_prior<DNest4::UniformAngle>()},
         // 
+        // for apodized Keplerians
+        {"tauprior", make_prior<DNest4::LogUniform>(10.0, 4 * data.get_timespan())},
+        {"t0prior", make_prior<DNest4::Uniform>(data.get_t_middle() - data.get_timespan(), data.get_t_middle() + data.get_timespan())},
+        {"sprior", make_prior<DNest4::Fixed>(1.0)},
         // for astrometry models
         {"iprior", make_prior<DNest4::Sine>()},
         {"Ωprior", make_prior<DNest4::UniformAngle>()},
