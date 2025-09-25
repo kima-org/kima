@@ -159,10 +159,29 @@ class astrometric_data_holder:
     psi: np.ndarray = field(init=False)
     pf: np.ndarray = field(init=False)
     N: int = field(init=False)
-    instrument: str = 'GAIA'
+    instrument: str = 'Gaia'
 
     def __repr__(self):
         return f'data_holder(N={self.N}, t, w, sigw, psi, pf)'
+    
+@dataclass
+class ETV_data_holder:
+    """ A simple class to hold the ETV datasets used in kima
+
+    Attributes:
+        epoch (ndarray): The eclipse epochs
+        et (ndarray): The observed eclipse times
+        etsig (ndarray): The eclipse timing uncertainties
+        N (int): Total number of observations
+    """
+    epoch: np.ndarray = field(init=False)
+    et: np.ndarray = field(init=False)
+    etsig: np.ndarray = field(init=False)
+    N: int = field(init=False)
+    instrument: str = 'eclipse_times'
+
+    def __repr__(self):
+        return f'data_holder(N={self.N}, epoch, et, etsig)'
 
 
 @dataclass
@@ -490,16 +509,61 @@ class KimaResults:
             self.arbitrary_units = False
 
         ##### Issue here where data is assumed to be RV data, could do cases for each type, but what if there are multiple types?
-        if data is None:
-            data = model.data
+        self.data_type = 'RV' #default to being RV data
 
-        self.data = data_holder()
-        self.data.t = np.array(np.copy(data.t))
-        self.data.y = np.array(np.copy(data.y))
-        self.data.e = np.array(np.copy(data.sig))            
-        self.data.obs = np.array(np.copy(data.obsi))
-        self.data.N = data.N
+        if self.model is MODELS.GAIAmodel:
+            if data is None:
+                data = model.data
+            self.GAIAdata = astrometric_data_holder()
+            self.data = self.GAIAdata
+            self.GAIAdata.t = np.array(np.copy(data.t))
+            self.GAIAdata.w = np.array(np.copy(data.w))
+            self.GAIAdata.wsig = np.array(np.copy(data.wsig))
+            self.GAIAdata.psi = np.array(np.copy(data.psi))
+            self.GAIAdata.pf = np.array(np.copy(data.pf))
+            self.GAIAdata.N = data.N
+            self.data_type = 'GAIA'
 
+        elif self.model is MODELS.ETVmodel:
+            if data is None:
+                data = model.data
+            self.ETVdata = ETV_data_holder()
+            self.data = self.ETVdata
+            self.ETVdata.epochs = np.array(np.copy(data.t))
+            self.ETVdata.et = np.array(np.copy(data.w))
+            self.ETVdata.etsig = np.array(np.copy(data.wsig))
+            self.ETVdata.N = data.N
+            self.data_type = 'ETV'
+        elif self.model is MODELS.RVGAIAmodel:
+            if data is None:
+                RV_data = model.RV_data
+                GAIA_data = model.GAIA_data
+            self.RVdata = data_holder()
+            self.data = self.RVdata
+            self.data.t = np.array(np.copy(RV_data.t))
+            self.data.y = np.array(np.copy(RV_data.y))
+            self.data.e = np.array(np.copy(RV_data.sig))            
+            self.data.obs = np.array(np.copy(RV_data.obsi))
+            self.data.N = RV_data.N
+
+            self.GAIAdata = astrometric_data_holder()
+            self.GAIAdata.t = np.array(np.copy(GAIA_data.t))
+            self.GAIAdata.w = np.array(np.copy(GAIA_data.w))
+            self.GAIAdata.wsig = np.array(np.copy(GAIA_data.wsig))
+            self.GAIAdata.psi = np.array(np.copy(GAIA_data.psi))
+            self.GAIAdata.pf = np.array(np.copy(GAIA_data.pf))
+            self.GAIAdata.N = GAIA_data.N
+        else:
+            if data is None:
+                data = model.data
+            self.data = data_holder()
+            self.data.t = np.array(np.copy(data.t))
+            self.data.y = np.array(np.copy(data.y))
+            self.data.e = np.array(np.copy(data.sig))            
+            self.data.obs = np.array(np.copy(data.obsi))
+            self.data.N = data.N
+
+        #Add extra thigns for various models
         self.series = ('RV',)
 
         if self.model is MODELS.BINARIESmodel:
@@ -515,7 +579,8 @@ class KimaResults:
                 self.data.y2 = np.array(np.copy(data.y2))
                 self.data.e2 = np.array(np.copy(data.sig2))
                 self.series = ('RV1','RV2')
-
+        if self.model is MODELS.GAIAmodel:
+            self.thiele_innes = model.thiele_innes
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
@@ -527,24 +592,29 @@ class KimaResults:
         if self.model is MODELS.SPLEAFmodel:
             self.nseries = int(setup['kima']['nseries'])
 
-        self._extra_data = np.array(np.copy(data.actind))
-        self._extra_data_names = np.array(np.copy(data.indicator_names))
+        if self.data_type=='RV':
+            self._extra_data = np.array(np.copy(data.actind))
+            self._extra_data_names = np.array(np.copy(data.indicator_names))
 
         if self.model is MODELS.RVHGPMmodel:
             self.pm_data = model.pm_data
-
         
 
         self.M0_epoch = data.M0_epoch
-        self.n_instruments = np.unique(data.obsi).size
-        self.multi = data.multi
+        if self.data_type =='RV':
+            self.n_instruments = np.unique(data.obsi).size
+            self.multi = data.multi
+        else:
+            self.n_instruments = 1
+            self.multi = False #Set multi to false for other datatypes 
 
         if self.multi:
             self.data_file = data.datafiles
         else:
             self.data_file = data.datafile
 
-        self.data.instrument = data.instrument
+        if self.data_type == 'RV':
+            self.data.instrument = data.instrument
         if self.multi and len(data.instruments) > 0:
             self.instruments = data.instruments
 
@@ -631,17 +701,19 @@ class KimaResults:
         # read limb-darkening coefficients
         if self.model is MODELS.TRANSITmodel:
             self._read_limb_dark()
+
         
         #### this is only for RV models
         # read trend
-        self.trend = model.trend
-        self.trend_degree = model.degree
+        if self.data_type == 'RV':
+            self.trend = model.trend
+            self.trend_degree = model.degree
 
-        if self.model is MODELS.RVFWHMmodel:
-            self.trend_fwhm = model.trend_fwhm
-            self.trend_fwhm_degree = model.degree_fwhm
-        
-        self._read_trend()
+            if self.model is MODELS.RVFWHMmodel:
+                self.trend_fwhm = model.trend_fwhm
+                self.trend_fwhm_degree = model.degree_fwhm
+            
+            self._read_trend()
         
         # does the model enforce AMD stability?
         try:
@@ -665,6 +737,10 @@ class KimaResults:
         
         # # find MA in the compiled model
         # self._read_MA()
+
+        #read astrometric solution
+        if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
+            self._read_astrometric_solution()
         
         # find KO in the compiled model
         self.KO = model.known_object
@@ -720,8 +796,9 @@ class KimaResults:
             if self.double_lined:
                 self.vsys_sec = self.posterior_sample[:, -2]
                 self.indices['vsys_sec'] = -2
-        self.vsys = self.posterior_sample[:, -1]
-        self.indices['vsys'] = -1
+        if self.data_type == 'RV':
+            self.vsys = self.posterior_sample[:, -1]
+            self.indices['vsys'] = -1
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -895,10 +972,16 @@ class KimaResults:
         
 
         if self.model is MODELS.GAIAmodel:
-            for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
-                iend = istart + self.max_components
-                self.indices[f'planets.{p}'] = slice(istart, iend)
-                istart += self.max_components
+            if self.thiele_innes:
+                for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'A', 'B', 'F', 'G')):
+                    iend = istart + self.max_components
+                    self.indices[f'planets.{p}'] = slice(istart, iend)
+                    istart += self.max_components
+            else:
+                for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a0', 'w', 'cosi', 'W')):
+                    iend = istart + self.max_components
+                    self.indices[f'planets.{p}'] = slice(istart, iend)
+                    istart += self.max_components
         elif self.model is MODELS.RVHGPMmodel:
             for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'w', 'i', 'W')):
                 iend = istart + self.max_components
@@ -1641,7 +1724,7 @@ class KimaResults:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
                 self._priors.cfwhm = self.priors['Cfwhm_prior']
 
-        if self.trend:
+        if self.data_type=='RV' and self.trend:
             ind = self.indices['trend']
             ind = list(range(ind.start or 0, ind.stop or 0, ind.step or 1))
             for i, name in zip(ind, ('slope', 'quadr', 'cubic')):
@@ -1669,47 +1752,95 @@ class KimaResults:
         index_component = self.index_component
 
         if max_components > 0:
-            # periods
-            s = self.indices['planets.P']
-            self.posteriors.P = self.posterior_sample[:, s]
-            self._priors.P = self.priors['Pprior']
 
-            # amplitudes
-            s = self.indices['planets.K']
-            self.posteriors.K = self.posterior_sample[:, s]
-            self._priors.K = self.priors['Kprior']
+            if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                #periods
+                s = self.indices['planets.P']
+                self.posteriors.P = self.posterior_sample[:, s]
+                self._priors.P = self.priors['Pprior']
 
-            # phases
-            s = self.indices['planets.φ']
-            φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
-            self.posteriors.φ_deg = np.rad2deg(φ)
-            self._priors.φ = self.priors['phiprior']
+                # eccentricities
+                s = self.indices['planets.e']
+                self.posteriors.e = self.posterior_sample[:, s]
+                self._priors.e = self.priors['eprior']
 
-            # eccentricities
-            s = self.indices['planets.e']
-            self.posteriors.e = self.posterior_sample[:, s]
-            self._priors.e = self.priors['eprior']
+                # phases
+                s = self.indices['planets.φ']
+                φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+                self.posteriors.φ_deg = np.rad2deg(φ)
+                self._priors.φ = self.priors['phiprior']
 
-            # omegas
-            s = self.indices['planets.w']
-            w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
-            self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
-            self._priors.w = self.priors['wprior']
+                if self.model is MODELS.RVGAIAmodel:
+                    # amplitudes
+                    s = self.indices['planets.K']
+                    self.posteriors.K = self.posterior_sample[:, s]
+                    self._priors.K = self.priors['Kprior']
+                else:
+                    #semi-major axis
+                    s = self.indices['planets.a0']
+                    self.posteriors.a0 = self.posterior_sample[:, s]
+                    self._priors.a0 = self.priors['a0prior']
 
-            # times of periastron
-            self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+                # omegas
+                s = self.indices['planets.w']
+                w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+                self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
+                self._priors.w = self.priors['omegaprior']
 
-            
-            if self.model is MODELS.RVHGPMmodel:
-                s = self.indices['planets.i']
-                self.posteriors.i = self.posterior_sample[:, s]
-                self.posteriors.i_deg = np.rad2deg(self.posterior_sample[:, s])
-                self._priors.i = self.priors['iprior']
+                # cosi
+                s = self.indices['planets.cosi']
+                cosi = self.posteriors.cosi = self.posteriors.cosi = self.posterior_sample[:, s]
+                self.posteriors.i_deg = self.posteriors.i_deg = np.rad2deg(np.arccos(cosi))
+                self._priors.cosi = self.priors['cosiprior']
 
+                #Omegas
                 s = self.indices['planets.W']
                 W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                 self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
                 self._priors.W = self.priors['Omegaprior']
+            ### Also add ETV ones
+            else:
+                # periods
+                s = self.indices['planets.P']
+                self.posteriors.P = self.posterior_sample[:, s]
+                self._priors.P = self.priors['Pprior']
+
+                # amplitudes
+                s = self.indices['planets.K']
+                self.posteriors.K = self.posterior_sample[:, s]
+                self._priors.K = self.priors['Kprior']
+
+                # phases
+                s = self.indices['planets.φ']
+                φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+                self.posteriors.φ_deg = np.rad2deg(φ)
+                self._priors.φ = self.priors['phiprior']
+
+                # eccentricities
+                s = self.indices['planets.e']
+                self.posteriors.e = self.posterior_sample[:, s]
+                self._priors.e = self.priors['eprior']
+
+                # omegas
+                s = self.indices['planets.w']
+                w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+                self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
+                self._priors.w = self.priors['wprior']
+
+                # times of periastron
+                self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+
+                
+                if self.model is MODELS.RVHGPMmodel:
+                    s = self.indices['planets.i']
+                    self.posteriors.i = self.posterior_sample[:, s]
+                    self.posteriors.i_deg = np.rad2deg(self.posterior_sample[:, s])
+                    self._priors.i = self.priors['iprior']
+
+                    s = self.indices['planets.W']
+                    W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
+                    self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
+                    self._priors.W = self.priors['Omegaprior']
 
 
         if self.KO:
