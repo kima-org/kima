@@ -285,7 +285,7 @@ void RVmodel::calculate_mu()
         staleness = 0;
         if(trend)
         {
-            double tmid = data.get_t_middle();
+            double tmid = data.trend_epoch;
             for(size_t i=0; i<N; i++)
             {
                 mu[i] += slope * (data.t[i] - tmid) +
@@ -500,7 +500,7 @@ double RVmodel::perturb(RNG& rng)
 
     auto actind = data.get_actind();
     double logH = 0.;
-    double tmid = data.get_t_middle();
+    double tmid = data.trend_epoch;
 
     if(npmax > 0 && rng.rand() <= planet_perturb_prob) // perturb planet parameters
     {
