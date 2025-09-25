@@ -45,9 +45,6 @@ class KIMA_API RVmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
-        // /// whether to remove the label switching degeneracy on the period
-        // bool remove_label_switching_degeneracy = false;
-
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
 
@@ -62,7 +59,6 @@ class KIMA_API RVmodel
             DNest4::RJObject<KeplerianConditionalPrior>(5, npmax, fix, KeplerianConditionalPrior());
 
         double background;
-
 
         std::vector<double> offsets; // between instruments
             //   std::vector<double>(0, data.number_instruments - 1);
@@ -112,11 +108,6 @@ class KIMA_API RVmodel
         void remove_transiting_planet();
         void add_apodized_keplerians();
         void remove_apodized_keplerians();
-
-        // // Solve the label switching degeneracy by mapping
-		// // the orbital period P to the hypertriangle where
-		// // P(K) >= P(K−1) >= ... >= P(1)
-		// void solve_label_switching();
 
         int is_stable() const;
 
