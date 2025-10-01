@@ -1408,11 +1408,14 @@ Args:
               "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
               "Load astrometric data from a file")
         // properties
+        .def_ro("datafile", &GAIAdata::_datafile, "The file name")
+        //
         .def_prop_ro("t", [](GAIAdata &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("w", [](GAIAdata &d) { return d.get_w(); }, "The observed centroid positions")
         .def_prop_ro("wsig", [](GAIAdata &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
         .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
         .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors")
+        .def_prop_ro("N", [](GAIAdata &d) { return d.N(); }, "Total number of observations")
         //
         .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly")
         //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
@@ -1455,9 +1458,12 @@ Args:
               "filename"_a, "units"_a="days", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
               "Load Eclipse timing data from a file")
         // properties
+        .def_ro("datafile", &ETVData::_datafile, "The file name")
+        //
         .def_prop_ro("epochs", [](ETVData &d) { return d.get_epochs(); }, "The epoch (Nth eclipse since number 0)")
         .def_prop_ro("et", [](ETVData &d) { return d.get_et(); }, "The observed mid-eclipse times")
         .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times")
+        .def_prop_ro("N", [](ETVData &d) { return d.N(); }, "Total number of observations")
 
         .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly");
 
