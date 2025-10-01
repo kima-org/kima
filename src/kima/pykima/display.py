@@ -1606,6 +1606,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     _models_with_stellar_jitter = (
         MODELS.RVmodel, MODELS.RVHGPMmodel
     )
+    SB2 = res.model is MODELS.BINARIESmodel and res.double_lined
 
     all_in_one_plot = False
 
@@ -1628,6 +1629,9 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
                                     # figsize=(min(10, 5 + n_jitters * 2), 6), 
                                     **kw
                                     )
+        elif SB2:
+            fig, axs = plt.subplots(2, n_jitters // 2, 
+                                    figsize=(min(10, 5 + n_jitters * 2), 4), **kw)
         else:
             nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[n_jitters]
             fig, axs = plt.subplots(nrows, int(np.ceil(n_jitters / nrows)),
@@ -1743,6 +1747,9 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         labels = [f'RV jitter {i} [m/s]' for i in insts]
         labels += [f'{s} jitter {i} [m/s]' for i in insts 
                    for s in res._extra_data_names[::2]]
+    elif SB2:
+        labels = [f'RV jitter {i}_pri [m/s]' for i in insts]
+        labels += [f'RV jitter {i}_sec [m/s]' for i in insts]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
         if show_stellar_jitter:
