@@ -1,0 +1,49 @@
+; 2025-09-25 15:45:59
+
+[kima]
+model: RV_binaries_model
+
+fix: false
+npmax: 3
+
+trend: false
+degree: 0
+multi_instrument: false
+known_object: true
+n_known_object: 1
+studentt: false
+relativistic_correction: true
+tidal_correction: false
+double_lined: true
+eclipsing: true
+
+
+[data]
+file: SOPHIE.rdb
+units: kms
+skip: 2
+multi: false
+files: 
+M0_epoch: 2459609.0095
+
+[priors.general]
+Cprior: Uniform(25000; 27000)
+Jprior: ModifiedLogUniform(0.1; 100)
+
+[priors.planets]
+Pprior: LogUniform(80; 1000)
+Kprior: ModifiedLogUniform(1; 200)
+eprior: Kumaraswamy(0.867; 3.03)
+phiprior: Uniform(0; 6.28319)
+wprior: Uniform(0; 6.28319)
+
+[priors.known_object]
+Pprior_0: Gaussian(19.658; 0.01)
+Kprior_0: Gaussian(58549; 100)
+qprior_0: Gaussian(0.972; 0.01)
+eprior_0: Gaussian(0.448; 0.01)
+phiprior_0: Uniform(0; 6.28319)
+wprior_0: Gaussian(1.23; 0.01)
+wdotprior_0: Gaussian(0; 1000)
+cosiprior_0: Fixed(0)
+
