@@ -1719,6 +1719,8 @@ class KimaResults:
         if self.model != MODELS.GAIAmodel:
             # systemic velocity
             self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']].reshape(-1, 1)
+            if self.model is MODELS.BINARIESmodel and self.double_lined:
+                self.posteriors.vsys_sec = self.posterior_sample[:, self.indices['vsys_sec']].reshape(-1, 1)
             self._priors.vsys = self.priors['Cprior']
             if self.model is MODELS.RVFWHMmodel:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
@@ -2439,6 +2441,8 @@ class KimaResults:
                 print('cfwhm: ', p[self.indices['cfwhm']])
             if self.model is MODELS.RVFWHMRHKmodel:
                 print('crhk: ', p[self.indices['crhk']])
+            if self.model is MODELS.BINARIESmodel and self.double_lined:
+                print('vsys_sec: ', p[-2])
             print('vsys: ', p[-1])
 
 
@@ -3976,7 +3980,10 @@ class KimaResults:
         #         print_line(f'jitter{k+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
         #         k += 1
         
+        if self.model is MODELS.BINARIESmodel and self.double_lined:
+            print_line('vsys_sec', self.posteriors.vsys_sec, self.priors['Cprior'], show_prior)
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
+        
 
         if self.model is MODELS.RVFWHMmodel:
             print_line('cfwhm', self.posteriors.cfwhm, self.priors['Cfwhm_prior'], show_prior)

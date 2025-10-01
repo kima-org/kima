@@ -330,6 +330,7 @@ def plot_posterior_period(res,
                 counts, bin_edges = np.histogram(res.KOpars[:, i], bins=bins)
                 ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
                        align='edge', alpha=0.8, color='k')
+            
         
         if include_transiting_planet and res.TR:
             for i in range(res.nTR):
@@ -383,25 +384,27 @@ def plot_posterior_period(res,
 
     if kwargs.get('legend', True):
         ax.legend()
-
+    
     ax.set_xscale('log' if logx else 'linear')
-
+    
     if kwargs.get('labels', True):
         ylabel = 'KDE density' if kde else 'Number of posterior samples / ESS'
         ax.set(xlabel=r'Period [days]', ylabel=ylabel)
-
+    
     title = kwargs.get('title', True)
     if title:
         if isinstance(title, str):
             ax.set_title(title)
         else:
             ax.set_title('Posterior distribution for the orbital period(s)')
-
+    
     if plims is not None:
         ax.set_xlim(plims)
+    else:
+        ax.autoscale()
     
     if mark_periods is not None:
-        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'rv')
+        ax.plot(mark_periods, np.full_like(mark_periods, 1.1), 'rv') #Why is this 
         if mark_periods_text:
             for p in mark_periods:
                 ax.text(1.1 * p, 1.1, f'{p:.2f} days')
@@ -1351,9 +1354,15 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
     units = ' (arbitrary)' if res.arbitrary_units else ' (m/s)'
 
     if ax is None:
-        fig, ax = plt.subplots(1, 1, constrained_layout=True)
+        if res.model is MODELS.BINARIESmodel and res.double_lined:
+            fig, axs = plt.subplots(1, 2, constrained_layout=True,figsize=[10.4, 4.8])
+            ax,ax2 = axs[0],axs[1]
+        else:
+            fig, ax = plt.subplots(1, 1, constrained_layout=True)
     else:
         fig = ax.figure
+        if res.model is MODELS.BINARIESmodel and res.double_lined:
+            ax2 = ax
     figures.append(fig)
 
     bins = kwargs.get('bins', 'doane')
@@ -1369,14 +1378,26 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
     ylabel = 'posterior' if density else 'posterior samples'
     ax.set(xlabel='vsys' + units, ylabel=ylabel, title=title)
 
+    if res.model is MODELS.BINARIESmodel and res.double_lined:
+        vsys_sec = res.posteriors.vsys_sec.copy()
+        estimate = percentile68_ranges_latex(vsys_sec) + units
+        ax2.hist(vsys_sec, label=estimate, **hist_kw)
+
+        title2 = 'Posterior distribution for $v_{\\rm sys,sec}$'
+        ax2.set(xlabel='vsys_sec' + units, title=title2)
+
     if show_prior:
         try:
             prior = res.priors['Cprior']
         except KeyError:
             prior = res.priors['Vprior']
         ax.hist(distribution_rvs(prior, size=res.ESS), label='prior', **hist_prior_kw)
+        if res.model is MODELS.BINARIESmodel and res.double_lined:
+            ax2.hist(distribution_rvs(prior, size=res.ESS), label='prior', **hist_prior_kw)
 
     ax.legend()
+    if res.model is MODELS.BINARIESmodel and res.double_lined:
+        ax2.legend()
 
     if res.save_plots:
         filename = 'kima-showresults-fig7.2.png'
@@ -1385,14 +1406,21 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
 
     if show_offsets and res.multi:
         n_inst_offsets = res.inst_offsets.shape[1]
-        nrows = 2 if res.model is MODELS.RVFWHMmodel else 1
+        squeeze=True
+        if res.model is MODELS.RVFWHMmodel:
+            nrows = 2 
+            squeeze = False
+        elif res.model is MODELS.BINARIESmodel and res.double_lined:
+            nrows = 2 
+            squeeze = False
+        else:
+            nrows = 1
         fig, axs = plt.subplots(nrows, n_inst_offsets // nrows, sharey=True,
-                                figsize=(2 + n_inst_offsets * 3, 5), squeeze=True,
+                                figsize=(2 + 3 * n_inst_offsets//nrows, 2 + 3 * nrows), squeeze=squeeze,
                                 constrained_layout=True)
         figures.append(fig)
         if n_inst_offsets == 1:
             axs = [axs,]
-
         prior = res.priors['offsets_prior']
 
         if res.model is MODELS.RVFWHMmodel:
@@ -1411,7 +1439,25 @@ def hist_vsys(res, ax=None, show_offsets=True, show_other=False,
                     if show_prior and j == 0:
                         axs[j, i].hist(distribution_rvs(prior, size=res.ESS), **hist_prior_kw)
                         axs[j, i].legend(['posterior', 'prior'])
+        elif res.model is MODELS.BINARIESmodel and res.double_lined:
+            k = 0
+            wrt = res.instruments[-1]
+            for j in range(2):
+                extra = '_pri'
+                if j==1:
+                    extra = '_sec'
+                for i in range(n_inst_offsets // 2):
+                    this = res.instruments[i] + extra
+                    a = res.inst_offsets[:, k]
+                    axs[j, i].hist(a, **hist_kw)
+                    label = 'offset\n%s rel. to %s' % (this, wrt+extra)
+                    estimate = percentile68_ranges_latex(a) + units
+                    axs[j, i].set(xlabel=label, title=estimate)
+                    k += 1
 
+                    if show_prior and j == 0:
+                        axs[j, i].hist(distribution_rvs(prior, size=res.ESS), **hist_prior_kw)
+                        axs[j, i].legend(['posterior', 'prior'])
         else:
             for i in range(n_inst_offsets):
                 # wrt = get_instrument_name(res.data_file[-1])
@@ -1882,6 +1928,11 @@ def plot_RVData(data, **kwargs):
     y = np.array(data.y).copy()
     e = np.array(data.sig).copy()
     obs = np.array(data.obsi).copy()
+    sb2 = data.double_lined
+    if sb2:
+        y2 = np.array(data.y2).copy()
+        e2 = np.array(data.sig2).copy()
+
 
     time_offset = False
     if t[0] > 24e5:
@@ -1897,9 +1948,13 @@ def plot_RVData(data, **kwargs):
         uobs = np.unique(obs)
         for i in uobs:
             mask = obs == i
-            ax.errorbar(t[mask], y[mask], e[mask], **kw)    
+            ax.errorbar(t[mask], y[mask], e[mask], **kw)  
+            if sb2:
+                ax.errorbar(t[mask], y2[mask], e2[mask], mfc='none', **kw)  
     else:
-        ax.errorbar(t, y, e, **kw)
+        ax.errorbar(t, y, e,  **kw)
+        if sb2:
+            ax.errorbar(t, y2, e2, mfc='none', **kw)
 
     if time_offset:
         ax.set(xlabel='BJD - 2400000 [days]', ylabel='RV [m/s]')
