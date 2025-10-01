@@ -2035,8 +2035,12 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
     t = res.data.t.copy()
 
     if y is None:
-        y = res.data.y.copy()
-        e = res.data.e.copy()
+        if sb2 and secondary_star:
+            y = res.data.y2.copy()
+            e = res.data.e2.copy()
+        else:
+            y = res.data.y.copy()
+            e = res.data.e.copy()
     else:
         if y.ndim > 1:
             y = y[0]
@@ -3312,6 +3316,8 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
             The figure with the plot
     """
 
+    SB2 = res.model is MODELS.BINARIESmodel and res.double_lined
+
     if samples is None:
         samples = res.posterior_sample.copy()
         samples_provided = False
@@ -3386,6 +3392,12 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
         ]
 
     _, y_offset = plot_data(res, ax, **kwargs)
+
+    if SB2:
+        kwargs2 = kwargs.copy()
+        kwargs2['mfc'] = 'none'
+        plt.gca().set_prop_cycle(None)
+        _, y_offset_sec = plot_data(res, ax, secondary_star=True, **kwargs2)
 
     if include_jitters_in_points:
         if ncurves == 1:
@@ -3476,9 +3488,16 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
         pj = 0
         if res.KO and isolate_known_object:
             for _ in range(1, res.nKO + 1):
-                kepKO = res.eval_model(sample, tt, single_planet=-(pj+1))
-                ax.plot(tt, kepKO - y_offset, alpha=alpha,
-                        label='known object' if icurve == 0 else None)
+                if SB2:
+                    kepKO,kepKO_sec = res.eval_model(sample, tt, single_planet=-(pj+1))
+                    ax.plot(tt, kepKO - y_offset, alpha=alpha,
+                            label='known object' if icurve == 0 else None)
+                    ax.plot(tt, kepKO_sec - y_offset, alpha=alpha,
+                            label='known object' if icurve == 0 else None)
+                else:
+                    kepKO = res.eval_model(sample, tt, single_planet=-(pj+1))
+                    ax.plot(tt, kepKO - y_offset, alpha=alpha,
+                            label='known object' if icurve == 0 else None)
                 pj += 1
 
         if hasattr(res, 'TR') and res.TR and isolate_transiting_planet:
