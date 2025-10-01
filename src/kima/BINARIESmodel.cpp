@@ -1193,7 +1193,7 @@ NB_MODULE(BINARIESmodel, m) {
                         "secondary radius [Rsun]")
         //
         .def_rw("enforce_stability", &BINARIESmodel_publicist::enforce_stability, 
-                "whether to enforce AMD-stability")
+                "whether to enforce AMD-stability (Untested for binaries)")
         
         //
         .def_rw("relativistic_correction", &BINARIESmodel_publicist::relativistic_correction,
