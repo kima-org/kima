@@ -178,6 +178,7 @@ def plot_posterior_period(res,
                           show_year=True,
                           show_timespan=True,
                           show_aliases=False,
+                          show_eta3=False,
                           include_known_object=False,
                           include_transiting_planet=False,
                           separate_colors=False,
@@ -328,46 +329,61 @@ def plot_posterior_period(res,
                 counts, bin_edges = np.histogram(res.KOpars[:, i], bins=bins)
                 ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
                        align='edge', alpha=0.8, color='k')
-            
+                bottoms += np.append(counts / res.ESS, 0)
         
         if include_transiting_planet and res.TR:
             for i in range(res.nTR):
                 counts, bin_edges = np.histogram(res.TRpars[:, i], bins=bins)
                 ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
-                       align='edge', alpha=0.8, color='k')
+                       align='edge', alpha=0.8)#, color='k')
+                bottoms += np.append(counts / res.ESS, 0)
 
         # save maximum peak(s)
         peaki = np.argsort(bottoms)[-10:][::-1]
         peakP = np.array([bins[pi:pi+2].mean() for pi in peaki])
 
+        if show_peaks and find_peaks:
+            peaks, _ = find_peaks(bottoms, prominence=0.1)
+            for peak in peaks:
+                s = r'P$\simeq$%.2f' % bin_edges[peak]
+                ax.text(bin_edges[peak], bottoms[peak], s, ha='left')
+
         # ax.hist(T, bins=bins, alpha=0.8, density=density)
 
-        if show_prior and T.size > 100:
-            kwprior = {
-                'alpha': 0.15,
-                'color': 'k',
-                'zorder': -1,
-                'label': 'prior',
-            }
+        if show_prior:
+            kwprior = {"alpha": 0.15, "color": "k", "zorder": -1, "label": "prior"}
+            if 'Pprior' in res.priors:
+                if res.hyperpriors:
+                    P = hyperprior_samples(T.size)
+                else:
+                    P = distribution_rvs(res.priors['Pprior'], res.ESS)
 
-            if res.hyperpriors:
-                P = hyperprior_samples(T.size)
-            else:
-                P = distribution_rvs(res.priors['Pprior'], res.ESS)
+                counts, bin_edges = np.histogram(P, bins=bins)
+                ax.bar(x=bin_edges[:-1], height=res.npmax * counts / res.ESS, 
+                       width=np.ediff1d(bin_edges), align="edge", **kwprior)
 
-            counts, bin_edges = np.histogram(P, bins=bins)
-            ax.bar(x=bin_edges[:-1],
-                   height=counts / res.ESS,
-                   width=np.ediff1d(bin_edges),
-                   align='edge',
-                   **kwprior)
+            if include_transiting_planet and res.TR:
+                for i in range(res.nTR):
+                    if hasattr(res._priors.TR, f'P{i}'):
+                        P = res._priors.TR.get_samples(f'P{i}', res.ESS)
+                    else:    
+                        P = distribution_rvs(res.priors[f'TR_Pprior_{i}'], res.ESS)
+
+                    counts, bin_edges = np.histogram(P, bins=bins)
+                    ax.bar(x=bin_edges[:-1], height=counts / res.ESS, 
+                           width=np.ediff1d(bin_edges), align="edge", **kwprior)
+
+
 
     if show_year:  # mark 1 year
         year = 365.25
         ax.axvline(x=year, color='r', label='1 year', **kwline)
 
     if show_timespan:  # mark the timespan of the data
-        ax.axvline(x=np.ptp(res.data.t), color='k', label='time span', **kwline)
+        try:
+            ax.axvline(x=np.ptp(res.data.t), color='k', label='time span', **kwline)
+        except AttributeError:
+            pass
 
     if show_aliases is not None:  # mark daily and yearly aliases of top peak
         from .analysis import aliases
@@ -379,6 +395,16 @@ def plot_posterior_period(res,
         ax.plot(peakP, np.full_like(peakP, ymax), 'v', color='orange')
         ax.vlines(alias_year, 0, ymax, color='orange', ls='--', alpha=0.1)
         ax.vlines(alias_solar_day, 0, ymax, color='orange', ls='--', alpha=0.1)
+
+    if show_eta3:
+        if res.has_gp:
+            counts, bin_edges = np.histogram(res.posteriors.η3, bins=bins)
+            ax.bar(x=bin_edges[:-1], height=counts / res.ESS, width=np.ediff1d(bin_edges),
+                   bottom=bottoms[:-1], align='edge', alpha=0.8, color='plum',
+                   label=r'GP $\eta_3$')
+        else:
+            print('Model does not have GP! show_eta3=True doing nothing...')
+
 
     if kwargs.get('legend', True):
         ax.legend()
