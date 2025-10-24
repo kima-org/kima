@@ -800,18 +800,42 @@ def sort_planet_samples(res, byP=True, replace=False):
     sortP = np.argsort(P, axis=1)
 
     new_posterior = posterior_holder()
+    fields = (
+        'K', 'e', 'w', 'φ',
+        'i', 'i_deg', 'W', 'W_deg', 'Ω', 'Ω_deg',
+    )
 
     if byP:
         n = np.arange(P.shape[0])[:, None]
-        new_posterior.P = P[n, sortP]
-        new_posterior.K = res.posteriors.K[n, sortP]
-        new_posterior.e = res.posteriors.e[n, sortP]
-        new_posterior.w = res.posteriors.w[n, sortP]
-        new_posterior.φ = res.posteriors.φ[n, sortP]
+        new_posterior.P = P[n, sortP].copy()
+        for field in fields:
+            try:
+                setattr(new_posterior, field, 
+                        getattr(res.posteriors, field)[n, sortP].copy())
+            except AttributeError:
+                pass
+        # new_posterior.K = res.posteriors.K[n, sortP].copy()
+        # new_posterior.e = res.posteriors.e[n, sortP].copy()
+        # new_posterior.w = res.posteriors.w[n, sortP].copy()
+        # new_posterior.φ = res.posteriors.φ[n, sortP].copy()
+        # if res.model is MODELS.RVHGPMmodel:
+        #     new_posterior.i = res.posteriors.i[n, sortP].copy()
+        #     new_posterior.W = res.posteriors.W[n, sortP].copy()
 
     if replace:
-        res.posteriors = new_posterior
-    
+        res.posteriors.P = new_posterior.P
+        res.posterior_sample[:, res.indices['planets.P']] = new_posterior.P
+
+        for field in fields:
+            try:
+                setattr(res.posteriors, field, getattr(new_posterior, field))
+            except AttributeError:
+                pass
+            try:
+                res.posterior_sample[:, res.indices['planets.' + field]] = getattr(new_posterior, field)
+            except (AttributeError, KeyError):
+                pass
+
     return new_posterior
 
 
