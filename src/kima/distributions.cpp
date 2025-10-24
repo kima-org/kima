@@ -501,7 +501,7 @@ NB_MODULE(distributions, m)
     // Uniform.cpp
     nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform")
         .def(nb::init<double, double>(), "lower"_a, "upper"_a, R"D(
-        "Uniform distribuion in [lower, upper]
+        "Uniform distribution in [lower, upper]
 
         Args:
             lower (float): lower bound
@@ -525,7 +525,7 @@ NB_MODULE(distributions, m)
         );
     
     nb::class_<DNest4::UniformAngle, DNest4::ContinuousDistribution>(m, "UniformAngle")
-        .def(nb::init<>(), "Uniform distribuion in [0, 2*PI]")
+        .def(nb::init<>(), "Uniform distribution in [0, 2*PI]")
         .def("__repr__", [](const DNest4::UniformAngle &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::UniformAngle::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::UniformAngle::cdf_inverse, "q"_a, PPF_DOC)
@@ -534,7 +534,7 @@ NB_MODULE(distributions, m)
         .def("__getstate__", [](const DNest4::UniformAngle &d) { return 0; })
         .def("__setstate__", [](DNest4::UniformAngle &d, const int &state) { new (&d) DNest4::UniformAngle(); });
 
-    // nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribuion in [lower, upper]")
+    // nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribution in [lower, upper]")
     //     .def(nb::init<int, int>(), "lower"_a, "upper"_a)
     //     .def_rw("lower", &DNest4::UniformInt::lower)
     //     .def_rw("upper", &DNest4::UniformInt::upper)
@@ -654,6 +654,11 @@ NB_MODULE(distributions, m)
         .def("__repr__", [](const DNest4::Sine &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Sine::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Sine::cdf_inverse, "q"_a, PPF_DOC)
-        .def("logpdf", &DNest4::Sine::log_pdf, "x"_a, LOG_PDF_DOC);
+        .def("logpdf", &DNest4::Sine::log_pdf, "x"_a, LOG_PDF_DOC)
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::Sine &d) { return std::make_tuple(0.0, 0.0, 0.0, 0.0); })
+        .def("__setstate__",
+             [](DNest4::Sine &d, const _state_type &state) { new (&d) DNest4::Sine(); });
 
 }
