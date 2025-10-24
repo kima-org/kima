@@ -10,7 +10,7 @@ from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
 from .. import MODELS
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
-from .analysis import get_planet_mass_and_semimajor_axis,
+from .analysis import get_planet_mass_and_semimajor_axis
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, get_instrument_name)
 from .utils import mjup2msun, mjup2mearth
