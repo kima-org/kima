@@ -4080,7 +4080,7 @@ class KimaResults:
         if self.model is MODELS.RVHGPMmodel:
             self.plot_hgpm = partial(display.plot_hgpm,
                                      res=self, pm_data=self.pm_data)
-            self.hist_pm_bary = partial(display.hist_pm_bary, res=self)
+            self.hist_bary = partial(display.hist_bary, res=self)
 
     #
     hist_vsys = display.hist_vsys
