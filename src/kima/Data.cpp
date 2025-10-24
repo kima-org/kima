@@ -1039,14 +1039,17 @@ GAIAdata::GAIAdata() {};
 
 HGPMdata::HGPMdata() {};
 
-    void HGPMdata::load(uint64_t gaia_id)
+    void HGPMdata::load(uint64_t _gaia_id)
     {
-        auto data = get_data(gaia_id);
+        auto data = get_data(_gaia_id);
 
         if (!data.found) {
-            std::string msg = "kima: HGPMdata: no data for gaia_id " + std::to_string(gaia_id);
+            std::string msg = "kima: HGPMdata: no data for gaia_id " + std::to_string(_gaia_id);
             throw std::runtime_error(msg);
         }
+
+        gaia_id = _gaia_id;
+
         // // auto catalog_file = "C://Users/joaof/Work/HGCA_catalog.dat";
         // // auto gaia_ids = loadtxt<unsigned long long>(catalog_file).delimiters("|").usecols({2})();
         // // auto catalog = loadtxt(catalog_file).delimiters("|")();
@@ -1430,6 +1433,8 @@ Args:
         // 
         .def_ro_static("_temp_path", &HGPMdata::temp_path)
         // 
+        .def_ro("gaia_id", &HGPMdata::gaia_id, "Gaia DR3 ID")
+        // 
         .def_ro("parallax_gaia", &HGPMdata::parallax_gaia, "Gaia DR3 parallax")
         .def_ro("parallax_gaia_error", &HGPMdata::parallax_gaia_error, "Gaia DR3 parallax error")
         // 
@@ -1449,7 +1454,16 @@ Args:
         .def_ro("sig_gaia_ra", &HGPMdata::sig_gaia_ra, "").def_ro("sig_gaia_dec", &HGPMdata::sig_gaia_dec, "").def_ro("rho_gaia", &HGPMdata::rho_gaia, "")
         .def_ro("sig_hg_ra", &HGPMdata::sig_hg_ra, "").def_ro("sig_hg_dec", &HGPMdata::sig_hg_dec, "").def_ro("rho_hg", &HGPMdata::rho_hg, "")
         // chi square value
-        .def_ro("chisq", &HGPMdata::chisq, "");
+        .def_ro("chisq", &HGPMdata::chisq, "")
+        // for pickling
+        .def("__getstate__",
+             [](const HGPMdata &d) { 
+                return std::make_tuple(d.gaia_id); 
+        })
+        .def("__setstate__",
+             [](HGPMdata &d, const std::tuple<uint64_t> &t) { 
+                d.load(std::get<0>(t));
+        });
 
 
 

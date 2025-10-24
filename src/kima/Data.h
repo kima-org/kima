@@ -415,6 +415,7 @@ class KIMA_API HGPMdata {
     // Python bindings
     inline static std::string temp_path = fs::temp_directory_path().string();
 
+    uint64_t gaia_id;
     double parallax_gaia, parallax_gaia_error;
     double epoch_ra_hip, epoch_dec_hip;   // epochs for Hipparcos proper motions
     double epoch_ra_gaia, epoch_dec_gaia; // epochs for Gaia proper motions
