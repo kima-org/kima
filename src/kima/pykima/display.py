@@ -1,4 +1,3 @@
-from string import ascii_lowercase
 from copy import copy
 
 import numpy as np
@@ -7,12 +6,11 @@ from matplotlib import gridspec
 from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
-from corner import corner
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
 from .. import MODELS
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
-from .analysis import get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis
+from .analysis import get_planet_mass_and_semimajor_axis,
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, get_instrument_name)
 from .utils import mjup2msun, mjup2mearth
