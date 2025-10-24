@@ -3264,6 +3264,38 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
     return fig
 
 
+def hist_pm_bary(res, show_prior=False):
+    if res.model != MODELS.RVHGPMmodel:
+        print('Model is not RVHGPMmodel! hist_pm_bary() doing nothing...')
+        return
+
+    units = ' [mas/yr]'
+    hist_kw = dict(bins='doane', density=True)
+    hist_prior_kw = dict(**hist_kw, alpha=0.15, color='k', zorder=-1)
+
+    fig, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(8, 4))
+
+    estimate = percentile68_ranges_latex(res.posteriors.pm_ra_bary)
+    axs[0].hist(res.posteriors.pm_ra_bary, label=estimate + units, **hist_kw)
+
+    estimate = percentile68_ranges_latex(res.posteriors.pm_dec_bary)
+    axs[1].hist(res.posteriors.pm_dec_bary, label=estimate + units, **hist_kw)
+
+    if show_prior:
+        prior = res.priors['pm_ra_bary_prior']
+        axs[0].hist(distribution_rvs(prior, size=res.ESS), label='prior', **hist_prior_kw)
+        prior = res.priors['pm_dec_bary_prior']
+        axs[1].hist(distribution_rvs(prior, size=res.ESS), label='prior', **hist_prior_kw)
+
+    for ax in axs:
+        ax.legend()
+        ax.set_ylabel('posterior')
+    axs[0].set(xlabel=r'$\mu_{\mathrm{RA}}$' + units)
+    axs[1].set(xlabel=r'$\mu_{\mathrm{Dec}}$' + units)
+
+    return fig, axs
+
+
 def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=5000,
                         subtract_offsets=False, clip_curves_to_data=False,
                         show_vsys=False, show_gp=True, isolate_known_object=True, isolate_transiting_planet=True,
