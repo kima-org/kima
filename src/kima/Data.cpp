@@ -263,7 +263,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     _skip = skip;
     _multi = false;
     number_instruments = 1;
-    //This doesn't define the names of the instruments
+    _instrument = 'RVs';//Just call the instrument RVs by default
 
     t = data[0];
     y = data[1];
