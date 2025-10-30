@@ -51,6 +51,9 @@ class KIMA_API RVmodel
         bool jitter_propto_indicator = false;
         int jitter_propto_indicator_index = 0;
 
+        /// Whether to optimize Keplerian calculation when several times are repeated
+        bool optimize_equal_times = false;
+
         RVData data;
 
     private:
@@ -137,6 +140,8 @@ class KIMA_API RVmodel
         };
 
         void initialize_from_data(RVData& data);
+
+        vector<double> reconstruct_unique_times(vector<double>& v);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets

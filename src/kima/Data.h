@@ -85,6 +85,8 @@ class KIMA_API RVData {
     int _skip;
     bool _multi;
     vector<string> _indicator_names;
+    vector<double> _unique_times;
+    vector<int> _inverse_indices;
 
     RVData() {};
 
@@ -217,6 +219,32 @@ class KIMA_API RVData {
 
     /// Get the array of instrument identifiers
     const vector<int>& get_obsi() const { return obsi; }
+
+    /// Get the vector of unique times
+    const vector<double>& get_unique_t() {
+        if (_unique_times.size() == 0) {
+          _unique_times = t;
+          std::sort(_unique_times.begin(), _unique_times.end());
+          _unique_times.erase(std::unique(_unique_times.begin(), _unique_times.end()), _unique_times.end());
+        }
+        return _unique_times;
+    }
+
+    //
+    const vector<int>& _inverse_time_indices() {
+      _unique_times = get_unique_t();
+      if (_inverse_indices.size() == 0) {
+        _inverse_indices.reserve(t.size());
+        for (const double& tt : t) {
+          auto it = std::find(_unique_times.begin(), _unique_times.end(), tt);
+          if (it != _unique_times.end()) {
+            auto index = std::distance(_unique_times.begin(), it);
+            _inverse_indices.push_back(index);
+          }
+        }
+      }
+      return _inverse_indices;
+    }
 
     /// Get the number of instruments
     int Ninstruments() const

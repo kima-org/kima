@@ -351,8 +351,17 @@ void RVmodel::calculate_mu()
         ecc = components[j][3];
         omega = components[j][4];
 
-        auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        vector<double> v(N);
+
+        if (optimize_equal_times) {
+            auto v_u = brandt::keplerian(data.get_unique_t(), P, K, ecc, omega, phi, data.M0_epoch);
+            v = reconstruct_unique_times(v_u);
+        }
+        else {
+            v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
+        }
+
+        for (size_t i = 0; i < N; i++)
             mu[i] += v[i];
     }
 
@@ -362,6 +371,16 @@ void RVmodel::calculate_mu()
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
     #endif
 
+}
+
+vector<double> RVmodel::reconstruct_unique_times(vector<double>& v)
+{
+    vector<double> vfull(data.t.size());
+    auto ind = data._inverse_time_indices();
+    for (size_t i = 0; i < data.t.size(); i++) {
+        vfull[i] = v[ind[i]];
+    }
+    return vfull;
 }
 
 
@@ -1101,6 +1120,7 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::indicator_correlations;
         using RVmodel::jitter_propto_indicator;
         using RVmodel::jitter_propto_indicator_index;
+        using RVmodel::optimize_equal_times;
 };
 
 
@@ -1169,6 +1189,8 @@ NB_MODULE(RVmodel, m) {
                 "docs")
         .def_rw("jitter_propto_indicator_index", &RVmodel_publicist::jitter_propto_indicator_index, 
                 "docs")
+
+        .def_rw("optimize_equal_times", &RVmodel_publicist::optimize_equal_times, "docs")
 
         // // to un/pickle RVmodel
         // .def("__getstate__", [](const RVmodel &m)

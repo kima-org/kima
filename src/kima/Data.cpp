@@ -1374,6 +1374,8 @@ NB_MODULE(Data, m) {
         .def("get_RV_std", &RVData::get_RV_std, "Get the standard deviation of RVs")
         .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
         .def("get_trend_magnitude", &RVData::get_trend_magnitude, "Order of magnitude of trend coefficient (of degree) given the data")
+        .def("get_unique_t", &RVData::get_unique_t, "Get the unique times")
+        .def("_inverse_time_indices", &RVData::_inverse_time_indices, "")
         // ...
         .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
             //  nb::raw_doc(
