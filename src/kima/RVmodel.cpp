@@ -720,6 +720,8 @@ double RVmodel::log_likelihood() const
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
         double var, jit;
+        // constant which only depends on nu
+        double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
         for(size_t i=0; i<N; i++)
         {
             if(data._multi) 
@@ -735,9 +737,7 @@ double RVmodel::log_likelihood() const
             if (jitter_propto_indicator)
                 var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
         }
 
     }
