@@ -1946,7 +1946,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
             fig, axs = plt.subplots(2, n_jitters // 2, 
                                     figsize=(min(10, 5 + n_jitters * 2), 4), **kw)
         else:
-            nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[n_jitters]
+            # nrows = {1:1, 2:1, 3:1, 4:1, 5:2, 6:2, 7:2, 8:2}[n_jitters]
+            nrows = int(np.floor((n_jitters - 1) / 4) + 1)
             fig, axs = plt.subplots(nrows, int(np.ceil(n_jitters / nrows)),
                                     figsize=(min(10, 5 + n_jitters * 2), 4), **kw)
         axs = np.atleast_1d(axs)
@@ -1986,7 +1987,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
 
         if i >= res.n_jitters:
             ax.axis('off')
-            break
+            continue
+
         j = i // res.n_instruments
         estimate = percentile68_ranges_latex(res.jitter[:, i]) + ' m/s'
 
