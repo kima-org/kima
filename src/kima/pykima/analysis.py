@@ -719,15 +719,21 @@ def reorder_P2(res, replace=False, passes=1):
     new_posterior.e = res.posteriors.e.copy()
     new_posterior.w = res.posteriors.w.copy()
     new_posterior.φ = res.posteriors.φ.copy()
+    if res.model is MODELS.RVHGPMmodel:
+        new_posterior.i = res.posteriors.i.copy()
+        new_posterior.W = res.posteriors.W.copy()
 
     mask = res.Np > 1
+    Np = res.Np.copy().astype(int)
 
     s = np.std(new_posterior.P, axis=0)
-    # print(s)
+    s_old = s.copy()
 
-    for _ in range(passes):
+    passes_done = 0
+    keep_going = True
+    while keep_going:
         for i in tqdm(np.where(mask)[0]):
-            for j in range(int(res.Np[i]) - 1):
+            for j in range(Np[i] - 1):
                 ind = [j, j+1]
                 # print(new_posterior.P[i])
                 new_posterior.P[i, ind] = new_posterior.P[i, ind][::-1]
@@ -744,8 +750,25 @@ def reorder_P2(res, replace=False, passes=1):
                     new_posterior.P[i, ind] = new_posterior.P[i, ind][::-1]
                 # input()
 
+        passes_done += 1
+        if passes != -1 and passes_done >= passes:
+            keep_going = False
+        if passes == -1:
+            if (s.round(2) < s_old.round(2)).any():
+                s_old = s
+                keep_going = True
+            else:
+                keep_going = False
+        # print(s)
 
-def reorder_P3(res, reference_periods=None, replace=False):
+    if replace:
+        res.posteriors.P = new_posterior.P
+        res.posteriors.K = new_posterior.K
+        res.posteriors.e = new_posterior.e
+        res.posteriors.w = new_posterior.w
+        res.posteriors.φ = new_posterior.φ
+
+    return new_posterior
     from .results import posterior_holder
 
     new_posterior = posterior_holder()
