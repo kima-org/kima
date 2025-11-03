@@ -269,8 +269,9 @@ void RVHGPMmodel::calculate_mu()
     size_t N = data.N();
 
     // Update or from scratch?
-    bool update = (planets.get_added().size() < planets.get_components().size()) &&
-            (staleness <= 10);
+    // bool update = (planets.get_added().size() < planets.get_components().size()) &&
+    //         (staleness <= 10);
+    bool update = false;
 
     // Get the components
     const vector< vector<double> >& components = (update)?(planets.get_added()):
@@ -684,29 +685,6 @@ double RVHGPMmodel::perturb(RNG& rng)
     }
     else
     {
-        for(size_t i=0; i<mu.size(); i++)
-        {
-            mu[i] -= background;
-            if(trend) {
-                mu[i] -= slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
-            }
-            if(data._multi) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                }
-            }
-
-            if(indicator_correlations) {
-                for (size_t j = 0; j < data.number_indicators; j++)
-                {
-                    double mean = data.get_actind_mean(j);
-                    mu[i] -= betas[j] * (actind[j][i] - mean);
-                }
-            }
-        }
-
         // propose new vsys
         logH += Cprior->perturb(background, rng);
 
@@ -734,34 +712,11 @@ double RVHGPMmodel::perturb(RNG& rng)
             }
         }
 
-        for (size_t i = 0; i < mu.size(); i++)
-        {
-            mu[i] += background;
-            if(trend) {
-                mu[i] += slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
-            }
-            if(data._multi) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-
-            if (indicator_correlations)
-            {
-                for (size_t j = 0; j < data.number_indicators; j++)
-                {
-                    double mean = data.get_actind_mean(j);
-                    mu[i] += betas[j] * (actind[j][i] - mean);
-                }
-            }
-        }
-
-
         logH += pm_ra_bary_prior->perturb(pm_ra_bary, rng);
         logH += pm_dec_bary_prior->perturb(pm_dec_bary, rng);
         logH += parallax_prior->perturb(parallax, rng);
+
+        calculate_mu();
     }
 
 
