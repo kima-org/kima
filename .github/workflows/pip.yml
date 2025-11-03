@@ -38,7 +38,7 @@ jobs:
 
     - name: Dependencies
       run: |
-        pip install pip -U
+        python -m pip install pip -U
 
     - name: Check versions
       run: |
