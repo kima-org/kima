@@ -761,8 +761,11 @@ double RVHGPMmodel::log_likelihood() const
     #endif
 
     if (studentt){
-        // The following code calculates the log likelihood 
-        // in the case of a t-Student model
+        // The following code calculates the log likelihood in the case of a t-Student model
+        
+        // constant which only depends on nu
+        double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
+        
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
@@ -779,10 +782,15 @@ double RVHGPMmodel::log_likelihood() const
             if (jitter_propto_indicator)
                 var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
         }
+
+        auto like_hip = DNest4::BivariateGaussian(mu_pm[0], mu_pm[1], pm_data.sig_hip_ra, pm_data.sig_hip_dec, pm_data.rho_hip);
+        auto like_gaia = DNest4::BivariateGaussian(mu_pm[2], mu_pm[3], pm_data.sig_gaia_ra, pm_data.sig_gaia_dec, pm_data.rho_gaia);
+        auto like_hg = DNest4::BivariateGaussian(mu_pm[4], mu_pm[5], pm_data.sig_hg_ra, pm_data.sig_hg_dec, pm_data.rho_hg);
+        logL += like_hip.log_pdf(pm_data.pm_ra_hip, pm_data.pm_dec_hip);
+        logL += like_gaia.log_pdf(pm_data.pm_ra_gaia, pm_data.pm_dec_gaia);
+        logL += like_hg.log_pdf(pm_data.pm_ra_hg, pm_data.pm_dec_hg);
 
     }
 
@@ -804,8 +812,7 @@ double RVHGPMmodel::log_likelihood() const
             if (jitter_propto_indicator)
                 var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
 
         auto like_hip = DNest4::BivariateGaussian(mu_pm[0], mu_pm[1], pm_data.sig_hip_ra, pm_data.sig_hip_dec, pm_data.rho_hip);
