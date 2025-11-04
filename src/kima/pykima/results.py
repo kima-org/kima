@@ -621,11 +621,14 @@ class KimaResults:
             self.instruments = data.instruments
 
         try:
-            self.posterior_lnlike = np.atleast_2d(read_big_file('posterior_sample_info.txt'))
+            self.posterior_lnlike = np.atleast_2d(
+                read_big_file("posterior_sample_info.txt",
+                              names=["level_assignment", "logL", "tiebreaker", "ID"])
+            )
             self._lnlike_available = True
         except IOError:
             self._lnlike_available = False
-            print('Could not find file "posterior_sample_info.txt", '
+            print('Could not find file "posterior_sample_info.txt",'
                   'log-likelihoods will not be available.')
 
         try:
@@ -636,8 +639,8 @@ class KimaResults:
 
             with SimpleTimer() as timer:
                 self.sample_info = np.atleast_2d(
-                    read_big_file('sample_info.txt', names=['level_assignment', 'logL', 'tiebreaker', 'ID'],
-                            )
+                    read_big_file('sample_info.txt', 
+                                  names=['level_assignment', 'logL', 'tiebreaker', 'ID'])
                 )
             if self._debug:
                 print(f'Loading "sample_info.txt" took {timer.interval:.2f} seconds')
@@ -647,14 +650,14 @@ class KimaResults:
             if self._debug:
                 print(f'Loading "levels.txt" took {timer.interval:.2f} seconds')
 
-            with open('sample.txt', 'r') as fs:
+            with open("sample.txt", "r") as fs:
                 header = fs.readline()
-                header = header.replace('#', '').replace('  ', ' ').strip()
-                self.parameters = [p for p in header.split(' ') if p != '']
+                header = header.replace("#", "").replace("  ", " ").strip()
+                self.parameters = [p for p in header.split(" ") if p != ""]
                 self._parameters = copy(self.parameters)
-                self.parameters.pop(self.parameters.index('ndim'))
-                self.parameters.pop(self.parameters.index('maxNp'))
-                self.parameters.pop(self.parameters.index('staleness'))
+                self.parameters.pop(self.parameters.index("ndim"))
+                self.parameters.pop(self.parameters.index("maxNp"))
+                self.parameters.pop(self.parameters.index("staleness"))
 
             # different sizes can happen when running the model and sample_info
             # was updated while reading sample.txt
@@ -704,19 +707,21 @@ class KimaResults:
         if self.model is MODELS.TRANSITmodel:
             self._read_limb_dark()
 
-        
+        # default value
+        self.trend = False
+
         #### this is only for RV models
         # read trend
-        if self.data_type == 'RV':
+        if self.data_type == "RV":
             self.trend = model.trend
             self.trend_degree = model.degree
 
             if self.model is MODELS.RVFWHMmodel:
                 self.trend_fwhm = model.trend_fwhm
                 self.trend_fwhm_degree = model.degree_fwhm
-            
+
             self._read_trend()
-        
+
         # does the model enforce AMD stability?
         try:
             self.enforce_stability = model.enforce_stability
