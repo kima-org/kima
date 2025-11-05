@@ -768,6 +768,8 @@ double BINARIESmodel::log_likelihood() const
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
         double var, var_2, jit, jit2;
+        // constant which only depends on nu
+        double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
         for(size_t i=0; i<N; i++)
         {
             if(data._multi)
@@ -784,14 +786,10 @@ double BINARIESmodel::log_likelihood() const
                 if (double_lined)
                     var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
             if (double_lined)
             {
-                logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                        - 0.5*log(M_PI*nu) - 0.5*log(var_2)
-                        - 0.5*(nu + 1.)*log(1. + pow(y_2[i] - mu_2[i], 2)/var_2/nu);
+                logL += c_nu - 0.5*log(var_2) - 0.5*(nu + 1.)*log(1. + pow(y_2[i] - mu_2[i], 2)/var_2/nu);
             }
         }
 
@@ -817,15 +815,12 @@ double BINARIESmodel::log_likelihood() const
                 if (double_lined)
                     var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(y[i] - mu[i], 2)/var);
 //             cout << logL <<endl;
 //             sleep(0.1);
             if (double_lined)
             {
-                logL += - halflog2pi - 0.5*log(var_2)
-                        - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
-                
+                logL += - halflog2pi - 0.5*log(var_2) - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
             }
 //         cout << "y"  <<endl;
 //         for (auto k: y)

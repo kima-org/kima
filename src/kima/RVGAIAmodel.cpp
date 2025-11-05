@@ -655,16 +655,16 @@ double RVGAIAmodel::log_likelihood() const
     if (studentt){
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
-        double var, jit;
+        double var, jit, var_GAIA;
+        double c_nu_GAIA = std::lgamma(0.5*(nu_GAIA + 1.)) - std::lgamma(0.5*nu_GAIA) - 0.5*log(M_PI*nu_GAIA);
         for(size_t i=0; i<N_GAIA; i++)
         {
-            var = wsig[i]*wsig[i] +jit_GAIA*jit_GAIA;
+            var_GAIA = wsig[i]*wsig[i] +jit_GAIA*jit_GAIA;
 
-            logL += std::lgamma(0.5*(nu_GAIA + 1.)) - std::lgamma(0.5*nu_GAIA)
-                    - 0.5*log(M_PI*nu_GAIA) - 0.5*log(var)
-                    - 0.5*(nu_GAIA + 1.)*log(1. + pow(w[i] - mu_GAIA[i], 2)/var/nu_GAIA);
+            logL += c_nu_GAIA - 0.5*log(var_GAIA) - 0.5*(nu_GAIA + 1.)*log(1. + pow(w[i] - mu_GAIA[i], 2)/var_GAIA/nu_GAIA);
         }
         
+        double c_nu_RV = std::lgamma(0.5*(nu_RV + 1.)) - std::lgamma(0.5*nu_RV) - 0.5*log(M_PI*nu_RV);
         for(size_t i=0; i<N_RV; i++)
         {
             if(RV_data._multi)
@@ -675,9 +675,7 @@ double RVGAIAmodel::log_likelihood() const
             else
                 var = sig[i]*sig[i] + jitter_RV*jitter_RV;
 
-            logL += std::lgamma(0.5*(nu_RV + 1.)) - std::lgamma(0.5*nu_RV)
-                    - 0.5*log(M_PI*nu_RV) - 0.5*log(var)
-                    - 0.5*(nu_RV + 1.)*log(1. + pow(y[i] - mu_RV[i], 2)/var/nu_RV);
+            logL += c_nu_RV - 0.5*log(var) - 0.5*(nu_RV + 1.)*log(1. + pow(y[i] - mu_RV[i], 2)/var/nu_RV);
         }
 
     }
@@ -685,13 +683,13 @@ double RVGAIAmodel::log_likelihood() const
     else{
         // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
-        double var, jit;
+        double var, jit, var_GAIA;
         for(size_t i=0; i<N_GAIA; i++)
         {
-            var = wsig[i]*wsig[i] + jit_GAIA*jit_GAIA;
+            var_GAIA = wsig[i]*wsig[i] + jit_GAIA*jit_GAIA;
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(w[i] - mu_GAIA[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var_GAIA)
+                    - 0.5*(pow(w[i] - mu_GAIA[i], 2)/var_GAIA);
         }
         
         for(size_t i=0; i<N_RV; i++)
