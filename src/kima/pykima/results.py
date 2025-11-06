@@ -1692,6 +1692,10 @@ class KimaResults:
         # if self.n_jitters == 1:
         #     self.posteriors.jitter = self.posteriors.jitter.ravel()
 
+        if self.studentt:
+            self.posteriors.nu = self.posterior_sample[:, self.indices["nu"]]
+            self._priors.nu = self.priors["nu_prior"]
+
         if self.has_gp:
             for i in range(self.n_hyperparameters):
                 setattr(self.posteriors, f'η{i+1}', self.etas[:, i])
