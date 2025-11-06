@@ -3986,7 +3986,10 @@ class KimaResults:
         #     else:
         #         print_line(f'jitter{k+1}' if number else 'jitter', v, self.priors['Jprior'], show_prior)
         #         k += 1
-        
+
+        if self.studentt:
+            print_line("nu", self.posteriors.nu, self.priors["nu_prior"], show_prior)
+
         if self.model is MODELS.BINARIESmodel and self.double_lined:
             print_line('vsys_sec', self.posteriors.vsys_sec, self.priors['Cprior'], show_prior)
         print_line('vsys', self.posteriors.vsys, self.priors['Cprior'], show_prior)
@@ -4029,7 +4032,10 @@ class KimaResults:
                     print_line(f'offset{i+1}', v, self.priors[f'individual_offset_prior[{i}]'], show_prior)
 
         if self.max_components > 0:
-            print('    - planets')
+            print("    - planets")
+            if not self.fix:
+                print_line('Np', self.Np, self.priors["np_prior"], show_prior)
+
             for i in range(self.max_components):
                 Np_mask = self.Np > i
                 if not Np_mask.any():
