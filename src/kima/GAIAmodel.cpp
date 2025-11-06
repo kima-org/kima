@@ -399,13 +399,12 @@ double GAIAmodel::log_likelihood() const
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
         double var;
+        double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
         for(size_t i=0; i<N; i++)
         {
             var = wsig[i]*wsig[i] +jit*jit;
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(w[i] - mu[i], 2)/var/nu);
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(w[i] - mu[i], 2)/var/nu);
         }
 
     }
@@ -418,8 +417,7 @@ double GAIAmodel::log_likelihood() const
         {
             var = wsig[i]*wsig[i] + jit*jit;
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(w[i] - mu[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(w[i] - mu[i], 2)/var);
         }
     }
     

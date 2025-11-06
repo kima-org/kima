@@ -71,6 +71,60 @@ def TIC172900988(run=False, load=False, **kwargs):
 
 	return model
 
+def percentile68_ranges(a, min=None, max=None):
+    """
+    Calculate the 16th and 84th percentiles of values in `a`, clipped between
+    `min` and `max`.
+
+             minus     median    plus     
+        -------==========|==========------
+        16%    |        68%        |    16%
+
+    Returns:
+        median (float):
+            Median value of `a`.
+        plus (float):
+            The 84th percentile minus the median.
+        minus (float):
+            The median minus the 16th percentile.
+    """
+    if min is None and max is None:
+        mask = np.ones_like(a, dtype=bool)
+    elif min is None:
+        mask = a < max
+    elif max is None:
+        mask = a > min
+    else:
+        mask = (a > min) & (a < max)
+    lp, median, up = np.percentile(a[mask], [16, 50, 84])
+    return (median, up - median, median - lp)
+
+
+def percentile68_ranges_latex(a, min=None, max=None, collapse=True,
+                              include_dollar=True):
+    r"""
+    Return a LaTeX-formatted string of the 68% range of values in `a`, clipped
+    between `a` and `b`, in the form
+
+    $ median ^{+ plus} _{- minus} $
+    
+    Args:
+        collapse (bool, optional):
+            If True and plus=minus, return $ median \pm plus $
+        include_dollar (bool, optional):
+            Whether to include dollar signs in the output, so it's a valid LaTeX
+            math mode string
+    """
+    median, plus, minus = percentile68_ranges(a, min, max)
+    dollar = '$' if include_dollar else ''
+    if collapse:
+        high = urepr.uformat(median, plus, 'L').split(r'\pm')[1]
+        low = urepr.uformat(median, minus, 'L').split(r'\pm')[1]
+        if high == low:
+            return dollar + urepr.uformat(median, plus, 'L') + dollar
+    return dollar + urepr.uformatul(median, plus, minus, 'L') + dollar
+
+
 if __name__ == '__main__':
 	model = TIC1729(run=True, steps=200000)
 	res = kima.load_results(model)

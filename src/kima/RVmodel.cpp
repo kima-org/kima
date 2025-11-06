@@ -760,8 +760,7 @@ double RVmodel::log_likelihood() const
             if (jitter_propto_indicator)
                 var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
     }
 
