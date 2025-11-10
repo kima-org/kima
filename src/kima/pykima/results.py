@@ -3313,14 +3313,20 @@ class KimaResults:
             return v
 
         ni = self.n_instruments
-        offsets = sample[self.indices['inst_offsets']]
+        offsets = sample[self.indices["inst_offsets"]]
 
         if self._time_overlaps[0]:
             v = np.tile(v, (self.n_instruments, 1))
             if self.model is MODELS.RVFWHMmodel:
-                offsets = np.insert(offsets[0],
-                                    np.arange(1, offsets.shape[1] + 1),
-                                    offsets[1])
+                # offset is [off1_RV, off2_RV, ..., off1_FWHM, off2_FWHM, ...]
+                # we want it as [off1_RV, off1_FWHM, off2_RV, off2_FWHM, ...]
+                offsets = np.array(list(zip(
+                    offsets[:self.n_instruments-1], 
+                    offsets[self.n_instruments-1:]
+                ))).flatten()
+                # also add 0 offsets for the last instrument (RV and FWHM)
+                offsets = np.r_[offsets, np.zeros(2)]
+
                 v = (v.T + offsets).T
                 # this constrains the RV to the times of each instrument
                 for i in range(self.n_instruments):
