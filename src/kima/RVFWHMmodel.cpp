@@ -337,6 +337,7 @@ void RVFWHMmodel::calculate_mu()
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
             (staleness <= 10);
+    update = false;
 
     // Get the components
     const vector< vector<double> >& components = (update)?(planets.get_added()):
@@ -762,24 +763,24 @@ double RVFWHMmodel::perturb(RNG& rng)
         // NOTE: this only modifies mu (and not mu_fwhm), because
         // calculate_mu_fwhm() is called at the end
 
-        for (size_t i = 0; i < mu.size(); i++)
-        {
-            mu[i] -= bkg;
+        // for (size_t i = 0; i < mu.size(); i++)
+        // {
+        //     mu[i] -= bkg;
 
-            if(trend) {
-                mu[i] -= slope * (data.t[i] - tmid) +
-                         quadr * pow(data.t[i] - tmid, 2) +
-                         cubic * pow(data.t[i] - tmid, 3);
-            }
+        //     if(trend) {
+        //         mu[i] -= slope * (data.t[i] - tmid) +
+        //                  quadr * pow(data.t[i] - tmid, 2) +
+        //                  cubic * pow(data.t[i] - tmid, 3);
+        //     }
 
-            if (data._multi)
-            {
-                for (size_t j = 0; j < offsets.size() / 2; j++)
-                {
-                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                }
-            }
-        }
+        //     if (data._multi)
+        //     {
+        //         for (size_t j = 0; j < offsets.size() / 2; j++)
+        //         {
+        //             if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
+        //         }
+        //     }
+        // }
 
         // propose new vsys
         Cprior->perturb(bkg, rng);
@@ -815,25 +816,26 @@ double RVFWHMmodel::perturb(RNG& rng)
             if (degree_fwhm == 3) cubic_fwhm_prior->perturb(cubic_fwhm, rng);
         }
 
-        for (size_t i = 0; i < mu.size(); i++)
-        {
-            mu[i] += bkg;
+        // for (size_t i = 0; i < mu.size(); i++)
+        // {
+        //     mu[i] += bkg;
 
-            if(trend) {
-                mu[i] += slope * (data.t[i] - tmid) +
-                         quadr * pow(data.t[i] - tmid, 2) +
-                         cubic * pow(data.t[i] - tmid, 3);
-            }
+        //     if(trend) {
+        //         mu[i] += slope * (data.t[i] - tmid) +
+        //                  quadr * pow(data.t[i] - tmid, 2) +
+        //                  cubic * pow(data.t[i] - tmid, 3);
+        //     }
 
-            if (data._multi)
-            {
-                for (size_t j = 0; j < offsets.size(); j++)
-                {
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-        }
+        //     if (data._multi)
+        //     {
+        //         for (size_t j = 0; j < offsets.size(); j++)
+        //         {
+        //             if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
+        //         }
+        //     }
+        // }
 
+        calculate_mu();
         calculate_mu_fwhm();
 
     }
