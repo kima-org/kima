@@ -25,7 +25,7 @@ from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkern
                  QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  QPpMAGCYCLEkernel, mixtureGP)
 
-from .analysis import get_planet_mass, get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis, np_bayes_factor_threshold
+from .analysis import get_planet_mass, get_planet_mass_GAIA, get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis, np_bayes_factor_threshold
 from .utils import (distribution_rvs, read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
                     get_star_name, mjup2mearth, get_instrument_name, SimpleTimer, get_timestamp,
                     _show_kima_setup, read_big_file, rms, wrms, chdir)
@@ -260,20 +260,30 @@ class posterior_holder:
         fields = self._get_set_fields()
         return np.hstack([getattr(self, f) for f in fields if f not in ('TR', 'KO')])
     
-    def msini(self, star_mass=1.0, units=None):
-        """ planet minimum mass [Mjup by default] """
+    def msini(self, star_mass=1.0, units=None,GAIA=False):
+        """ planet minimum mass [Mjup by default], if from gaia data then true planet mass """
         allowed = ('mj', 'mjup', 'jupiter', 'jup', 'me', 'mearth', 'earth')
         if units and units.lower() not in allowed:
             raise ValueError(f'`units` must be one of {allowed}')
         units = units or 'mjup'
-        m = get_planet_mass(self.P, self.K, self.e, star_mass, full_output=True)[-1]
+        if GAIA:
+            m = get_planet_mass_GAIA(self.P, self.a0, self.plx, star_mass, full_output=True)[-1]
+        else:
+            m = get_planet_mass(self.P, self.K, self.e, star_mass, full_output=True)[-1]
         if units.lower() in ('me', 'mearth', 'earth'):
             m *= mjup2mearth
         return m
 
-    def asini(self, star_mass=1.0):
+    def asini(self, star_mass=1.0, GAIA=False):
         """ planet semi-major axis [AU] """
-        return get_planet_semimajor_axis(self.P, self.K, star_mass,
+        if GAIA:
+            try:
+                return self.a0/self.plx
+            except ValueError:
+                plx_new = self.plx[:, np.newaxis].copy()
+                return self.a0/plx_new
+        else:
+            return get_planet_semimajor_axis(self.P, self.K, star_mass,
                                          full_output=True)[-1]
     
     def λ0(self, fold=True):
@@ -693,6 +703,8 @@ class KimaResults:
         elif self.model is MODELS.SPLEAFmodel:
             # one jitter per activity indicator per instrument
             self.n_jitters += self.n_instruments * (self.nseries - 1)
+        elif self.model is MODELS.RVGAIAmodel:
+            self.n_jitters += 1
         
         try:
             self.jitter_propto_indicator = model.jitter_propto_indicator

@@ -1920,6 +1920,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         MODELS.RVmodel, MODELS.RVHGPMmodel
     )
     SB2 = res.model is MODELS.BINARIESmodel and res.double_lined
+    GAIA = res.model is MODELS.GAIAmodel
+    RVGAIA = res.model is MODELS.RVGAIAmodel
 
     all_in_one_plot = False
 
@@ -1982,6 +1984,11 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
             axs = np.r_[None, axs]
 
     for i, ax in enumerate(axs):
+
+        units = ' m/s'
+        if GAIA:
+            units = ' mas'
+
         if ax is None:
             continue
 
@@ -1990,7 +1997,7 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
             continue
 
         j = i // res.n_instruments
-        estimate = percentile68_ranges_latex(res.jitter[:, i]) + ' m/s'
+        estimate = percentile68_ranges_latex(res.jitter[:, i]) + units
 
         # remove "m/s" from jitter slope
         if res.jitter_propto_indicator and i == res.n_jitters - 1:
@@ -2065,6 +2072,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
     elif SB2:
         labels = [f'RV jitter {i}_pri [m/s]' for i in insts]
         labels += [f'RV jitter {i}_sec [m/s]' for i in insts]
+    elif GAIA:
+        labels = ['Astrometric jitter [mas]']
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
         if show_stellar_jitter:
@@ -3398,6 +3407,68 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     return residuals
 
+def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by_increasing_P=False):
+    from string import ascii_lowercase
+    letters = ascii_lowercase[1:]
+
+    nplanets = int(sample[res.indices['np']])
+
+    params = {letters[i]: {} for i in range(nplanets)}
+    for i, k in enumerate(params.keys()):
+        params[k]['P'] = P = sample[res.indices['planets.P']][i]
+        params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
+        params[k]['e'] = e = sample[res.indices['planets.e']][i]
+        if res.thiele_innes:
+            params[k]['A'] = A = sample[res.indices['planets.A']][i]
+            params[k]['B'] = B = sample[res.indices['planets.B']][i]
+            params[k]['F'] = F = sample[res.indices['planets.F']][i]
+            params[k]['G'] = G = sample[res.indices['planets.G']][i]
+        else:
+            params[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
+            params[k]['w'] = w = sample[res.indices['planets.w']][i]
+            params[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
+            params[k]['W'] = W = sample[res.indices['planets.W']][i]
+        params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        params[k]['type'] = 'planet'
+        params[k]['index'] = i + 1
+
+    pj = 0
+    if res.KO:
+        ko = {letters[i]: {} for i in range(nplanets, nplanets + res.nKO)}
+        nplanets += res.nKO
+        for i, k in enumerate(ko.keys()):
+            ko[k]['P'] = P = sample[res.indices['KOpars']][i]
+            ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
+            ko[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
+            if res.thiele_innes:
+                ko[k]['A'] = A = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                ko[k]['B'] = B = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                ko[k]['F'] = F = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                ko[k]['G'] = G = sample[res.indices['KOpars']][i + 6 * res.nKO]
+            else:
+                ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                ko[k]['W'] = W = sample[res.indices['KOpars']][i + 6 * res.nKO]
+            ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            ko[k]['type'] = 'KO'
+            ko[k]['index'] = -pj - 1
+            pj += 1
+        params.update(ko)
+
+    keys = list(params.keys())
+
+    if sort_by_decreasing_a:
+        keys = sorted(params, key=lambda i: params[i]['a0'], reverse=True)
+
+    if sort_by_increasing_P:
+        keys = sorted(params, key=lambda i: params[i]['P'])
+    
+    # print(nplanets)
+    # print(params)
+    # print(keys)
+    return nplanets, params, keys
+
 
 def astrometry_phase_plot(res, sample):
     twopi = 2 * np.pi
@@ -3422,6 +3493,10 @@ def astrometry_phase_plot(res, sample):
         A, B, F, G = Thiele_Innes(a0, w, W, cosi)
         X, Y = ellip_rectang(t, P, e, Tper)
         return B*X + G*Y, A*X + F*Y
+    
+    def ra_dec_orb_TI(P,Tper,e,A,B,F,G,t):
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return B*X + G*Y, A*X + F*Y
 
     def wss(da,dd,par,mua,mud,t,psi,pf,tref):
         T = t - tref
@@ -3431,22 +3506,51 @@ def astrometry_phase_plot(res, sample):
         A, B, F, G = Thiele_Innes(a0, w, W, cosi)
         X, Y = ellip_rectang(t, P, e, Tper)
         return (B*X + G*Y)*np.sin(psi) + (A*X + F*Y)*np.cos(psi)
+    
+    def wk_orb_TI(P,Tper,e,A,B,F,G,t,psi):
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return (B*X + G*Y)*np.sin(psi) + (A*X + F*Y)*np.cos(psi)
 
-    t = np.array(res.astrometric_data.t)
+    t = np.array(res.GAIAdata.t)
     tt = np.linspace(t.min(), t.max(), 1000)
-    wobs = np.array(res.astrometric_data.w)
-    psi = np.array(res.astrometric_data.psi)
-    pf = np.array(res.astrometric_data.pf)
+    wobs = np.array(res.GAIAdata.w)
+    psi = np.array(res.GAIAdata.psi)
+    pf = np.array(res.GAIAdata.pf)
+
+    nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
+    print(nplanets)
+    print(params)
+    print(keys)
 
     da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
-    P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
-    Tper = 57388.5 - P * phi / 2 / np.pi
+    print('debug',sample[res.indices['planets']])
+    # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
 
-    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, 57388.5)
-    wmodel += wk_orb(P, Tper, e, cosi, W, w, a0, t, psi)
+    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+    for i, letter in enumerate(keys):
+
+        P, phi, e, a0, w, cosi, W, Tper, type, index = params[letter]
+        P = params[letter]['P']
+        phi = params[letter]['φ']
+        e = params[letter]['e']
+        if res.thiele_innes:
+            A = params[letter]['P']
+            B = params[letter]['B']
+            F = params[letter]['F']
+            G = params[letter]['G']
+        else:
+            a0 = params[letter]['a0']
+            w = params[letter]['w']
+            cosi = params[letter]['cosi']
+            W = params[letter]['W']
+            A,B,F,G = Thiele_Innes(a0,w,W,cosi)
+        Tper = params[letter]['Tp']
+
+        wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
     wws = wobs - wmodel
-    ra, dec = ra_dec_orb(P, Tper, e, cosi, W, w, a0, t)
-    ra2, dec2 = ra_dec_orb(P, Tper, e, cosi, W, w, a0, tt)
+
+    ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
+    ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, tt)
     alphas, decs = wws * np.sin(psi), wws * np.cos(psi)
 
     uniq_t = np.unique(t.astype(int))
@@ -3458,7 +3562,7 @@ def astrometry_phase_plot(res, sample):
     ax.scatter(ra + alphas, dec + decs, marker='.', c=t, cmap='plasma', alpha=0.5)
     for day in day_mask:
         mask = t.astype(int) == uniq_t[day-1]
-        print(day, t.astype(int))
+        # print(day, t.astype(int))
         ax.plot((ra + alphas)[mask], (dec + decs)[mask], 'k-')
     ax.set(xlabel='RA', ylabel='Dec')
 

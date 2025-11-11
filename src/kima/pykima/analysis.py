@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm, t as T, binned_statistic
 
 from .. import MODELS
-from .utils import mjup2mearth, distribution_support
+from .utils import mjup2mearth, mjup2msun, distribution_support
 
 def np_most_probable(results: KimaResults):
     """
@@ -120,7 +120,9 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
     Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
     semi-amplitude `K`, eccentricity `e`, and stellar mass. If `star_mass` is a
     tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
-    taken into account in the calculation.
+    taken into account in the calculation. Note that this ignores the mass of the 
+    planet in the calculation, if this is significant compared to the mass of the star, 
+    then this method is not suitable.
 
     Args:
         P (Union[float, ndarray]):
@@ -195,6 +197,102 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
             star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
 
         m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_me = m_mj * mjup2mearth
+
+        if full_output:
+            return m_mj.mean(), m_mj.std(), m_mj
+        else:
+            return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+        
+def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray]
+                         , parallax: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0
+                         , full_output=False):
+    r"""
+    Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
+    semi-major axis of photocentre `a0`, parallax 'parallax', and stellar mass. If `star_mass` is a
+    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
+    taken into account in the calculation. Note that this ignores the mass of the planet in the calculation,
+    if this is significant compared to the mass of the star, then this method is not suitable.
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        a0 (Union[float, ndarray]):
+            semi-amplitude [mas]
+        parallax (Union[float, ndarray]):
+            parallax [mas]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `a0`, and `parallax` are floats and `star_mass` is a float"
+
+    Returns:
+        Msini (float): planet mass, in $M_{\rm Jup}$
+        Msini (float): planet mass, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `a0`, and `parallax` are floats and `star_mass` is a tuple"
+
+    Returns:
+        Msini (tuple): planet mass and uncertainty, in $M_{\rm Jup}$
+        Msini (tuple): planet mass and uncertainty, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `a0`, and `parallax` are arrays and `full_output=True`"
+
+    Returns:
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        Msini (array):
+            posterior samples for the planet mass, in $M_{\rm Jup}$
+
+    !!! note "If `P`, `a0`, and `parallax` are arrays and `full_output=False`"
+
+    Returns:
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Earth}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Earth}$
+    """
+    # C = 4.919e-3
+
+    try:
+        P = float(P)/365.25 #convert period to years
+        # calculate for one value of the orbital period
+        # then K, e, and star_mass should also be floats
+        assert isinstance(a0, float) and isinstance(parallax, float)
+        uncertainty_star_mass = False
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
+            uncertainty_star_mass = True
+
+        m_ms = (star_mass/P)**(2. / 3) * a0/parallax
+        m_mj = m_ms/mjup2msun
+        m_me = m_mj * mjup2mearth
+        if uncertainty_star_mass:
+            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
+        else:
+            return m_mj, m_me
+
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)/365.25 #convert period to years
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
+        try:
+            m_ms = (star_mass/P)**(2. / 3) * a0/parallax
+        except ValueError:
+            parallax_new = parallax[:, np.newaxis].copy()
+            m_ms = (star_mass/P)**(2. / 3) * a0/parallax_new
+
+        m_mj = m_ms/mjup2msun
         m_me = m_mj * mjup2mearth
 
         if full_output:
