@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+import matplotlib
 from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
@@ -3514,8 +3515,12 @@ def astrometry_phase_plot(res, sample):
     t = np.array(res.GAIAdata.t)
     tt = np.linspace(t.min(), t.max(), 1000)
     wobs = np.array(res.GAIAdata.w)
+    ws_err = np.array(res.GAIAdata.wsig)
     psi = np.array(res.GAIAdata.psi)
     pf = np.array(res.GAIAdata.pf)
+
+    errs_x = ws_err*np.sin(psi)
+    errs_y = ws_err*np.cos(psi)
 
     nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
     print(nplanets)
@@ -3553,17 +3558,37 @@ def astrometry_phase_plot(res, sample):
     ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, tt)
     alphas, decs = wws * np.sin(psi), wws * np.cos(psi)
 
-    uniq_t = np.unique(t.astype(int))
-    day_mask = np.digitize(t, uniq_t)
+    # uniq_t = np.unique(t.astype(int))
+    # day_mask = np.digitize(t, uniq_t)
 
     fig, ax = plt.subplots()
     ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
     ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
     ax.scatter(ra + alphas, dec + decs, marker='.', c=t, cmap='plasma', alpha=0.5)
-    for day in day_mask:
-        mask = t.astype(int) == uniq_t[day-1]
-        # print(day, t.astype(int))
-        ax.plot((ra + alphas)[mask], (dec + decs)[mask], 'k-')
+    cmap = matplotlib.colormaps['plasma']
+    for i in range(len(t)):
+        colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+        ax.plot([ra[i]+alphas[i]-errs_x[i],ra[i]+alphas[i]+errs_x[i]],[dec[i]+decs[i]-errs_y[i],dec[i]+decs[i]+errs_y[i]],c=colour,alpha=0.4)
+
+
+    # for day in day_mask:
+    #     mask = t.astype(int) == uniq_t[day-1]
+    #     # print(day, t.astype(int))
+    #     ax.plot((ra + alphas)[mask], (dec + decs)[mask], 'k-')
+
+    #Make plot square to get good visual on e and inc
+    lowx,highx = ax.get_xlim()
+    lowy,highy = ax.get_ylim()
+    xwidth = highx - lowx
+    ywidth = highy - lowy
+    if xwidth < ywidth:
+        delta = ywidth - xwidth
+        ax.set(xlim = [lowx - delta/2,highx + delta/2])
+    else:
+        delta = xwidth - ywidth
+        ax.set(ylim = [lowy - delta/2,highy + delta/2])
+
+    ax.set_box_aspect(1)
     ax.set(xlabel='RA', ylabel='Dec')
 
 
