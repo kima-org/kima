@@ -33,6 +33,8 @@ dependencies = [
     "rebound",
     "tinygp",
     "pooch",
+    "pyarrow>=17.0.0,<22.0.0",
+    "pystrometry",
 ]
 
 [project.optional-dependencies]
