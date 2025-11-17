@@ -8,6 +8,7 @@ from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
+from pystrometry.pystrometry import get_parallax_factors
 
 from .. import MODELS
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
@@ -3464,14 +3465,11 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
 
     if sort_by_increasing_P:
         keys = sorted(params, key=lambda i: params[i]['P'])
-    
-    # print(nplanets)
-    # print(params)
-    # print(keys)
+
     return nplanets, params, keys
 
 
-def astrometry_phase_plot(res, sample):
+def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plasma'):
     twopi = 2 * np.pi
     pi = np.pi
     from ..kepler import brandt_solver
@@ -3511,6 +3509,22 @@ def astrometry_phase_plot(res, sample):
     def wk_orb_TI(P,Tper,e,A,B,F,G,t,psi):
         X, Y = ellip_rectang(t, P, e, Tper)
         return (B*X + G*Y)*np.sin(psi) + (A*X + F*Y)*np.cos(psi)
+    
+    def wss_dep(da,dd,par,mua,mud,t,pfra,pfdec,tref):
+        #Obtain RA and DEC values for parallax and PM plot curve
+        T = t - tref
+        return (da + mua*T) + pfra*par,(dd +mud*T)+pfdec*par
+    
+    def wss_dep_errs(alpha_res,dec_res,alpha_err,dec_err,da,dd,par,mua,mud,t,pf_ra,pf_dec,tref):
+        #Obtain RA and DEC values and errors for parallax and PM plot points
+        T = t - tref
+        ra = (da + mua*T) + pf_ra*par + alpha_res
+        raplus = (da + mua*T) + pf_ra*par + alpha_res + alpha_err
+        raminus = (da + mua*T) + pf_ra*par + alpha_res - alpha_err
+        dec = (dd +mud*T) + pf_dec*par + dec_res
+        decplus = (dd +mud*T) + pf_dec*par + dec_res + dec_err
+        decminus = (dd +mud*T) + pf_dec*par + dec_res - dec_err
+        return ra,raplus,raminus,dec,decplus,decminus    
 
     t = np.array(res.GAIAdata.t)
     tt = np.linspace(t.min(), t.max(), 1000)
@@ -3519,22 +3533,74 @@ def astrometry_phase_plot(res, sample):
     psi = np.array(res.GAIAdata.psi)
     pf = np.array(res.GAIAdata.pf)
 
-    errs_x = ws_err*np.sin(psi)
-    errs_y = ws_err*np.cos(psi)
+    alpha_errs = ws_err*np.sin(psi)
+    dec_errs = ws_err*np.cos(psi)
 
     nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
-    print(nplanets)
-    print(params)
-    print(keys)
 
     da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
-    print('debug',sample[res.indices['planets']])
     # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
 
-    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
-    for i, letter in enumerate(keys):
+    fs = [8,8+int(np.floor(nplanets)/2)*4]
 
-        P, phi, e, a0, w, cosi, W, Tper, type, index = params[letter]
+    fig = plt.figure(tight_layout=True, figsize=fs)
+    nrows = {
+        0: 1, 1: 1, 2: 2, 3: 2,
+        4: 3, 5: 3, 6: 4, 7: 4,
+    }[nplanets]
+
+    # at least the residuals plot
+    nrows += 1
+
+    ncols = 2
+    # hr = [2] * (nrows - 1) + [1]
+    # wr = None
+
+    gs = gridspec.GridSpec(nrows*2-1, ncols, figure=fig)
+    # gs_indices = {i: (i // 3, i % 3) for i in range(50)}
+
+    if nplanets == 0:
+        axs = [fig.add_subplot(gs[:2, 0])]
+        resax = fig.add_subplot(gs[2, :])
+    elif nplanets == 1:
+        axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1])]
+        resax = fig.add_subplot(gs[2, :])
+    elif nplanets == 2:
+        axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1]),fig.add_subplot(gs[2:4, 0])]
+        resax = fig.add_subplot(gs[4, :])
+    elif nplanets == 3:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1])]
+        resax = fig.add_subplot(gs[4, :])
+    elif nplanets == 4:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[4:6, 0])]
+        resax = fig.add_subplot(gs[6, :])
+    elif nplanets == 5:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
+                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1])]
+        resax = fig.add_subplot(gs[6, :])
+    elif nplanets == 6:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
+                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1]), fig.add_subplot(gs[6:8, 0])]
+        resax = fig.add_subplot(gs[8, :])
+    elif nplanets == 7:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
+                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1]), 
+                fig.add_subplot(gs[6:8, 0]), fig.add_subplot(gs[6:8, 1])]
+        resax = fig.add_subplot(gs[8, :])
+    else:
+        raise NotImplementedError
+
+    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+    
+    
+    #Get full model
+    for letter in keys:
+        # P, phi, e, a0, w, cosi, W, Tper, type, index = params[letter]
         P = params[letter]['P']
         phi = params[letter]['φ']
         e = params[letter]['e']
@@ -3552,30 +3618,41 @@ def astrometry_phase_plot(res, sample):
         Tper = params[letter]['Tp']
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
+    #get residuals
     wws = wobs - wmodel
+    alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
 
-    ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
-    ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, tt)
-    alphas, decs = wws * np.sin(psi), wws * np.cos(psi)
+    #make parallax-proper-motion panel
 
-    # uniq_t = np.unique(t.astype(int))
-    # day_mask = np.digitize(t, uniq_t)
-
-    fig, ax = plt.subplots()
-    ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
-    ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
-    ax.scatter(ra + alphas, dec + decs, marker='.', c=t, cmap='plasma', alpha=0.5)
-    cmap = matplotlib.colormaps['plasma']
-    for i in range(len(t)):
-        colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
-        ax.plot([ra[i]+alphas[i]-errs_x[i],ra[i]+alphas[i]+errs_x[i]],[dec[i]+decs[i]-errs_y[i],dec[i]+decs[i]+errs_y[i]],c=colour,alpha=0.4)
+    if t[0] < 2400000 and dates != 'mjd' and date_add==None:
+        raise Exception('times are not labelled in mjd but values are < 2400000, please either specify dates=\'mjd\' or give a value to date_add such as date_add=2400000 such that date is in jd (or jd with correction)')
+    elif t[0] < 2400000 and dates != 'mjd':
+        t += date_add
+        reft = res.M0_epoch + date_add
+    elif t[0] < 2400000 and dates == 'mjd':
+        t += 2400000.5
+        reft = res.M0_epoch + 2400000.5
+    else:
+        reft = res.M0_epoch
 
 
-    # for day in day_mask:
-    #     mask = t.astype(int) == uniq_t[day-1]
-    #     # print(day, t.astype(int))
-    #     ax.plot((ra + alphas)[mask], (dec + decs)[mask], 'k-')
+    time_array = np.arange(np.min(t),np.max(t),1.0)
+    ax = axs[0]
 
+    if res.RA == 0.0 or res.DEC ==0.0:
+        print('RA and/or DEC value is 0.0 in the kima model, parallax plot will not be generated')
+    else:
+        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array,verbose=True,overwrite=False)
+        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t,verbose=True,overwrite=False)
+        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t),parfra_vals,parfdec_vals,reft)
+        ax.scatter(a,b,c=np.array(t),cmap=colormap)
+        cmap = matplotlib.colormaps[colormap]
+        for i in range(len(t)):
+            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+            ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
+        a,b = wss_dep(da,dd,par,mua,mud,time_array,parfra,parfdec,reft)
+        ax.plot(a,b,c='black',alpha=0.8)
+    
     #Make plot square to get good visual on e and inc
     lowx,highx = ax.get_xlim()
     lowy,highy = ax.get_ylim()
@@ -3590,6 +3667,60 @@ def astrometry_phase_plot(res, sample):
 
     ax.set_box_aspect(1)
     ax.set(xlabel='RA', ylabel='Dec')
+
+
+    #make individual orbit plots "phased"
+    
+    for j,letter in enumerate(keys):
+        P = params[letter]['P']
+        phi = params[letter]['φ']
+        e = params[letter]['e']
+        if res.thiele_innes:
+            A = params[letter]['P']
+            B = params[letter]['B']
+            F = params[letter]['F']
+            G = params[letter]['G']
+        else:
+            a0 = params[letter]['a0']
+            w = params[letter]['w']
+            cosi = params[letter]['cosi']
+            W = params[letter]['W']
+            A,B,F,G = Thiele_Innes(a0,w,W,cosi) 
+        Tper = params[letter]['Tp']  
+        
+
+        ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
+        ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, tt)
+
+        ax = axs[j+1]
+        # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
+        ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
+        ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
+        cmap = matplotlib.colormaps[colormap]
+        for i in range(len(t)):
+            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+            ax.plot([ra[i]+alpha_res[i]-alpha_errs[i],ra[i]+alpha_res[i]+alpha_errs[i]],[dec[i]+dec_res[i]-dec_errs[i],dec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+
+        #Make plot square to get good visual on e and inc
+        lowx,highx = ax.get_xlim()
+        lowy,highy = ax.get_ylim()
+        xwidth = highx - lowx
+        ywidth = highy - lowy
+        if xwidth < ywidth:
+            delta = ywidth - xwidth
+            ax.set(xlim = [lowx - delta/2,highx + delta/2])
+        else:
+            delta = xwidth - ywidth
+            ax.set(ylim = [lowy - delta/2,highy + delta/2])
+
+        ax.set_box_aspect(1)
+        ax.set(xlabel='RA', ylabel='Dec')
+
+    #along-scan residuals plot
+    resax.errorbar(t,wws,yerr=ws_err,fmt='.',c='grey',alpha=0.8,zorder=2)
+    resax.scatter(t,wws,c=t,cmap=colormap,zorder=3)
+    resax.axhline(0,c='grey',zorder=1)
+    resax.set(xlabel='Time (BJD probably)',ylabel='Along-scan residuals (mas)')
 
 
 def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):

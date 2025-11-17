@@ -591,6 +591,8 @@ class KimaResults:
                 self.series = ('RV1','RV2')
         if self.model is MODELS.GAIAmodel:
             self.thiele_innes = model.thiele_innes
+            self.RA = model.RA
+            self.DEC= model.DEC
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)

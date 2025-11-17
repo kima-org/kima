@@ -653,7 +653,9 @@ class GAIAmodel_publicist : public GAIAmodel
         using GAIAmodel::fix;
         using GAIAmodel::npmax;
         using GAIAmodel::data;
-//         using GAIAmodel::star_mass;
+        using GAIAmodel::star_mass;
+        using GAIAmodel::RA;
+        using GAIAmodel::DEC;
 //         using GAIAmodel::enforce_stability;
 //         using GAIAmodel::known_object;
 //         using GAIAmodel::n_known_object;
@@ -679,6 +681,12 @@ NB_MODULE(GAIAmodel, m) {
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
         .def_rw("thiele_innes", &GAIAmodel_publicist::thiele_innes, 
                 "use the thiele-innes coefficients rather than geometric")
+        .def_rw("star_mass", &GAIAmodel_publicist::star_mass,
+                "the mass of the central star (Msun)")
+        .def_rw("RA", &GAIAmodel_publicist::RA,
+                "Right Ascension of the target star (degrees)")
+        .def_rw("DEC", &GAIAmodel_publicist::DEC,
+                "Declination of the target star (degrees)")
 
 //         //KO mode
 //         .def_rw("known_object", &GAIAmodel_publicist::known_object,

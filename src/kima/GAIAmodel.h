@@ -41,6 +41,10 @@ class KIMA_API GAIAmodel
         
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
+
+        /// RA and DEC of target (in degrees)
+        double RA = 0.0;
+        double DEC = 0.0;
         
         GAIAdata data;
     private:
