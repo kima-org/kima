@@ -1197,6 +1197,10 @@ class KimaResults:
         if self.KO:
             if self.model is MODELS.TRANSITmodel:
                 n_KOparameters = 6 * self.nKO
+            elif self.model is MODELS.GAIAmodel:
+                n_KOparameters = 7 * self.nKO
+            elif self.model is MODELS.RVGAIAmodel:
+                n_KOparameters = 7 * self.nKO
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
                     n_KOparameters = 8 * self.nKO
@@ -2294,7 +2298,7 @@ class KimaResults:
             print('orbital parameters: ', end='')
 
             if self.model is MODELS.GAIAmodel:
-                pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
+                pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
             elif self.model is MODELS.RVHGPMmodel:
                 pars = ['P', 'K', 'M0', 'e', 'w', 'i', 'W']
             else:
@@ -2359,7 +2363,7 @@ class KimaResults:
             print('orbital parameters: ', end='')
             extra_n = 0
             if self.model is MODELS.GAIAmodel:
-                pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
+                pars = ['P', 'a0', 'phi', 'ecc', 'w', 'cosi', 'W']
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
                     pars = ['P', 'K', 'q', 'M0', 'e', 'w', 'wdot','cosi']

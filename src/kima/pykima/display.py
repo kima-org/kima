@@ -3416,48 +3416,50 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
 
     nplanets = int(sample[res.indices['np']])
 
-    params = {letters[i]: {} for i in range(nplanets)}
-    for i, k in enumerate(params.keys()):
-        params[k]['P'] = P = sample[res.indices['planets.P']][i]
-        params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
-        params[k]['e'] = e = sample[res.indices['planets.e']][i]
-        if res.thiele_innes:
-            params[k]['A'] = A = sample[res.indices['planets.A']][i]
-            params[k]['B'] = B = sample[res.indices['planets.B']][i]
-            params[k]['F'] = F = sample[res.indices['planets.F']][i]
-            params[k]['G'] = G = sample[res.indices['planets.G']][i]
-        else:
-            params[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
-            params[k]['w'] = w = sample[res.indices['planets.w']][i]
-            params[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
-            params[k]['W'] = W = sample[res.indices['planets.W']][i]
-        params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
-        params[k]['type'] = 'planet'
-        params[k]['index'] = i + 1
+    
 
     pj = 0
+    nKOs = 0
     if res.KO:
-        ko = {letters[i]: {} for i in range(nplanets, nplanets + res.nKO)}
+        nKOs = res.nKO
+        # ko = {letters[i]: {} for i in range(nplanets, nplanets + res.nKO)}
+        params = {letters[i]: {} for i in range(nKOs)}
         nplanets += res.nKO
-        for i, k in enumerate(ko.keys()):
-            ko[k]['P'] = P = sample[res.indices['KOpars']][i]
-            ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
-            ko[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
-            if res.thiele_innes:
-                ko[k]['A'] = A = sample[res.indices['KOpars']][i + 3 * res.nKO]
-                ko[k]['B'] = B = sample[res.indices['KOpars']][i + 4 * res.nKO]
-                ko[k]['F'] = F = sample[res.indices['KOpars']][i + 5 * res.nKO]
-                ko[k]['G'] = G = sample[res.indices['KOpars']][i + 6 * res.nKO]
-            else:
-                ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
-                ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
-                ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
-                ko[k]['W'] = W = sample[res.indices['KOpars']][i + 6 * res.nKO]
-            ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
-            ko[k]['type'] = 'KO'
-            ko[k]['index'] = -pj - 1
+        for i, k in enumerate(params.keys()):
+            params[k]['P'] = P = sample[res.indices['KOpars']][i]
+            params[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 1 * res.nKO]
+            params[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+            params[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+            params[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+            params[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
+            params[k]['W'] = W = sample[res.indices['KOpars']][i + 6 * res.nKO]
+            params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            params[k]['type'] = 'KO'
+            params[k]['index'] = -pj - 1
             pj += 1
-        params.update(ko)
+    else:
+        params = {}
+        
+
+    planets = {letters[i]: {} for i in range(nKOs, nplanets)}
+    for i, k in enumerate(planets.keys()):
+        planets[k]['P'] = P = sample[res.indices['planets.P']][i]
+        planets[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
+        planets[k]['e'] = e = sample[res.indices['planets.e']][i]
+        if res.thiele_innes:
+            planets[k]['A'] = A = sample[res.indices['planets.A']][i]
+            planets[k]['B'] = B = sample[res.indices['planets.B']][i]
+            planets[k]['F'] = F = sample[res.indices['planets.F']][i]
+            planets[k]['G'] = G = sample[res.indices['planets.G']][i]
+        else:
+            planets[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
+            planets[k]['w'] = w = sample[res.indices['planets.w']][i]
+            planets[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
+            planets[k]['W'] = W = sample[res.indices['planets.W']][i]
+        planets[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        planets[k]['type'] = 'planet'
+        planets[k]['index'] = i + 1
+    params.update(planets)
 
     keys = list(params.keys())
 
