@@ -2892,7 +2892,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                sort_by_increasing_P=False, sort_by_decreasing_K=True,
                highlight=None, highlight_points=None, only=None,
                show_titles=True, sharey=False, show_gls_residuals=False,
-               show_outliers=False, fancy_ticks=False, dates='jd', date_add=None, 
+               show_outliers=False, fancy_ticks=False, dates='jd', date_sub=None, 
                colormap='plasma', include_jitter=False,  **kwargs):
     """
     Plot the planet phase curves, GP, and residuals, for a given `sample`.
@@ -2939,7 +2939,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         return
 
     if res.model is MODELS.GAIAmodel:
-        astrometry_phase_plot(res, sample, dates=dates, date_add=date_add, colormap=colormap,include_jitter=include_jitter)
+        astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
         return
 
     if xaxis not in ('mean anomaly', 'mean longitude'):
@@ -3470,7 +3470,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
     return nplanets, params, keys
 
 
-def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plasma',include_jitter=False):
+def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plasma',include_jitter=False):
     twopi = 2 * np.pi
     pi = np.pi
     from ..kepler import brandt_solver
@@ -3528,7 +3528,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
         return ra,raplus,raminus,dec,decplus,decminus    
 
     t = np.array(res.GAIAdata.t)
-    tt = np.linspace(t.min(), t.max(), 1000)
+    t2 = t.copy()
     wobs = np.array(res.GAIAdata.w)
     ws_err = np.array(res.GAIAdata.wsig)
     psi = np.array(res.GAIAdata.psi)
@@ -3545,57 +3545,51 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
     da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
     # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
 
-    fs = [8,8+int(np.floor(nplanets)/2)*4]
-
-    fig = plt.figure(tight_layout=True, figsize=fs)
     nrows = {
-        0: 1, 1: 1, 2: 2, 3: 2,
-        4: 3, 5: 3, 6: 4, 7: 4,
+        0: 3, 1: 3, 2: 3, 3: 4,
+        4: 5, 5: 5, 6: 6
     }[nplanets]
 
     # at least the residuals plot
-    nrows += 1
 
-    ncols = 2
-    # hr = [2] * (nrows - 1) + [1]
-    # wr = None
+    ncols = {
+        0: 1, 1: 2, 2: 3, 3: 3,
+        4: 3, 5: 3, 6: 3
+    }[nplanets]
 
-    gs = gridspec.GridSpec(nrows*2-1, ncols, figure=fig)
+    fs = [ncols*4,nrows*2]
+
+    fig = plt.figure(tight_layout=True, figsize=fs)
+
+    gs = gridspec.GridSpec(nrows, ncols, figure=fig)
     # gs_indices = {i: (i // 3, i % 3) for i in range(50)}
 
     if nplanets == 0:
         axs = [fig.add_subplot(gs[:2, 0])]
-        resax = fig.add_subplot(gs[2, :])
+        resax = fig.add_subplot(gs[2, 0])
     elif nplanets == 1:
         axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1])]
         resax = fig.add_subplot(gs[2, :])
     elif nplanets == 2:
-        axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1]),fig.add_subplot(gs[2:4, 0])]
-        resax = fig.add_subplot(gs[4, :])
+        axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1]),fig.add_subplot(gs[:2, 2])]
+        resax = fig.add_subplot(gs[2, :])
     elif nplanets == 3:
-        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]), 
+               fig.add_subplot(gs[2:, 0])]
+        resax = fig.add_subplot(gs[2:, 1:])
+    elif nplanets == 4:
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                 fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1])]
         resax = fig.add_subplot(gs[4, :])
-    elif nplanets == 4:
-        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
-                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[4:6, 0])]
-        resax = fig.add_subplot(gs[6, :])
     elif nplanets == 5:
-        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
-                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
-                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1])]
-        resax = fig.add_subplot(gs[6, :])
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
+                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2])]
+        resax = fig.add_subplot(gs[4, :])
     elif nplanets == 6:
-        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
-                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
-                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1]), fig.add_subplot(gs[6:8, 0])]
-        resax = fig.add_subplot(gs[8, :])
-    elif nplanets == 7:
-        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]),
-                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), 
-                fig.add_subplot(gs[4:6, 0]), fig.add_subplot(gs[4:6, 1]), 
-                fig.add_subplot(gs[6:8, 0]), fig.add_subplot(gs[6:8, 1])]
-        resax = fig.add_subplot(gs[8, :])
+        axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
+               fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2]),
+               fig.add_subplot(gs[4:, 0])]
+        resax = fig.add_subplot(gs[4:, 1:])
     else:
         raise NotImplementedError
 
@@ -3627,34 +3621,37 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
 
     #make parallax-proper-motion panel
-
-    if t[0] < 2400000 and dates != 'mjd' and date_add==None:
-        raise Exception('times are not labelled in mjd but values are < 2400000, please either specify dates=\'mjd\' or give a value to date_add such as date_add=2400000 such that date is in jd (or jd with correction)')
+    if t[0] < 2400000 and dates != 'mjd' and date_sub==None:
+        raise Exception('times are not labelled in mjd but values are < 2400000, please either specify dates=\'mjd\' or give a value to date_sub such as date_sub = 2400000 such that date is in jd (or jd with correction)')
     elif t[0] < 2400000 and dates != 'mjd':
-        t += date_add
-        reft = res.M0_epoch + date_add
+        t2 += date_sub
+        reft = res.M0_epoch + date_sub
+        time_label = str(dates) + ' - ' + str(date_sub)
     elif t[0] < 2400000 and dates == 'mjd':
-        t += 2400000.5
+        t2 += 2400000.5
         reft = res.M0_epoch + 2400000.5
+        time_label = 'mjd'
     else:
         reft = res.M0_epoch
+        time_label = str(dates)
 
 
     time_array = np.arange(np.min(t),np.max(t),1.0)
+    time_array2 = np.arange(np.min(t2),np.max(t2),1.0)
     ax = axs[0]
 
     if res.RA == 0.0 or res.DEC ==0.0:
         print('RA and/or DEC value is 0.0 in the kima model, parallax plot will not be generated')
     else:
-        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array,verbose=False,overwrite=False)
-        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t,verbose=False,overwrite=False)
-        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t),parfra_vals,parfdec_vals,reft)
-        ax.scatter(a,b,c=np.array(t),cmap=colormap)
+        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array2,verbose=False,overwrite=False)
+        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t2,verbose=False,overwrite=False)
+        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,reft)
+        ax.scatter(a,b,c=np.array(t2),cmap=colormap)
         cmap = matplotlib.colormaps[colormap]
-        for i in range(len(t)):
-            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+        for i in range(len(t2)):
+            colour = cmap((t2[i]-t2[0])/(t2[len(t2)-1]-t2[0]))
             ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
-        a,b = wss_dep(da,dd,par,mua,mud,time_array,parfra,parfdec,reft)
+        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,reft)
         ax.plot(a,b,c='black',alpha=0.8)
 
     ax.xaxis.set_inverted(True)
@@ -3683,7 +3680,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
         
 
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
-        ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, tt)
+        ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
         ax = axs[j+1]
         # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
@@ -3719,7 +3716,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
     resax.errorbar(t,wws,yerr=ws_err,fmt='.',c='grey',alpha=0.8,zorder=2)
     resax.scatter(t,wws,c=t,cmap=colormap,zorder=3)
     resax.axhline(0,c='grey',zorder=1)
-    resax.set(xlabel='Time (BJD probably)',ylabel='Along-scan residuals (mas)')
+    resax.set(xlabel='Time ('+time_label+')',ylabel='Along-scan residuals (mas)')
 
 
 def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
