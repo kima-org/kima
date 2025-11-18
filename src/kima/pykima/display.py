@@ -2892,7 +2892,8 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                sort_by_increasing_P=False, sort_by_decreasing_K=True,
                highlight=None, highlight_points=None, only=None,
                show_titles=True, sharey=False, show_gls_residuals=False,
-               show_outliers=False, fancy_ticks=False, **kwargs):
+               show_outliers=False, fancy_ticks=False, dates='jd', date_add=None, 
+               colormap='plasma', include_jitter=False,  **kwargs):
     """
     Plot the planet phase curves, GP, and residuals, for a given `sample`.
     
@@ -2938,7 +2939,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         return
 
     if res.model is MODELS.GAIAmodel:
-        astrometry_phase_plot(res, sample)
+        astrometry_phase_plot(res, sample, dates=dates, date_add=date_add, colormap=colormap,include_jitter=include_jitter)
         return
 
     if xaxis not in ('mean anomaly', 'mean longitude'):
@@ -3469,7 +3470,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
     return nplanets, params, keys
 
 
-def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plasma'):
+def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plasma',include_jitter=False):
     twopi = 2 * np.pi
     pi = np.pi
     from ..kepler import brandt_solver
@@ -3532,6 +3533,9 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
     ws_err = np.array(res.GAIAdata.wsig)
     psi = np.array(res.GAIAdata.psi)
     pf = np.array(res.GAIAdata.pf)
+
+    if include_jitter:
+        ws_err = np.hypot(ws_err,sample[res.indices['jitter']][0])
 
     alpha_errs = ws_err*np.sin(psi)
     dec_errs = ws_err*np.cos(psi)
@@ -3605,7 +3609,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
         phi = params[letter]['φ']
         e = params[letter]['e']
         if res.thiele_innes:
-            A = params[letter]['P']
+            A = params[letter]['A']
             B = params[letter]['B']
             F = params[letter]['F']
             G = params[letter]['G']
@@ -3642,8 +3646,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
     if res.RA == 0.0 or res.DEC ==0.0:
         print('RA and/or DEC value is 0.0 in the kima model, parallax plot will not be generated')
     else:
-        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array,verbose=True,overwrite=False)
-        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t,verbose=True,overwrite=False)
+        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array,verbose=False,overwrite=False)
+        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t,verbose=False,overwrite=False)
         a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t),parfra_vals,parfdec_vals,reft)
         ax.scatter(a,b,c=np.array(t),cmap=colormap)
         cmap = matplotlib.colormaps[colormap]
@@ -3652,21 +3656,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
             ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
         a,b = wss_dep(da,dd,par,mua,mud,time_array,parfra,parfdec,reft)
         ax.plot(a,b,c='black',alpha=0.8)
-    
-    #Make plot square to get good visual on e and inc
-    lowx,highx = ax.get_xlim()
-    lowy,highy = ax.get_ylim()
-    xwidth = highx - lowx
-    ywidth = highy - lowy
-    if xwidth < ywidth:
-        delta = ywidth - xwidth
-        ax.set(xlim = [lowx - delta/2,highx + delta/2])
-    else:
-        delta = xwidth - ywidth
-        ax.set(ylim = [lowy - delta/2,highy + delta/2])
 
+    ax.xaxis.set_inverted(True)
     ax.set_box_aspect(1)
-    ax.set(xlabel='RA', ylabel='Dec')
+    ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Parallax and Proper-Motion')
 
 
     #make individual orbit plots "phased"
@@ -3676,7 +3669,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
         phi = params[letter]['φ']
         e = params[letter]['e']
         if res.thiele_innes:
-            A = params[letter]['P']
+            A = params[letter]['A']
             B = params[letter]['B']
             F = params[letter]['F']
             G = params[letter]['G']
@@ -3701,6 +3694,11 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
             colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
             ax.plot([ra[i]+alpha_res[i]-alpha_errs[i],ra[i]+alpha_res[i]+alpha_errs[i]],[dec[i]+dec_res[i]-dec_errs[i],dec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
 
+        #Add line connecting COM to pericentre
+        ra_per, dec_per = ra_dec_orb_TI(P, Tper, e, A, B, F, G, Tper)
+        ax.scatter(0,0,marker='x',c='grey')
+        ax.plot([0,ra_per],[0,dec_per],c='grey',ls=':')
+
         #Make plot square to get good visual on e and inc
         lowx,highx = ax.get_xlim()
         lowy,highy = ax.get_ylim()
@@ -3712,9 +3710,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_add=None, colormap='plas
         else:
             delta = xwidth - ywidth
             ax.set(ylim = [lowy - delta/2,highy + delta/2])
+        ax.xaxis.set_inverted(True)
 
         ax.set_box_aspect(1)
-        ax.set(xlabel='RA', ylabel='Dec')
+        ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Photocentre Orbit '+str(j+1))
 
     #along-scan residuals plot
     resax.errorbar(t,wws,yerr=ws_err,fmt='.',c='grey',alpha=0.8,zorder=2)
