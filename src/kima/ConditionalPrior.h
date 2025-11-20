@@ -197,7 +197,7 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the phases (maybe do T0s instead?).
         distribution phiprior;
         /// Prior for the RV semi-amplitude.
-        distribution Kprior;
+        distribution a0prior;
         /// Prior for the arguments of periastron.
         distribution omegaprior;
         /// Prior for cos of the inclination.

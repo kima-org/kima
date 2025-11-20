@@ -87,7 +87,7 @@ class KIMA_API RVGAIAmodel
         // Parameters for the known object, if set. Use geometric parameters rather than thiele_innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
         std::vector<double> KO_P;
-        std::vector<double> KO_K;
+        std::vector<double> KO_a0;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
         std::vector<double> KO_omega;
@@ -169,7 +169,7 @@ class KIMA_API RVGAIAmodel
         void set_known_object(size_t known_object);
         // priors for KO mode!
         std::vector<distribution> KO_Pprior;
-        std::vector<distribution> KO_Kprior;
+        std::vector<distribution> KO_a0prior;
         std::vector<distribution> KO_eprior;
         std::vector<distribution> KO_phiprior;
         std::vector<distribution> KO_omegaprior;

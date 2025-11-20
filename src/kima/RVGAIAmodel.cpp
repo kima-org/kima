@@ -36,7 +36,7 @@ void RVGAIAmodel::set_known_object(size_t n)
     n_known_object = n;
 
     KO_Pprior.resize(n);
-    KO_Kprior.resize(n);
+    KO_a0prior.resize(n);
     KO_eprior.resize(n);
     KO_phiprior.resize(n);
     KO_omegaprior.resize(n);
@@ -44,7 +44,7 @@ void RVGAIAmodel::set_known_object(size_t n)
     KO_Omegaprior.resize(n);
 
     KO_P.resize(n);
-    KO_K.resize(n);
+    KO_a0.resize(n);
     KO_e.resize(n);
     KO_phi.resize(n);
     KO_omega.resize(n);
@@ -114,8 +114,8 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
-            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_omegaprior, KO_cosiprior, KO_Omegaprior)");
+            if (!KO_Pprior[i] || !KO_a0prior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
+                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_a0prior, KO_eprior, KO_phiprior, KO_omegaprior, KO_cosiprior, KO_Omegaprior)");
         }
     }
 
@@ -177,7 +177,7 @@ void RVGAIAmodel::from_prior(RNG& rng)
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
-            KO_K[i] = KO_Kprior[i]->generate(rng);
+            KO_a0[i] = KO_a0prior[i]->generate(rng);
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_omega[i] = KO_omegaprior[i]->generate(rng);
@@ -287,7 +287,7 @@ void RVGAIAmodel::calculate_mu()
         P = components[j][0];
         phi = components[j][1];
         ecc = components[j][2];
-        K = components[j][3];
+        a0 = components[j][3];
         omega = components[j][4];
         cosi = components[j][5];
         Omega = components[j][6];
@@ -296,7 +296,8 @@ void RVGAIAmodel::calculate_mu()
         
         // K = MassConv::SemiAmp(P,ecc,Mint,M,cosi);
         // a0 = MassConv::SemiPhotPl(P,Mint,M,plx);
-        a0 = MassConv::SemiPhotfromK(P,K,ecc,cosi,plx);
+        // a0 = MassConv::SemiPhotfromK(P,K,ecc,cosi,plx);
+        K = MassConv::KfromSemiPhot(P,a0,ecc,cosi,plx);
         
         A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
         B = a0*(cos(omega) * sin(Omega) + sin(omega) * cos(Omega) * cosi);
@@ -380,7 +381,10 @@ void RVGAIAmodel::remove_known_object()
         // K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
         // a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
 
-        a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
+        // a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
+        // K = KO_K[j];
+        K = MassConv::KfromSemiPhot(KO_P[j],KO_a0[j],KO_e[j],KO_cosi[j],plx);
+        a0 = KO_a0[j];
         
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
@@ -428,7 +432,10 @@ void RVGAIAmodel::add_known_object()
         // K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
         // a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
 
-        a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
+        // a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
+        // K = KO_K[j];
+        K = MassConv::KfromSemiPhot(KO_P[j],KO_a0[j],KO_e[j],KO_cosi[j],plx);
+        a0 = KO_a0[j];
 
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
@@ -515,7 +522,7 @@ double RVGAIAmodel::perturb(RNG& rng)
 
             for (int i=0; i<n_known_object; i++){
                 KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_Kprior[i]->perturb(KO_K[i], rng);
+                KO_a0prior[i]->perturb(KO_a0[i], rng);
                 KO_eprior[i]->perturb(KO_e[i], rng);
                 KO_phiprior[i]->perturb(KO_phi[i], rng);
                 KO_omegaprior[i]->perturb(KO_omega[i], rng);
@@ -778,7 +785,7 @@ void RVGAIAmodel::print(std::ostream& out) const
 
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
-        for (auto K: KO_K) out << K << "\t";
+        for (auto a0: KO_a0) out << a0 << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_omega) out << w << "\t";
@@ -849,7 +856,7 @@ string RVGAIAmodel::description() const
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
+            desc += "KO_a0" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_phi" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
@@ -982,7 +989,7 @@ void RVGAIAmodel::save_setup() {
         fout << "Pprior: " << *conditional->Pprior << endl;
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "eprior: " << *conditional->eprior << endl;
-        fout << "Kprior: " << *conditional->Kprior << endl;
+        fout << "a0prior: " << *conditional->a0prior << endl;
         fout << "omegaprior: " << *conditional->omegaprior << endl;
         fout << "cosiprior: " << *conditional->cosiprior << endl;
         fout << "Omegaprior: " << *conditional->Omegaprior << endl;
@@ -992,7 +999,7 @@ void RVGAIAmodel::save_setup() {
         fout << endl << "[priors.known_object]" << endl;
         for(int i=0; i<n_known_object; i++){
             fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-            fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+            fout << "a0prior_" << i << ": " << *KO_a0prior[i] << endl;
             fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_omegaprior[i] << endl;
@@ -1166,9 +1173,9 @@ NB_MODULE(RVGAIAmodel, m) {
                      [](RVGAIAmodel &m) { return m.KO_Pprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
                      "Prior for KO orbital period(s)")
-        .def_prop_rw("KO_Kprior",
-                     [](RVGAIAmodel &m) { return m.KO_Kprior; },
-                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
+        .def_prop_rw("KO_a0prior",
+                     [](RVGAIAmodel &m) { return m.KO_a0prior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_a0prior = vd; },
                      "Prior for KO mass(es) (M_sun)")
         .def_prop_rw("KO_eprior",
                      [](RVGAIAmodel &m) { return m.KO_eprior; },
