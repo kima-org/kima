@@ -18,7 +18,7 @@ from copy import copy, deepcopy
 
 from .. import __models__, MODELS
 from ..kepler import keplerian
-from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction, a0fromK
+from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction, a0fromK, Kfroma0
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkernel, Matern32kernel, SHOkernel, 
@@ -999,7 +999,7 @@ class KimaResults:
         self.indices['planets'] = slice(istart, iend)
         
 
-        if self.model is MODELS.GAIAmodel:
+        if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
             if self.thiele_innes:
                 for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'A', 'B', 'F', 'G')):
                     iend = istart + self.max_components
@@ -1826,17 +1826,6 @@ class KimaResults:
                 self.posteriors.φ_deg = np.rad2deg(φ)
                 self._priors.φ = self.priors['phiprior']
 
-                if self.model is MODELS.RVGAIAmodel:
-                    # amplitudes
-                    s = self.indices['planets.K']
-                    self.posteriors.K = self.posterior_sample[:, s]
-                    self._priors.K = self.priors['Kprior']
-                else:
-                    #semi-major axis
-                    if self.thiele_innes == False:
-                        s = self.indices['planets.a0']
-                        self.posteriors.a0 = self.posterior_sample[:, s]
-                        self._priors.a0 = self.priors['a0prior']
                 if self.thiele_innes:
                     s = self.indices['planets.A']
                     self.posteriors.A = self.posterior_sample[:,s]
@@ -1854,6 +1843,11 @@ class KimaResults:
                     self.posteriors.G = self.posterior_sample[:,s]
                     self._priors.G = self.priors['Gprior']
                 else:
+                    #a0s 
+                    s = self.indices['planets.a0']
+                    self.posteriors.a0 = self.posterior_sample[:, s]
+                    self._priors.a0 = self.priors['a0prior']
+
                     # omegas
                     s = self.indices['planets.w']
                     w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
@@ -1872,7 +1866,7 @@ class KimaResults:
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
                     self._priors.W = self.priors['Omegaprior']
                 if self.model is MODELS.RVGAIAmodel:
-                    self.posteriors.a0 = a0fromK(self.posteriors.P, self.posteriors.K, self.posteriors.e, self.posteriors.cosi, self.posteriors.plx)
+                    self.posteriors.a0 = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
 
 
             ### Also add ETV ones
