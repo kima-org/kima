@@ -35,6 +35,14 @@ void GAIAmodel::set_known_object(size_t n)
     KO_omegaprior.resize(n);
     KO_cosiprior.resize(n);
     KO_Omegaprior.resize(n);
+
+    KO_P.resize(n);
+    KO_a0.resize(n);
+    KO_e.resize(n);
+    KO_phi.resize(n);
+    KO_omega.resize(n);
+    KO_cosi.resize(n);
+    KO_Omega.resize(n);
 }
 
 /* set default priors if the user didn't change them */
@@ -94,13 +102,6 @@ void GAIAmodel::from_prior(RNG& rng)
 
     
     if (known_object) { // KO mode!
-        KO_P.resize(n_known_object);
-        KO_a0.resize(n_known_object);
-        KO_e.resize(n_known_object);
-        KO_phi.resize(n_known_object);
-        KO_omega.resize(n_known_object);
-        KO_cosi.resize(n_known_object);
-        KO_Omega.resize(n_known_object);
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);

@@ -447,4 +447,6 @@ NB_MODULE(postkepler, m) {
         );
     }, "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_SB2_DOC);
 
+    m.def("a0fromK", [](double P, double K, double ecc, double cosi, double plx){ return MassConv::SemiPhotfromK(P, K, ecc, cosi, plx); }, "P"_a, "K"_a, "ecc"_a, "cosi"_a, "plx"_a);
+
 }

@@ -36,14 +36,22 @@ void RVGAIAmodel::set_known_object(size_t n)
     n_known_object = n;
 
     KO_Pprior.resize(n);
-    KO_Mprior.resize(n);
+    KO_Kprior.resize(n);
     KO_eprior.resize(n);
     KO_phiprior.resize(n);
     KO_omegaprior.resize(n);
     KO_cosiprior.resize(n);
     KO_Omegaprior.resize(n);
 
-    KO_Mints.resize(n);
+    KO_P.resize(n);
+    KO_K.resize(n);
+    KO_e.resize(n);
+    KO_phi.resize(n);
+    KO_omega.resize(n);
+    KO_cosi.resize(n);
+    KO_Omega.resize(n);
+
+    // KO_Mints.resize(n);
 }
 
 /* set default priors if the user didn't change them */
@@ -65,8 +73,8 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (!J_GAIA_prior)
         J_GAIA_prior = make_prior<ModifiedLogUniform>(0.1,100.);
 
-    if (!star_mass_prior)
-        star_mass_prior = make_prior<Gaussian>(1.0,0.5);
+    // if (!star_mass_prior)
+    //     star_mass_prior = make_prior<Gaussian>(1.0,0.5);
     
     if (trend){
         if (degree == 0)
@@ -106,8 +114,8 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
-            if (!KO_Pprior[i] || !KO_Mprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_cosiprior, KO_Omprior)");
+            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
+                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_omegaprior, KO_cosiprior, KO_Omegaprior)");
         }
     }
 
@@ -166,17 +174,10 @@ void RVGAIAmodel::from_prior(RNG& rng)
     }
     
     if (known_object) { // KO mode!
-        KO_P.resize(n_known_object);
-        KO_M.resize(n_known_object);
-        KO_e.resize(n_known_object);
-        KO_phi.resize(n_known_object);
-        KO_omega.resize(n_known_object);
-        KO_cosi.resize(n_known_object);
-        KO_Omega.resize(n_known_object);
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
-            KO_M[i] = KO_Mprior[i]->generate(rng);
+            KO_K[i] = KO_Kprior[i]->generate(rng);
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_omega[i] = KO_omegaprior[i]->generate(rng);
@@ -185,7 +186,7 @@ void RVGAIAmodel::from_prior(RNG& rng)
         }
     }
 
-    get_interior_masses();
+    // get_interior_masses();
 
     if (studentt)
     {
@@ -318,56 +319,56 @@ void RVGAIAmodel::calculate_mu()
 
 }
 
-void RVGAIAmodel::get_interior_masses()
-{
-    // Calculate and save the total mass interior to each orbit by comparing periods
-    double M, P;
-    const vector< vector<double> >& components = planets.get_components();
-    size_t NP = components.size();
-    if (known_object)
-    {
-        for (int j = 0; j < n_known_object; j++)
-        {
-            KO_Mints[j] = star_mass;
-            for (int i = 0; i < n_known_object; i++)
-            {
-                if (KO_P[i] < KO_P[j])
-                {
-                    KO_Mints[j] += KO_M[i];
-                }
-            }
-            for (size_t i = 0; i < NP; i++)
-            {
-                if (components[i][0] < KO_P[j])
-                {
-                    KO_Mints[j] += components[i][3];
-                }
-            }
-        }
-    }
-    for (size_t j = 0; j < NP; j++)
-    {
-        Mints[j] = star_mass;
-        if (known_object)
-        {
-            for (int i = 0; i < n_known_object; i++)
-            {
-                if (KO_P[i] < components[j][0])
-                {
-                    Mints[j] += KO_M[i];
-                }
-            }
-        }
-        for (size_t i = 0; i < NP; i++)
-        {
-            if (components[i][0] < components[j][0])
-            {
-                Mints[j] += components[i][3];
-            }
-        }
-    }
+// void RVGAIAmodel::get_interior_masses()
+// {
+//     // Calculate and save the total mass interior to each orbit by comparing periods
+//     double M, P;
+//     const vector< vector<double> >& components = planets.get_components();
+//     size_t NP = components.size();
+//     if (known_object)
+//     {
+//         for (int j = 0; j < n_known_object; j++)
+//         {
+//             KO_Mints[j] = star_mass;
+//             for (int i = 0; i < n_known_object; i++)
+//             {
+//                 if (KO_P[i] < KO_P[j])
+//                 {
+//                     KO_Mints[j] += KO_M[i];
+//                 }
+//             }
+//             for (size_t i = 0; i < NP; i++)
+//             {
+//                 if (components[i][0] < KO_P[j])
+//                 {
+//                     KO_Mints[j] += components[i][3];
+//                 }
+//             }
+//         }
+//     }
+//     for (size_t j = 0; j < NP; j++)
+//     {
+//         Mints[j] = star_mass;
+//         if (known_object)
+//         {
+//             for (int i = 0; i < n_known_object; i++)
+//             {
+//                 if (KO_P[i] < components[j][0])
+//                 {
+//                     Mints[j] += KO_M[i];
+//                 }
+//             }
+//         }
+//         for (size_t i = 0; i < NP; i++)
+//         {
+//             if (components[i][0] < components[j][0])
+//             {
+//                 Mints[j] += components[i][3];
+//             }
+//         }
+//     }
 
-}
+// }
 
 
 void RVGAIAmodel::remove_known_object()
@@ -376,8 +377,10 @@ void RVGAIAmodel::remove_known_object()
     double A, B, F, G; //, X, Y;
     for (int j = 0; j < n_known_object; j++)
     {
-        K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
-        a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
+        // K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
+        // a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
+
+        a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
         
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
@@ -422,8 +425,10 @@ void RVGAIAmodel::add_known_object()
     double A, B, F, G; //, X, Y;
     for (int j = 0; j < n_known_object; j++)
     {
-        K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
-        a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
+        // K = MassConv::SemiAmp(KO_P[j], KO_e[j], KO_Mints[j], KO_M[j], KO_cosi[j]);
+        // a0 = MassConv::SemiPhotPl(KO_P[j], KO_Mints[j], KO_M[j], plx);
+
+        a0 = MassConv::SemiPhotfromK(KO_P[j],KO_K[j],KO_e[j],KO_cosi[j],plx);
 
         A = a0*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
         B = a0*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
@@ -477,9 +482,9 @@ double RVGAIAmodel::perturb(RNG& rng)
         logH += planets.perturb(rng);
         planets.consolidate_diff();
 
-        star_mass_prior->perturb(star_mass,rng);
+        // star_mass_prior->perturb(star_mass,rng);
 
-        get_interior_masses();
+        // get_interior_masses();
 
         calculate_mu();
     }
@@ -510,7 +515,7 @@ double RVGAIAmodel::perturb(RNG& rng)
 
             for (int i=0; i<n_known_object; i++){
                 KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_Mprior[i]->perturb(KO_M[i], rng);
+                KO_Kprior[i]->perturb(KO_K[i], rng);
                 KO_eprior[i]->perturb(KO_e[i], rng);
                 KO_phiprior[i]->perturb(KO_phi[i], rng);
                 KO_omegaprior[i]->perturb(KO_omega[i], rng);
@@ -518,7 +523,7 @@ double RVGAIAmodel::perturb(RNG& rng)
                 KO_Omegaprior[i]->perturb(KO_Omega[i], rng);
             }
 
-            get_interior_masses();
+            // get_interior_masses();
 
             add_known_object();
 
@@ -759,7 +764,7 @@ void RVGAIAmodel::print(std::ostream& out) const
 
     out.precision(24);
 
-    out << star_mass << '\t';
+    // out << star_mass << '\t';
     
     out << da << '\t';
     out << dd << '\t';
@@ -773,7 +778,7 @@ void RVGAIAmodel::print(std::ostream& out) const
 
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
-        for (auto M: KO_M) out << M << "\t";
+        for (auto K: KO_K) out << K << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_omega) out << w << "\t";
@@ -830,7 +835,7 @@ string RVGAIAmodel::description() const
         }
     }
 
-    desc += "star_mass" + sep;
+    // desc += "star_mass" + sep;
 
     desc += "da" + sep;
     desc += "dd" + sep;
@@ -844,7 +849,7 @@ string RVGAIAmodel::description() const
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
-            desc += "KO_M" + std::to_string(i) + sep;
+            desc += "KO_K" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_phi" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
@@ -956,7 +961,7 @@ void RVGAIAmodel::save_setup() {
         }
     }
 
-    fout << "star_mass_prior: " << *star_mass_prior <<endl;
+    // fout << "star_mass_prior: " << *star_mass_prior <<endl;
 
     fout << "da_prior: " << *da_prior << endl;
     fout << "dd_prior: " << *dd_prior << endl;
@@ -987,7 +992,7 @@ void RVGAIAmodel::save_setup() {
         fout << endl << "[priors.known_object]" << endl;
         for(int i=0; i<n_known_object; i++){
             fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-            fout << "Mprior_" << i << ": " << *KO_Mprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
             fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_omegaprior[i] << endl;
@@ -1023,8 +1028,11 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
         using RVGAIAmodel::studentt;
         using RVGAIAmodel::fix;
         using RVGAIAmodel::npmax;
-        using RVGAIAmodel::known_object;
-        using RVGAIAmodel::n_known_object;
+        // using RVGAIAmodel::known_object;
+        // using RVGAIAmodel::n_known_object;
+        using RVGAIAmodel::star_mass;
+        using RVGAIAmodel::RA;
+        using RVGAIAmodel::DEC;
         using RVGAIAmodel::trend;
         using RVGAIAmodel::degree;
         using RVGAIAmodel::indicator_correlations;
@@ -1061,6 +1069,16 @@ NB_MODULE(RVGAIAmodel, m) {
         .def_rw("studentt", &RVGAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
 
+        // RA + Dec
+        .def_rw("RA", &RVGAIAmodel_publicist::RA,
+                "Right Ascension of the target star (degrees)")
+        .def_rw("DEC", &RVGAIAmodel_publicist::DEC,
+                "Declination of the target star (degrees)")
+
+        //star mass
+        .def_rw("star_mass", &RVGAIAmodel_publicist::star_mass,
+                "the mass of the central star (Msun)")
+
         // KO mode
         .def("set_known_object", &RVGAIAmodel::set_known_object)
         .def_prop_ro("known_object", [](RVGAIAmodel &m) { return m.get_known_object(); },
@@ -1094,10 +1112,10 @@ NB_MODULE(RVGAIAmodel, m) {
             [](RVGAIAmodel &m) { return m.nu_RV_prior; },
             [](RVGAIAmodel &m, distribution &d) { m.nu_RV_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood for RV data")
-        .def_prop_rw("star_mass_prior",
-            [](RVGAIAmodel &m) { return m.star_mass_prior; },
-            [](RVGAIAmodel &m, distribution &d) { m.star_mass_prior = d; },
-            "Prior for mass of the central star")
+        // .def_prop_rw("star_mass_prior",
+        //     [](RVGAIAmodel &m) { return m.star_mass_prior; },
+        //     [](RVGAIAmodel &m, distribution &d) { m.star_mass_prior = d; },
+        //     "Prior for mass of the central star")
             
         .def_prop_rw("slope_prior",
             [](RVGAIAmodel &m) { return m.slope_prior; },
@@ -1148,9 +1166,9 @@ NB_MODULE(RVGAIAmodel, m) {
                      [](RVGAIAmodel &m) { return m.KO_Pprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
                      "Prior for KO orbital period(s)")
-        .def_prop_rw("KO_Mprior",
-                     [](RVGAIAmodel &m) { return m.KO_Mprior; },
-                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Mprior = vd; },
+        .def_prop_rw("KO_Kprior",
+                     [](RVGAIAmodel &m) { return m.KO_Kprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Kprior = vd; },
                      "Prior for KO mass(es) (M_sun)")
         .def_prop_rw("KO_eprior",
                      [](RVGAIAmodel &m) { return m.KO_eprior; },

@@ -37,11 +37,18 @@ class KIMA_API RVGAIAmodel
 //         bool known_object {false};
         // how many known objects
 //         int n_known_object {0};
+
+        /// stellar mass (in units of Msun)
+        double star_mass {1.0};
         
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
         int degree {0};
+
+        /// RA and DEC of target (in degrees)
+        double RA = 0.0;
+        double DEC = 0.0;
 
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
@@ -73,8 +80,6 @@ class KIMA_API RVGAIAmodel
         double mud;
         double plx;
 
-        /// stellar mass (in units of Msun)
-        double star_mass = 1.0;
         
         double nu_GAIA;
         double jitter_GAIA;
@@ -82,7 +87,7 @@ class KIMA_API RVGAIAmodel
         // Parameters for the known object, if set. Use geometric parameters rather than thiele_innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
         std::vector<double> KO_P;
-        std::vector<double> KO_M;
+        std::vector<double> KO_K;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
         std::vector<double> KO_omega;
@@ -128,8 +133,8 @@ class KIMA_API RVGAIAmodel
         /// prior for student-t degree of freedom for RV data
         distribution nu_RV_prior;
 
-        ///prior for central star mass
-        distribution star_mass_prior;
+        // ///prior for central star mass, removed to sample in K instead
+        // distribution star_mass_prior; 
         
         // priors for RV solution
         /// Prior for the systemic velocity.
@@ -164,7 +169,7 @@ class KIMA_API RVGAIAmodel
         void set_known_object(size_t known_object);
         // priors for KO mode!
         std::vector<distribution> KO_Pprior;
-        std::vector<distribution> KO_Mprior;
+        std::vector<distribution> KO_Kprior;
         std::vector<distribution> KO_eprior;
         std::vector<distribution> KO_phiprior;
         std::vector<distribution> KO_omegaprior;
