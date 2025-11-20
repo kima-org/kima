@@ -18,7 +18,7 @@ from copy import copy, deepcopy
 
 from .. import __models__, MODELS
 from ..kepler import keplerian
-from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction
+from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction, a0fromK
 from kima import distributions
 from .classic import postprocess
 from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkernel, Matern32kernel, SHOkernel, 
@@ -512,11 +512,6 @@ class KimaResults:
         #self.priors = {}
         self.priors = _read_priors(self, setup)
 
-        # arbitrary units?
-        if 'arb' in model.data.units:
-            self.arbitrary_units = True
-        else:
-            self.arbitrary_units = False
 
         ##### Issue here where data is assumed to be RV data, could do cases for each type, but what if there are multiple types?
         self.data_type = 'RV' #default to being RV data
@@ -546,8 +541,9 @@ class KimaResults:
             self.data_type = 'ETV'
         elif self.model is MODELS.RVGAIAmodel:
             if data is None:
-                RV_data = model.RV_data
-                GAIA_data = model.GAIA_data
+                RV_data = model.RVdata
+                data = RV_data
+                GAIA_data = model.GAIAdata
             self.RVdata = data_holder()
             self.data = self.RVdata
             self.data.t = np.array(np.copy(RV_data.t))
@@ -563,6 +559,8 @@ class KimaResults:
             self.GAIAdata.psi = np.array(np.copy(GAIA_data.psi))
             self.GAIAdata.pf = np.array(np.copy(GAIA_data.pf))
             self.GAIAdata.N = GAIA_data.N
+
+            self.thiele_innes = False
         else:
             if data is None:
                 data = model.data
@@ -572,6 +570,15 @@ class KimaResults:
             self.data.e = np.array(np.copy(data.sig))            
             self.data.obs = np.array(np.copy(data.obsi))
             self.data.N = data.N
+
+        # arbitrary units?
+        if self.model is MODELS.RVGAIAmodel:
+            pass #hack to avoid lack of definition of model.data in RVGAIA date since 
+        else:
+            if 'arb' in model.data.units:
+                self.arbitrary_units = True
+            else:
+                self.arbitrary_units = False
 
         #Add extra thigns for various models
         self.series = ('RV',)
@@ -1016,9 +1023,17 @@ class KimaResults:
 
     def _read_studentt(self):
         if self.studentt:
-            self.nu = self.posterior_sample[:, self._current_column]
-            self.indices['nu'] = self._current_column
-            self._current_column += 1
+            if self.model is MODELS.RVGAIAmodel:
+                self.nu_GAIA = self.posterior_sample[:, self._current_column]
+                self.indices['nu_GAIA'] = self._current_column
+                self._current_column += 1
+                self.nu_RV = self.posterior_sample[:, self._current_column]
+                self.indices['nu_RV'] = self._current_column
+                self._current_column += 1
+            else:
+                self.nu = self.posterior_sample[:, self._current_column]
+                self.indices['nu'] = self._current_column
+                self._current_column += 1
 
     def _read_pm(self):
         self.indices['pm_ra_bary'] = self._current_column
@@ -1706,13 +1721,23 @@ class KimaResults:
         # jitter(s)
         self.posteriors.jitter = self.posterior_sample[:, self.indices['jitter']]
         self.posteriors.jitter = self.posteriors.jitter.view(named_array)
-        self._priors.jitter = self.priors['Jprior']
+        if self.model is MODELS.RVGAIAmodel:
+            self.priors['jitter_RV'] = self.priors['J_RV_prior']
+            self.priors['jitter_GAIA'] = self.priors['J_GAIA_prior']
+        else:
+            self._priors.jitter = self.priors['Jprior']
         # if self.n_jitters == 1:
         #     self.posteriors.jitter = self.posteriors.jitter.ravel()
 
         if self.studentt:
-            self.posteriors.nu = self.posterior_sample[:, self.indices["nu"]]
-            self._priors.nu = self.priors["nu_prior"]
+            if self.model is MODELS.RVGAIAmodel:
+                self.posteriors.nu_RV = self.posterior_sample[:, self.indices["nu"]]
+                self.posteriors.nu_GAIA = self.posterior_sample[:, self.indices["nu"]]
+                self._priors.nu_RV = self.priors["nu_RV_prior"]
+                self._priors.nu_GAIA = self.priors["nu_GAIA_prior"]
+            else:
+                self.posteriors.nu = self.posterior_sample[:, self.indices["nu"]]
+                self._priors.nu = self.priors["nu_prior"]
 
         if self.has_gp:
             for i in range(self.n_hyperparameters):
@@ -1731,7 +1756,7 @@ class KimaResults:
                     setattr(self._priors, f'alpha{i+1}', self.priors[f'alpha{i+1}_prior'])
                     setattr(self._priors, f'beta{i+1}', self.priors[f'beta{i+1}_prior'])
 
-        if self.model is MODELS.GAIAmodel:
+        if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
             da, dd, mua, mud, plx = self.posterior_sample[:, self.indices['astrometric_solution']].T
             self.posteriors.da = da
             self.posteriors.dd = dd
@@ -1846,6 +1871,8 @@ class KimaResults:
                     W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
                     self._priors.W = self.priors['Omegaprior']
+                if self.model is MODELS.RVGAIAmodel:
+                    self.posteriors.a0 = a0fromK(self.posteriors.P, self.posteriors.K, self.posteriors.e, self.posteriors.cosi, self.posteriors.plx)
 
 
             ### Also add ETV ones
