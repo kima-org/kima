@@ -324,8 +324,16 @@ namespace MassConv
     double KfromSemiPhot(double P, double a0, double ecc, double cosi, double plx)
     {
         double sini = pow((1.0-pow(cosi,2.0)),0.5);
-        double K = a0  * (TWO_PI * sini) * pow(1 - pow(ecc,2.0),-0.5) / (plx*P/365.25)* AU/sectoyr ;
-        return K;
+        if (P==0.0)
+        {
+            return 0.0;
+        } 
+        else
+        {
+            double K = a0  * (TWO_PI * sini) * pow(1 - pow(ecc,2.0),-0.5) / (plx*P/365.25)* AU/sectoyr ;
+            return K;
+        }
+        
     }
 }
 

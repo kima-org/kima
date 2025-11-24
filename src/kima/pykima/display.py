@@ -2941,6 +2941,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     if res.model is MODELS.GAIAmodel:
         astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
         return
+    elif res.model is MODELS.RVGAIAmodel:
+        astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
+
 
     if xaxis not in ('mean anomaly', 'mean longitude'):
         raise ValueError(f'`xaxis` must be "mean anomaly" or "mean longitude", got {xaxis}')
@@ -3594,9 +3597,11 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         resax = fig.add_subplot(gs[4:, 1:])
     else:
         raise NotImplementedError
-
-    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
     
+    print('debug',da,dd,par,mua,mud,res.M0_epoch)
+    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+    print('debug',wobs)
+    print('debug',wmodel)
     
     #Get full model
     for letter in keys:
@@ -3616,8 +3621,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             W = params[letter]['W']
             A,B,F,G = Thiele_Innes(a0,w,W,cosi)
         Tper = params[letter]['Tp']
+        print('debug',P,phi,e,a0,w,cosi,W,Tper)
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
+    # print('debug',wmodel)
     #get residuals
     wws = wobs - wmodel
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)

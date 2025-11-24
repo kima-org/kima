@@ -878,7 +878,7 @@ string RVGAIAmodel::description() const
         for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "a0" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "cosi" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "W" + std::to_string(i) + sep;

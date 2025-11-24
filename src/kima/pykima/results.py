@@ -560,7 +560,6 @@ class KimaResults:
             self.GAIAdata.pf = np.array(np.copy(GAIA_data.pf))
             self.GAIAdata.N = GAIA_data.N
 
-            self.thiele_innes = False
         else:
             if data is None:
                 data = model.data
@@ -600,6 +599,10 @@ class KimaResults:
             self.thiele_innes = model.thiele_innes
             self.RA = model.RA
             self.DEC= model.DEC
+        if self.model is MODELS.RVGAIAmodel:
+            self.thiele_innes = False
+            self.RA = model.RA
+            self.DEC= model.DEC
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
@@ -618,8 +621,10 @@ class KimaResults:
         if self.model is MODELS.RVHGPMmodel:
             self.pm_data = model.pm_data
         
-
-        self.M0_epoch = data.M0_epoch
+        if self.model is MODELS.RVGAIAmodel:
+            self.M0_epoch = GAIA_data.M0_epoch
+        else:
+            self.M0_epoch = data.M0_epoch
         if self.data_type =='RV':
             self.n_instruments = np.unique(data.obsi).size
             self.multi = data.multi
@@ -1866,7 +1871,7 @@ class KimaResults:
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
                     self._priors.W = self.priors['Omegaprior']
                 if self.model is MODELS.RVGAIAmodel:
-                    self.posteriors.a0 = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
+                    self.posteriors.K = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
 
 
             ### Also add ETV ones
@@ -2383,7 +2388,7 @@ class KimaResults:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
             extra_n = 0
-            if self.model is MODELS.GAIAmodel:
+            if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
                 pars = ['P', 'a0', 'phi', 'ecc', 'w', 'cosi', 'W']
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
