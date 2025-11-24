@@ -3598,10 +3598,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     else:
         raise NotImplementedError
     
-    print('debug',da,dd,par,mua,mud,res.M0_epoch)
     wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
-    print('debug',wobs)
-    print('debug',wmodel)
     
     #Get full model
     for letter in keys:
@@ -3621,10 +3618,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             W = params[letter]['W']
             A,B,F,G = Thiele_Innes(a0,w,W,cosi)
         Tper = params[letter]['Tp']
-        print('debug',P,phi,e,a0,w,cosi,W,Tper)
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
-    # print('debug',wmodel)
     #get residuals
     wws = wobs - wmodel
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)

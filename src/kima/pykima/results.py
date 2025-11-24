@@ -572,7 +572,7 @@ class KimaResults:
 
         # arbitrary units?
         if self.model is MODELS.RVGAIAmodel:
-            pass #hack to avoid lack of definition of model.data in RVGAIA date since 
+            self.arbitrary_units = False #hack to avoid lack of definition of model.data in RVGAIA date since 
         else:
             if 'arb' in model.data.units:
                 self.arbitrary_units = True
@@ -2619,7 +2619,7 @@ class KimaResults:
             t = self.data.t.copy()
             data_t = True
 
-        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel]
+        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel, MODELS.RVGAIAmodel]
 
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
@@ -2635,6 +2635,9 @@ class KimaResults:
                 ONE_D_MODELS.append(MODELS.BINARIESmodel)
         else:
             v = np.zeros_like(t)
+
+        if self.model is MODELS.RVGAIAmodel:
+            da,dd,mua,mud,plx = sample[self.indices['astrometric_solution']]
 
         if include_planets:
             if single_planet and except_planet:
@@ -2653,6 +2656,7 @@ class KimaResults:
             # known_object ? 
             # For BINARIESmodel and double_lined especially, need to deal with
             # the extra parameters in those models and using the correct Keplerian
+            # also for the RVGAIA model, converting a0 into K
             pj = 0
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
@@ -2666,9 +2670,16 @@ class KimaResults:
                             continue
 
                     P = pars[j + 0 * self.nKO]
-                    K = pars[j + 1 * self.nKO]
+                    if self.model is MODELS.RVGAIAmodel:
+                        a0 = pars[j + 1 * self.nKO]
+                        phi = pars[j + 2 * self.nKO]
+                        ecc = pars[j + 3 * self.nKO]
+                        w = pars[j + 4 * self.nKO]
+                        cosi = pars[j + 5 * self.nKO]
+                        K = Kfroma0(P,a0,ecc,cosi,plx)
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
-                    if self.model is MODELS.BINARIESmodel:
+                    elif self.model is MODELS.BINARIESmodel:
+                        K = pars[j + 1 * self.nKO]
                         if self.double_lined:
                             q = pars[j + 2 * self.nKO]
                             phi = pars[j + 3 * self.nKO]
@@ -2683,6 +2694,7 @@ class KimaResults:
                             wdot = pars[j + 5 * self.nKO]
                             cosi = pars[j + 6 * self.nKO]
                     else:
+                        K = pars[j + 1 * self.nKO]
                         phi = pars[j + 2 * self.nKO]
                         ecc = pars[j + 3 * self.nKO]
                         w = pars[j + 4 * self.nKO]
