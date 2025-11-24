@@ -133,6 +133,7 @@ def test_phase_plot(include, KO, nKO, TR, nTR, nP):
     res.data = d
     res.M0_epoch = d.t[0]
     res.indices = {
+        'jitter': slice(0, 1, None),
         'trend': slice(1, 2, None),
         'KOpars': slice(2, 2 + res.nKO*5, None),
         'TRpars': slice(2 + res.nKO*5, 2 + res.nKO*5 + res.nTR*5, None),
