@@ -2323,8 +2323,11 @@ class KimaResults:
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            if self.model is MODELS.GAIAmodel:
-                pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
+            if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
+                if self.thiele_innes:
+                    pars = ['P', 'phi', 'ecc', 'A', 'B', 'F', 'G']
+                else:
+                    pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
             elif self.model is MODELS.RVHGPMmodel:
                 pars = ['P', 'K', 'M0', 'e', 'w', 'i', 'W']
             else:
@@ -2763,15 +2766,18 @@ class KimaResults:
                 P = pars[j + 0 * self.max_components]
                 if P == 0.0:
                     continue
-                phi = pars[j + 2 * self.max_components]
-                ecc = pars[j + 3 * self.max_components]
-                w = pars[j + 4 * self.max_components]
                 if self.model is MODELS.RVGAIAmodel:
-                    a0 = pars[j + 1 * self.max_components]
+                    phi = pars[j + 1 * self.max_components]
+                    ecc = pars[j + 2 * self.max_components]
+                    a0 = pars[j + 3 * self.max_components]
+                    w = pars[j + 4 * self.max_components]
                     cosi = pars[j + 5 * self.max_components]
                     K = Kfroma0(P,a0,ecc,cosi,plx)
                 else:
                     K = pars[j + 1 * self.max_components]
+                    phi = pars[j + 2 * self.max_components]
+                    ecc = pars[j + 3 * self.max_components]
+                    w = pars[j + 4 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
 
                 if self.model not in ONE_D_MODELS:
@@ -2948,6 +2954,9 @@ class KimaResults:
                              "cannot be used together")
         if single_planet == 0:
             raise ValueError("'single_planet' should not be 0")
+        
+        if self.model is MODELS.RVGAIAmodel:
+            da,dd,mua,mud,plx = sample[self.indices['astrometric_solution']]
 
         # except_planet should be a list to exclude more than one planet
         if except_planet is not None:
@@ -2969,9 +2978,9 @@ class KimaResults:
                         continue
 
                 P = pars[j + 0 * self.nKO]
-                K = pars[j + 1 * self.nKO]
                 # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                 if self.model is MODELS.BINARIESmodel:
+                    K = pars[j + 1 * self.nKO]
                     if self.double_lined:
                         q = pars[j + 2 * self.nKO]
                         phi = pars[j + 3 * self.nKO]
@@ -2985,7 +2994,15 @@ class KimaResults:
                         w = pars[j + 4 * self.nKO]
                         wdot = pars[j + 5 * self.nKO]
                         cosi = pars[j + 6 * self.nKO]
+                elif self.model is MODELS.RVGAIAmodel:
+                    a0 = pars[j + 1 * self.nKO]
+                    phi = pars[j + 2 * self.nKO]
+                    ecc = pars[j + 3 * self.nKO]
+                    w = pars[j + 4 * self.nKO]
+                    cosi = pars[j + 5 * self.nKO]
+                    K = Kfroma0(P,a0,ecc,cosi,plx)
                 else:
+                    K = pars[j + 1 * self.nKO]
                     phi = pars[j + 2 * self.nKO]
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
@@ -3060,11 +3077,19 @@ class KimaResults:
             P = pars[j + 0 * self.max_components]
             if P == 0.0:
                 continue
-            K = pars[j + 1 * self.max_components]
-            phi = pars[j + 2 * self.max_components]
-            # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
-            ecc = pars[j + 3 * self.max_components]
-            w = pars[j + 4 * self.max_components]
+            if self.model is MODELS.RVGAIAmodel:
+                phi = pars[j + 1 * self.max_components]
+                # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
+                ecc = pars[j + 2 * self.max_components]
+                a0 = pars[j + 3 * self.max_components]
+                w = pars[j + 4 * self.max_components]
+                cosi = pars[j + 5 * self.max_components]
+                K = Kfroma0(P,a0,ecc,cosi,plx)
+            else:
+                K = pars[j + 1 * self.max_components]
+                phi = pars[j + 2 * self.max_components]
+                ecc = pars[j + 3 * self.max_components]
+                w = pars[j + 4 * self.max_components]
             if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
             else:

@@ -11,6 +11,7 @@ from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 from pystrometry.pystrometry import get_parallax_factors
 
 from .. import MODELS
+from ..postkepler import Kfroma0
 from .analysis import get_bins, np_bayes_factor_threshold, find_outliers
 from .analysis import get_planet_mass_and_semimajor_axis
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
@@ -1990,6 +1991,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         units = ' m/s'
         if GAIA:
             units = ' mas'
+        if RVGAIA and i==0:
+            units = ' mas'
 
         if ax is None:
             continue
@@ -2076,6 +2079,8 @@ def hist_jitter(res, show_prior=False, show_stats=False, show_title=True,
         labels += [f'RV jitter {i}_sec [m/s]' for i in insts]
     elif GAIA:
         labels = ['Astrometric jitter [mas]']
+    elif RVGAIA:
+        labels = ['Astrometric jitter [mas]']+[f'jitter {i} [m/s]' for i in insts]
     else:
         labels = [f'jitter {i} [m/s]' for i in insts]
         if show_stellar_jitter:
@@ -2232,28 +2237,63 @@ def hist_nu(res, show_prior=False, **kwargs):
         print('Model has Gaussian likelihood! hist_nu() doing nothing...')
         return
 
-    estimate = percentile68_ranges_latex(res.nu)
 
-    fig, ax = plt.subplots(1, 1)
-    ax.hist(res.nu, **kwargs)
-    title = 'Posterior distribution for degrees of freedom $\\nu$ \n '\
-            '%s' % estimate
-    if kwargs.get('density', False):
-        ylabel = 'posterior'
+    if res.model is MODELS.RVGAIAmodel:
+        estimate_Gaia = percentile68_ranges_latex(res.nu_GAIA)
+        estimate_RV = percentile68_ranges_latex(res.nu_RV)
+
+        fig, ax = plt.subplots(1, 2, figsize=[12,6])
+        ax[0].hist(res.nu_GAIA, **kwargs)
+        ax[1].hist(res.nu_RV, **kwargs)
+        title1 = 'Posterior distribution for degrees of freedom $\\nu$ for Gaia data \n '\
+                '%s' % estimate_Gaia
+        title2 = 'Posterior distribution for degrees of freedom $\\nu$ for RV data \n '\
+                '%s' % estimate_RV
+        if kwargs.get('density', False):
+            ylabel = 'posterior'
+        else:
+            ylabel = 'posterior samples'
+
+        ax[0].set(xlabel='$\\nu$', ylabel=ylabel, title=title1)
+        ax[1].set(xlabel='$\\nu$', ylabel=ylabel, title=title2)
+
+        if show_prior:
+            try:
+                # low, upp = res.priors['Jprior'].interval(1)
+                d = kwargs.get('density', False)
+                ax[0].hist(res.priors['J_GAIA_prior'].rvs(res.ESS), density=d, alpha=0.15,
+                        color='k', zorder=-1)
+                ax[0].legend(['posterior', 'prior'])
+                ax[1].hist(res.priors['J_RV_prior'].rvs(res.ESS), density=d, alpha=0.15,
+                        color='k', zorder=-1)
+                ax[1].legend(['posterior', 'prior'])
+
+            except Exception as e:
+                print(str(e))
+
     else:
-        ylabel = 'posterior samples'
-    ax.set(xlabel='$\\nu$', ylabel=ylabel, title=title)
+        estimate = percentile68_ranges_latex(res.nu)
 
-    if show_prior:
-        try:
-            # low, upp = res.priors['Jprior'].interval(1)
-            d = kwargs.get('density', False)
-            ax.hist(res.priors['Jprior'].rvs(res.ESS), density=d, alpha=0.15,
-                    color='k', zorder=-1)
-            ax.legend(['posterior', 'prior'])
+        fig, ax = plt.subplots(1, 1, figsize=[8,6])
+        ax.hist(res.nu, **kwargs)
+        title = 'Posterior distribution for degrees of freedom $\\nu$ \n '\
+                '%s' % estimate
+        if kwargs.get('density', False):
+            ylabel = 'posterior'
+        else:
+            ylabel = 'posterior samples'
+        ax.set(xlabel='$\\nu$', ylabel=ylabel, title=title)
 
-        except Exception as e:
-            print(str(e))
+        if show_prior:
+            try:
+                # low, upp = res.priors['Jprior'].interval(1)
+                d = kwargs.get('density', False)
+                ax.hist(res.priors['Jprior'].rvs(res.ESS), density=d, alpha=0.15,
+                        color='k', zorder=-1)
+                ax.legend(['posterior', 'prior'])
+
+            except Exception as e:
+                print(str(e))
 
 def plot_RVData(data, **kwargs):
     """ Simple plot of RV data. **kwargs are passed to plt.errorbar() """
@@ -2814,13 +2854,21 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     nplanets = int(sample[res.indices['np']])
 
+    if res.model is MODELS.RVGAIAmodel:
+        da,dd,mua,mud,plx = sample[res.indices['astrometric_solution']]
+
     params = {letters[i]: {} for i in range(nplanets)}
     for i, k in enumerate(params.keys()):
         params[k]['P'] = P = sample[res.indices['planets.P']][i]
-        params[k]['K'] = K = sample[res.indices['planets.K']][i]
         params[k]['e'] = e = sample[res.indices['planets.e']][i]
         params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
         params[k]['w'] = w = sample[res.indices['planets.w']][i]
+        if res.model is MODELS.RVGAIAmodel:
+            params[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
+            params[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
+            params[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
+        else:
+            params[k]['K'] = K = sample[res.indices['planets.K']][i]
         params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
         params[k]['type'] = 'planet'
         params[k]['index'] = i + 1
@@ -2831,8 +2879,8 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         nplanets += res.nKO
         for i, k in enumerate(ko.keys()):
             ko[k]['P'] = P = sample[res.indices['KOpars']][i]
-            ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
             if res.model is MODELS.BINARIESmodel:
+                ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
                 if res.double_lined:
                     ko[k]['q'] = q = sample[res.indices['KOpars']][i + 2 * res.nKO]
                     ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 3 * res.nKO]
@@ -2850,6 +2898,12 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
                 ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
                 ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
                 ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                if res.model is MODELS.RVGAIAmodel:
+                    ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + res.nKO]
+                    ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
+                    ko[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
+                else:
+                    ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
             ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
