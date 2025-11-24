@@ -2892,7 +2892,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                sort_by_increasing_P=False, sort_by_decreasing_K=True,
                highlight=None, highlight_points=None, only=None,
                show_titles=True, sharey=False, show_gls_residuals=False,
-               show_outliers=False, fancy_ticks=False, dates='jd', date_sub=None, 
+               show_outliers=False, fancy_ticks=False, dates='BJD', date_sub=None, 
                colormap='plasma', include_jitter=False,  **kwargs):
     """
     Plot the planet phase curves, GP, and residuals, for a given `sample`.
@@ -2956,16 +2956,27 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         if res.double_lined:
             y2, e2 = res.data.y2.copy(), res.data.e2.copy()
     obs = res.data.obs.copy()
+    
+    jitters = sample[res.indices['jitter']]
+    if res.model is MODELS.RVGAIAmodel:
+        jitters = jitters[1:]
+    jitter_array = jitters[obs.astype(int) - 1]
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            jitter2_array = jitters[obs.astype(int) - 1 + res.n_instruments]
 
     if t[0] > 24e5:
         time_offset = 24e5
-        time_label = 'Time [BJD - 2400000]'
+        time_label = 'Time ['+dates+' - 2400000]'
     elif t[0] > 5e4:
         time_offset = 5e4
-        time_label = 'Time [BJD - 50000]'
+        if dates in ['mjd','MJD']:
+            time_label = 'Time ['+dates+' - 50000]'
+        else:
+            time_label = 'Time ['+dates+' - 2450000]'
     else:
         time_offset = 0
-        time_label = 'Time [BJD]'
+        time_label = 'Time ['+dates+']'
 
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
@@ -3164,6 +3175,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
         from .utils import mean_anomaly_from_epoch
 
+
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = obs == k
@@ -3176,10 +3188,17 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                 yy = (y - vv)[m]
                 ee = e[m].copy()
 
+                if include_jitter:
+                    jit = jitters[k-1]
+                    ee = np.hypot(ee,jit)
+
                 if res.model is MODELS.BINARIESmodel:
                     if res.double_lined:
                         yy2 = (y2 - vv2)[m]
                         ee2 = e2[m].copy()
+                        if include_jitter:
+                            jit2 = jitters[k-1+res.n_instruments]
+                            ee2 = np.hypot(ee2,jit2)
 
                 if colors is None:
                     # one color for each instrument
@@ -3246,19 +3265,28 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                 phase = (mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) + w) % tau
 
             yy = y - vv
+            ee = e.copy()
+            if include_jitter:
+                jit = jitters[0]
+                ee = np.hypot(ee,jit)
+
 
             for j in (-1, 0, 1):
                 alpha = 0.3 if j in (-1, 1) else 1
-                ax.errorbar(np.sort(phase) + j * tau, yy[np.argsort(phase)], e[np.argsort(phase)],
+                ax.errorbar(np.sort(phase) + j * tau, yy[np.argsort(phase)], ee[np.argsort(phase)],
                             color='C0', alpha=alpha, **ekwargs)
                 
             if res.model is MODELS.BINARIESmodel:
                 if res.double_lined:
                     yy2 = y2 - vv2
+                    ee2 = e2.copy()
+                    if include_jitter:
+                        jit2 = jitters[1]
+                        ee2 = np.hypot(ee2,jit2)
 
                     for j in (-1, 0, 1):
                         alpha = 0.3 if j in (-1, 1) else 1
-                        ax.errorbar(np.sort(phase) + j * tau, yy2[np.argsort(phase)], e2[np.argsort(phase)],
+                        ax.errorbar(np.sort(phase) + j * tau, yy2[np.argsort(phase)], ee2[np.argsort(phase)],
                                     color='C0', alpha=alpha, **e2kwargs)
 
         ax.set(xlabel=xaxis, ylabel="RV [m/s]")
@@ -3333,6 +3361,19 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
 
+    if include_jitter:
+        errors = np.hypot(res.data.e.copy(),jitter_array)
+    else:
+        errors = res.data.e.copy()
+
+    if res.model is MODELS.BINARIESmodel:
+        if res.double_lined:
+            if include_jitter:
+                errors_2 = np.hypot(res.data.e2.copy(),jitter2_array)
+            else:
+                errors_2 = res.data.e2.copy()
+
+
     if res.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
         residuals = residuals[0]
     if res.model is MODELS.BINARIESmodel:
@@ -3343,23 +3384,24 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
         ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
-                    res.data.e[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+                    errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
         if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
                 # outliers = find_outliers(res, sample) #Maybe necessary to edit the function for sb2s and include again
                 ax.errorbar(res.data.t[outliers] - time_offset, residuals2[outliers],
-                    res.data.e2[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+                    errors_2[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
     else:
         outliers = None
 
-    plot_data(res, ax=ax, y=residuals, e=res.data.e, ignore_y2=True, legend=True,
+
+    plot_data(res, ax=ax, y=residuals, e=errors, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
               highlight=highlight, **ekwargs)
 
     if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
                 plt.gca().set_prop_cycle(None)
-                plot_data(res, ax=ax, y=residuals2, e=res.data.e2, ignore_y2=True, legend=True,
+                plot_data(res, ax=ax, y=residuals2, e=errors_2, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
               highlight=highlight, secondary_star=True, **e2kwargs)
 

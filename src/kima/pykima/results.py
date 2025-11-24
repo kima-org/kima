@@ -2763,10 +2763,15 @@ class KimaResults:
                 P = pars[j + 0 * self.max_components]
                 if P == 0.0:
                     continue
-                K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
+                if self.model is MODELS.RVGAIAmodel:
+                    a0 = pars[j + 1 * self.max_components]
+                    cosi = pars[j + 5 * self.max_components]
+                    K = Kfroma0(P,a0,ecc,cosi,plx)
+                else:
+                    K = pars[j + 1 * self.max_components]
                 # print(P, K, ecc, w, phi, self.M0_epoch)
 
                 if self.model not in ONE_D_MODELS:
