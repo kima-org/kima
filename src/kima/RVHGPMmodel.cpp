@@ -369,9 +369,9 @@ void RVHGPMmodel::calculate_mu()
             mu[i] += v[i];
         
         mu_pm[0] += pm[0][0]; // pm RA Hipparcos
-        mu_pm[1] += pm[1][1]; // pm Dec Hipparcos
-        mu_pm[2] += pm[0][2]; // pm RA Gaia
-        mu_pm[3] += pm[1][3]; // pm Dec Gaia
+        mu_pm[1] += pm[1][0]; // pm Dec Hipparcos
+        mu_pm[2] += pm[0][1]; // pm RA Gaia
+        mu_pm[3] += pm[1][1]; // pm Dec Gaia
         mu_pm[4] += pm[2][0]; // pm RA Hipparcos-Gaia
         mu_pm[5] += pm[2][1]; // pm Dec Hipparcos-Gaia
     }
