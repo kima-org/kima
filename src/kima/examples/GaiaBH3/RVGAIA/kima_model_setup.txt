@@ -1,0 +1,56 @@
+; 2025-12-01 16:26:45
+
+[kima]
+model: RVGAIAmodel
+
+fix: false
+npmax: 2
+
+trend: false
+degree: 0
+multi_instrument: false
+known_object: true
+n_known_object: 1
+studentt: false
+
+
+[GAIAdata]
+file: /Users/thomasbaycroft/Documents/Python_packages/kima/src/kima/examples/GaiaBH3/RVGAIA/Gaia_astrometry_BH3.gaia
+skip: 2
+files: /,U,s,e,r,s,/,t,h,o,m,a,s,b,a,y,c,r,o,f,t,/,D,o,c,u,m,e,n,t,s,/,P,y,t,h,o,n,_,p,a,c,k,a,g,e,s,/,k,i,m,a,/,s,r,c,/,k,i,m,a,/,e,x,a,m,p,l,e,s,/,G,a,i,a,B,H,3,/,R,V,G,A,I,A,/,G,a,i,a,_,a,s,t,r,o,m,e,t,r,y,_,B,H,3,.,g,a,i,a,
+[RVdata]
+file: /Users/thomasbaycroft/Documents/Python_packages/kima/src/kima/examples/GaiaBH3/RVGAIA/Gaia_RVs_BH3.rdb
+units: kms
+skip: 2
+multi: false
+files: 
+M0_epoch: 57936.875
+
+[priors.general]
+Cprior: Uniform(-400000; -300000)
+J_GAIA_prior: ModifiedLogUniform(0.01; 0.2)
+J_RV_prior: ModifiedLogUniform(100; 10000)
+da_prior: Gaussian(4.2; 0.4)
+dd_prior: Gaussian(2.4; 0.3)
+mua_prior: Gaussian(-0.08; 0.2)
+mud_prior: Gaussian(-0.42; 0.2)
+parallax_prior: Uniform(1.3; 1.9)
+
+[priors.planets]
+Pprior: LogUniform(10; 4000)
+phiprior: Uniform(0; 6.28319)
+eprior: Kumaraswamy(0.867; 3.03)
+a0prior: ModifiedLogUniform(0.01; 2)
+omegaprior: Uniform(0; 6.28319)
+cosiprior: Uniform(-1; 1)
+Omegaprior: Uniform(0; 6.28319)
+
+[priors.known_object]
+Pprior_0: Gaussian(4280; 500)
+a0prior_0: Gaussian(27.3; 4)
+eprior_0: Gaussian(0.73; 0.04)
+phiprior_0: Uniform(0; 6.28319)
+wprior_0: Gaussian(1.36; 0.05)
+cosiprior_0: Gaussian(-0.35; 0.05)
+Wprior_0: Gaussian(2.38; 0.05)
+
