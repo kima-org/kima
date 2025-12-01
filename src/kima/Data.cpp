@@ -1025,7 +1025,7 @@ GAIAdata::GAIAdata() {};
 
 
         // epoch for the mean anomaly, by default the gaia reference time
-        M0_epoch = 57388.5;
+        M0_epoch = 57936.875;
 
         // How many points did we read?
         if (VERBOSE)
