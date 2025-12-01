@@ -442,14 +442,18 @@ void BINARIESmodel::calculate_mus()
 
 void BINARIESmodel::remove_known_object()
 {   
-    double P_anom, phi;
+    double P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        // phi = KO_phi[j] - KO_w[j];
-        phi = KO_phi[j];
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
+        if (use_binary_longitude){
+            bin_phi = KO_phi[j] - KO_w[j];
+        }
+        else{
+            bin_phi = KO_phi[j];
+        }
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
         for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] -= v[i];
@@ -460,14 +464,18 @@ void BINARIESmodel::remove_known_object()
 void BINARIESmodel::remove_known_object_sb2()
 {
     
-    double P_anom, phi;
+    double P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        // phi = KO_phi[j] - KO_w[j];
-        phi = KO_phi[j];
-        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        if (use_binary_longitude){
+            bin_phi = KO_phi[j] - KO_w[j];
+        }
+        else{
+            bin_phi = KO_phi[j];
+        }
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
         
         for(size_t i=0; i<data.t.size(); i++)
         {
@@ -480,13 +488,17 @@ void BINARIESmodel::remove_known_object_sb2()
 void BINARIESmodel::add_known_object()
 {
     
-    double P_anom, phi;
+    double P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        // phi = KO_phi[j] - KO_w[j];
-        phi = KO_phi[j];
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
+        if (use_binary_longitude){
+            bin_phi = KO_phi[j] - KO_w[j];
+        }
+        else{
+            bin_phi = KO_phi[j];
+        }
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
@@ -497,13 +509,17 @@ void BINARIESmodel::add_known_object()
 void BINARIESmodel::add_known_object_sb2()
 {
     
-    double P_anom, phi;
+    double P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
-        // phi = KO_phi[j] - KO_w[j];
-        phi = KO_phi[j];
-        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
+        if (use_binary_longitude){
+            bin_phi = KO_phi[j] - KO_w[j];
+        }
+        else{
+            bin_phi = KO_phi[j];
+        }
+        auto [v1,v2] = postKep::keplerian_prec_sb2(data.t, P_anom, KO_K[j], KO_q[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j],star_radius,binary_radius,relativistic_correction,tidal_correction);
         
 
         for(size_t i=0; i<data.t.size(); i++)
@@ -917,7 +933,11 @@ void BINARIESmodel::print(std::ostream& out) const
         for (auto K: KO_K) out << K << "\t";
         if (double_lined)
             for (auto q: KO_q) out << q << "\t";
-        for (auto phi: KO_phi) out << phi << "\t";
+        // for (auto phi: KO_phi) out << phi << "\t";
+        for (size_t i = 0; i < KO_phi.size(); ++i)
+        {
+            out << (i == 0 ? bin_phi : KO_phi[i]) << "\t";
+        }
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_w) out << w << "\t";
         for (auto wdot: KO_wdot) out <<wdot << "\t";
@@ -1151,6 +1171,7 @@ class BINARIESmodel_publicist : public BINARIESmodel
         using BINARIESmodel::tidal_correction;
         using BINARIESmodel::double_lined;
         using BINARIESmodel::eclipsing;
+        using BINARIESmodel::use_binary_longitude;
 };
 
 
@@ -1206,6 +1227,9 @@ NB_MODULE(BINARIESmodel, m) {
         //
         .def_rw("eclipsing", &BINARIESmodel_publicist::eclipsing,
                 "whether binary is eclipsing and the inclination can be fixed to 90, defaults to true. If false, default prior is uniform in cosi")
+        //
+        .def_rw("use_binary_longitude", &BINARIESmodel_publicist::use_binary_longitude,
+                "Whether to sample using the mean longitude rather than mean anomaly at epoch, for use when the binary is close to circular for better sampling")
 
         // priors
         .def_prop_rw("Cprior",

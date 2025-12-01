@@ -59,8 +59,13 @@ class KIMA_API BINARIESmodel
         
         ///Is the binary a double lined binary with RV data on both stars
         bool double_lined = false;
-        
+
+        /// Is the binary eclipsing (i.e. should the cosi be set to 0)
         bool eclipsing = true;
+
+        /// Whether to sample using the mean longitude rather than mean anomaly at epoch
+        ///for use when the binary is close to circular for better sampling
+        bool use_binary_longitude {false};
 
 
         RVData data;
@@ -87,6 +92,7 @@ class KIMA_API BINARIESmodel
         double slope, quadr=0.0, cubic=0.0;
         double extra_sigma, extra_sigma_2;
         double nu;
+        double bin_phi = 0.0;
         
 
         // Parameters for the known object, if set
