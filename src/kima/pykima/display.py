@@ -8,7 +8,6 @@ from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
 from astropy.timeseries.periodograms.lombscargle.core import LombScargle
-from pystrometry.pystrometry import get_parallax_factors
 
 from .. import MODELS
 from ..postkepler import Kfroma0
@@ -3572,8 +3571,12 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
 
 
 def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plasma',include_jitter=False):
+    try:
+        from pystrometry.pystrometry import get_parallax_factors
+    except ImportError:
+        raise ImportError('pystrometry is required for astrometry phase plots')
+
     twopi = 2 * np.pi
-    pi = np.pi
     from ..kepler import brandt_solver
 
     def ellip_rectang(t, P, e, Tper):
