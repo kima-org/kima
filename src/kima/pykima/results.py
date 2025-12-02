@@ -1941,11 +1941,11 @@ class KimaResults:
                     self.posteriors.KO.cosi = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
             elif self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
                 self.posteriors.KO.a0 = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
-                self.posteriors.KO.φ = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
-                self.posteriors.KO.e = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
-                self.posteriors.KO.w = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
-                self.posteriors.KO.cosi = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
-                self.posteriors.KO.W = self.KOpars[:, range(7*self.nKO, 8*self.nKO)]
+                self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+                self.posteriors.KO.cosi = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
+                self.posteriors.KO.W = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
             else:
                 self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
                 self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
