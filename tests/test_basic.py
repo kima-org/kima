@@ -3,15 +3,18 @@ import pytest
 from common import cleanup_after_running, path_to_test_data
 
 import numpy as np
+
+import matplotlib
+matplotlib.use('Agg')
+
 import kima
 
 
 def test_extensions_exist():
     kima.distributions
-    kima.RVData
-    kima.RVmodel
-    kima.GPmodel
-    kima.BINARIESmodel
+    kima.RVData, kima.HGPMdata, kima.GAIAdata
+    kima.RVmodel, kima.GPmodel
+    kima.BINARIESmodel, kima.GAIAmodel, kima.RVGAIAmodel
     kima.RVFWHMmodel
     kima.run
 
@@ -71,6 +74,12 @@ def test_ETVmodel(path_to_test_data):
 def test_GAIAmodel(path_to_test_data):
     D = kima.GAIAdata(path_to_test_data("simulated4.txt"))
     m = kima.GAIAmodel(True, 0, D)
+
+
+def test_RVGAIAmodel(path_to_test_data):
+    D1 = kima.GAIAdata(path_to_test_data("simulated4.txt"))
+    D2 = kima.RVData(path_to_test_data("simulated1.txt"))
+    m = kima.RVGAIAmodel(True, 0, D1, D2)
 
 
 def test_run(cleanup_after_running, path_to_test_data):
