@@ -1373,7 +1373,7 @@ NB_MODULE(Data, m) {
         .def("get_RV_var", &RVData::get_RV_var, "Get the variance of RVs")
         .def("get_RV_std", &RVData::get_RV_std, "Get the standard deviation of RVs")
         .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
-        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "Order of magnitude of trend coefficient (of degree) given the data")
+        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "degree"_a, "i"_a = -1, "Order of magnitude of trend coefficient (of degree) given the data")
         .def("get_unique_t", &RVData::get_unique_t, "Get the unique times")
         .def("_inverse_time_indices", &RVData::_inverse_time_indices, "")
         // ...
@@ -1408,7 +1408,7 @@ Args:
         
     // 
 
-    nb::class_<GAIAdata>(m, "GAIAdata", "docs")
+    nb::class_<GAIAdata>(m, "GAIAdata", "Load and store Gaia astrometric data")
         // constructor
         .def(nb::init<const string&, const string&, int, int, const string&>(),
               "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
@@ -1420,7 +1420,7 @@ Args:
         .def_prop_ro("w", [](GAIAdata &d) { return d.get_w(); }, "The observed centroid positions")
         .def_prop_ro("wsig", [](GAIAdata &d) { return d.get_wsig(); }, "The observed centroid position uncertainties")
         .def_prop_ro("psi", [](GAIAdata &d) { return d.get_psi(); }, "The Gaia scan angles")
-        .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "the parallax factors")
+        .def_prop_ro("pf", [](GAIAdata &d) { return d.get_pf(); }, "The parallax factors")
         .def_prop_ro("N", [](GAIAdata &d) { return d.N(); }, "Total number of observations")
         //
         .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly")
@@ -1429,7 +1429,7 @@ Args:
     
     // 
 
-    nb::class_<HGPMdata>(m, "HGPMdata")
+    nb::class_<HGPMdata>(m, "HGPMdata", "Load and store Hipparcos-Gaia proper motion data")
         // constructor
         .def(nb::init<unsigned long long>(), "gaia_id"_a, "Load the Hipparcos-Gaia Catalog of Accelerations")
         // 
