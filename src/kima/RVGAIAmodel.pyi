@@ -1,54 +1,58 @@
+import kima.Data
+import kima.distributions
 from _typeshed import Incomplete
 
 class RVGAIAConditionalPrior:
-    Mprior: Incomplete
-    Omegaprior: Incomplete
-    Pprior: Incomplete
-    cosiprior: Incomplete
-    eprior: Incomplete
-    omegaprior: Incomplete
-    phiprior: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    Omegaprior: kima.distributions.Distribution
+    Pprior: kima.distributions.Distribution
+    a0prior: kima.distributions.Distribution
+    cosiprior: kima.distributions.Distribution
+    eprior: kima.distributions.Distribution
+    omegaprior: kima.distributions.Distribution
+    phiprior: kima.distributions.Distribution
+    def __init__(self) -> None: ...
 
 class RVGAIAmodel:
-    Cprior: Incomplete
-    J_GAIA_prior: Incomplete
-    J_RV_prior: Incomplete
-    KO_Mprior: Incomplete
-    KO_Omegaprior: Incomplete
-    KO_Pprior: Incomplete
-    KO_cosiprior: Incomplete
-    KO_eprior: Incomplete
-    KO_omegaprior: Incomplete
-    KO_phiprior: Incomplete
+    Cprior: kima.distributions.Distribution
+    DEC: float
+    J_GAIA_prior: kima.distributions.Distribution
+    J_RV_prior: kima.distributions.Distribution
+    KO_Omegaprior: list[kima.distributions.Distribution]
+    KO_Pprior: list[kima.distributions.Distribution]
+    KO_a0prior: list[kima.distributions.Distribution]
+    KO_cosiprior: list[kima.distributions.Distribution]
+    KO_eprior: list[kima.distributions.Distribution]
+    KO_omegaprior: list[kima.distributions.Distribution]
+    KO_phiprior: list[kima.distributions.Distribution]
+    RA: float
     conditional: Incomplete
-    cubic_prior: Incomplete
-    da_prior: Incomplete
-    dd_prior: Incomplete
-    degree: Incomplete
-    directory: Incomplete
-    fix: Incomplete
-    indicator_correlations: Incomplete
-    individual_offset_prior: Incomplete
-    mua_prior: Incomplete
-    mud_prior: Incomplete
-    npmax: Incomplete
-    nu_GAIA_prior: Incomplete
-    nu_RV_prior: Incomplete
-    offsets_prior: Incomplete
-    parallax_prior: Incomplete
-    quadr_prior: Incomplete
-    slope_prior: Incomplete
-    star_mass: Incomplete
-    studentt: Incomplete
-    trend: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    cubic_prior: kima.distributions.Distribution
+    da_prior: kima.distributions.Distribution
+    dd_prior: kima.distributions.Distribution
+    degree: int
+    directory: str
+    fix: bool
+    indicator_correlations: bool
+    individual_offset_prior: list[kima.distributions.Distribution]
+    mua_prior: kima.distributions.Distribution
+    mud_prior: kima.distributions.Distribution
+    npmax: int
+    nu_GAIA_prior: kima.distributions.Distribution
+    nu_RV_prior: kima.distributions.Distribution
+    offsets_prior: kima.distributions.Distribution
+    parallax_prior: kima.distributions.Distribution
+    quadr_prior: kima.distributions.Distribution
+    slope_prior: kima.distributions.Distribution
+    star_mass: float
+    studentt: bool
+    trend: bool
+    def __init__(self, fix: bool, npmax: int, GAIAdata: kima.Data.GAIAdata, RVData: kima.Data.RVData) -> None: ...
     def set_known_object(self, *args, **kwargs): ...
     @property
-    def GAIAdata(self): ...
+    def GAIAdata(self) -> kima.Data.GAIAdata: ...
     @property
-    def RVdata(self): ...
+    def RVdata(self) -> kima.Data.RVData: ...
     @property
-    def known_object(self): ...
+    def known_object(self) -> bool: ...
     @property
-    def n_known_object(self): ...
+    def n_known_object(self) -> int: ...

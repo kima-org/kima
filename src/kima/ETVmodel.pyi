@@ -1,36 +1,38 @@
+import kima.Data
+import kima.distributions
 from _typeshed import Incomplete
 
 class ETVConditionalPrior:
-    Kprior: Incomplete
-    Pprior: Incomplete
-    eprior: Incomplete
-    phiprior: Incomplete
-    wprior: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    Kprior: kima.distributions.Distribution
+    Pprior: kima.distributions.Distribution
+    eprior: kima.distributions.Distribution
+    phiprior: kima.distributions.Distribution
+    wprior: kima.distributions.Distribution
+    def __init__(self) -> None: ...
 
 class ETVmodel:
-    Jprior: Incomplete
-    KO_Kprior: Incomplete
-    KO_Pprior: Incomplete
-    KO_eprior: Incomplete
-    KO_phiprior: Incomplete
-    KO_wprior: Incomplete
+    Jprior: kima.distributions.Distribution
+    KO_Kprior: list[kima.distributions.Distribution]
+    KO_Pprior: list[kima.distributions.Distribution]
+    KO_eprior: list[kima.distributions.Distribution]
+    KO_phiprior: list[kima.distributions.Distribution]
+    KO_wprior: list[kima.distributions.Distribution]
     conditional: Incomplete
-    directory: Incomplete
-    ephem1_prior: Incomplete
-    ephem2_prior: Incomplete
-    ephem3_prior: Incomplete
-    ephemeris: Incomplete
-    fix: Incomplete
-    npmax: Incomplete
-    nu_prior: Incomplete
-    ref_time_prior: Incomplete
-    star_mass: Incomplete
-    studentt: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    directory: str
+    ephem1_prior: kima.distributions.Distribution
+    ephem2_prior: kima.distributions.Distribution
+    ephem3_prior: kima.distributions.Distribution
+    ephemeris: int
+    fix: bool
+    npmax: int
+    nu_prior: kima.distributions.Distribution
+    ref_time_prior: kima.distributions.Distribution
+    star_mass: float
+    studentt: bool
+    def __init__(self, fix: bool, npmax: int, data: kima.Data.ETVData) -> None: ...
     @property
-    def data(self): ...
+    def data(self) -> kima.Data.ETVData: ...
     @property
-    def known_object(self): ...
+    def known_object(self) -> bool: ...
     @property
-    def n_known_object(self): ...
+    def n_known_object(self) -> int: ...

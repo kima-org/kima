@@ -1,25 +1,29 @@
+import enum
 import kima.Data
 import kima.distributions
 from _typeshed import Incomplete
+from typing import Callable, ClassVar
 
-class RVHGPMConditionalPrior:
-    Kprior: kima.distributions.Distribution
-    Omegaprior: kima.distributions.Distribution
-    Pprior: kima.distributions.Distribution
-    eprior: kima.distributions.Distribution
-    iprior: kima.distributions.Distribution
-    phiprior: kima.distributions.Distribution
-    wprior: kima.distributions.Distribution
-    def __init__(self) -> None: ...
+apod_boxcar: ApodType
+apod_gaussian: ApodType
+apod_plateau: ApodType
 
-class RVHGPMmodel:
-    AK_Kprior: list[kima.distributions.Distribution]
-    AK_Pprior: list[kima.distributions.Distribution]
-    AK_eprior: list[kima.distributions.Distribution]
-    AK_phiprior: list[kima.distributions.Distribution]
-    AK_t0prior: list[kima.distributions.Distribution]
-    AK_tauprior: list[kima.distributions.Distribution]
-    AK_wprior: list[kima.distributions.Distribution]
+class ApodType(enum.Enum):
+    __new__: ClassVar[Callable] = ...
+    _generate_next_value_: ClassVar[Callable] = ...
+    _member_map_: ClassVar[dict] = ...
+    _member_names_: ClassVar[list] = ...
+    _member_type_: ClassVar[type[object]] = ...
+    _unhashable_values_: ClassVar[list] = ...
+    _use_args_: ClassVar[bool] = ...
+    _value2member_map_: ClassVar[dict] = ...
+    _value_repr_: ClassVar[None] = ...
+    apod_boxcar: ClassVar[ApodType] = ...
+    apod_gaussian: ClassVar[ApodType] = ...
+    apod_plateau: ClassVar[ApodType] = ...
+    __nb_enum__: ClassVar[PyCapsule] = ...
+
+class ApodizedRVmodel:
     Cprior: kima.distributions.Distribution
     Jprior: kima.distributions.Distribution
     KO_Kprior: list[kima.distributions.Distribution]
@@ -32,12 +36,12 @@ class RVHGPMmodel:
     TR_Tcprior: list[kima.distributions.Distribution]
     TR_eprior: list[kima.distributions.Distribution]
     TR_wprior: list[kima.distributions.Distribution]
+    apodization: ApodType
     beta_prior: Incomplete
     conditional: Incomplete
     cubic_prior: kima.distributions.Distribution
     degree: int
     directory: str
-    enforce_stability: bool
     fix: bool
     indicator_correlations: bool
     individual_offset_prior: list[kima.distributions.Distribution]
@@ -46,9 +50,6 @@ class RVHGPMmodel:
     npmax: int
     nu_prior: kima.distributions.Distribution
     offsets_prior: kima.distributions.Distribution
-    parallax_prior: kima.distributions.Distribution
-    pm_dec_bary_prior: kima.distributions.Distribution
-    pm_ra_bary_prior: kima.distributions.Distribution
     quadr_prior: kima.distributions.Distribution
     remove_label_switching_degeneracy: bool
     slope_prior: kima.distributions.Distribution
@@ -56,24 +57,17 @@ class RVHGPMmodel:
     stellar_jitter_prior: kima.distributions.Distribution
     studentt: bool
     trend: bool
-    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData, pm_data: kima.Data.HGPMdata) -> None: ...
-    def set_apodized_keplerians(self, *args, **kwargs): ...
+    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData) -> None: ...
     def set_known_object(self, *args, **kwargs): ...
     def set_loguniform_prior_Np(self) -> None: ...
     def set_transiting_planet(self, *args, **kwargs): ...
-    @property
-    def apodized_keplerians(self) -> bool: ...
     @property
     def data(self) -> kima.Data.RVData: ...
     @property
     def known_object(self) -> bool: ...
     @property
-    def n_apodized_keplerians(self) -> int: ...
-    @property
     def n_known_object(self) -> int: ...
     @property
     def n_transiting_planet(self) -> int: ...
-    @property
-    def pm_data(self) -> kima.Data.HGPMdata: ...
     @property
     def transiting_planet(self) -> bool: ...

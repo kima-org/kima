@@ -1,23 +1,25 @@
+import kima.Data
+import kima.distributions
 from _typeshed import Incomplete
 
 class OutlierRVmodel:
-    Cprior: Incomplete
-    Jprior: Incomplete
+    Cprior: kima.distributions.Distribution
+    Jprior: kima.distributions.Distribution
     conditional: Incomplete
-    cubic_prior: Incomplete
-    degree: Incomplete
-    enforce_stability: Incomplete
-    fix: Incomplete
-    known_object: Incomplete
-    n_known_object: Incomplete
-    npmax: Incomplete
-    nu_prior: Incomplete
-    offsets_prior: Incomplete
-    quadr_prior: Incomplete
-    slope_prior: Incomplete
-    star_mass: Incomplete
-    studentt: Incomplete
-    trend: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    cubic_prior: kima.distributions.Distribution
+    degree: int
+    enforce_stability: bool
+    fix: bool
+    known_object: bool
+    n_known_object: int
+    npmax: int
+    nu_prior: kima.distributions.Distribution
+    offsets_prior: kima.distributions.Distribution
+    quadr_prior: kima.distributions.Distribution
+    slope_prior: kima.distributions.Distribution
+    star_mass: float
+    studentt: bool
+    trend: bool
+    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData) -> None: ...
     @property
-    def data(self): ...
+    def data(self) -> kima.Data.RVData: ...

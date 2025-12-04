@@ -1,58 +1,59 @@
+import kima.Data
+import kima.distributions
 from _typeshed import Incomplete
-from typing import Any
 
 class RVFWHMmodel:
-    Cfwhm_prior: Incomplete
-    Cprior: Incomplete
-    Jfwhm_prior: Incomplete
-    Jprior: Incomplete
-    KO_Kprior: Incomplete
-    KO_Pprior: Incomplete
-    KO_eprior: Incomplete
-    KO_phiprior: Incomplete
-    KO_wprior: Incomplete
-    TR_Kprior: Incomplete
-    TR_Pprior: Incomplete
-    TR_Tcprior: Incomplete
-    TR_eprior: Incomplete
-    TR_wprior: Incomplete
+    Cfwhm_prior: kima.distributions.Distribution
+    Cprior: kima.distributions.Distribution
+    Jfwhm_prior: kima.distributions.Distribution
+    Jprior: kima.distributions.Distribution
+    KO_Kprior: list[kima.distributions.Distribution]
+    KO_Pprior: list[kima.distributions.Distribution]
+    KO_eprior: list[kima.distributions.Distribution]
+    KO_phiprior: list[kima.distributions.Distribution]
+    KO_wprior: list[kima.distributions.Distribution]
+    TR_Kprior: list[kima.distributions.Distribution]
+    TR_Pprior: list[kima.distributions.Distribution]
+    TR_Tcprior: list[kima.distributions.Distribution]
+    TR_eprior: list[kima.distributions.Distribution]
+    TR_wprior: list[kima.distributions.Distribution]
     conditional: Incomplete
-    cubic_fwhm_prior: Incomplete
-    cubic_prior: Incomplete
-    degree: Incomplete
-    degree_fwhm: Incomplete
-    directory: Incomplete
-    enforce_stability: Incomplete
-    eta1_fwhm_prior: Incomplete
-    eta1_prior: Incomplete
-    eta2_fwhm_prior: Incomplete
-    eta2_prior: Incomplete
-    eta3_fwhm_prior: Incomplete
-    eta3_prior: Incomplete
-    eta4_fwhm_prior: Incomplete
-    eta4_prior: Incomplete
-    fix: Incomplete
-    npmax: Incomplete
-    quadr_fwhm_prior: Incomplete
-    quadr_prior: Incomplete
-    share_eta2: Incomplete
-    share_eta3: Incomplete
-    share_eta4: Incomplete
-    slope_fwhm_prior: Incomplete
-    slope_prior: Incomplete
-    star_mass: Incomplete
-    trend: Any
-    trend_fwhm: Incomplete
-    def __init__(self, *args, **kwargs) -> None: ...
+    cubic_fwhm_prior: kima.distributions.Distribution
+    cubic_prior: kima.distributions.Distribution
+    degree: int
+    degree_fwhm: int
+    directory: str
+    enforce_stability: bool
+    eta1_fwhm_prior: kima.distributions.Distribution
+    eta1_prior: kima.distributions.Distribution
+    eta2_fwhm_prior: kima.distributions.Distribution
+    eta2_prior: kima.distributions.Distribution
+    eta3_fwhm_prior: kima.distributions.Distribution
+    eta3_prior: kima.distributions.Distribution
+    eta4_fwhm_prior: kima.distributions.Distribution
+    eta4_prior: kima.distributions.Distribution
+    fix: bool
+    npmax: int
+    quadr_fwhm_prior: kima.distributions.Distribution
+    quadr_prior: kima.distributions.Distribution
+    share_eta2: bool
+    share_eta3: bool
+    share_eta4: bool
+    slope_fwhm_prior: kima.distributions.Distribution
+    slope_prior: kima.distributions.Distribution
+    star_mass: float
+    trend: bool
+    trend_fwhm: bool
+    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData) -> None: ...
     def set_known_object(self, *args, **kwargs): ...
     def set_transiting_planet(self, *args, **kwargs): ...
     @property
-    def data(self): ...
+    def data(self) -> kima.Data.RVData: ...
     @property
-    def known_object(self): ...
+    def known_object(self) -> bool: ...
     @property
-    def n_known_object(self): ...
+    def n_known_object(self) -> int: ...
     @property
-    def n_transiting_planet(self): ...
+    def n_transiting_planet(self) -> int: ...
     @property
-    def transiting_planet(self): ...
+    def transiting_planet(self) -> bool: ...
