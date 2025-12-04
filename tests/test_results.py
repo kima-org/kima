@@ -1,3 +1,4 @@
+import os
 from common import cleanup_after_running, path_to_test_data, simulated1
 import numpy as np
 
@@ -60,7 +61,8 @@ def test_pickling(cleanup_after_running, simulated1):
 
     res = kima.load_results(m)
     pkl = res.save_pickle()
-    print(pkl)
+    os.remove(pkl)
+
 
 def test_log_posterior(cleanup_after_running, simulated1):
     m = kima.RVmodel(True, 0, simulated1)
