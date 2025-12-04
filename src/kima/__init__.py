@@ -3,15 +3,23 @@
 
 __all__ = [
     'RVData', 'PHOTdata', 'GAIAdata', 'ETVData', 'HGPMdata',
-    'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 'BINARIESmodel',
-    'GAIAmodel', 'RVGAIAmodel',
+    'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 
+    'BINARIESmodel', 'GAIAmodel', 'RVGAIAmodel',
     'MODELS',
     'keplerian', 'post_keplerian', 'distributions',
-    'run', 'load_results',
+    'run', 'load_results', 'chdir',
 ]
+
+from importlib.metadata import version, PackageNotFoundError
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    __version__ = None
 
 import sys
 from enum import Enum
+
+from .pykima.utils import chdir
 
 from .Data import RVData, PHOTdata, GAIAdata, ETVData
 from .Data import HGPMdata as HGPMdata_original
