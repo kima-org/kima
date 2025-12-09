@@ -1813,17 +1813,28 @@ class KimaResults:
         index_component = self.index_component
 
         if max_components > 0:
+            # periods
+            s = self.indices["planets.P"]
+            self.posteriors.P = self.posterior_sample[:, s]
+            self._priors.P = self.priors["Pprior"]
 
-            if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
-                #periods
-                s = self.indices['planets.P']
-                self.posteriors.P = self.posterior_sample[:, s]
-                self._priors.P = self.priors['Pprior']
+            # RV semi-amplitudes
+            models_with_K = (
+                MODELS.RVmodel,
+                MODELS.GPmodel,
+                MODELS.RVHGPMmodel,
+                MODELS.BINARIESmodel,
+            )
+            if self.model in models_with_K:
+                # amplitudes
+                s = self.indices["planets.K"]
+                self.posteriors.K = self.posterior_sample[:, s]
+                self._priors.K = self.priors["Kprior"]
 
-                # eccentricities
-                s = self.indices['planets.e']
-                self.posteriors.e = self.posterior_sample[:, s]
-                self._priors.e = self.priors['eprior']
+            # eccentricities
+            s = self.indices["planets.e"]
+            self.posteriors.e = self.posterior_sample[:, s]
+            self._priors.e = self.priors["eprior"]
 
                 # phases
                 s = self.indices['planets.φ']
@@ -1927,12 +1938,12 @@ class KimaResults:
             if self.model is MODELS.BINARIESmodel:
                 self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
                 if self.double_lined:
-                    self.posteriors.KO.q = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
-                    self.posteriors.KO.φ = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
-                    self.posteriors.KO.e = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
-                    self.posteriors.KO.w = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
-                    self.posteriors.KO.wdot = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
-                    self.posteriors.KO.cosi = self.KOpars[:, range(7*self.nKO, 8*self.nKO)]
+                    self.posteriors.KO.q = self.KOpars[:, range(2 * self.nKO, 3 * self.nKO)]
+                    self.posteriors.KO.φ = self.KOpars[:, range(3 * self.nKO, 4 * self.nKO)]
+                    self.posteriors.KO.e = self.KOpars[:, range(4 * self.nKO, 5 * self.nKO)]
+                    self.posteriors.KO.w = self.KOpars[:, range(5 * self.nKO, 6 * self.nKO)]
+                    self.posteriors.KO.wdot = self.KOpars[:, range(6 * self.nKO, 7 * self.nKO)]
+                    self.posteriors.KO.cosi = self.KOpars[:, range(7 * self.nKO, 8 * self.nKO)]
                 else:
                     self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
                     self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
@@ -1957,12 +1968,12 @@ class KimaResults:
         if self.TR:
             self.posteriors.TR = posterior_holder()
             self._priors.TR = prior_holder()
-            self.posteriors.TR.__doc__ = self._priors.TR.__doc__ = 'Transiting planet parameters'
-            self.posteriors.TR.P = self.TRpars[:, range(0*self.nTR, 1*self.nTR)]
-            self.posteriors.TR.K = self.TRpars[:, range(1*self.nTR, 2*self.nTR)]
-            self.posteriors.TR.Tc = self.TRpars[:, range(2*self.nTR, 3*self.nTR)]
-            self.posteriors.TR.e = self.TRpars[:, range(3*self.nTR, 4*self.nTR)]
-            self.posteriors.TR.w = self.TRpars[:, range(4*self.nTR, 5*self.nTR)]
+            self.posteriors.TR.__doc__ = self._priors.TR.__doc__ = ("Transiting planet parameters")
+            self.posteriors.TR.P = self.TRpars[:, range(0 * self.nTR, 1 * self.nTR)]
+            self.posteriors.TR.K = self.TRpars[:, range(1 * self.nTR, 2 * self.nTR)]
+            self.posteriors.TR.Tc = self.TRpars[:, range(2 * self.nTR, 3 * self.nTR)]
+            self.posteriors.TR.e = self.TRpars[:, range(3 * self.nTR, 4 * self.nTR)]
+            self.posteriors.TR.w = self.TRpars[:, range(4 * self.nTR, 5 * self.nTR)]
             for i in range(self.nTR):
                 setattr(self._priors.TR, f'P{i}', self.priors[f'TR_Pprior_{i}'])
                 setattr(self._priors.TR, f'K{i}', self.priors[f'TR_Kprior_{i}'])
