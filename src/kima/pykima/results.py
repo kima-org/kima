@@ -546,28 +546,28 @@ class KimaResults:
                 GAIA_data = model.GAIAdata
             self.RVdata = data_holder()
             self.data = self.RVdata
-            self.data.t = np.array(np.copy(RV_data.t))
-            self.data.y = np.array(np.copy(RV_data.y))
-            self.data.e = np.array(np.copy(RV_data.sig))            
-            self.data.obs = np.array(np.copy(RV_data.obsi))
+            self.data.t = np.copy(RV_data.t)
+            self.data.y = np.copy(RV_data.y)
+            self.data.e = np.copy(RV_data.sig)
+            self.data.obs = np.copy(RV_data.obsi)
             self.data.N = RV_data.N
 
             self.GAIAdata = astrometric_data_holder()
-            self.GAIAdata.t = np.array(np.copy(GAIA_data.t))
-            self.GAIAdata.w = np.array(np.copy(GAIA_data.w))
-            self.GAIAdata.wsig = np.array(np.copy(GAIA_data.wsig))
-            self.GAIAdata.psi = np.array(np.copy(GAIA_data.psi))
-            self.GAIAdata.pf = np.array(np.copy(GAIA_data.pf))
+            self.GAIAdata.t = np.copy(GAIA_data.t)
+            self.GAIAdata.w = np.copy(GAIA_data.w)
+            self.GAIAdata.wsig = np.copy(GAIA_data.wsig)
+            self.GAIAdata.psi = np.copy(GAIA_data.psi)
+            self.GAIAdata.pf = np.copy(GAIA_data.pf)
             self.GAIAdata.N = GAIA_data.N
 
         else:
             if data is None:
                 data = model.data
             self.data = data_holder()
-            self.data.t = np.array(np.copy(data.t))
-            self.data.y = np.array(np.copy(data.y))
-            self.data.e = np.array(np.copy(data.sig))            
-            self.data.obs = np.array(np.copy(data.obsi))
+            self.data.t = np.copy(data.t)
+            self.data.y = np.copy(data.y)
+            self.data.e = np.copy(data.sig)
+            self.data.obs = np.copy(data.obsi)
             self.data.N = data.N
 
         # arbitrary units?
