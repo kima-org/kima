@@ -521,11 +521,11 @@ class KimaResults:
                 data = model.data
             self.GAIAdata = astrometric_data_holder()
             self.data = self.GAIAdata
-            self.GAIAdata.t = np.array(np.copy(data.t))
-            self.GAIAdata.w = np.array(np.copy(data.w))
-            self.GAIAdata.wsig = np.array(np.copy(data.wsig))
-            self.GAIAdata.psi = np.array(np.copy(data.psi))
-            self.GAIAdata.pf = np.array(np.copy(data.pf))
+            self.GAIAdata.t = np.copy(data.t)
+            self.GAIAdata.w = np.copy(data.w)
+            self.GAIAdata.wsig = np.copy(data.wsig)
+            self.GAIAdata.psi = np.copy(data.psi)
+            self.GAIAdata.pf = np.copy(data.pf)
             self.GAIAdata.N = data.N
             self.data_type = 'GAIA'
 
