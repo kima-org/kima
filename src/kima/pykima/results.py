@@ -4019,12 +4019,12 @@ class KimaResults:
         """
         # part of this code from UltraNest:
         # https://github.com/JohannesBuchner/UltraNest/
-        # 
+        #
         def print_header():
-            print('    ', end='')
-            print('%-15s' % 'parameter', end=': ')
-            print('%-20s' % 'median ± std', end=' ')
-            print('Ͱ', end=' ')
+            print("    ", end="")
+            print("%-15s" % "parameter", end=": ")
+            print("%-20s" % "median ± std", end=" ")
+            print("Ͱ", end=" ")
             if show_prior:
                 print('%-24s' % 'prior', end=' ')
             print(' distribution '.center(60), end=' ')
@@ -4034,9 +4034,9 @@ class KimaResults:
             if isinstance(prior, distributions.Fixed):
                 print(f'    {p:<15s}: {v[0]:<20.3f} Ͱ', end=' ')
                 if show_prior:
-                    print(f'{str(prior):<24s}')
+                    print(f"{str(prior):<24s}")
                 else:
-                    print('%10s' % 'Fixed')
+                    print("%10s" % "Fixed")
                 return
 
             sigma, med = np.std(v), np.median(v)
