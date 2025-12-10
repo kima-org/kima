@@ -78,12 +78,21 @@ Args:
 )D";
 
 
-#define RUN_SIGNATURE(name) \
-    [](name &m, unsigned int steps=100, unsigned int num_threads=1, unsigned int num_particles=1, \
-                unsigned int new_level_interval=2000, unsigned int save_interval=100,             \
-                unsigned int thread_steps=10,                                                     \
-                unsigned int max_num_levels=0, double lambda_=10.0, double beta=100.0,            \
-                double compression=exp(1.0), unsigned int seed=0, unsigned int print_thin=50)
+#define RUN_SIGNATURE(name)                             \
+    [](name &m, unsigned int steps=100,                 \
+                unsigned int num_threads=1,             \
+                unsigned int num_particles=1,           \
+                unsigned int new_level_interval=2000,   \
+                unsigned int save_interval=100,         \
+                unsigned int thread_steps=10,           \
+                unsigned int max_num_levels=0,          \
+                double lambda_=10.0, double beta=100.0, \
+                double compression=exp(1.0),            \
+                unsigned int seed=0,                    \
+                unsigned int print_thin=50,             \
+                bool progress=false)
+
+
 
 #define RUN_BODY(name) \
     const auto opt = Options(num_particles, new_level_interval, save_interval,          \
@@ -107,19 +116,13 @@ Args:
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);  \
     std::cout << "# Took " << duration.count() / 1000.0 << " seconds" << std::endl;
 
-// this should work, but doesn't...
-// for (;;) {                                                                          
-//     if (PyErr_CheckSignals() != 0)                                                  
-//         throw nb::python_error();                                                   
-//     sampler.run(print_thin);                                                        
-// }                                                                                   
 
 #define RUN_ARGS \
-    "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,               \
-    "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10,    \
-    "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,                     \
-    "compression"_a=exp(1.0), "seed"_a=0,                                       \
-    "print_thin"_a=50
+    "m"_a, "steps"_a=100, "num_threads"_a=1, "num_particles"_a=1,            \
+    "new_level_interval"_a=2000, "save_interval"_a=100, "thread_steps"_a=10, \
+    "max_num_levels"_a=0, "lambda_"_a=10.0, "beta"_a=100.0,                  \
+    "compression"_a=exp(1.0), "seed"_a=0, "print_thin"_a=50,                 \
+    "progress"_a=false
 
 
 
