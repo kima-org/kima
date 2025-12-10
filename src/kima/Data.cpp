@@ -1116,6 +1116,9 @@ HGPMdata::HGPMdata() {};
         if (n_average == 1) {
             return {epoch_ra_hip, epoch_dec_hip, epoch_ra_gaia, epoch_dec_gaia};
         }
+        else {
+            throw std::runtime_error("n_average must be 1");
+        }
     }
 
     hgca_data HGPMdata::get_data(uint64_t target_id)
