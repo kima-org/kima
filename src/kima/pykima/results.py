@@ -1836,53 +1836,54 @@ class KimaResults:
             self.posteriors.e = self.posterior_sample[:, s]
             self._priors.e = self.priors["eprior"]
 
-                # phases
-                s = self.indices['planets.φ']
-                φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
-                self.posteriors.φ_deg = np.rad2deg(φ)
-                self._priors.φ = self.priors['phiprior']
+            # phases
+            s = self.indices['planets.φ']
+            φ = self.posteriors.φ = self.posteriors._phi = self.posterior_sample[:, s]
+            self.posteriors.φ_deg = np.rad2deg(φ)
+            self._priors.φ = self.priors['phiprior']
 
-                if self.thiele_innes:
-                    s = self.indices['planets.A']
-                    self.posteriors.A = self.posterior_sample[:,s]
-                    self._priors.A = self.priors['Aprior']
+            if self.thiele_innes:
+                s = self.indices['planets.A']
+                self.posteriors.A = self.posterior_sample[:,s]
+                self._priors.A = self.priors['Aprior']
 
-                    s = self.indices['planets.B']
-                    self.posteriors.B = self.posterior_sample[:,s]
-                    self._priors.B = self.priors['Bprior']
+                s = self.indices['planets.B']
+                self.posteriors.B = self.posterior_sample[:,s]
+                self._priors.B = self.priors['Bprior']
 
-                    s = self.indices['planets.F']
-                    self.posteriors.F = self.posterior_sample[:,s]
-                    self._priors.F = self.priors['Fprior']
+                s = self.indices['planets.F']
+                self.posteriors.F = self.posterior_sample[:,s]
+                self._priors.F = self.priors['Fprior']
 
-                    s = self.indices['planets.G']
-                    self.posteriors.G = self.posterior_sample[:,s]
-                    self._priors.G = self.priors['Gprior']
-                else:
-                    #a0s 
-                    s = self.indices['planets.a0']
-                    self.posteriors.a0 = self.posterior_sample[:, s]
-                    self._priors.a0 = self.priors['a0prior']
+                s = self.indices['planets.G']
+                self.posteriors.G = self.posterior_sample[:,s]
+                self._priors.G = self.priors['Gprior']
+            else:
+                #a0s 
+                s = self.indices['planets.a0']
+                self.posteriors.a0 = self.posterior_sample[:, s]
+                self._priors.a0 = self.priors['a0prior']
 
-                    # omegas
-                    s = self.indices['planets.w']
-                    w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
-                    self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
-                    self._priors.w = self.priors['omegaprior']
+                # omegas
+                s = self.indices['planets.w']
+                w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+                self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
+                self._priors.w = self.priors['omegaprior']
 
-                    # cosi
-                    s = self.indices['planets.cosi']
-                    cosi = self.posteriors.cosi = self.posteriors.cosi = self.posterior_sample[:, s]
-                    self.posteriors.i_deg = self.posteriors.i_deg = np.rad2deg(np.arccos(cosi))
-                    self._priors.cosi = self.priors['cosiprior']
+                # cosi
+                s = self.indices['planets.cosi']
+                cosi = self.posteriors.cosi = self.posteriors.cosi = self.posterior_sample[:, s]
+                self.posteriors.i_deg = self.posteriors.i_deg = np.rad2deg(np.arccos(cosi))
+                self._priors.cosi = self.priors['cosiprior']
 
-                    #Omegas
-                    s = self.indices['planets.W']
-                    W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
-                    self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                    self._priors.W = self.priors['Omegaprior']
-                if self.model is MODELS.RVGAIAmodel:
-                    self.posteriors.K = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
+                #Omegas
+                s = self.indices['planets.W']
+                W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
+                self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
+                self._priors.W = self.priors['Omegaprior']
+
+            if self.model is MODELS.RVGAIAmodel:
+                self.posteriors.K = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
 
 
             ### Also add ETV ones
