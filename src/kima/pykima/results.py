@@ -1842,51 +1842,52 @@ class KimaResults:
             self.posteriors.φ_deg = np.rad2deg(φ)
             self._priors.φ = self.priors['phiprior']
 
-            if self.thiele_innes:
-                s = self.indices['planets.A']
-                self.posteriors.A = self.posterior_sample[:,s]
-                self._priors.A = self.priors['Aprior']
+            if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                if self.thiele_innes:
+                    s = self.indices['planets.A']
+                    self.posteriors.A = self.posterior_sample[:,s]
+                    self._priors.A = self.priors['Aprior']
 
-                s = self.indices['planets.B']
-                self.posteriors.B = self.posterior_sample[:,s]
-                self._priors.B = self.priors['Bprior']
+                    s = self.indices['planets.B']
+                    self.posteriors.B = self.posterior_sample[:,s]
+                    self._priors.B = self.priors['Bprior']
 
-                s = self.indices['planets.F']
-                self.posteriors.F = self.posterior_sample[:,s]
-                self._priors.F = self.priors['Fprior']
+                    s = self.indices['planets.F']
+                    self.posteriors.F = self.posterior_sample[:,s]
+                    self._priors.F = self.priors['Fprior']
 
-                s = self.indices['planets.G']
-                self.posteriors.G = self.posterior_sample[:,s]
-                self._priors.G = self.priors['Gprior']
-            else:
-                #a0s 
-                s = self.indices['planets.a0']
-                self.posteriors.a0 = self.posterior_sample[:, s]
-                self._priors.a0 = self.priors['a0prior']
+                    s = self.indices['planets.G']
+                    self.posteriors.G = self.posterior_sample[:,s]
+                    self._priors.G = self.priors['Gprior']
+                else:
+                    #a0s 
+                    s = self.indices['planets.a0']
+                    self.posteriors.a0 = self.posterior_sample[:, s]
+                    self._priors.a0 = self.priors['a0prior']
 
-                # omegas
-                s = self.indices['planets.w']
-                w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
-                self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
-                self._priors.w = self.priors['omegaprior']
+                    # omegas
+                    s = self.indices['planets.w']
+                    w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
+                    self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
+                    self._priors.w = self.priors['omegaprior']
 
-                # cosi
-                s = self.indices['planets.cosi']
-                cosi = self.posteriors.cosi = self.posteriors.cosi = self.posterior_sample[:, s]
-                self.posteriors.i_deg = self.posteriors.i_deg = np.rad2deg(np.arccos(cosi))
-                self._priors.cosi = self.priors['cosiprior']
+                    # cosi
+                    s = self.indices['planets.cosi']
+                    cosi = self.posteriors.cosi = self.posteriors.cosi = self.posterior_sample[:, s]
+                    self.posteriors.i_deg = self.posteriors.i_deg = np.rad2deg(np.arccos(cosi))
+                    self._priors.cosi = self.priors['cosiprior']
 
-                #Omegas
-                s = self.indices['planets.W']
-                W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
-                self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                self._priors.W = self.priors['Omegaprior']
+                    #Omegas
+                    s = self.indices['planets.W']
+                    W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
+                    self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
+                    self._priors.W = self.priors['Omegaprior']
 
-            if self.model is MODELS.RVGAIAmodel:
-                _Kfroma0 = np.vectorize(Kfroma0)
-                self.posteriors.K = _Kfroma0(self.posteriors.P, self.posteriors.a0,
-                                             self.posteriors.e, self.posteriors.cosi,
-                                             self.posteriors.plx.reshape(-1, 1))
+                if self.model is MODELS.RVGAIAmodel:
+                    _Kfroma0 = np.vectorize(Kfroma0)
+                    self.posteriors.K = _Kfroma0(self.posteriors.P, self.posteriors.a0,
+                                                self.posteriors.e, self.posteriors.cosi,
+                                                self.posteriors.plx.reshape(-1, 1))
 
             ### Also add ETV ones
             else:
