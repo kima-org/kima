@@ -197,7 +197,7 @@ void GAIAmodel::calculate_mu()
             G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
         }
         
-        auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, ecc, P, phi, data.M0_epoch);
+        auto wk = brandt::keplerian_gaia(data.t, data.psi, A, B, F, G, ecc, P, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
             mu[i] += wk[i];
 
