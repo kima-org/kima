@@ -28,12 +28,13 @@ def _51Peg(run=False, load=False, **kwargs):
     kwargs.setdefault('num_particles', 2)
     kwargs.setdefault('new_level_interval', 2000)
     kwargs.setdefault('save_interval', 500)
+    diagnostic = kwargs.pop('diagnostic', False)
 
     with chdir(here):
         if run:
             kima.run(model, **kwargs)
         if load:
-            res = kima.load_results(model)
+            res = kima.load_results(model, diagnostic=diagnostic)
             return model, res
     return model
 
