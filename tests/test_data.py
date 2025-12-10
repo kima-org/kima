@@ -114,6 +114,9 @@ def test_bad_file(path_to_test_data):
 
 def test_ETVData(path_to_test_data):
     D = kima.ETVData(path_to_test_data('simulated3.txt'))
+    assert_equal(D.N, 20)
 
 def test_GaiaData(path_to_test_data):
     D = kima.GAIAdata(path_to_test_data('simulated4.txt'))
+    assert_equal(D.N, 13)
+    assert_allclose(D.psi[0], -1.030560)
