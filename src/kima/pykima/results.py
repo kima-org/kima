@@ -1883,8 +1883,10 @@ class KimaResults:
                 self._priors.W = self.priors['Omegaprior']
 
             if self.model is MODELS.RVGAIAmodel:
-                self.posteriors.K = np.array([[Kfroma0(self.posteriors.P[i][j], self.posteriors.a0[i][j], self.posteriors.e[i][j], self.posteriors.cosi[i][j], self.posteriors.plx[i]) for j in range(len(self.posteriors.P[i]))] for i in range(len(self.posteriors.P))])
-
+                _Kfroma0 = np.vectorize(Kfroma0)
+                self.posteriors.K = _Kfroma0(self.posteriors.P, self.posteriors.a0,
+                                             self.posteriors.e, self.posteriors.cosi,
+                                             self.posteriors.plx.reshape(-1, 1))
 
             ### Also add ETV ones
             else:
