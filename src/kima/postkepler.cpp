@@ -34,7 +34,7 @@ namespace postKep
         double m1 = M1 * 1047.5655; //in jupiter mass
         double m01 = (M0 + M1); //in solar mass
         
-        return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2.0/3)*pow(P/365,-1.0/3);
+        return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2.0/3)*pow(P/365.25,-1.0/3);
     }
     
     inline double f_M(double K,double M0, double M1, double P, double ecc)
@@ -51,17 +51,17 @@ namespace postKep
         double m1 = M1 * MjMs; //in jupiter mass
         double m01 = (M0 + M1); //in solar mass
     
-        double f_dash_1 = 28.4329*pow((1-pow(ecc,2.0)),-0.5)*MjMs*pow(m01,-2.0/3)*pow(P/365,-1.0/3);
-        double f_dash_2 = -2*28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-5.0/3)*pow(P/365,-1.0/3)/3;
+        double f_dash_1 = 28.4329*pow((1-pow(ecc,2.0)),-0.5)*MjMs*pow(m01,-2.0/3)*pow(P/365.25,-1.0/3);
+        double f_dash_2 = -2*28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-5.0/3)*pow(P/365.25,-1.0/3)/3;
     
         return f_dash_1 - f_dash_2;
     }
 
     inline double get_K2_v2(double K1, double M, double P, double ecc)
     {
-        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365),1.0/3)/1047.5655;
+        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365.25),1.0/3)/1047.5655;
         double k = semiamp(M, M_est, P, ecc);
-        while(abs(k-K1)>50)
+        while(abs(k-K1)>0.1)
         {
             M_est = M_est - f_M(K1, M, M_est, P, ecc)/f_dash_M(K1, M, M_est, P, ecc);
             k = semiamp(M, M_est, P, ecc);
@@ -74,7 +74,7 @@ namespace postKep
 
     inline double get_K2_v1(double K1, double M, double P, double ecc)
     {
-        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365),1.0/3)/1047.5655;
+        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365.25),1.0/3)/1047.5655;
         double a = M_est/3;
         double b = M_est*3;
         double c = (a+b)/2;
