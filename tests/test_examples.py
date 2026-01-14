@@ -1,6 +1,14 @@
 import pytest
 from common import cleanup_after_running
 
+def test_example_imports():
+    from kima.examples import _51Peg
+    from kima.examples import multi_instruments
+    from kima.examples.TIC172900988 import TIC172900988
+    from kima.examples.GaiaBH3 import GAIA, GAIA_free, RVGAIA
+    from kima.examples.GaiaBH3 import Gaia_astrometry_BH3_datafile, Gaia_RVs_BH3_datafile
+
+
 def test_51Peg():
     from kima.examples import _51Peg
 
