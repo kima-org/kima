@@ -176,13 +176,15 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         P = float(P)
         # calculate for one value of the orbital period
         # then K, e, and star_mass should also be floats
-        assert isinstance(K, float) and isinstance(e, float)
+        assert isinstance(K, float) and isinstance(e, float), \
+            "K and e should be floats if P is a float"
         uncertainty_star_mass = False
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # TODO: why 20000?
             star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
             uncertainty_star_mass = True
 
-        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = C * star_mass ** (2.0 / 3) * P ** (1.0 / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
         if uncertainty_star_mass:
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
@@ -196,7 +198,7 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
 
-        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = C * star_mass ** (2.0 / 3) * P ** (1.0 / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
@@ -348,26 +350,31 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.nd
     # gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
     f = 0.0666378476025686
 
-    if isinstance(P, float):
+    try:
+        P = float(P)
         # calculate for one value of the orbital period
         # then K and star_mass should also be floats
-        assert isinstance(K, float)
+        assert isinstance(K, float), "K must be a float when P is a float"
         uncertainty_star_mass = False
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
             uncertainty_star_mass = True
 
-        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+        a = f * star_mass ** (1.0 / 3) * (P / (2 * np.pi)) ** (2.0 / 3)
 
         if uncertainty_star_mass:
             return a.mean(), a.std()
 
         return a  # in AU
 
-    else:
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
-        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
+
+        a = f * star_mass ** (1.0 / 3) * (P / (2 * np.pi)) ** (2.0 / 3)
 
         if full_output:
             return a.mean(), a.std(), a
