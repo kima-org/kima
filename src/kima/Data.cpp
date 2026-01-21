@@ -159,11 +159,11 @@ RVData::RVData(const vector<vector<double>> _t,
     _datafiles = {};
     _units = units;
     _skip = 0;
-    _multi = true;
+    _multi = _t.size() > 1;
     _indicator_names = {};
     number_indicators = 0;
     number_instruments = static_cast<int>(_t.size());
-    _instrument = "";
+    _instrument = _t.size() == 1 ? instruments[0] : "";
     _instruments = instruments;
 
     if (units == "kms")
