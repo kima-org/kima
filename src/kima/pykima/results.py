@@ -641,8 +641,8 @@ class KimaResults:
             self.data.instrument = data.instrument
             if data.instrument == 's':
                 self.data.instrument = 'RVdata' #Hack for double lined binaries where the if only one instrument it wasn't defined
-        if self.multi and len(data.instruments) > 0:
-            self.instruments = data.instruments
+            if len(data.instruments) > 0:
+                self.instruments = data.instruments
 
         try:
             self.posterior_lnlike = np.atleast_2d(
