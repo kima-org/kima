@@ -411,7 +411,7 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     """
     Calculate the planet (minimum) mass Msini and the semi-major axis given
     orbital period `P`, semi-amplitude `K`, eccentricity `e`, and stellar mass.
-    If star_mass is a tuple with (estimate, uncertainty), this (Gaussian)
+    If `star_mass` is a tuple with (estimate, uncertainty), this (Gaussian)
     uncertainty will be taken into account in the calculation.
 
     Units:
@@ -419,16 +419,20 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
         K [m/s]
         e []
         star_mass [Msun]
+
     Returns:
         (M, A) where
-            M is the output of get_planet_mass
-            A is the output of get_planet_semimajor_axis
+            M is the output of `get_planet_mass`
+            A is the output of `get_planet_semimajor_axis`
     """
-    # this is just a convenience function for calling
-    # get_planet_mass and get_planet_semimajor_axis
 
     if verbose:
         print('Using star mass = %s solar mass' % star_mass)
+
+    if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+        # include (Gaussian) uncertainty on the stellar mass
+        star_mass = star_mass_samples(*star_mass, P.shape[0])
+        star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
 
     mass = get_planet_mass(P, K, e, star_mass, full_output)
     a = get_planet_semimajor_axis(P, K, star_mass, full_output)
