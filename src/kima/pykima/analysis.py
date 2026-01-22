@@ -170,25 +170,32 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         s_Msini (float):
             posterior standard deviation for the planet mass, in $M_{\rm Earth}$
     """
-    C = 4.919e-3
+    from astropy.constants import G
+    from astropy import units as u
+    ms = u.meter / u.second
+    C = (ms * u.day**(1/3) * u.solMass**(2/3) / (2*np.pi*G)**(1/3)).to(u.jupiterMass).value
+    if isinstance(P, float):
+        C = float(C)
 
     try:
-        P = float(P)
         # calculate for one value of the orbital period
-        # then K, e, and star_mass should also be floats
-        assert isinstance(K, float) and isinstance(e, float), \
-            "K and e should be floats if P is a float"
-        uncertainty_star_mass = False
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            # TODO: why 20000?
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
-            uncertainty_star_mass = True
+        P = float(P)
+        # then K and e should also be floats
+        try:
+            K, e = float(K), float(e)
+        except TypeError:
+            raise TypeError("K and e should be floats if P is a float")
 
-        m_mj = C * star_mass ** (2.0 / 3) * P ** (1.0 / 3) * K * np.sqrt(1 - e**2)
-        m_me = m_mj * mjup2mearth
-        if uncertainty_star_mass:
-            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            m_mj = C * star_mass[0]**(2/3) * P**(1/3) * K * np.sqrt(1 - e**2)
+            # error propagation:
+            m_mj_err = m_mj * (2/3) * star_mass[1] / star_mass[0]
+            m_me = m_mj * mjup2mearth
+            m_me_err = m_mj_err * mjup2mearth
+            return (m_mj, m_mj_err), (m_me, m_me_err)
         else:
+            m_mj = C * star_mass**(2/3) * P**(1/3) * K * np.sqrt(1 - e**2)
+            m_me = m_mj * mjup2mearth
             return m_mj, m_me
 
     except TypeError:
@@ -196,9 +203,13 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         P = np.atleast_1d(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
 
-        m_mj = C * star_mass ** (2.0 / 3) * P ** (1.0 / 3) * K * np.sqrt(1 - e**2)
+        m_mj = C * star_mass**(2/3) * P**(1/3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
