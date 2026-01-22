@@ -314,8 +314,9 @@ def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarra
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
 
 
-def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
-                              star_mass: Union[float, tuple] = 1.0, full_output=False):
+def get_planet_semimajor_axis(P: Union[float, np.ndarray], K=None,
+                              star_mass: Union[float, tuple]=1.0, 
+                              full_output=False):
     r"""
     Calculate the semi-major axis of the planet's orbit given orbital period
     `P`, semi-amplitude `K`, and stellar mass.
@@ -324,23 +325,23 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.nd
         P (Union[float, ndarray]):
             orbital period [days]
         K (Union[float, ndarray]):
-            semi-amplitude [m/s]
+            DEPRECATED, not used in the calculation
         star_mass (Union[float, Tuple]):
             stellar mass, or (mass, uncertainty) [Msun]
 
     This function returns different results depending on the inputs.
 
-    !!! note "If `P` and `K` are floats and `star_mass` is a float"
+    !!! note "If `P` and `star_mass` are floats"
 
     Returns:
         a (float): planet semi-major axis, in AU
 
-    !!! note "If `P` and `K` are floats and `star_mass` is a tuple"
+    !!! note "If `P` is a float and `star_mass` is a tuple"
 
     Returns:
         a (tuple): semi-major axis and uncertainty, in AU
 
-    !!! note "If `P` and `K` are arrays and `full_output=True`"
+    !!! note "If `P` is an array and `full_output=True`"
 
     Returns:
         m_a (float):
@@ -350,7 +351,7 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.nd
         a (array):
             posterior samples for the semi-major axis, in AU
 
-    !!! note "If `P` and `K` are arrays and `full_output=False`"
+    !!! note "If `P` is an array and `full_output=False`"
 
     Returns:
         m_a (float):
@@ -358,34 +359,37 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K: Union[float, np.nd
         s_a (float):
             posterior standard deviation for the semi-major axis, in AU
     """
-    # gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
-    f = 0.0666378476025686
+    from astropy.constants import G
+    from astropy import units as u
+
+    f = (G.to(u.AU**3 / u.solMass / u.day**2) ** (1 / 3)).value
+    if isinstance(P, float):
+        f = float(f)
 
     try:
-        P = float(P)
         # calculate for one value of the orbital period
-        # then K and star_mass should also be floats
-        assert isinstance(K, float), "K must be a float when P is a float"
-        uncertainty_star_mass = False
+        P = float(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
-            uncertainty_star_mass = True
-
-        a = f * star_mass ** (1.0 / 3) * (P / (2 * np.pi)) ** (2.0 / 3)
-
-        if uncertainty_star_mass:
-            return a.mean(), a.std()
-
-        return a  # in AU
+            a = f * star_mass[0]**(1/3) * (P / (2 * np.pi))**(2/3)
+            # error propagation:
+            a_err = a * (1/3) * star_mass[1] / star_mass[0]
+            return a, a_err
+        else:
+            a = f * star_mass**(1/3) * (P / (2 * np.pi))**(2/3)
+            return a
 
     except TypeError:
         # calculate for an array of periods
         P = np.atleast_1d(P)
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
 
-        a = f * star_mass ** (1.0 / 3) * (P / (2 * np.pi)) ** (2.0 / 3)
+        a = f * star_mass**(1/3) * (P / (2 * np.pi))**(2/3)
 
         if full_output:
             return a.mean(), a.std(), a
