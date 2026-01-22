@@ -113,6 +113,15 @@ def compute_values_from_ratios(S, ratios):
     return values
 
 
+def star_mass_samples(star_mass, star_mass_uncertainty, n):
+    from scipy.stats import truncnorm
+    loc = star_mass
+    scale = star_mass_uncertainty
+    lower, upper = 0.0, 100.0 # arbitrary upper limit
+    a, b = (lower - loc) / scale, (upper - loc) / scale
+    return truncnorm.rvs(a, b, loc=loc, scale=scale, size=n)
+
+
 def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
                     e: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0,
                     full_output=False):
