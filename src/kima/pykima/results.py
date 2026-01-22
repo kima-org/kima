@@ -25,10 +25,27 @@ from .GP import (GP as GaussianProcess, ESPkernel, EXPkernel, MEPkernel, RBFkern
                  QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  QPpMAGCYCLEkernel, mixtureGP)
 
-from .analysis import get_planet_mass, get_planet_mass_GAIA, get_planet_mass_and_semimajor_axis, get_planet_semimajor_axis, np_bayes_factor_threshold
-from .utils import (distribution_rvs, read_datafile, read_datafile_rvfwhm, read_datafile_rvfwhmrhk, read_model_setup,
-                    get_star_name, mjup2mearth, get_instrument_name, SimpleTimer, get_timestamp,
-                    _show_kima_setup, read_big_file, rms, wrms, chdir)
+from .analysis import (get_planet_mass,
+                       get_planet_mass_GAIA,
+                       get_planet_mass_and_semimajor_axis,
+                       get_planet_semimajor_axis,
+                       np_bayes_factor_threshold)
+
+from .utils import (distribution_rvs,
+                    read_datafile,
+                    read_datafile_rvfwhm,
+                    read_datafile_rvfwhmrhk,
+                    read_model_setup,
+                    get_star_name,
+                    mjup2mearth,
+                    get_instrument_name,
+                    SimpleTimer,
+                    get_timestamp,
+                    _show_kima_setup,
+                    read_big_file,
+                    rms,
+                    wrms,
+                    chdir)
 
 from . import display
 
