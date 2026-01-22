@@ -226,15 +226,16 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
         else:
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
         
-def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray]
-                         , parallax: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0
-                         , full_output=False):
+def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray], 
+                         parallax: Union[float, np.ndarray], 
+                         star_mass: Union[float, Tuple] = 1.0, full_output=False):
     r"""
     Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
-    semi-major axis of photocentre `a0`, parallax 'parallax', and stellar mass. If `star_mass` is a
-    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
-    taken into account in the calculation. Note that this ignores the mass of the planet in the calculation,
-    if this is significant compared to the mass of the star, then this method is not suitable.
+    semi-major axis of photocentre `a0`, parallax 'parallax', and stellar mass.
+    If `star_mass` is a tuple with (estimate, uncertainty), this (Gaussian)
+    uncertainty will be taken into account in the calculation. Note that this
+    ignores the mass of the planet in the calculation, if this is significant
+    compared to the mass of the star, then this method is not suitable.
 
     Args:
         P (Union[float, ndarray]):
@@ -282,37 +283,44 @@ def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarra
         s_Msini (float):
             posterior standard deviation for the planet mass, in $M_{\rm Earth}$
     """
-    # C = 4.919e-3
-
     try:
-        P = float(P)/365.25 #convert period to years
+        P = float(P) / 365.25  # convert period to years
         # calculate for one value of the orbital period
-        # then K, e, and star_mass should also be floats
-        assert isinstance(a0, float) and isinstance(parallax, float)
-        uncertainty_star_mass = False
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
-            uncertainty_star_mass = True
+        # then a0 and parallax should be floats
+        try:
+            a0, parallax = float(a0), float(parallax)
+        except TypeError:
+            raise TypeError('a0 and parallax must be floats if P is a float')
 
-        m_ms = (star_mass/P)**(2. / 3) * a0/parallax
-        m_mj = m_ms/mjup2msun
-        m_me = m_mj * mjup2mearth
-        if uncertainty_star_mass:
-            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # solar masses
+            m_ms = (star_mass[0] / P)**(2/3) * a0 / parallax
+            m_ms_err = m_ms * (2/3) * star_mass[1] / star_mass[0]
+            # jupiter masses
+            m_mj = m_ms / mjup2msun
+            m_mj_err = m_ms_err / mjup2msun
+            # earth masses
+            m_me = m_mj * mjup2mearth
+            m_me_err = m_mj_err * mjup2mearth
+            return (m_mj, m_mj_err), (m_me, m_me_err)
         else:
+            m_ms = (star_mass / P)**(2/3) * a0 / parallax
+            m_mj = m_ms / mjup2msun
+            m_me = m_mj * mjup2mearth
             return m_mj, m_me
 
     except TypeError:
         # calculate for an array of periods
-        P = np.atleast_1d(P)/365.25 #convert period to years
+        P = np.atleast_1d(P) / 365.25  # convert period to years
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = np.random.normal(star_mass[0], star_mass[1], P.shape)
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
         try:
-            m_ms = (star_mass/P)**(2. / 3) * a0/parallax
+            m_ms = (star_mass / P)**(2/3) * a0 / parallax
         except ValueError:
             parallax_new = parallax[:, np.newaxis].copy()
-            m_ms = (star_mass/P)**(2. / 3) * a0/parallax_new
+            m_ms = (star_mass / P)**(2/3) * a0 / parallax_new
 
         m_mj = m_ms/mjup2msun
         m_me = m_mj * mjup2mearth
