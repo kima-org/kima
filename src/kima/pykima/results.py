@@ -143,6 +143,7 @@ class data_holder:
         obs (ndarray): Identifier for the instrument of each observation
         N (int): Total number of observations
     """
+
     t: np.ndarray = field(init=False)
     y: np.ndarray = field(init=False)
     e: np.ndarray = field(init=False)
@@ -151,7 +152,7 @@ class data_holder:
     instrument: str = field(init=False)
 
     def __repr__(self):
-        return f'data_holder(N={self.N}, t, y, e, obs)'
+        return f"data_holder(N={self.N}, t, y, e, obs)"
 
     @property
     def tmiddle(self):
@@ -160,7 +161,7 @@ class data_holder:
 
 @dataclass
 class astrometric_data_holder:
-    """ A simple class to hold the astrometric datasets used in kima
+    """A simple class to hold the astrometric datasets used in kima
 
     Attributes:
         t (ndarray): The observation times
@@ -170,6 +171,7 @@ class astrometric_data_holder:
         pf (ndarray): 
         N (int): Total number of observations
     """
+
     t: np.ndarray = field(init=False)
     w: np.ndarray = field(init=False)
     sigw: np.ndarray = field(init=False)
@@ -179,11 +181,12 @@ class astrometric_data_holder:
     instrument: str = 'Gaia'
 
     def __repr__(self):
-        return f'data_holder(N={self.N}, t, w, sigw, psi, pf)'
-    
+        return f"data_holder(N={self.N}, t, w, sigw, psi, pf)"
+
+
 @dataclass
 class ETV_data_holder:
-    """ A simple class to hold the ETV datasets used in kima
+    """A simple class to hold the ETV datasets used in kima
 
     Attributes:
         epoch (ndarray): The eclipse epochs
@@ -191,6 +194,7 @@ class ETV_data_holder:
         etsig (ndarray): The eclipse timing uncertainties
         N (int): Total number of observations
     """
+
     epoch: np.ndarray = field(init=False)
     et: np.ndarray = field(init=False)
     etsig: np.ndarray = field(init=False)
@@ -198,12 +202,12 @@ class ETV_data_holder:
     instrument: str = 'eclipse_times'
 
     def __repr__(self):
-        return f'data_holder(N={self.N}, epoch, et, etsig)'
+        return f"data_holder(N={self.N}, epoch, et, etsig)"
 
 
 @dataclass
 class posterior_holder:
-    """ A simple class to hold the posterior samples
+    """A simple class to hold the posterior samples
 
     Attributes:
         P (ndarray): Orbital period(s)
@@ -223,6 +227,7 @@ class posterior_holder:
         TR: TRansiting planet parameters
         KO: Known Object parameters
     """
+
     Np: np.ndarray = field(init=False)
     P: np.ndarray = field(init=False)
     K: np.ndarray = field(init=False)
@@ -232,7 +237,7 @@ class posterior_holder:
     Tc: np.ndarray = field(init=False)
     i: np.ndarray = field(init=False)
     Ω: np.ndarray = field(init=False)
-    # 
+    #
     jitter: named_array = field(init=False)
     stellar_jitter: np.ndarray = field(init=False)
     offset: np.ndarray = field(init=False)
@@ -240,7 +245,13 @@ class posterior_holder:
     slope: np.ndarray = field(init=False)
     quadr: np.ndarray = field(init=False)
     cubic: np.ndarray = field(init=False)
-    # 
+    #
+    da: np.ndarray = field(init=False)
+    dd: np.ndarray = field(init=False)
+    mua: np.ndarray = field(init=False)
+    mud: np.ndarray = field(init=False)
+    plx: np.ndarray = field(init=False)
+    #
     outlier_mean: np.ndarray = field(init=False)
     outlier_sigma: np.ndarray = field(init=False)
     outlier_Q: np.ndarray = field(init=False)
@@ -253,7 +264,7 @@ class posterior_holder:
     η6: np.ndarray = field(init=False)
     alpha: np.ndarray = field(init=False)
     beta: np.ndarray = field(init=False)
-    # 
+    #
     TR: Self = field(init=False)
     KO: Self = field(init=False)
 
@@ -270,8 +281,8 @@ class posterior_holder:
 
     def __repr__(self):
         fields = self._get_set_fields()
-        fields = ', '.join(fields)
-        return f'posterior_holder({fields})'
+        fields = ", ".join(fields)
+        return f"posterior_holder({fields})"
 
     def _all(self):
         fields = self._get_set_fields()
@@ -304,8 +315,9 @@ class posterior_holder:
                                          full_output=True)[-1]
     
     def λ0(self, fold=True):
-        """ mean longitude at the epoch [rad] """
+        """mean longitude at the epoch [rad]"""
         from .utils import get_mean_longitude
+
         return get_mean_longitude(self.φ, self.w, fold=fold)
 
 
@@ -323,7 +335,7 @@ def _get_pdf(prior, x=None, N=300):
 
 @dataclass
 class prior_holder:
-    """ A simple class to hold the priors
+    """A simple class to hold the priors
 
     Attributes:
         P (ndarray): Orbital period(s)
@@ -343,6 +355,7 @@ class prior_holder:
         TR: TRansiting planet parameters
         KO: Known Object parameters
     """
+
     # Np: np.ndarray = field(init=False)
     # P: np.ndarray = field(init=False)
     # K: np.ndarray = field(init=False)
@@ -350,7 +363,7 @@ class prior_holder:
     # w: np.ndarray = field(init=False)
     # φ: np.ndarray = field(init=False)
     # Tc: np.ndarray = field(init=False)
-    # 
+    #
     jitter: distributions.Distribution = field(init=False)
     # stellar_jitter: np.ndarray = field(init=False)
     # offset: np.ndarray = field(init=False)
@@ -358,7 +371,7 @@ class prior_holder:
     # slope: np.ndarray = field(init=False)
     # quadr: np.ndarray = field(init=False)
     # cubic: np.ndarray = field(init=False)
-    # 
+    #
     # outlier_mean: np.ndarray = field(init=False)
     # outlier_sigma: np.ndarray = field(init=False)
     # outlier_Q: np.ndarray = field(init=False)
@@ -371,7 +384,7 @@ class prior_holder:
     η6: np.ndarray = field(init=False)
     # alpha: np.ndarray = field(init=False)
     # beta: np.ndarray = field(init=False)
-    # 
+    #
     TR: Self = field(init=False)
     KO: Self = field(init=False)
 
@@ -388,8 +401,8 @@ class prior_holder:
 
     def __repr__(self):
         fields = self._get_set_fields()
-        fields = ', '.join(fields)
-        return f'prior_holder({fields})'
+        fields = ", ".join(fields)
+        return f"prior_holder({fields})"
 
     def get_samples(self, field, N=1):
         prior = getattr(self, field)
