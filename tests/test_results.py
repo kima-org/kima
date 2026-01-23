@@ -129,3 +129,25 @@ def test_np_bayes_factor_threshold():
     # probabilities 0, 1 = 0.9, 0.1
     res = FakeKimaResults(1, np.random.choice([0, 1], size=100, p=[0.9, 0.1]))
     np.testing.assert_equal(np_bayes_factor_threshold(res), 0)
+
+
+def test_out_of_order(cleanup_after_running):
+    times = [
+        np.array([66, 67, 104, 142, 156, 170]),
+        np.array([460, 498, 763, 778, 825, 840, 1579, 1835]),
+        np.array([6600, 6730]), 
+        np.array([3000, 4099, 4430, 5265, 6215, 6367])
+    ]
+    vrad = [np.random.normal(0, 1, size=t.shape) for t in times]
+    err = [0.1 * np.ones_like(t) for t in times]
+    instruments = ['A', 'B', 'D', 'C']
+    data = kima.RVData(times, vrad, err, instruments=instruments)
+    model = kima.RVmodel(fix=True, npmax=1, data=data)
+    kima.run(model, steps=500)
+    res = kima.load_results(model)
+    assert res.instruments == ['A', 'B', 'D', 'C']
+    np.testing.assert_allclose(
+        res.data.obs, 
+        [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 3, 3]
+    )
+    fig = res.plot_random_samples()
