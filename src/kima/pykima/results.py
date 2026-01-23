@@ -466,8 +466,7 @@ def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
                               diagnostic=diagnostic,
                               verbose=verbose,
                               moreSamples=moreSamples,
-                              n_resample_logX=n_resample_logX,
-                              _debug=_debug)
+                              n_resample_logX=n_resample_logX)
     else:
         raise TypeError(model_or_file)
 
