@@ -546,18 +546,16 @@ class KimaResults:
         self.information = self.KL = H
 
         with SimpleTimer() as timer:
-            self.posterior_sample = np.atleast_2d(read_big_file('posterior_sample.txt'))
+            self.posterior_sample = np.atleast_2d(read_big_file("posterior_sample.txt"))
         if self._debug:
             print(f'Loading "posterior_sample.txt" took {timer.interval:.2f} seconds')
 
         self._ESS = self.posterior_sample.shape[0]
 
-        #self.priors = {}
         self.priors = _read_priors(self, setup)
 
-
         ##### Issue here where data is assumed to be RV data, could do cases for each type, but what if there are multiple types?
-        self.data_type = 'RV' #default to being RV data
+        self.data_type = "RV"  # default to being RV data
 
         if self.model is MODELS.GAIAmodel:
             if data is None:
@@ -570,18 +568,18 @@ class KimaResults:
             self.GAIAdata.psi = np.copy(data.psi)
             self.GAIAdata.pf = np.copy(data.pf)
             self.GAIAdata.N = data.N
-            self.data_type = 'GAIA'
+            self.data_type = "GAIA"
 
         elif self.model is MODELS.ETVmodel:
             if data is None:
                 data = model.data
             self.ETVdata = ETV_data_holder()
             self.data = self.ETVdata
-            self.ETVdata.epochs = np.array(np.copy(data.t))
-            self.ETVdata.et = np.array(np.copy(data.w))
-            self.ETVdata.etsig = np.array(np.copy(data.wsig))
+            self.ETVdata.epochs = np.copy(data.t)
+            self.ETVdata.et = np.copy(data.w)
+            self.ETVdata.etsig = np.copy(data.wsig)
             self.ETVdata.N = data.N
-            self.data_type = 'ETV'
+            self.data_type = "ETV"
         elif self.model is MODELS.RVGAIAmodel:
             if data is None:
                 RV_data = model.RVdata
