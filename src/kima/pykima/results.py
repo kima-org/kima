@@ -452,15 +452,24 @@ def load_results(model_or_file, data=None, diagnostic=False, verbose=True,
         res = KimaResults.load(model_or_file)
 
     elif isinstance(model_or_file, __models__):
-        if hasattr(model_or_file, 'directory') and model_or_file.directory != '':
+        if hasattr(model_or_file, "directory") and model_or_file.directory != "":
             with chdir(model_or_file.directory):
-                res = KimaResults(model_or_file, data,
-                                  diagnostic=diagnostic, verbose=verbose,
-                                  moreSamples=moreSamples, n_resample_logX=n_resample_logX)
+                res = KimaResults(model_or_file, 
+                                  data,
+                                  diagnostic=diagnostic, 
+                                  verbose=verbose,
+                                  moreSamples=moreSamples, 
+                                  n_resample_logX=n_resample_logX)
         else:
-            res = KimaResults(model_or_file, data,
-                              diagnostic=diagnostic, verbose=verbose,
-                              moreSamples=moreSamples, n_resample_logX=n_resample_logX)
+            res = KimaResults(model_or_file,
+                              data,
+                              diagnostic=diagnostic,
+                              verbose=verbose,
+                              moreSamples=moreSamples,
+                              n_resample_logX=n_resample_logX,
+                              _debug=_debug)
+    else:
+        raise TypeError(model_or_file)
 
     return res
 
