@@ -520,10 +520,14 @@ class KimaResults:
 
         with redirect_stdout(stdout):
             try:
-                out = postprocess(plot=diagnostic, moreSamples=moreSamples,
-                                  numResampleLogX=n_resample_logX)
+                out = postprocess(plot=diagnostic,
+                                  moreSamples=moreSamples,
+                                  numResampleLogX=n_resample_logX,
+                                  debug=self._debug)
                 if diagnostic:
-                    evidence, H, logx_samples, P_samples, figs = out
+                    if diagnostic == 'save':
+                        for i, fig in enumerate(figs, start=1):
+                            fig.savefig(f"diagnostic_{i}.png")
                 else:
                     evidence, H, logx_samples, P_samples = out
             except FileNotFoundError as e:
