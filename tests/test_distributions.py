@@ -41,13 +41,15 @@ def loc_scale():
 @pytest.fixture
 def number(n=1):
     def gen_number(n=1):
-        return np.random.uniform(-20, 20, size=n)
+        r = np.random.uniform(-20, 20, size=n)
+        return r.item() if n == 1 else r
     return gen_number
 
 @pytest.fixture
 def positive(n=1):
     def gen_positive(n=1):
-        return np.random.uniform(0, 10, size=n)
+        r = np.random.uniform(0, 10, size=n)
+        return r.item() if n == 1 else r
     return gen_positive
 
 
@@ -74,7 +76,7 @@ def test_cdf(loc_scale, number, positive):
             assert_allclose(dist2.cdf(r), dist1.cdf(r))
 
     # Fixed
-    n = float(number())
+    n = number()
     assert_allclose(Fixed(n).cdf(n), 1.0)
     assert_allclose(Fixed(n).cdf(n*2), 0.0)
     assert_allclose(Fixed(n).cdf(n/10), 0.0)
@@ -179,7 +181,7 @@ def test_logpdf(loc_scale, number, positive):
         assert_allclose(Exponential(scale).logpdf(r), expon(scale=scale).logpdf(r))
 
     # Fixed
-    n = float(number())
+    n = number()
     assert_allclose(Fixed(n).logpdf(n), 0.0)
     assert_allclose(Fixed(n).logpdf(n*2), -np.inf)
     assert_allclose(Fixed(n).logpdf(n/10), -np.inf)
