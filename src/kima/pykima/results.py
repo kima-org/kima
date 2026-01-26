@@ -1586,7 +1586,10 @@ class KimaResults:
         if isinstance(self.model, str):
             self.model = MODELS(self.model)
 
-        if hasattr(self, 'studentT'):
+        if not hasattr(self, "data_type"):
+            self.data_type = "RV"
+
+        if hasattr(self, "studentT"):
             self.studentt = self.studentT
             del self.studentT
 
@@ -1598,11 +1601,10 @@ class KimaResults:
 
         try:
             from .. import GPmodel
+
             if self.model is MODELS.GPmodel:
                 if not hasattr(self, 'kernel'):
-                    self.kernel = {
-                        'standard': GPmodel.KernelType.qp
-                    }[self.GPkernel]
+                    self.kernel = {'standard': GPmodel.KernelType.qp}[self.GPkernel]
                 del self.GPkernel
         except AttributeError:
             pass
@@ -4279,3 +4281,64 @@ class KimaResults:
     hist_trend = display.hist_trend
     hist_MA = display.hist_MA
     hist_nu = display.hist_nu
+
+    def explore(self):
+        from textwrap import dedent
+
+        doc = "Quick exploration of kima results\n"
+        doc += "Type 1, 2, 3 to plot1, plot2, plot3, etc.\n"
+        doc += "Type 'r' to plot_random_samples, and 'ph' for a phase plot.\n"
+        if self.model is MODELS.RVHGPMmodel:
+            doc += "Type 'pma' for plot_hgpm and 'hb' for hist_bary.\n"
+        doc += "Type `q` to quit. (also type `q` in the plot window to close it)\n"
+        options = {
+            "1": self.plot1,
+            "2": self.plot2,
+            "3": self.plot3,
+            "r": self.plot_random_samples,
+            "pma": self.plot_hgpm,
+            "hb": self.hist_bary,
+        }
+        print(dedent(doc))
+        p = None
+        while True:
+            try:
+                command = input(">>> ")
+            except EOFError:
+                break
+
+            if command == "":
+                continue
+            if command in ("exit", "q"):
+                break
+
+            if command in ("close", "c"):
+                import matplotlib.pyplot as plt
+
+                plt.close("all")
+                continue
+
+
+            if command in ("ph",):
+                if p is None:
+                    Np = np_bayes_factor_threshold(self)
+                    p = self.maximum_likelihood_sample(Np=Np)
+                self.phase_plot(p)
+                continue
+            if command.startswith("p") and command not in options:
+                if command == "p":
+                    Np = np_bayes_factor_threshold(self)
+                    p = self.maximum_likelihood_sample(Np=Np)
+                else:
+                    Np = int(command[1:])
+                    p = self.maximum_likelihood_sample(Np=Np)
+                continue
+            try:
+                options[command]()
+            except KeyError:
+                print(f"uknown command: {command}")
+
+    @property
+    def _e(self):
+        self.explore()
+
