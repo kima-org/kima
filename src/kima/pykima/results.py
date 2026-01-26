@@ -1653,7 +1653,7 @@ class KimaResults:
             compress (bool or str, optional):
                 Compress the pickle file. Requires the `compress_pickle`
                 package. If a string, use the specified compression method. If
-                True, uses bz2 compression by default.
+                True, uses lz4 compression by default.
 
                 | method | speed, size    |
                 |--------|----------------|
@@ -1670,7 +1670,7 @@ class KimaResults:
         """
 
         ending = '.pkl'
-        dump_kwargs = {}
+        dump_kwargs = kwargs
 
         if compress is False:
             import pickle
@@ -1678,11 +1678,12 @@ class KimaResults:
         else:
             try:
                 import compress_pickle as pickle
+
                 if compress is True:
-                    # use bz2 compression by default, good compromise between
+                    # use lz4 compression by default, good compromise between
                     # speed and file size
-                    dump_kwargs['compression'] = 'bz2'
-                    ending = '.pkl' + COMPRESSED_FILE_EXT['bz2']
+                    dump_kwargs['compression'] = 'lz4'
+                    ending = '.pkl' + COMPRESSED_FILE_EXT['lz4']
 
                 elif isinstance(compress, str):
                     available = list(filter(None, pickle.compressers.registry.get_known_compressions()))
@@ -1717,7 +1718,7 @@ class KimaResults:
             pickle.dump(self, f, **dump_kwargs)
 
         if verbose:
-            print('Wrote to file "%s"' % filename)
+            print(f'Wrote to file "{filename}"')
 
         return filename
 
