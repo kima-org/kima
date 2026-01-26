@@ -1637,10 +1637,10 @@ class KimaResults:
         if add_timestamp:
             id += get_timestamp()
         return id
-
-    def save_pickle(self, filename: str=None, directory: str=None,
-                    postfix: str=None, compress=False, verbose: bool=True):
-        """ Pickle this KimaResults object into a file.
+    def save_pickle(self, filename: str = None, directory: str = None,
+                    postfix: str = None, compress: Union[bool, str] = False,
+                    verbose: bool = True, **kwargs):
+        """Pickle this KimaResults object into a file.
 
         Args:
             filename (str, optional):
