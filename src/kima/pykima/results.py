@@ -2180,7 +2180,7 @@ class KimaResults:
                 Whether to print the sample.
             from_posterior (bool, optional): 
                 If True, return the highest likelihood sample *from those that
-                represent the posterior*. 
+                represent the posterior*.
         """
         if from_posterior:
             samples = self._select_posterior_samples(Np, mask)
