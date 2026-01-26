@@ -2039,10 +2039,9 @@ class KimaResults:
         self._make_named_arrays()
 
     def get_medians(self):
-        """ return the median values of all the parameters """
+        """Return the median values of all the parameters"""
         if self.posterior_sample.shape[0] % 2 == 0:
-            print(
-                'Median is not a solution because number of samples is even!!')
+            print("Median is not a solution because number of samples is even!!")
 
         self.medians = np.median(self.posterior_sample, axis=0)
         self.means = np.mean(self.posterior_sample, axis=0)
@@ -2059,7 +2058,7 @@ class KimaResults:
         else:
             mask_Np = self.sample[:, self.index_component] == Np
             if not mask_Np.any():
-                raise ValueError(f'No samples with {Np} Keplerians')
+                raise ValueError(f"No samples with {Np} Keplerians")
             if return_indices:
                 return np.where(mask & mask_Np)[0]
             return self.sample[mask & mask_Np].copy()
@@ -2075,20 +2074,20 @@ class KimaResults:
         else:
             mask_Np = self.posterior_sample[:, self.index_component] == Np
             if not mask_Np.any():
-                raise ValueError(f'No posterior samples with {Np} Keplerians')
+                raise ValueError(f"No posterior samples with {Np} Keplerians")
             if return_indices:
                 return np.where(mask & mask_Np)[0]
             return self.posterior_sample[mask & mask_Np].copy()
 
     def log_prior(self, sample, debug=False):
-        """ Calculate the log prior for a given sample
+        """Calculate the log prior for a given sample
 
         Args:
             sample (array): sample for which to calculate the log prior
-        
+
         Tip:
             To evaluate at all posterior samples, consider using
-            
+
             ```python
             np.apply_along_axis(self.log_prior, 1, self.posterior_sample)
             ```
