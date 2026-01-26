@@ -1849,8 +1849,8 @@ class KimaResults:
 
         # parameters of the outlier model
         if self.model is MODELS.OutlierRVmodel:
-            self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = \
-                self.posterior_sample[:, self.indices['outlier']].T
+            outliers = self.posterior_sample[:, self.indices['outlier']].T
+            self.posteriors.outlier_mean, self.posteriors.outlier_sigma, self.posteriors.outlier_Q = outliers
             # TODO: _priors
 
         max_components = self.max_components
@@ -1871,14 +1871,14 @@ class KimaResults:
             )
             if self.model in models_with_K:
                 # amplitudes
-                s = self.indices["planets.K"]
+                s = self.indices['planets.K']
                 self.posteriors.K = self.posterior_sample[:, s]
-                self._priors.K = self.priors["Kprior"]
+                self._priors.K = self.priors['Kprior']
 
             # eccentricities
-            s = self.indices["planets.e"]
+            s = self.indices['planets.e']
             self.posteriors.e = self.posterior_sample[:, s]
-            self._priors.e = self.priors["eprior"]
+            self._priors.e = self.priors['eprior']
 
             # phases
             s = self.indices['planets.φ']
