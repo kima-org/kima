@@ -90,9 +90,13 @@ def test_cdf(loc_scale, number, positive):
 
     # truncated distributions
     a, b = np.sort(number(2))
-    pairs = [
-        (truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale), TruncatedGaussian(loc, scale, a, b)),
-    ]
+    try:
+        pairs = [
+            (truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale), TruncatedGaussian(loc, scale, a, b)),
+        ]
+    except ValueError:
+        raise ValueError(f'{a=}, {b=}, {loc=}, {scale=}')
+
     for dist1, dist2 in pairs:
         for r in dist1.rvs(N):
             assert_allclose(dist2.cdf(r), dist1.cdf(r),
