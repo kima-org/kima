@@ -1845,6 +1845,7 @@ class KimaResults:
         if self.model is MODELS.RVHGPMmodel:
             self.posteriors.pm_ra_bary = self.posterior_sample[:, self.indices['pm_ra_bary']]
             self.posteriors.pm_dec_bary = self.posterior_sample[:, self.indices['pm_dec_bary']]
+            self.posteriors.plx = self.posterior_sample[:, self.indices['parallax']]
 
         # parameters of the outlier model
         if self.model is MODELS.OutlierRVmodel:
