@@ -106,7 +106,7 @@ Args:
     }                                                                                   \
     if (seed == 0)                                                                      \
         seed = static_cast<unsigned int>(time(NULL));                                   \
-    m.directory = std::filesystem::current_path().string();\
+    m.directory = std::filesystem::current_path().string();                             \
     catch_signals();                                                                    \
     sampler.initialise(seed);                                                           \
     std::cout << "# Sampling..." << std::endl;                                          \
