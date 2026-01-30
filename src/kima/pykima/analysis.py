@@ -956,6 +956,44 @@ def reorder_P2(res, replace=False, passes=1):
         res.posterior_sample[:, res.indices['planets.e']] = new_posterior.e
         res.posterior_sample[:, res.indices['planets.w']] = new_posterior.w
         res.posterior_sample[:, res.indices['planets.φ']] = new_posterior.φ
+def reorder_P5(res, replace=False):
+    from itertools import permutations
+    from copy import deepcopy
+    from tqdm import tqdm
+    from warnings import warn
+    warn('this function does not change res.posterior_sample even if replace=True')
+    # make a copy of the posterior samples
+    new_posterior = deepcopy(res.posteriors)
+    fields = ('e', 'w', 'φ',
+              'i', 'i_deg', 'W', 'W_deg', 'Ω', 'Ω_deg')
+    # the maximum likelihood sample will serve as reference
+    p = res.maximum_likelihood_sample()
+
+    for j in range(res.npmax - 1):
+        # all possible permutations of the columns after the jth
+        perms = list(map(np.array, permutations(range(j, res.npmax))))
+        # reference period and semi-amplitude
+        refP = p[res.indices['planets.P']][j]
+        refK = p[res.indices['planets.K']][j]
+        # for each sample
+        for i, (sP, sK) in enumerate(tqdm(zip(new_posterior.P, new_posterior.K))):
+            sP = sP[j:]
+            sK = sK[j:]
+            dist = [
+                np.hypot((sP[perm - j] - refP)[0], (sK[perm - j] - refK)[0])
+                for perm in perms
+            ]
+            perm = perms[np.argmin(np.abs(dist))]
+            new_posterior.P[i, j:] = sP[perm - j]
+            new_posterior.K[i, j:] = sK[perm - j]
+            for field in fields:
+                try:
+                    arr = getattr(new_posterior, field)
+                    arr[i, j:] = arr[i, j:][perm - j]
+                except AttributeError:
+                    pass
+    if replace:
+        res.posteriors = new_posterior
 
     return new_posterior
 
