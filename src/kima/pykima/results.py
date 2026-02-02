@@ -523,8 +523,8 @@ class KimaResults:
                                   moreSamples=moreSamples,
                                   numResampleLogX=n_resample_logX,
                                   debug=self._debug)
+                evidence, H, BMD, logx_samples, P_samples, figs = out
                 if diagnostic:
-                    evidence, H, BMD, logx_samples, P_samples, figs = out
                     if diagnostic == 'save':
                         for i, fig in enumerate(figs, start=1):
                             fig.savefig(f"diagnostic_{i}.png")
