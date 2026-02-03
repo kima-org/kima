@@ -362,7 +362,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = star_mass_samples(*star_mass, P.shape[0])
-            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
+            # star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1) #commented out for now, since just testing the calculation for single companion fits
         elif isinstance(star_mass, np.ndarray):
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
