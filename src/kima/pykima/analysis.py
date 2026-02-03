@@ -291,6 +291,8 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
     from sympy import Symbol, symbols
     from sympy import lambdify 
 
+    from tqdm import tqdm
+
     from uncertainties import ufloat
     import uncertainties.umath as um
 
@@ -375,7 +377,12 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass * m_sol) - (D * star_mass**2)
 
         #solving the cubic equation for the companion mass
-        m_sol_res = solve(cub_eq, m_sol)
+        #...in a very inefficient way, since for some reason, solving the above equation but with D and star_mass treated
+        #as constants, and then substituting in the arrays afterwards, doesn't work (get nans, complex numbers, etc...?)
+        m_sol_res = []
+        for cub_eq_i in tqdm(cub_eq):
+            m_sol_res_i = solve(cub_eq_i, m_sol)
+            m_sol_res.append(m_sol_res_i[0]) #getting only the first root (the only real value)
 
         #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
         m_mj = (m_sol_res * u.solMass).to(u.jupiterMass).value
