@@ -288,13 +288,16 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
     from astropy import units as u
 
     from sympy.solvers import solve
-    from sympy import Symbol
+    from sympy import Symbol, symbols
+    from sympy import lambdify 
 
     from uncertainties import ufloat
+    import uncertainties.umath as um
 
     ms = u.meter / u.second
     C = (ms * u.day**(1/3) * u.solMass**(2/3) / (2*np.pi*G)**(1/3)).to(u.solMass).value #have to work in units of solar mass, 
-                                                                                        #since the units of the primary and secondary mass must be the same 
+                                                                                        #since the units of the primary and secondary mass 
+                                                                                        # must be the same in the cubic equation
     if isinstance(P, float):
         C = float(C)
 
@@ -312,30 +315,43 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
 
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
            
+            raise NotImplementedError('Currently not working - uncertainty propagation issue with sympy and uncertainties packages')
+
             #first, converting the star_mass to a ufloat to take into account the uncertainty using the uncertainties package
             star_mass_ufloat = ufloat(star_mass[0], star_mass[1])
 
             #writing out the cubic equation to be solved for the companion mass via sympy
-            cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass_ufloat * m_sol) - (D * star_mass_ufloat**2)
+            m_sol = Symbol('m_sol')
+
+            #including functionality for error propagation by first treating the stellar mass as a constant,
+            #so that the secondary mass is returned in terms of the primary mass, allowing for the uncertainty to be propagated
+            #afterwards
+            star_mass_const = symbols('star_mass_const')
+
+            cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass_const * m_sol) - (D * star_mass_const**2)
 
             #solving the cubic equation for the companion mass
-            m_sol = solve(cub_eq, Symbol('m_sol'))
+            m_sol_res_i = solve(cub_eq, m_sol)[0]
+
+            #now propagating the uncertainty by substituting back in the star_mass ufloat for the star_mass constant (doesn't work???)
+            m_sol_res = lambdify([star_mass_const], m_sol_res_i, modules=um)(star_mass_ufloat)
 
             #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
-            m_mj = (m_sol.n * u.solMass).to(u.jupiterMass).value
-            m_mj_err = (m_sol.s * u.solMass).to(u.jupiterMass).value
+            m_mj = (m_sol_res.n * u.solMass).to(u.jupiterMass).value
+            m_mj_err = (m_sol_res.s * u.solMass).to(u.jupiterMass).value
 
             m_me = m_mj * mjup2mearth
             m_me_err = m_mj_err * mjup2mearth
             return (m_mj, m_mj_err), (m_me, m_me_err)
         else:
+            m_sol = Symbol('m_sol')
             cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass * m_sol) - (D * star_mass**2)
 
             #solving the cubic equation for the companion mass
-            m_sol = solve(cub_eq, Symbol('m_sol'))
+            m_sol_res = solve(cub_eq, m_sol)[0] #getting only the first root (the only real value)
 
             #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
-            m_mj = (m_sol * u.solMass).to(u.jupiterMass).value
+            m_mj = (m_sol_res * u.solMass).to(u.jupiterMass).value
 
             m_me = m_mj * mjup2mearth
             return m_mj, m_me
@@ -355,13 +371,14 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         D = P * ( (C * K * np.sqrt(1 - e**2)) / np.sin(I) )**3
 
         #writing out the cubic equation to be solved for the companion mass via sympy
+        m_sol = Symbol('m_sol')
         cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass * m_sol) - (D * star_mass**2)
 
         #solving the cubic equation for the companion mass
-        m_sol = solve(cub_eq, Symbol('m_sol'))
+        m_sol_res = solve(cub_eq, m_sol)
 
         #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
-        m_mj = (m_sol * u.solMass).to(u.jupiterMass).value
+        m_mj = (m_sol_res * u.solMass).to(u.jupiterMass).value
         m_me = m_mj * mjup2mearth
 
         if full_output:
