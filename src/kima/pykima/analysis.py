@@ -225,6 +225,150 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
             return m_mj.mean(), m_mj.std(), m_mj
         else:
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+
+def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
+                    e: Union[float, np.ndarray], I: Union[float, np.ndarray], star_mass: Union[float, Tuple] = 1.0,
+                    full_output=False):
+    r"""
+    Calculate the companion mass, $M_p$, given orbital period `P`,
+    semi-amplitude `K`, eccentricity `e`, inclination `I`,and stellar mass. If `star_mass` is a
+    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
+    taken into account in the calculation. Note that this accounts for cases where the 
+    mass of the companion is significant compared to the mass of the star (compared to get_planet_mass).
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        K (Union[float, ndarray]):
+            semi-amplitude [m/s]
+        e (Union[float, ndarray]):
+            orbital eccentricity
+        I (Union[float, ndarray]):
+            inclination [radians]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `K`, `e`, and `I` are floats and `star_mass` is a float"
+
+    Returns:
+        m (float): planet mass, in $M_{\rm Jup}$
+        m (float): planet mass, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, `e`, and `I` are floats and `star_mass` is a tuple"
+
+    Returns:
+        m (tuple): planet mass and uncertainty, in $M_{\rm Jup}$
+        m (tuple): planet mass and uncertainty, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, `e`, and `I` are arrays and `full_output=True`"
+
+    Returns:
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        M (array):
+            posterior samples for the planet mass, in $M_{\rm Jup}$
+
+    !!! note "If `P`, `K`, `e`, and `I` are arrays and `full_output=False`"
+
+    Returns:
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Earth}$
+        s (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Earth}$
+    """
+    from astropy.constants import G
+    from astropy import units as u
+
+    from sympy.solvers import solve
+    from sympy import Symbol
+
+    from uncertainties import ufloat
+
+    ms = u.meter / u.second
+    C = (ms * u.day**(1/3) * u.solMass**(2/3) / (2*np.pi*G)**(1/3)).to(u.solMass).value #have to work in units of solar mass, 
+                                                                                        #since the units of the primary and secondary mass must be the same 
+    if isinstance(P, float):
+        C = float(C)
+
+    try:
+        # calculate for one value of the orbital period
+        P = float(P)
+        # then K, e, and I should also be floats
+        try:
+            K, e, I = float(K), float(e), float(I)
+        except TypeError:
+            raise TypeError("K, e, and I should be floats if P is a float")
+        
+        #defining the main coefficient of the cubic equation (comprised of the provided orbital parameter values)
+        D = P * ( (C * K * np.sqrt(1 - e**2)) / np.sin(I) )**3
+
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+           
+            #first, converting the star_mass to a ufloat to take into account the uncertainty using the uncertainties package
+            star_mass_ufloat = ufloat(star_mass[0], star_mass[1])
+
+            #writing out the cubic equation to be solved for the companion mass via sympy
+            cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass_ufloat * m_sol) - (D * star_mass_ufloat**2)
+
+            #solving the cubic equation for the companion mass
+            m_sol = solve(cub_eq, Symbol('m_sol'))
+
+            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            m_mj = (m_sol.n * u.solMass).to(u.jupiterMass).value
+            m_mj_err = (m_sol.s * u.solMass).to(u.jupiterMass).value
+
+            m_me = m_mj * mjup2mearth
+            m_me_err = m_mj_err * mjup2mearth
+            return (m_mj, m_mj_err), (m_me, m_me_err)
+        else:
+            cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass * m_sol) - (D * star_mass**2)
+
+            #solving the cubic equation for the companion mass
+            m_sol = solve(cub_eq, Symbol('m_sol'))
+
+            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            m_mj = (m_sol * u.solMass).to(u.jupiterMass).value
+
+            m_me = m_mj * mjup2mearth
+            return m_mj, m_me
+
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
+
+        #defining the main coefficient of the cubic equation (comprised of the provided orbital parameter values)
+        D = P * ( (C * K * np.sqrt(1 - e**2)) / np.sin(I) )**3
+
+        #writing out the cubic equation to be solved for the companion mass via sympy
+        cub_eq = m_sol**3 - (D * m_sol**2) - (D * 2 * star_mass * m_sol) - (D * star_mass**2)
+
+        #solving the cubic equation for the companion mass
+        m_sol = solve(cub_eq, Symbol('m_sol'))
+
+        #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+        m_mj = (m_sol * u.solMass).to(u.jupiterMass).value
+        m_me = m_mj * mjup2mearth
+
+        if full_output:
+            return m_mj.mean(), m_mj.std(), m_mj
+        else:
+            return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+
         
 def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray], 
                          parallax: Union[float, np.ndarray], 
