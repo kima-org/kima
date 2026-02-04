@@ -288,7 +288,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
     from astropy import units as u
 
     from sympy.solvers import solve
-    from sympy import symbols, lambdify, Rational
+    from sympy import symbols, lambdify, Rational, diff
 
     from uncertainties import ufloat
     import uncertainties.umath as um
@@ -321,17 +321,16 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
            
-            raise NotImplementedError('Currently not working - uncertainty propagation issue with sympy and uncertainties packages')
-
-            #first, converting the star_mass to a ufloat to take into account the uncertainty using the uncertainties package
-            star_mass_ufloat = ufloat(star_mass[0], star_mass[1])
+            m_ms = m_ms_func(D, star_mass[0])
 
             # error propagation:
-            m_mj_err = m_mj * (2/3) * star_mass[1] / star_mass[0]
-
+            star_mass_der_sol = diff(m_ms_sol, star_mass_const).simplify()
+            star_mass_der = lambdify([D_const, star_mass_const], star_mass_der_sol, "numpy")(D, star_mass[0])
+            m_ms_err = star_mass_der * star_mass[1]
+            
             #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
-            m_mj = (m_sol_res.n * u.solMass).to(u.jupiterMass).value
-            m_mj_err = (m_sol_res.s * u.solMass).to(u.jupiterMass).value
+            m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
+            m_mj_err = (m_ms_err * u.solMass).to(u.jupiterMass).value
 
             m_me = m_mj * mjup2mearth
             m_me_err = m_mj_err * mjup2mearth
