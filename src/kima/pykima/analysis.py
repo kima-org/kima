@@ -288,11 +288,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
     from astropy import units as u
 
     from sympy.solvers import solve
-    from sympy import Symbol, symbols
-    from sympy import lambdify 
-    from sympy import roots
-
-    from tqdm import tqdm
+    from sympy import symbols, lambdify, Rational
 
     from uncertainties import ufloat
     import uncertainties.umath as um
@@ -370,26 +366,19 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
 
-        
-        #defining the main coefficient of the cubic equation (comprised of the provided orbital parameter values)
-        D = P * ( (C * K * np.sqrt(1 - e**2)) / np.sin(I) )**3
+        #keeping the equation in a form that includes a fractional exponent, in order to invoke sympy.Rational() explicitly, to avoid issues with complex roots
+        Di = C * P**(1/3) * K * np.sqrt(1 - e**2) / np.sin(I)
 
-        #writing out the cubic equation to be solved for the companion mass via sympy
-        m_ms = Symbol('m_ms') 
-        D_const, star_mass_const = symbols('D_const star_mass_const')
-        cub_eq = m_ms**3 - (D_const * m_ms**2) - (D_const * 2 * star_mass_const * m_ms) - (D_const * star_mass_const**2)
+        Di_const, m_sol_i, star_mass_i_const = symbols('Di_const m_sol_i star_mass_i_const', positive=True)
 
-        m_ms_res_i = list(roots(cub_eq, m_ms))[1] #getting only the root that will provide a real value when substituting with the actual values
+        eq = (m_sol_i / ( (m_sol_i + star_mass_i_const)**Rational(2, 3) ) ) - Di_const
 
-        #solving the cubic equation for the companion mass (have to convert the arrays to complex128 to avoid issues with sympy)
-        D_c = np.asarray(D, dtype=np.complex128)
-        star_mass_c = np.asarray(star_mass, dtype=np.complex128)
+        m_sol_res_i = solve(eq, m_sol_i)[0].simplify() #getting only the first root, which is the real solution (and then simplifying it)
 
-        #need to compare accuracy/precision of solve vs roots!!!
-        m_ms_res = np.real(lambdify([D_const, star_mass_const], m_ms_res_i, modules=["numpy"])(D_c, star_mass_c))
+        m_sol_res = lambdify([Di_const, star_mass_i_const], m_sol_res_i, "numpy")(Di, star_mass)
 
         #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
-        m_mj = (m_ms_res * u.solMass).to(u.jupiterMass).value
+        m_mj = (m_sol_res * u.solMass).to(u.jupiterMass).value
         m_me = m_mj * mjup2mearth
 
         if full_output:
