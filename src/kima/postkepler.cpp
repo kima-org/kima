@@ -61,7 +61,7 @@ namespace postKep
     {
         double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365.25),1.0/3)/1047.5655;
         double k = semiamp(M, M_est, P, ecc);
-        while(abs(k-K1)>0.1)
+        while(abs(k-K1)>1.0)
         {
             M_est = M_est - f_M(K1, M, M_est, P, ecc)/f_dash_M(K1, M, M_est, P, ecc);
             k = semiamp(M, M_est, P, ecc);
