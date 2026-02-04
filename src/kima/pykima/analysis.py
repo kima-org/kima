@@ -302,7 +302,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
 
     #getting the general solution for the companion mass in terms of the orbital parameters and the stellar mass
     D_const, m_ms_var, star_mass_const = symbols('D_const m_ms_var star_mass_const', positive=True)
-    eq = (m_ms_var / ( (m_ms_var + star_mass_const)**Rational(2, 3) ) ) - D_const
+    eq = (( (m_ms_var + star_mass_const)**Rational(2, 3) ) / m_ms_var ) - D_const
 
     m_ms_sol = solve(eq, m_ms_var)[0].simplify() #getting only the first root, which is the real solution (and then simplifying it)
     m_ms_func = lambdify([D_const, star_mass_const], m_ms_sol, "numpy")
@@ -317,7 +317,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             raise TypeError("K, e, and I should be floats if P is a float")
         
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = C * P**(1/3) * K * np.sqrt(1 - e**2) / np.sin(I)
+        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
         
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
            
@@ -350,13 +350,13 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = star_mass_samples(*star_mass, P.shape[0])
-            # star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1) #commented out for now, since just testing the calculation for single companion fits
+            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1) #commented out for now, since just testing the calculation for single companion fits
         elif isinstance(star_mass, np.ndarray):
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
 
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = C * P**(1/3) * K * np.sqrt(1 - e**2) / np.sin(I)
+        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
 
         m_ms = m_ms_func(D, star_mass)
 
