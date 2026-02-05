@@ -288,7 +288,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
     from astropy import units as u
 
     from sympy.solvers import solve
-    from sympy import Symbol, symbols, lambdify, Rational, diff
+    from sympy import symbols, lambdify, Rational, diff
 
     from uncertainties import ufloat
     import uncertainties.umath as um
@@ -301,12 +301,11 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         C = float(C)
 
     #getting the general solution for the companion mass in terms of the orbital parameters and the stellar mass
-    sini_const = Symbol('sini_const', positive=True, real=True)
-    D_const, m_ms_var, star_mass_const = symbols('D_const m_ms_var star_mass_const', positive=True, real=True)
-    eq = ( (m_ms_var * sini_const) / ( (m_ms_var + star_mass_const)**Rational(2, 3) ) ) - D_const
+    D_const, m_ms_var, star_mass_const = symbols('D_const m_ms_var star_mass_const', nonnegative=True, real=True)
+    eq = (( (m_ms_var + star_mass_const)**Rational(2, 3) ) / m_ms_var ) - D_const
 
     m_ms_sol = solve(eq, m_ms_var)[0].simplify() #getting only the first root, which is the real solution (and then simplifying it)
-    m_ms_func = lambdify([sini_const, D_const, star_mass_const], m_ms_sol, "numpy")
+    m_ms_func = lambdify([D_const, star_mass_const], m_ms_sol, "numpy")
 
     try:
         # calculate for one value of the orbital period
@@ -318,15 +317,15 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             raise TypeError("K, e, and I should be floats if P is a float")
         
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D =  C * P**(1/3) * K * np.sqrt(1 - e**2) 
+        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
         
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
            
-            m_ms = m_ms_func(np.sin(I), D, star_mass[0])
+            m_ms = m_ms_func(D, star_mass[0])
 
             # error propagation:
             star_mass_der_sol = diff(m_ms_sol, star_mass_const).simplify()
-            star_mass_der = lambdify([sini_const, D_const, star_mass_const], star_mass_der_sol, "numpy")(np.sin(I), D, star_mass[0])
+            star_mass_der = lambdify([D_const, star_mass_const], star_mass_der_sol, "numpy")(D, star_mass[0])
             m_ms_err = star_mass_der * star_mass[1]
             
             #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
@@ -337,7 +336,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             m_me_err = m_mj_err * mjup2mearth
             return (m_mj, m_mj_err), (m_me, m_me_err)
         else:
-            m_ms = m_ms_func(np.sin(I), D, star_mass)
+            m_ms = m_ms_func(D, star_mass)
 
             #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
             m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
@@ -356,14 +355,14 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             star_mass = np.atleast_1d(star_mass)
 
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D =  C * P**(1/3) * K * np.sqrt(1 - e**2) 
+        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
 
         m_ms = np.empty(P.shape, dtype=float)
 
         #implementing a for loop to calculate the mass for the outer companions 
         #more accurately by including the mass of the inner companion(s) in the star_mass
         for comp in range(P.shape[1]):
-            m_ms_comp = m_ms_func(np.sin(I[:, comp]), D[:, comp], star_mass)
+            m_ms_comp = m_ms_func(D[:, comp], star_mass)
             m_ms[:, comp] = m_ms_comp
             star_mass = np.nansum([star_mass, m_ms_comp], axis=0)
 
