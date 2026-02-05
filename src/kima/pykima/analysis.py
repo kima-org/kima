@@ -371,9 +371,9 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         m_me = m_mj * mjup2mearth
 
         if full_output:
-            return m_mj.mean(), m_mj.std(), m_mj
+            return (np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), np.nanmean(m_me, axis=0), np.nanstd(m_me, axis=0), m_mj)
         else:
-            return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+            return np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), m_mj
 
         
 def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray], 
@@ -655,9 +655,9 @@ def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[f
             star_mass = np.nansum([star_mass, M_c[:, comp]], axis=0)
 
         if full_output:
-            return a.mean(), a.std(), a
+            return np.nanmean(a, axis=0), np.nanstd(a, axis=0), a
         else:
-            return a.mean(), a.std()
+            return np.nanmean(a, axis=0), np.nanstd(a, axis=0)
 
 def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
                                        full_output=False, verbose=False):
@@ -735,10 +735,7 @@ def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
         else:
             M_c = mass[0]
     else:
-        if full_output:
-            M_c = mass[-1]
-        else:
-            M_c = mass[0]
+        M_c = mass[-1]
     
     a = get_planet_semimajor_axis_accurate(P, M_c, star_mass, full_output)
     if isinstance(star_mass, np.ndarray):
