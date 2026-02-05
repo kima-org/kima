@@ -25,7 +25,12 @@ jobs:
           LATEST_TAG=$(git describe --abbrev=0)
           echo "Latest tag: $LATEST_TAG"
           git checkout $LATEST_TAG
-          git log
+
+      - if: matrix.os == 'windows-latest'
+        name: Checkout latest release tag
+        run: |
+          FOR /F %A IN ('git describe --abbrev=0') DO echo "Latest tag:" %~A
+          FOR /F %A IN ('git describe --abbrev=0') DO git checkout %~A
 
       # - name: Build wheels
       #   uses: pypa/cibuildwheel@v3.3.1
