@@ -725,12 +725,19 @@ def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
 
     if isinstance(star_mass, tuple) or isinstance(star_mass, list):
         # include (Gaussian) uncertainty on the stellar mass
-        star_mass = star_mass_samples(*star_mass, P.shape[0])
+        star_mass = star_mass_samples(*star_mass, P.shape[0]) #this means that this function
+                                                        #will break if P is a float and a
+                                                        #tuple is provided for the star mass,
+                                                        #and the same applies for the original 
+                                                        #version of this function
 
     mass = get_planet_mass_accurate(P, K, e, I, star_mass, full_output)
 
-    if len(mass) == 2: #this is probably a dumb way to do this
-        if len(mass[0]) == 2:
+    if len(mass) == 2: #this is probably a dumb way to do this - good fix would be: 
+                        #move the arrays to the first output position and include the
+                        #planet mass uncertainty in the semi-major axis calculation -
+                        #then the correct mass value would always be in mass[0]
+        if not isinstance(mass[0], float):
             M_c = mass[0][0]  #ignoring the uncertainty on the planet mass when calculating the semi-major axis, for now
         else:
             M_c = mass[0]
