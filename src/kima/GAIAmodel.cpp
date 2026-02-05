@@ -592,11 +592,6 @@ void GAIAmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Jprior: " << *Jprior << endl;
 
-    if (al_scan_bias){
-        fout << "Ak_prior " << *Ak_prior << endl;
-        fout << "thetak_prior " << *thetak_prior << endl;
-    }
-
     fout << "da_prior: " << *da_prior << endl;
     fout << "dd_prior: " << *dd_prior << endl;
     fout << "mua_prior: " << *mua_prior << endl;
@@ -628,6 +623,12 @@ void GAIAmodel::save_setup() {
             fout << "cosiprior: " << *conditional->cosiprior << endl;
             fout << "Omegaprior: " << *conditional->Omegaprior << endl;
         }
+    }
+
+    if (al_scan_bias){
+        fout << endl << "[priors.al_scan_bias]" << endl;
+        fout << "Ak_prior: " << *Ak_prior << endl;
+        fout << "thetak_prior: " << *thetak_prior << endl;
     }
 
     if (known_object) {
