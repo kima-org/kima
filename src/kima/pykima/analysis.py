@@ -564,6 +564,101 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K=None,
             return a.mean(), a.std()
 
 
+def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[float, np.ndarray],
+                              star_mass: Union[float, tuple]=1.0, 
+                              full_output=False):
+    r"""
+    Calculate the semi-major axis of the companion's orbit given orbital period
+    `P`, companion mass `M_c`, and stellar mass.
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        M_c (Union[float, ndarray]):
+            companion mass [MJup]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `M_c`, and `star_mass` are floats"
+
+    Returns:
+        a (float): companion semi-major axis, in AU
+
+    !!! note "If `P` and `M_c` are floats and `star_mass` is a tuple"
+
+    Returns:
+        a (tuple): semi-major axis and uncertainty, in AU
+
+    !!! note "If `P` and `M_c` are arrays and `full_output=True`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+        a (array):
+            posterior samples for the semi-major axis, in AU
+
+    !!! note "If `P` and `M_c` are arrays and `full_output=False`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+    """
+    from astropy.constants import G
+    from astropy import units as u
+
+    f = (G.to(u.AU**3 / u.solMass / u.day**2) ** (1 / 3)).value
+    if isinstance(P, float):
+        f = float(f)
+
+    M_c = M_c * mjup2msun  # convert to solar masses
+    
+    try:
+        # calculate for one value of the orbital period
+        P = float(P)
+        try:
+            M_c = float(M_c)
+        except TypeError:
+            raise TypeError("M_c should be a float if P is a float")
+        
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            a = f * (star_mass[0] + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
+            # error propagation:
+            a_err = a * (1/3) * star_mass[1] / (star_mass[0] + M_c)
+            return a, a_err
+        else:
+            a = f * (star_mass + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
+            return a
+
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
+
+        a = np.empty(P.shape, dtype=float)
+
+        #accounting for the masses of the inner companion(s) when calculating
+        #the semi-major axis of the outer companion(s)
+        for comp in range(P.shape[1]):
+            a_comp = f * (star_mass + M_c[:, comp])**(1/3) * (P[:, comp] / (2 * np.pi))**(2/3)
+            a[:, comp] = a_comp
+            star_mass = np.nansum([star_mass, M_c[:, comp]], axis=0)
+
+        if full_output:
+            return a.mean(), a.std(), a
+        else:
+            return a.mean(), a.std()
+
 def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
                                        full_output=False, verbose=False):
     """
@@ -601,6 +696,54 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
         return mass, a, star_mass
     return mass, a
 
+def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
+                                       full_output=False, verbose=False):
+    """
+    Calculate the companion mass M and the semi-major axis given
+    orbital period `P`, semi-amplitude `K`, eccentricity `e`, inclination `I`, and stellar mass.
+    If `star_mass` is a tuple with (estimate, uncertainty), this (Gaussian)
+    uncertainty will be taken into account in the calculation, and samples from
+    the star_mass distribution will be returned.
+
+    Units:
+        P [days]
+        K [m/s]
+        e []
+        I [radians]
+        star_mass [Msun]
+
+    Returns:
+        (M, A) where
+            M is the output of `get_planet_mass_accurate`
+            A is the output of `get_planet_semimajor_axis_accurate`
+        star_mass (np.ndarray):
+            Gaussian samples if star_mass is a tuple or list
+    """
+
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
+
+    if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+        # include (Gaussian) uncertainty on the stellar mass
+        star_mass = star_mass_samples(*star_mass, P.shape[0])
+
+    mass = get_planet_mass_accurate(P, K, e, I, star_mass, full_output)
+
+    if len(mass) == 2: #this is probably a dumb way to do this
+        if len(mass[0]) == 2:
+            M_c = mass[0][0]  #ignoring the uncertainty on the planet mass when calculating the semi-major axis, for now
+        else:
+            M_c = mass[0]
+    else:
+        if full_output:
+            M_c = mass[-1]
+        else:
+            M_c = mass[0]
+    
+    a = get_planet_semimajor_axis_accurate(P, M_c, star_mass, full_output)
+    if isinstance(star_mass, np.ndarray):
+        return mass, a, star_mass
+    return mass, a
 
 def get_bins(res, start=None, end=None, nbins=100):
     try:
