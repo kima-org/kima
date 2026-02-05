@@ -328,7 +328,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             star_mass_der = lambdify([D_const, star_mass_const], star_mass_der_sol, "numpy")(D, star_mass[0])
             m_ms_err = star_mass_der * star_mass[1]
             
-            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
             m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
             m_mj_err = (m_ms_err * u.solMass).to(u.jupiterMass).value
 
@@ -338,7 +338,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         else:
             m_ms = m_ms_func(D, star_mass)
 
-            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
             m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
 
             m_me = m_mj * mjup2mearth
@@ -350,7 +350,6 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = star_mass_samples(*star_mass, P.shape[0])
-            star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1) #commented out for now, since just testing the calculation for single companion fits
         elif isinstance(star_mass, np.ndarray):
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
@@ -358,9 +357,16 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
         D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
 
-        m_ms = m_ms_func(D, star_mass)
+        m_ms = np.empty(P.shape, dtype=float)
 
-        #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTSS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+        #implementing a for loop to calculate the mass for the outer companions 
+        #more accurately by including the mass of the inner companion(s) in the star_mass
+        for comp in range(P.shape[1]):
+            m_ms_comp = m_ms_func(D[:, comp], star_mass)
+            m_ms[:, comp] = m_ms_comp
+            star_mass = np.nansum([star_mass, m_ms_comp], axis=0)
+
+        #convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
         m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
         m_me = m_mj * mjup2mearth
 
