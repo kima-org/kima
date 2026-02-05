@@ -17,8 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: check
+      - name: Checkout latest release tag
         run: |
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Latest tag: $LATEST_TAG"
+          git checkout $LATEST_TAG
           git log
 
       # - name: Build wheels
