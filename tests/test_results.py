@@ -1,4 +1,5 @@
 import os
+
 from common import cleanup_after_running, path_to_test_data, simulated1
 import numpy as np
 
@@ -62,6 +63,24 @@ def test_pickling(cleanup_after_running, simulated1):
     res = kima.load_results(m)
     pkl = res.save_pickle()
     os.remove(pkl)
+
+
+def test_pickling_compressed(cleanup_after_running, simulated1):
+    m = kima.RVmodel(True, 0, simulated1)
+    m.trend = True
+    m.degree = 2
+    kima.run(m, steps=100)
+
+    res = kima.load_results(m)
+    # no compression
+    pkl = res.save_pickle()
+    os.remove(pkl)
+    # default compression
+    pkl = res.save_pickle(compress=True)
+    os.remove(pkl)
+    for comp in ("bz2", "gzip", "lz4", "lzma", "pickle", "zipfile"):
+        pkl = res.save_pickle(compress=comp)
+        os.remove(pkl)
 
 
 def test_log_posterior(cleanup_after_running, simulated1):
