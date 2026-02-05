@@ -177,6 +177,8 @@ RVData::RVData(const vector<vector<double>> _t,
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
 
     // How many points did we read?
     if (VERBOSE)
