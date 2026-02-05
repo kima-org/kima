@@ -23,6 +23,15 @@ void GAIAmodel::initialize_from_data(GAIAdata& data)
     conditional->set_default_priors(data);
 }
 
+void GAIAmodel::set_al_scan_bias(size_t n)
+{
+    al_scan_bias = true;
+    al_scan_bias_components = n;
+
+    Ak.resize(n);
+    thetak.resize(n);
+}
+
 void GAIAmodel::set_known_object(size_t n)
 {
     known_object = true;
@@ -57,6 +66,15 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
      
     if (!Jprior)
         Jprior = make_prior<ModifiedLogUniform>(0.01,10.);
+
+    if (al_scan_bias)
+    {
+        if (!Ak_prior)
+        {
+            Ak_prior = make_prior<ModifiedLogUniform>(0.5,10.);
+            thetak_prior = make_prior<Uniform>(0,2.*M_PI);
+        }
+    }
     
     if (!da_prior)
         da_prior = make_prior<Gaussian>(0.0,pow(10,0));
@@ -93,6 +111,14 @@ void GAIAmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
     
     jitter = Jprior->generate(rng);
+
+    if (al_scan_bias)
+    {
+        for (int i=0; i<al_scan_bias_components; i++){
+            Ak[i] = Ak_prior->generate(rng);
+            thetak[i] = thetak_prior->generate(rng);
+        }
+    }
     
     da = da_prior->generate(rng);
     dd = dd_prior->generate(rng);
@@ -160,6 +186,14 @@ void GAIAmodel::calculate_mu()
         if (known_object) { // KO mode!
             add_known_object();
         }
+
+        if (al_scan_bias) {
+            for (int j=0; j<al_scan_bias_components; j++){
+                for(size_t i=0; i<mu.size(); i++){
+                    mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
+                }
+            }
+        }
     }
     else // just updating (adding) planets
         staleness++;
@@ -200,25 +234,6 @@ void GAIAmodel::calculate_mu()
         auto wk = brandt::keplerian_gaia(data.t, data.psi, A, B, F, G, ecc, P, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
             mu[i] += wk[i];
-
-//         for(size_t i=0; i<N; i++)
-//         {
-//             ti = data.t[i];
-//             
-//             if(!thiele_innes)
-//             {
-//                 A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
-//                 B = a0*(cos(omega) * sin(Omega) - sin(omega) * cos(Omega) * cosi);
-//                 F = -a0*(sin(omega) * cos(Omega) - cos(omega) * sin(Omega) * cosi);
-//                 G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
-//             }
-//             
-//             Tp = data.M0_epoch - (P * phi) / (2. * M_PI);
-//             tie(X,Y) = nijenhuis::ellip_rectang(ti, P, ecc, Tp);
-//             
-//             wk = (B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-//             mu[i] += wk;
-//         }
     }
 
     #if TIMING
@@ -246,23 +261,6 @@ void GAIAmodel::remove_known_object()
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<N; i++)
             mu[i] -= wk[i];
-
-        // for(size_t i=0; i<data.N(); i++)
-        // {
-        //     ti = data.t[i];
-            
-        //     A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        //     B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        //     F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        //     G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-            
-        //     Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            
-        //     tie(X,Y) = nijenhuis::ellip_rectang(ti, KO_P[j], KO_e[j], Tp);
-            
-        //     wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-        //     mu[i] -= wk;
-        // }
     }
 }
 
@@ -282,23 +280,6 @@ void GAIAmodel::add_known_object()
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<N; i++)
             mu[i] += wk[i];
-        
-        // for(size_t i=0; i<data.N(); i++)
-        // {
-        //     ti = data.t[i];
-            
-        //     A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        //     B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) - sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        //     F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) - cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        //     G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-            
-        //     Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            
-        //     tie(X,Y) = nijenhuis::ellip_rectang(ti,  KO_P[j], KO_e[j], Tp);
-            
-        //     wk =(B*X + G*Y)*sin(data.psi[i]) + (A*X + F*Y)*cos(data.psi[i]);
-        //     mu[i] += wk;
-        // }
     }
 }
 
@@ -342,11 +323,24 @@ double GAIAmodel::perturb(RNG& rng)
 
             add_known_object();
         }
+
+        if (al_scan_bias) {
+            for (int j=0; j<al_scan_bias_components; j++){
+                for(size_t i=0; i<mu.size(); i++){
+                    mu[i] -= Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
+                }
+                Ak_prior->perturb(Ak[j], rng);
+                thetak_prior->perturb(thetak[j], rng);
+                for(size_t i=0; i<mu.size(); i++){
+                    mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
+                }
+            }
+        }
         
     }
     else //perturb background solution
     {
-        //subtract ephemeris
+        //subtract 5-parameter solution
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += -(da + mua * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
@@ -358,7 +352,7 @@ double GAIAmodel::perturb(RNG& rng)
         mud_prior->perturb(mud, rng);
         plx_prior->perturb(plx, rng);
 
-        //add ephemeris back in
+        //add 5-parameter solution back in
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += (da + mua * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];;
@@ -455,6 +449,10 @@ void GAIAmodel::print(std::ostream& out) const
     out.precision(8);
 
     //auto data = get_data();
+    if (al_scan_bias){
+        for (auto A: Ak) out << A << "\t";
+        for (auto theta: thetak) out << theta << "\t";
+    }
 
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
@@ -490,6 +488,12 @@ string GAIAmodel::description() const
     desc += "parallax" + sep;
 
     //auto data = get_data();
+    if (al_scan_bias){
+        for (int i=0; i<al_scan_bias_components; i++)
+            desc += "A"+std::to_string(i*2 + 3) + sep;
+        for (int i=0; i<al_scan_bias_components; i++)
+            desc += "theta"+std::to_string(i*2 + 3) + sep;
+    }
 
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
@@ -581,6 +585,11 @@ void GAIAmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Jprior: " << *Jprior << endl;
 
+    if (al_scan_bias){
+        fout << "Ak_prior " << *Ak_prior << endl;
+        fout << "thetak_prior " << *thetak_prior << endl;
+    }
+
     fout << "da_prior: " << *da_prior << endl;
     fout << "dd_prior: " << *dd_prior << endl;
     fout << "mua_prior: " << *mua_prior << endl;
@@ -636,7 +645,7 @@ using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 auto GAIAMODEL_DOC = R"D(
 Analysis of Gaia epoch astrometry. Implements a sum-of-Keplerians model where the number of Keplerians can be free.
 This model assumes white, uncorrelated noise. Known objects are given priors for geometric elements, free planet search 
-has the choice of geometric or Thiele-Innes elements.
+has the choice of geometric or Thiele-Innes elements. An option to fit for a scan-angle dependent signal is included.
 
 Args:
     fix (bool, default=True):
@@ -689,6 +698,12 @@ NB_MODULE(GAIAmodel, m) {
         .def_rw("DEC", &GAIAmodel_publicist::DEC,
                 "Declination of the target star (degrees)")
 
+        .def("set_al_scan_bias", &GAIAmodel::set_al_scan_bias)
+        .def_prop_ro("al_scan_bias", [](GAIAmodel &m) { return m.get_al_scan_bias(); },
+                     "whether the model includes a model for potential scan-angle dependent signals that could bias towards certain frequencies")
+        .def_prop_ro("n_al_scan_componenets", [](GAIAmodel &m) { return m.get_al_scan_bias_components(); },
+                     "how many components of scan-angle harmonics are included")
+
 //         //KO mode
 //         .def_rw("known_object", &GAIAmodel_publicist::known_object,
 //                 "whether to include (better) known extra Keplerian curve(s)")
@@ -711,6 +726,14 @@ NB_MODULE(GAIAmodel, m) {
             [](GAIAmodel &m) { return m.nu_prior; },
             [](GAIAmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
+        .def_prop_rw("Ak_prior",
+            [](GAIAmodel &m) { return m.Ak_prior; },
+            [](GAIAmodel &m, distribution &d) { m.AK_prior = d; },
+            "Prior for the amplitudes of scan-angle dependent signals")
+        .def_prop_rw("thetak_prior",
+            [](GAIAmodel &m) { return m.thetak_prior; },
+            [](GAIAmodel &m, distribution &d) { m.thetak_prior = d; },
+            "Prior for the phase of scan-angle dependent signals")
         .def_prop_rw("da_prior",
             [](GAIAmodel &m) { return m.da_prior; },
             [](GAIAmodel &m, distribution &d) { m.da_prior = d; },

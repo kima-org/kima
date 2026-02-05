@@ -30,11 +30,6 @@ class KIMA_API GAIAmodel
         bool fix {true};
         /// Maximum number of planets (by default 1)
         int npmax {1};
-    
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        ///bool known_object {false};
-        /// how many known objects
-        ///int n_known_object {0};
         
         ///Whether to use thiele_innes parametrisation
         bool thiele_innes {false};
@@ -62,6 +57,10 @@ class KIMA_API GAIAmodel
         
         double nu;
         double jitter;
+
+        // Parameters of the scan-angle bias modelling if set
+        std::vector<double> Ak;
+        std::vector<double> thetak;
 
         // Parameters for the known object, if set. Use geometric parameters rather than thiele_innes
         // double KO_P, KO_K, KO_e, KO_phi, KO_w;
@@ -99,6 +98,18 @@ class KIMA_API GAIAmodel
         distribution Jprior;
         /// prior for student-t degree of freedom
         distribution nu_prior;
+
+        ///Whether to include a model of the along-scan bias from a close binary (see Holl et al. 2023)
+        bool al_scan_bias {false};
+        bool get_al_scan_bias() { return al_scan_bias; }
+        ///number of components of the al_scan bias model up to 3?
+        size_t al_scan_bias_components {0};
+        size_t get_al_scan_bias_components() { return al_scan_bias_components; }
+        /// set the number of components
+        void set_al_scan_bias(size_t al_scan_bias_components);
+
+        distribution Ak_prior;
+        distribution thetak_prior;
         
         //priors for astrometric solution
         distribution da_prior;
