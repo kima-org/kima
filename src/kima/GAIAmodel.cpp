@@ -728,7 +728,7 @@ NB_MODULE(GAIAmodel, m) {
             "Prior for the degrees of freedom of the Student-t likelihood")
         .def_prop_rw("Ak_prior",
             [](GAIAmodel &m) { return m.Ak_prior; },
-            [](GAIAmodel &m, distribution &d) { m.AK_prior = d; },
+            [](GAIAmodel &m, distribution &d) { m.Ak_prior = d; },
             "Prior for the amplitudes of scan-angle dependent signals")
         .def_prop_rw("thetak_prior",
             [](GAIAmodel &m) { return m.thetak_prior; },
