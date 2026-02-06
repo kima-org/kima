@@ -371,9 +371,9 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         m_me = m_mj * mjup2mearth
 
         if full_output:
-            return (np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), np.nanmean(m_me, axis=0), np.nanstd(m_me, axis=0), m_mj)
+            return (m_mj, np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), np.nanmean(m_me, axis=0), np.nanstd(m_me, axis=0))
         else:
-            return np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), m_mj
+            return m_mj, np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0)
 
         
 def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray], 
@@ -624,13 +624,22 @@ def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[f
         try:
             M_c = float(M_c)
         except TypeError:
-            raise TypeError("M_c should be a float if P is a float")
+            if isinstance(M_c, tuple) or isinstance(M_c, list):
+                pass
+            else:
+                raise TypeError("M_c must be a scalar or tuple/list with shape (2,)")
         
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            a = f * (star_mass[0] + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
-            # error propagation:
-            a_err = a * (1/3) * star_mass[1] / (star_mass[0] + M_c)
-            return a, a_err
+            if isinstance(M_c, tuple) or isinstance(M_c, list): 
+                a = f * (star_mass[0] + M_c[0])**(1/3) * (P / (2 * np.pi))**(2/3)
+                # error propagation:
+                a_err = np.sqrt(star_mass[1]**2 + M_c[1]**2) * a * (1/3) / (star_mass[0] + M_c[0]) 
+                return a, a_err
+            else:
+                a = f * (star_mass[0] + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
+                # error propagation:
+                a_err = a * (1/3) * star_mass[1] / (star_mass[0] + M_c)
+                return a, a_err
         else:
             a = f * (star_mass + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
             return a
@@ -655,7 +664,7 @@ def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[f
             star_mass = np.nansum([star_mass, M_c[:, comp]], axis=0)
 
         if full_output:
-            return np.nanmean(a, axis=0), np.nanstd(a, axis=0), a
+            return a, np.nanmean(a, axis=0), np.nanstd(a, axis=0)
         else:
             return np.nanmean(a, axis=0), np.nanstd(a, axis=0)
 
@@ -732,19 +741,8 @@ def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
                                                         #version of this function
 
     mass = get_planet_mass_accurate(P, K, e, I, star_mass, full_output)
-
-    if len(mass) == 2: #this is probably a dumb way to do this - good fix would be: 
-                        #move the arrays to the first output position and include the
-                        #planet mass uncertainty in the semi-major axis calculation -
-                        #then the correct mass value would always be in mass[0]
-        if not isinstance(mass[0], float):
-            M_c = mass[0][0]  #ignoring the uncertainty on the planet mass when calculating the semi-major axis, for now
-        else:
-            M_c = mass[0]
-    else:
-        M_c = mass[-1]
     
-    a = get_planet_semimajor_axis_accurate(P, M_c, star_mass, full_output)
+    a = get_planet_semimajor_axis_accurate(P, mass[0], star_mass, full_output)
     if isinstance(star_mass, np.ndarray):
         return mass, a, star_mass
     return mass, a
