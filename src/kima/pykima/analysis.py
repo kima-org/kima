@@ -302,7 +302,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
 
     #getting the general solution for the companion mass in terms of the orbital parameters and the stellar mass
     D_const, m_ms_var, star_mass_const = symbols('D_const m_ms_var star_mass_const', positive=True)
-    eq = (( (m_ms_var + star_mass_const)**Rational(2, 3) ) / m_ms_var ) - D_const
+    eq = (m_ms_var/( (m_ms_var + star_mass_const)**Rational(2, 3) )) - D_const
 
     m_ms_sol = solve(eq, m_ms_var)[0].simplify() #getting only the first root, which is the real solution (and then simplifying it)
     m_ms_func = lambdify([D_const, star_mass_const], m_ms_sol, "numpy")
@@ -317,7 +317,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             raise TypeError("K, e, and I should be floats if P is a float")
         
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
+        D = ( C * P**(1/3) * K * np.sqrt(1 - e**2) ) / np.sin(I) 
         
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
            
@@ -358,7 +358,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             star_mass = star_mass * np.ones(P.shape[0]) 
 
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
+        D = ( C * P**(1/3) * K * np.sqrt(1 - e**2) ) / np.sin(I)
 
         m_ms = np.empty(P.shape, dtype=float)
 
