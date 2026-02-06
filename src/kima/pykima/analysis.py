@@ -353,6 +353,9 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         elif isinstance(star_mass, np.ndarray):
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
+        else:
+            # ensure star_mass is an array of the same shape as P
+            star_mass = star_mass * np.ones(P.shape[0]) 
 
         #defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
         D = np.sin(I) / ( C * P**(1/3) * K * np.sqrt(1 - e**2) )
@@ -616,16 +619,16 @@ def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[f
     if isinstance(P, float):
         f = float(f)
 
-    M_c = M_c * mjup2msun  # convert to solar masses
     
     try:
         # calculate for one value of the orbital period
         P = float(P)
         try:
             M_c = float(M_c)
+            M_c = M_c * mjup2msun  # convert to solar masses
         except TypeError:
             if isinstance(M_c, tuple) or isinstance(M_c, list):
-                pass
+                M_c = (M_c[0] * mjup2msun, M_c[1] * mjup2msun) # convert to solar masses
             else:
                 raise TypeError("M_c must be a scalar or tuple/list with shape (2,)")
         
@@ -653,8 +656,12 @@ def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[f
         elif isinstance(star_mass, np.ndarray):
             # use the stellar mass as provided
             star_mass = np.atleast_1d(star_mass)
+        else:
+            # ensure star_mass is an array of the same shape as P
+            star_mass = star_mass * np.ones(P.shape[0])
 
         a = np.empty(P.shape, dtype=float)
+        M_c = M_c * mjup2msun  # convert to solar masses
 
         #accounting for the masses of the inner companion(s) when calculating
         #the semi-major axis of the outer companion(s)
@@ -733,12 +740,11 @@ def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
         print('Using star mass = %s solar mass' % star_mass)
 
     if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-        # include (Gaussian) uncertainty on the stellar mass
-        star_mass = star_mass_samples(*star_mass, P.shape[0]) #this means that this function
-                                                        #will break if P is a float and a
-                                                        #tuple is provided for the star mass,
-                                                        #and the same applies for the original 
-                                                        #version of this function
+        if isinstance(P, float):
+            pass
+        else:
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0]) 
 
     mass = get_planet_mass_accurate(P, K, e, I, star_mass, full_output)
     
