@@ -56,6 +56,7 @@ class KIMA_API BINARIESmodel
         ///whether to perform the GR and tidal corrections (Tidal in particular is computationally expensive)
         bool relativistic_correction = false;
         bool tidal_correction = false;
+        double correction_K_precision = 50;
         
         ///Is the binary a double lined binary with RV data on both stars
         bool double_lined = false;

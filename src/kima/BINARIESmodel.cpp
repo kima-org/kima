@@ -453,7 +453,7 @@ void BINARIESmodel::remove_known_object()
         else{
             bin_phi = KO_phi[j];
         }
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass, binary_mass, star_radius, relativistic_correction, tidal_correction, correction_K_precision);
         for (size_t i = 0; i < data.t.size(); i++)
         {
             mu[i] -= v[i];
@@ -498,7 +498,7 @@ void BINARIESmodel::add_known_object()
         else{
             bin_phi = KO_phi[j];
         }
-        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction);
+        auto v = postKep::keplerian_prec(data.t, P_anom, KO_K[j], KO_e[j], KO_w[j], KO_wdot[j], bin_phi, data.M0_epoch, KO_cosi[j], star_mass,binary_mass,star_radius,relativistic_correction,tidal_correction,correction_K_precision);
         for(size_t i=0; i<data.t.size(); i++)
         {
             mu[i] += v[i];
@@ -1168,6 +1168,7 @@ class BINARIESmodel_publicist : public BINARIESmodel
         using BINARIESmodel::binary_radius;
         using BINARIESmodel::enforce_stability;
         using BINARIESmodel::relativistic_correction;
+        using BINARIESmodel::correction_K_precision;
         using BINARIESmodel::tidal_correction;
         using BINARIESmodel::double_lined;
         using BINARIESmodel::eclipsing;
@@ -1220,6 +1221,8 @@ NB_MODULE(BINARIESmodel, m) {
                 "whether to perform the GR correction")
         .def_rw("tidal_correction", &BINARIESmodel_publicist::tidal_correction,
                 "whether to perform the tidal correction")
+        .def_rw("correction_K_precision", &BINARIESmodel_publicist::correction_K_precision,
+                "To what precision K2 is calculated for the relativistic and tidal corrections, (default is 50 m/s and unless the orbit is very close to face-on this gives sub cm/s precision on the corrections), increasing this may speed up the sampling")
                 
         //
         .def_rw("double_lined", &BINARIESmodel_publicist::double_lined,

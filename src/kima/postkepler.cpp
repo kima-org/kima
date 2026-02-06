@@ -57,11 +57,11 @@ namespace postKep
         return f_dash_1 - f_dash_2;
     }
 
-    inline double get_K2_v2(double K1, double M, double P, double ecc)
+    inline double get_K2_v2(double K1, double M, double P, double ecc, double Kprec)
     {
         double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365.25),1.0/3)/1047.5655;
         double k = semiamp(M, M_est, P, ecc);
-        while(abs(k-K1)>50)
+        while(abs(k-K1)>Kprec)
         {
             M_est = M_est - f_M(K1, M, M_est, P, ecc)/f_dash_M(K1, M, M_est, P, ecc);
             k = semiamp(M, M_est, P, ecc);
@@ -69,7 +69,6 @@ namespace postKep
         double K2 = K1*M/M_est;
     
         return K2;
-
     }
 
     inline double get_K2_v1(double K1, double M, double P, double ecc)
@@ -128,7 +127,7 @@ namespace postKep
         return 1184*M2/(M1*(M1+M2))*pow(R1,4.0)*pow(P,-3.0)*sin2i * 2*(sinf*cos(phi_0) - sin(phi_0)*cosf)*(cosf*cos(phi_0) + sinf*sin(phi_0));
     }
     
-    double post_Newtonian(double K1, double sinf, double cosf, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid)
+    double post_Newtonian(double K1, double sinf, double cosf, double ecc, double w, double P, double cosi, double M1, double M2, double R1, bool GR, bool Tid, double Kprec)
     {
         double K2;
         double v = 0.0;
@@ -141,7 +140,7 @@ namespace postKep
             }
             else
             {
-                K2 = get_K2_v2(K1, M1, P, ecc); 
+                K2 = get_K2_v2(K1, M1, P, ecc, Kprec); 
                 M2 = K1*M1/K2;
             }
         }
@@ -212,7 +211,7 @@ namespace postKep
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
-                                  const double &R1, bool GR, bool Tid)
+                                  const double &R1, bool GR, bool Tid, double Kprec)
     {
         // allocate RVs
         std::vector<double> rv(t.size());
@@ -242,7 +241,7 @@ namespace postKep
             
             double vrad = K * (cosw * (cosEf + ecc) - sinw * sinEf);
                 
-            double v_correction = postKep::post_Newtonian(K, sinEf,cosEf, ecc, w_t, P, cosi, M1, M2, R1, GR, Tid);
+            double v_correction = postKep::post_Newtonian(K, sinEf,cosEf, ecc, w_t, P, cosi, M1, M2, R1, GR, Tid, Kprec);
             
             rv[i] = vrad + v_correction;
       }
@@ -369,6 +368,8 @@ Args:
         Whether to include the radial velocity corrections from General Relativity (Transverse Doppler, Light Travel-Time, and Graviatational Redshift)
     Tid (bool):
         Whether to include the radial velocity correction from Tides (only suitable for circular orbits)
+    Kprec (float):
+        What precision in m/s to calculate K2 to for the relativistic correction (defaults to 50 m/s) 
 
 Returns:
     v (array):
@@ -426,15 +427,15 @@ NB_MODULE(postkepler, m) {
                                   const double &K, const double &ecc,
                                   const double &w, const double &wdot, const double &M0,
                                   const double &M0_epoch, const double &cosi, const double &M1, const double &M2, 
-                                  const double &R1, bool GR, bool Tid)
+                                  const double &R1, bool GR, bool Tid, double Kprec)
     {
         size_t size = t.size();
         struct Temp { std::vector<double> v; };
         Temp *temp = new Temp();
-        temp->v = postKep::keplerian_prec(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid);
+        temp->v = postKep::keplerian_prec(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid, Kprec);
         nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
         return nb::ndarray<nb::numpy, double>(temp->v.data(), {size}, owner);
-    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a, KEPLERIAN_PREC_DOC);
+    }, "t"_a, "P"_a, "K"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "M1"_a, "M2"_a, "R1"_a, "GR"_a, "Tid"_a, "Kprec"_a, KEPLERIAN_PREC_DOC);
 
     // m.def("post_keplerian_sb2", &postKep::keplerian_prec_sb2,
     //       "t"_a, "P"_a, "K"_a, "q"_a, "ecc"_a, "w"_a, "wdot"_a, "M0"_a, "M0_epoch"_a,"cosi"_a, "R1"_a, "R2"_a, "GR"_a, "Tid"_a);
