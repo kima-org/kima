@@ -108,8 +108,8 @@ class KIMA_API GAIAmodel
         /// set the number of components
         void set_al_scan_bias(size_t al_scan_bias_components);
 
-        distribution Ak_prior;
-        distribution thetak_prior;
+        std::vector<distribution> Ak_prior;
+        std::vector<distribution> thetak_prior;
         
         //priors for astrometric solution
         distribution da_prior;

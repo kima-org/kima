@@ -30,6 +30,9 @@ void GAIAmodel::set_al_scan_bias(size_t n)
 
     Ak.resize(n);
     thetak.resize(n);
+
+    Ak_prior.resize(n);
+    thetak_prior.resize(n);
 }
 
 void GAIAmodel::set_known_object(size_t n)
@@ -69,10 +72,12 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (al_scan_bias)
     {
-        if (!Ak_prior)
+        for (int i = 0; i < al_scan_bias_components; i++)
         {
-            Ak_prior = make_prior<ModifiedLogUniform>(0.5,10.);
-            thetak_prior = make_prior<Uniform>(0,2.*M_PI);
+            if (!Ak_prior[i])
+                Ak_prior[i] = make_prior<ModifiedLogUniform>(0.5,10.);
+            if (!thetak_prior[i])
+                thetak_prior[i] = make_prior<Uniform>(0,2.*M_PI/(i*2 + 3));
         }
     }
     
@@ -115,8 +120,8 @@ void GAIAmodel::from_prior(RNG& rng)
     if (al_scan_bias)
     {
         for (int i=0; i<al_scan_bias_components; i++){
-            Ak[i] = Ak_prior->generate(rng);
-            thetak[i] = thetak_prior->generate(rng);
+            Ak[i] = Ak_prior[i]->generate(rng);
+            thetak[i] = thetak_prior[i]->generate(rng);
         }
     }
     
@@ -336,8 +341,8 @@ double GAIAmodel::perturb(RNG& rng)
                 for(size_t i=0; i<mu.size(); i++){
                     mu[i] -= Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
                 }
-                Ak_prior->perturb(Ak[j], rng);
-                thetak_prior->perturb(thetak[j], rng);
+                Ak_prior[j]->perturb(Ak[j], rng);
+                thetak_prior[j]->perturb(thetak[j], rng);
                 for(size_t i=0; i<mu.size(); i++){
                     mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
                 }
@@ -627,8 +632,10 @@ void GAIAmodel::save_setup() {
 
     if (al_scan_bias){
         fout << endl << "[priors.al_scan_bias]" << endl;
-        fout << "Ak_prior: " << *Ak_prior << endl;
-        fout << "thetak_prior: " << *thetak_prior << endl;
+        for(int i=0; i<n_known_object; i++){
+            fout << "Ak_prior_" << i << ": " << *Ak_prior[i] << endl;
+            fout << "thetak_prior_" << i << ": " << *thetak_prior[i] << endl;
+        }
     }
 
     if (known_object) {
@@ -736,11 +743,11 @@ NB_MODULE(GAIAmodel, m) {
             "Prior for the degrees of freedom of the Student-t likelihood")
         .def_prop_rw("Ak_prior",
             [](GAIAmodel &m) { return m.Ak_prior; },
-            [](GAIAmodel &m, distribution &d) { m.Ak_prior = d; },
+            [](GAIAmodel &m, std::vector<distribution>& vd) { m.Ak_prior = vd; },
             "Prior for the amplitudes of scan-angle dependent signals")
         .def_prop_rw("thetak_prior",
             [](GAIAmodel &m) { return m.thetak_prior; },
-            [](GAIAmodel &m, distribution &d) { m.thetak_prior = d; },
+            [](GAIAmodel &m, std::vector<distribution>& vd) { m.thetak_prior = vd; },
             "Prior for the phase of scan-angle dependent signals")
         .def_prop_rw("da_prior",
             [](GAIAmodel &m) { return m.da_prior; },
