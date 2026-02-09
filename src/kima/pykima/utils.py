@@ -144,6 +144,72 @@ def read_datafile_rvfwhmrhk(datafile, skip):
         raise NotImplementedError
 
 
+def compress_outputs(directory=None, posterior=True, delete_originals=False,
+                     verbose=True):
+    """
+    Compress the outputs of a kima run (sample.txt, sample_info.txt, levels.txt)
+    into a zip file, and delete the original files. If `posterior` is True, also
+    compress the posterior files (weights.txt, posterior_sample.txt,
+    posterior_sample_info.txt).
+    
+    Args:
+        directory (str, optional):
+            Directory containing the output files. If None, uses the current
+            directory.
+        posterior (bool, optional):
+            Also compress the posterior samples. Defaults to True.
+        delete_originals (bool, optional):
+            Delete the original files after compressing. Defaults to False.
+        verbose (bool, optional):
+            Print messages after compressing. Defaults to True.
+    """
+    import zipfile
+    if directory is None:
+        directory = os.getcwd()
+
+    sample_files = (
+        'sample.txt', 'sample_info.txt', 'levels.txt', 'kima_model_setup.txt',
+        'sampler_state.txt'
+    )
+    posterior_files = (
+        'posterior_sample.txt', 'posterior_sample_info.txt', 'weights.txt'
+    )
+    DEFL = zipfile.ZIP_DEFLATED
+
+    with chdir(directory):
+        if os.path.exists('sample.txt'):
+            with zipfile.ZipFile('sample.zip', 'w', compression=DEFL) as z:
+                if verbose:
+                    print('Compressing outputs into sample.zip...', end=' ', 
+                          flush=True)
+                for f in sample_files:
+                    z.write(f)
+                if verbose:
+                    print('done')
+            if delete_originals:
+                if verbose:
+                    print('Deleting original files...')
+                for f in sample_files:
+                    os.remove(f)
+        if posterior and os.path.exists('posterior_sample.txt'):
+            with zipfile.ZipFile('posterior_sample.zip', 'w', compression=DEFL) as z:
+                if verbose:
+                    print('Compressing outputs into posterior_sample.zip...',
+                          end=' ', flush=True)
+                for f in posterior_files:
+                    z.write(f)
+                if verbose:
+                    print('done')
+            if delete_originals:
+                if verbose:
+                    print('Deleting original files...')
+                for f in posterior_files:
+                    os.remove(f)
+        else:
+            raise FileNotFoundError(f'sample.txt not found in "{directory}"')
+    
+
+
 @contextlib.contextmanager
 def hide_stdout():
     """
