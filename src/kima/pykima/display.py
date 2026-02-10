@@ -4969,6 +4969,7 @@ def report(res):
 
     axs['t'].axis('off')
     y = 0
+    axs['t'].text(0, y, res.star); y -= 1
     axs['t'].text(0, y, str(res.model).replace('MODELS.', '')); y -= 1
     axs['t'].text(0, y, f'logZ: {res.evidence:.2f}'); y -= 1
     axs['t'].text(0, y, f'ESS: {res.ESS}'); y -= 1
