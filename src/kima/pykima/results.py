@@ -2271,8 +2271,7 @@ class KimaResults:
                 likelihood sample.
         """
         if self.sample_info is None and not self._lnlike_available:
-            print('log-likelihoods are not available! '
-                  'maximum_likelihood_sample() doing nothing...')
+            print("log-likelihoods are not available! maximum_likelihood_sample() doing nothing...")
             return
 
         if from_posterior:
