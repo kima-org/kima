@@ -2250,10 +2250,10 @@ class KimaResults:
     def maximum_likelihood_sample(self, Np=None, printit=True, mask=None,
                                   from_posterior=False, optimize=False):
         """
-        Get the maximum likelihood sample. 
-        
+        """Get the maximum likelihood sample.
+
         By default, this is the highest likelihood sample found by DNest4.
-        
+
         Note:
             If `from_posterior=True`, the returned sample may change, due to
             random choices, between different calls to `load_results`.
@@ -2263,9 +2263,9 @@ class KimaResults:
                 If given, select only samples with that number of planets.
             printit (bool, optional):
                 Whether to print the sample
-            from_posterior (bool, optional): 
+            from_posterior (bool, optional):
                 If True, return the highest likelihood sample *from those that
-                represent the posterior*. 
+                represent the posterior*.
             optimize (bool, optional):
                 If True, optimize the likelihood, starting from the maximum
                 likelihood sample.
