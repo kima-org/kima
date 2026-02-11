@@ -2227,18 +2227,17 @@ class KimaResults:
         return map_sample
     
     def maximum_likelihood(self, Np=None, from_posterior=False):
-        """ Get the maximum log-likelihood value
-        
+        """Get the maximum log-likelihood value
+
         Args:
             Np (int, optional):
                 If given, select only samples with that number of planets.
-            from_posterior (bool, optional): 
+            from_posterior (bool, optional):
                 If True, return the highest likelihood value *from samples that
                 represent the posterior*.
         """
         if self.sample_info is None and not self._lnlike_available:
-            print('log-likelihoods are not available! '
-                  'max_log_likelihood() doing nothing...')
+            print("log-likelihoods are not available! max_log_likelihood() doing nothing...")
             return
 
         if from_posterior:
