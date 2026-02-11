@@ -4226,11 +4226,11 @@ class KimaResults:
                 Np_mask = self.Np > i
                 if not Np_mask.any():
                     continue
-                print_line(f'{i+1}: P', self.posteriors.P[Np_mask, i], self.priors['Pprior'], show_prior)
-                print_line(f'{i+1}: K', self.posteriors.K[Np_mask, i], self.priors['Kprior'], show_prior)
-                print_line(f'{i+1}: M0', self.posteriors.φ[Np_mask, i], self.priors['phiprior'], show_prior)
-                print_line(f'{i+1}: e', self.posteriors.e[Np_mask, i], self.priors['eprior'], show_prior)
-                print_line(f'{i+1}: w', self.posteriors.w[Np_mask, i], self.priors['wprior'], show_prior)
+                print_line(f'{i + 1}: P', self.posteriors.P[Np_mask, i], self.priors['Pprior'], show_prior)
+                print_line(f'{i + 1}: K', self.posteriors.K[Np_mask, i], self.priors['Kprior'], show_prior)
+                print_line(f'{i + 1}: M0', self.posteriors.φ[Np_mask, i], self.priors['phiprior'], show_prior)
+                print_line(f'{i + 1}: e', self.posteriors.e[Np_mask, i], self.priors['eprior'], show_prior)
+                print_line(f'{i + 1}: w', self.posteriors.w[Np_mask, i], self.priors['wprior'], show_prior)
                 print('    --')
         
         if self.has_gp:
