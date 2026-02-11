@@ -1569,11 +1569,10 @@ class KimaResults:
                 try:
                     import compress_pickle as pickle
                 except (ImportError, ModuleNotFoundError):
-                    print('reading compressed file requires the `compress-pickle` package')
-                    return
-                
-                res = pickle.load(filename)
+                    msg = "reading compressed file requires the `compress-pickle` package"
+                    raise ModuleNotFoundError(msg)
 
+                res = pickle.load(filename)
 
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
