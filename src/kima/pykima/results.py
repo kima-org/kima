@@ -1690,14 +1690,15 @@ class KimaResults:
                 elif isinstance(compress, str):
                     available = list(filter(None, pickle.compressers.registry.get_known_compressions()))
                     if compress not in available:
-                        print('available compression methods: ', available)
-                        return
+                        raise ValueError(f'available compression methods: {available}')
+
                     dump_kwargs['compression'] = compress
                     ending = ending + COMPRESSED_FILE_EXT[compress]
 
             except (ImportError, ModuleNotFoundError):
-                print('compression requires the `compress-pickle` package')
-                return
+                msg = 'Compression requires the `compress-pickle` package. '
+                msg += 'Install with pip install "compress-pickle[lz4]"'
+                raise ModuleNotFoundError(msg)
 
         if filename is None:
             filename = self.get_model_id(add_timestamp=True)

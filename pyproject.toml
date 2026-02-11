@@ -33,6 +33,7 @@ dependencies = [
     "rebound",
     "tinygp",
     "pooch",
+    "compress_pickle[lz4]",
 ]
 
 [project.optional-dependencies]
