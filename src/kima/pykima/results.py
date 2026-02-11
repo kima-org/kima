@@ -4117,14 +4117,14 @@ class KimaResults:
                 prior_short = prior_short.replace('Uniform', 'U')
                 prior_short = prior_short.replace('Kumaraswamy', 'Kuma')
                 prior_short = prior_short.replace('Gaussian', 'G')
-                print('    %-15s: %-20s Ͱ %-24s %60s' % (p, med_sigma, prior_short, range_dist))
+                print("    %-15s: %-20s Ͱ %-24s %60s" % (p, med_sigma, prior_short, range_dist))
             else:
-                print('    %-15s: %-20s Ͱ %60s' % (p, med_sigma, range_dist))
+                print("    %-15s: %-20s Ͱ %60s" % (p, med_sigma, range_dist))
 
         ########
 
-        print(f'logL max: {self.sample_info[:,1].max():.2f}')
-        print(f'logZ: {self.evidence:.2f}', end='\n\n')
+        print(f"logL max: {self.sample_info[:, 1].max():.2f}")
+        print(f"logZ: {self.evidence:.2f}", end="\n\n")
         print_header()
 
         # if self.posteriors.jitter.ndim == 1:
