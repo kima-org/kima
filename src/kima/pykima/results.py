@@ -1476,7 +1476,7 @@ class KimaResults:
         return parameter_priors
 
     @classmethod
-    def load(cls, filename: str = None, diagnostic: bool = False, **kwargs):
+    def load(cls, filename: str = None, zipped_folder: bool = True, **kwargs):
         """
         Load a KimaResults object from the current directory, a pickle file, or
         a zip file.
@@ -1485,8 +1485,9 @@ class KimaResults:
             filename (str, optional):
                 If given, load the model from this file. Can be a zip or pickle
                 file. Defaults to None.
-            diagnostic (bool, optional):
-                Whether to plot the DNest4 diagnotics. Defaults to False.
+            zipped_folder (bool, optional):
+                Whether `filename` is a zipped results folder (instead of a
+                zipped pickle file). Defaults to True.
             **kwargs: Extra keyword arguments passed to `showresults`
 
         Returns:
@@ -1494,20 +1495,24 @@ class KimaResults:
         """
         if filename is None:
             from .showresults import showresults
+
             return showresults(force_return=True, **kwargs)
 
         try:
-            if filename.endswith('.zip'):
+            if filename.endswith('.zip') and zipped_folder:
                 zf = zipfile.ZipFile(filename, 'r')
                 names = zf.namelist()
-                needs = ('sample.txt', 'levels.txt', 'sample_info.txt',
-                         'kima_model_setup.txt')
+                needs = (
+                    'sample.txt',
+                    'levels.txt',
+                    'sample_info.txt',
+                    'kima_model_setup.txt',
+                )
                 wants = ('posterior_sample.txt', 'posterior_sample_info.txt')
 
                 for need in needs:
                     if need not in names:
-                        raise ValueError('%s does not contain a "%s" file' %
-                                         (filename, need))
+                        raise ValueError('%s does not contain a "%s" file' % (filename, need))
 
                 with tempfile.TemporaryDirectory() as dirpath:
                     for need in needs:
@@ -1558,6 +1563,7 @@ class KimaResults:
 
             elif filename.endswith('.pkl'):
                 import pickle
+
                 try:
                     with open(filename, 'rb') as f:
                         res = pickle.load(f)
