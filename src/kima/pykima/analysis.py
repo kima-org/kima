@@ -13,6 +13,7 @@ from scipy.stats import norm, t as T, binned_statistic
 from .. import MODELS
 from .utils import mjup2mearth, mjup2msun, distribution_support
 
+
 def np_most_probable(results: KimaResults):
     """
     Return the value of Np with the highest posterior probability.
@@ -117,7 +118,7 @@ def star_mass_samples(star_mass, star_mass_uncertainty, n):
     from scipy.stats import truncnorm
     loc = star_mass
     scale = star_mass_uncertainty
-    lower, upper = 0.0, 100.0 # arbitrary upper limit
+    lower, upper = 0.0, 100.0  # arbitrary upper limit
     a, b = (lower - loc) / scale, (upper - loc) / scale
     return truncnorm.rvs(a, b, loc=loc, scale=scale, size=n)
 
@@ -182,7 +183,8 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
     from astropy.constants import G
     from astropy import units as u
     ms = u.meter / u.second
-    C = (ms * u.day**(1/3) * u.solMass**(2/3) / (2*np.pi*G)**(1/3)).to(u.jupiterMass).value
+    C = (ms * u.day**(1/3) * u.solMass**(2/3) /
+         (2*np.pi*G)**(1/3)).to(u.jupiterMass).value
     if isinstance(P, float):
         C = float(C)
 
@@ -225,9 +227,178 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
             return m_mj.mean(), m_mj.std(), m_mj
         else:
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
-        
-def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray], 
-                         parallax: Union[float, np.ndarray], 
+
+
+def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
+                             e: Union[float, np.ndarray], Inc: Union[float, np.ndarray],
+                             star_mass: Union[float, Tuple] = 1.0,
+                             full_output=False):
+    r"""
+    Calculate the companion mass, $M_p$, given orbital period `P`, semi
+    -amplitude `K`, eccentricity `e`, inclination `Inc`,and stellar mass.
+    If `star_mass` is a tuple with (estimate, uncertainty), this 
+    (Gaussian) uncertainty will be taken into account in the 
+    calculation. Note that this accounts for cases where the mass of 
+    the companion is significant compared to the mass of the star 
+    (compared to get_planet_mass).
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        K (Union[float, ndarray]):
+            semi-amplitude [m/s]
+        e (Union[float, ndarray]):
+            orbital eccentricity
+        Inc (Union[float, ndarray]):
+            inclination [radians]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `K`, `e`, and `Inc` are floats and `star_mass` is
+      a float"
+
+    Returns:
+        m (float): planet mass, in $M_{\rm Jup}$
+        m (float): planet mass, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, `e`, and `Inc` are floats and `star_mass` is
+     a tuple"
+
+    Returns:
+        m (tuple): planet mass and uncertainty, in $M_{\rm Jup}$
+        m (tuple): planet mass and uncertainty, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, `e`, and `Inc` are arrays and
+      `full_output=True`"
+
+    Returns:
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s (float):
+            posterior standard deviation for the planet mass, in
+             $M_{\rm Jup}$
+        M (array):
+            posterior samples for the planet mass, in $M_{\rm Jup}$
+
+    !!! note "If `P`, `K`, `e`, and `Inc` are arrays and
+      `full_output=False`"
+
+    Returns:
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s (float):
+            posterior standard deviation for the planet mass, in
+             $M_{\rm Jup}$
+        m (float):
+            posterior mean for the planet mass, in $M_{\rm Earth}$
+        s (float):
+            posterior standard deviation for the planet mass, in
+             $M_{\rm Earth}$
+    """
+    from astropy.constants import G
+    from astropy import units as u
+
+    from sympy.solvers import solve
+    from sympy import symbols, lambdify, Rational, diff
+
+    ms = u.meter / u.second
+
+    # have to work in units of solar mass, since the units of the
+    # primary and secondary mass must be the same in the equation
+    # defined below
+    C = (ms * u.day ** (1/3) * u.solMass**(2/3) /
+         (2*np.pi*G)**(1/3)).to(u.solMass).value
+
+    if isinstance(P, float):
+        C = float(C)
+
+    # getting the general solution for the companion mass in terms of the orbital parameters and the stellar mass
+    D_const, m_ms_var, star_mass_const = symbols(
+        'D_const m_ms_var star_mass_const', positive=True)
+    eq = (m_ms_var/((m_ms_var + star_mass_const)**Rational(2, 3))) - D_const
+
+    # getting only the first root, which is the real solution (and then simplifying it)
+    m_ms_sol = solve(eq, m_ms_var)[0].simplify()
+    m_ms_func = lambdify([D_const, star_mass_const], m_ms_sol, "numpy")
+
+    try:
+        # calculate for one value of the orbital period
+        P = float(P)
+
+        # then K, e, and Inc should also be floats
+        try:
+            K, e, Inc = float(K), float(e), float(Inc)
+        except TypeError:
+            raise TypeError("K, e, and Inc should be floats if P is a float")
+
+        # defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
+        D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
+
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+
+            m_ms = m_ms_func(D, star_mass[0])
+
+            # error propagation:
+            star_mass_der_sol = diff(m_ms_sol, star_mass_const).simplify()
+            star_mass_der = lambdify(
+                [D_const, star_mass_const], star_mass_der_sol, "numpy")(D, star_mass[0])
+            m_ms_err = star_mass_der * star_mass[1]
+
+            # convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
+            m_mj_err = (m_ms_err * u.solMass).to(u.jupiterMass).value
+
+            m_me = m_mj * mjup2mearth
+            m_me_err = m_mj_err * mjup2mearth
+            return (m_mj, m_mj_err), (m_me, m_me_err)
+        else:
+            m_ms = m_ms_func(D, star_mass)
+
+            # convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+            m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
+
+            m_me = m_mj * mjup2mearth
+            return m_mj, m_me
+
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
+        else:
+            # ensure star_mass is an array of the same shape as P
+            star_mass = star_mass * np.ones(P.shape[0])
+
+        # defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
+        D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
+
+        m_ms = np.empty(P.shape, dtype=float)
+
+        # implementing a for loop to calculate the mass for the outer companions
+        # more accurately by including the mass of the inner companion(s) in the star_mass
+        for comp in range(P.shape[1]):
+            m_ms_comp = m_ms_func(D[:, comp], star_mass)
+            m_ms[:, comp] = m_ms_comp
+            star_mass = np.nansum([star_mass, m_ms_comp], axis=0)
+
+        # convert to jupiter masses - NOTE, THIS IS INCONSISTENT WITH THE USE OF CONSTANTS FROM utils.py, AS DONE BELOW FOR THE CONVERSION TO EARTH MASSES
+        m_mj = (m_ms * u.solMass).to(u.jupiterMass).value
+        m_me = m_mj * mjup2mearth
+
+        if full_output:
+            return (m_mj, np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0), np.nanmean(m_me, axis=0), np.nanstd(m_me, axis=0))
+        else:
+            return m_mj, np.nanmean(m_mj, axis=0), np.nanstd(m_mj, axis=0)
+
+
+def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarray],
+                         parallax: Union[float, np.ndarray],
                          star_mass: Union[float, Tuple] = 1.0, full_output=False):
     r"""
     Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
@@ -332,7 +503,7 @@ def get_planet_mass_GAIA(P: Union[float, np.ndarray], a0: Union[float, np.ndarra
 
 
 def get_planet_semimajor_axis(P: Union[float, np.ndarray], K=None,
-                              star_mass: Union[float, tuple]=1.0, 
+                              star_mass: Union[float, tuple] = 1.0,
                               full_output=False):
     r"""
     Calculate the semi-major axis of the planet's orbit given orbital period
@@ -414,6 +585,119 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray], K=None,
             return a.mean(), a.std()
 
 
+def get_planet_semimajor_axis_accurate(P: Union[float, np.ndarray], M_c: Union[float, np.ndarray],
+                                       star_mass: Union[float, tuple] = 1.0,
+                                       full_output=False):
+    r"""
+    Calculate the semi-major axis of the companion's orbit given orbital period
+    `P`, companion mass `M_c`, and stellar mass.
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        M_c (Union[float, ndarray]):
+            companion mass [MJup]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `M_c`, and `star_mass` are floats"
+
+    Returns:
+        a (float): companion semi-major axis, in AU
+
+    !!! note "If `P` and `M_c` are floats and `star_mass` is a tuple"
+
+    Returns:
+        a (tuple): semi-major axis and uncertainty, in AU
+
+    !!! note "If `P` and `M_c` are arrays and `full_output=True`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+        a (array):
+            posterior samples for the semi-major axis, in AU
+
+    !!! note "If `P` and `M_c` are arrays and `full_output=False`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+    """
+    from astropy.constants import G
+    from astropy import units as u
+
+    f = (G.to(u.AU**3 / u.solMass / u.day**2) ** (1 / 3)).value
+    if isinstance(P, float):
+        f = float(f)
+
+    try:
+        # calculate for one value of the orbital period
+        P = float(P)
+        try:
+            M_c = float(M_c)
+            M_c = M_c * mjup2msun  # convert to solar masses
+        except TypeError:
+            if isinstance(M_c, tuple) or isinstance(M_c, list):
+                # convert to solar masses
+                M_c = (M_c[0] * mjup2msun, M_c[1] * mjup2msun)
+            else:
+                raise TypeError(
+                    "M_c must be a scalar or tuple/list with shape (2,)")
+
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            if isinstance(M_c, tuple) or isinstance(M_c, list):
+                a = f * (star_mass[0] + M_c[0])**(1/3) * \
+                    (P / (2 * np.pi))**(2/3)
+                # error propagation:
+                a_err = np.sqrt(star_mass[1]**2 + M_c[1]**2) * \
+                    a * (1/3) / (star_mass[0] + M_c[0])
+                return a, a_err
+            else:
+                a = f * (star_mass[0] + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
+                # error propagation:
+                a_err = a * (1/3) * star_mass[1] / (star_mass[0] + M_c)
+                return a, a_err
+        else:
+            a = f * (star_mass + M_c)**(1/3) * (P / (2 * np.pi))**(2/3)
+            return a
+
+    except TypeError:
+        # calculate for an array of periods
+        P = np.atleast_1d(P)
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+        elif isinstance(star_mass, np.ndarray):
+            # use the stellar mass as provided
+            star_mass = np.atleast_1d(star_mass)
+        else:
+            # ensure star_mass is an array of the same shape as P
+            star_mass = star_mass * np.ones(P.shape[0])
+
+        a = np.empty(P.shape, dtype=float)
+        M_c = M_c * mjup2msun  # convert to solar masses
+
+        # accounting for the masses of the inner companion(s) when calculating
+        # the semi-major axis of the outer companion(s)
+        for comp in range(P.shape[1]):
+            a_comp = f * (star_mass + M_c[:, comp])**(1/3) * \
+                (P[:, comp] / (2 * np.pi))**(2/3)
+            a[:, comp] = a_comp
+            star_mass = np.nansum([star_mass, M_c[:, comp]], axis=0)
+
+        if full_output:
+            return a, np.nanmean(a, axis=0), np.nanstd(a, axis=0)
+        else:
+            return np.nanmean(a, axis=0), np.nanstd(a, axis=0)
+
+
 def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
                                        full_output=False, verbose=False):
     """
@@ -452,6 +736,48 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     return mass, a
 
 
+def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
+                                                full_output=False, verbose=False):
+    """
+    Calculate the companion mass M and the semi-major axis given
+    orbital period `P`, semi-amplitude `K`, eccentricity `e`, inclination `I`, and stellar mass.
+    If `star_mass` is a tuple with (estimate, uncertainty), this (Gaussian)
+    uncertainty will be taken into account in the calculation, and samples from
+    the star_mass distribution will be returned.
+
+    Units:
+        P [days]
+        K [m/s]
+        e []
+        I [radians]
+        star_mass [Msun]
+
+    Returns:
+        (M, A) where
+            M is the output of `get_planet_mass_accurate`
+            A is the output of `get_planet_semimajor_axis_accurate`
+        star_mass (np.ndarray):
+            Gaussian samples if star_mass is a tuple or list
+    """
+
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
+
+    if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+        if isinstance(P, float):
+            pass
+        else:
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = star_mass_samples(*star_mass, P.shape[0])
+
+    mass = get_planet_mass_accurate(P, K, e, I, star_mass, full_output)
+
+    a = get_planet_semimajor_axis_accurate(P, mass[0], star_mass, full_output)
+    if isinstance(star_mass, np.ndarray):
+        return mass, a, star_mass
+    return mass, a
+
+
 def get_bins(res, start=None, end=None, nbins=100):
     try:
         _start, _end = distribution_support(res.priors['Pprior'])
@@ -468,18 +794,20 @@ def get_bins(res, start=None, end=None, nbins=100):
         start = _start
     if end is None:
         end = _end
-    
+
     bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
 
     return bins
 
+
 def aliases(P):
-    yearly, solar_dayly, sidereal_dayly, synodic_monthly = 1 / 365.25, 1.0, 1 + 1 / 365.25, 1 / 29
+    yearly, solar_dayly, sidereal_dayly, synodic_monthly = 1 / \
+        365.25, 1.0, 1 + 1 / 365.25, 1 / 29
     alias_year = [abs(1 / (yearly + i / P)) for i in [1, -1]]
     alias_solar_day = [abs(1 / (solar_dayly + i / P)) for i in [1, -1]]
     alias_sidereal_day = [abs(1 / (sidereal_dayly + i / P)) for i in [1, -1]]
     # alias_synodic_month = [abs(1 / (synodic_monthly + i / P)) for i in [1, -1]]
-    return alias_year, alias_solar_day, alias_sidereal_day #, alias_synodic_month
+    return alias_year, alias_solar_day, alias_sidereal_day  # , alias_synodic_month
 
 # def FIP(results, plot=True, show_peaks=True, oversampling=1, include_aliases=False,
 #         include_known_object=False, include_transiting_planet=False,
@@ -489,11 +817,11 @@ def aliases(P):
 #     Args:
 #         res (kima.KimaResults):
 #             The `KimaResults` instance
-#         plot (bool, optional): 
+#         plot (bool, optional):
 #             Plot the TIP and FIP. Defaults to True.
-#         show_peaks (bool, optional): 
+#         show_peaks (bool, optional):
 #             Identify and show prominent TIP peaks. Defaults to True.
-#         oversampling (int, optional): 
+#         oversampling (int, optional):
 #             Oversampling factor for the period binning. Defaults to 1.
 
 #     Returns:
@@ -540,10 +868,10 @@ def aliases(P):
 #     # very memory intensive and slower:
 #     # with np.errstate(divide='ignore'):
 #     #     c = np.logical_and(
-#     #         # 
-#     #             a[:, None, None] < 1.0 / P, 
+#     #         #
+#     #             a[:, None, None] < 1.0 / P,
 #     #             1.0 / P < b[:, None, None]
-#     #         # 
+#     #         #
 #     #     ).any(axis=2).sum(axis=1)
 #     # TIP = c / results.ESS
 #     # _1 = np.logical_and(a[:, None, None] < 1 / results.posteriors.P, 1 / results.posteriors.P < b[:, None, None])
@@ -577,9 +905,9 @@ def aliases(P):
 #             peaks, _peaks_info = find_peaks(TIP, height=0.9)
 #             for peak in peaks:
 #                 axs[0].plot(bins[peak], TIP[peak], 'ro', ms=3)
-#                 axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
-#                                 xy=(bins[peak], TIP[peak]), xytext=(5, 0), 
-#                                 xycoords='data', textcoords='offset points', 
+#                 axs[0].annotate(f'{bins[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}',
+#                                 xy=(bins[peak], TIP[peak]), xytext=(5, 0),
+#                                 xycoords='data', textcoords='offset points',
 #                                 ha='left', va='top')
 #         if show_ESS:
 #             ess = f'{results.ESS:,}'.replace(',', r'$\,$')
@@ -594,7 +922,7 @@ def aliases(P):
 #     return bins, FIP
 
 
-def FIP(results, f_center=None, f_width=None, oversampling=5, 
+def FIP(results, f_center=None, f_width=None, oversampling=5,
         plot=True, show_peaks=True, peak_indices=None, include_aliases=False,
         include_known_object=False, include_transiting_planet=False,
         peak_ndigits=None, show_ESS=True, just_tip=False, ax=None, **kwargs):
@@ -613,10 +941,10 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
         Tobs = np.ptp(results.data.t)
         f_width = 1.0 / Tobs
         f_center = np.arange(f_width, 1.0, f_width / oversampling)
-    
+
     if f_center is None:
         f_center = np.arange(f_width, 1.0, f_width / oversampling)
-    
+
     P = results.posteriors.P.copy()
 
     if include_known_object:
@@ -653,10 +981,12 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
         from scipy.signal import find_peaks
         if ax is None:
             if just_tip:
-                fig, axs = plt.subplots(1, 1, constrained_layout=True, figsize=(6, 3))
+                fig, axs = plt.subplots(
+                    1, 1, constrained_layout=True, figsize=(6, 3))
                 axs = [axs]
             else:
-                fig, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
+                fig, axs = plt.subplots(
+                    2, 1, constrained_layout=True, sharex=True)
         else:
             if just_tip:
                 axs = [ax]
@@ -679,9 +1009,9 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
 
             for peak in peaks:
                 axs[0].plot(pcenter[peak], TIP[peak], 'ro', ms=3)
-                axs[0].annotate(f'{pcenter[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}', 
-                                xy=(pcenter[peak], TIP[peak]), xytext=(5, 0), 
-                                xycoords='data', textcoords='offset points', 
+                axs[0].annotate(f'{pcenter[peak]:.2f}\nTIP: {TIP[peak]:.{ndigits}f}',
+                                xy=(pcenter[peak], TIP[peak]), xytext=(5, 0),
+                                xycoords='data', textcoords='offset points',
                                 ha='left', va='top')
         if show_ESS:
             ess = f'{results.ESS:,}'.replace(',', r'$\,$')
@@ -689,7 +1019,8 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
         axs[0].set(xlabel='Period [days]', ylabel='TIP', ylim=(0, 1.05))
 
         if not just_tip:
-            axs[1].set(xlabel='Period [days]', ylabel='-log$_{10}$ FIP', ylim=(0, None))
+            axs[1].set(xlabel='Period [days]',
+                       ylabel='-log$_{10}$ FIP', ylim=(0, None))
 
         return pcenter, FIP, (fig, axs)
 
@@ -763,7 +1094,8 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
         P = truths[i][0]
         found = [P in interval for interval in intervals]
         if any(found):
-            print(f'Found {P=:<5.4f} d in one of the {hdi_prob} density regions')
+            print(
+                f'Found {P=:<5.4f} d in one of the {hdi_prob} density regions')
             nfound += 1
         else:
             print(f'!! Did not find {P=:<5.4f} d in any density region')
@@ -817,8 +1149,8 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
 
             withins.append(within)
 
-
     return {'found': nfound, 'hdi': regions, 'withins': withins}
+
 
 def reorder_P(res, replace=False, passes=1):
     from .results import posterior_holder
@@ -840,11 +1172,16 @@ def reorder_P(res, replace=False, passes=1):
         P = new_posterior.P.copy()
         m, s = np.median(P[mask, 0]), np.std(P[mask, 0])
         maybe_wrong_order = np.abs(P[:, 0] - m) > s
-        new_posterior.P[mask & maybe_wrong_order] = new_posterior.P[mask & maybe_wrong_order][:, ::-1]
-        new_posterior.K[mask & maybe_wrong_order] = new_posterior.K[mask & maybe_wrong_order][:, ::-1]
-        new_posterior.e[mask & maybe_wrong_order] = new_posterior.e[mask & maybe_wrong_order][:, ::-1]
-        new_posterior.w[mask & maybe_wrong_order] = new_posterior.w[mask & maybe_wrong_order][:, ::-1]
-        new_posterior.φ[mask & maybe_wrong_order] = new_posterior.φ[mask & maybe_wrong_order][:, ::-1]
+        new_posterior.P[mask & maybe_wrong_order] = new_posterior.P[mask &
+                                                                    maybe_wrong_order][:, ::-1]
+        new_posterior.K[mask & maybe_wrong_order] = new_posterior.K[mask &
+                                                                    maybe_wrong_order][:, ::-1]
+        new_posterior.e[mask & maybe_wrong_order] = new_posterior.e[mask &
+                                                                    maybe_wrong_order][:, ::-1]
+        new_posterior.w[mask & maybe_wrong_order] = new_posterior.w[mask &
+                                                                    maybe_wrong_order][:, ::-1]
+        new_posterior.φ[mask & maybe_wrong_order] = new_posterior.φ[mask &
+                                                                    maybe_wrong_order][:, ::-1]
 
     if replace:
         res.posteriors = new_posterior
@@ -956,6 +1293,8 @@ def reorder_P2(res, replace=False, passes=1):
         res.posterior_sample[:, res.indices['planets.e']] = new_posterior.e
         res.posterior_sample[:, res.indices['planets.w']] = new_posterior.w
         res.posterior_sample[:, res.indices['planets.φ']] = new_posterior.φ
+
+
 def reorder_P5(res, replace=False):
     from itertools import permutations
     from copy import deepcopy
@@ -1017,7 +1356,7 @@ def sort_planet_samples(res, byP=True, replace=False):
         new_posterior.P = P[n, sortP].copy()
         for field in fields:
             try:
-                setattr(new_posterior, field, 
+                setattr(new_posterior, field,
                         getattr(res.posteriors, field)[n, sortP].copy())
             except AttributeError:
                 pass
@@ -1039,7 +1378,8 @@ def sort_planet_samples(res, byP=True, replace=False):
             except AttributeError:
                 pass
             try:
-                res.posterior_sample[:, res.indices['planets.' + field]] = getattr(new_posterior, field)
+                res.posterior_sample[:, res.indices['planets.' +
+                                                    field]] = getattr(new_posterior, field)
             except (AttributeError, KeyError):
                 pass
 
@@ -1054,7 +1394,7 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     if isinstance(star_mass, (tuple, list)):
         mass_errs = True
 
-    format_tuples = lambda data: r'{:10.5f} \pm {:.5f}'.format(
+    def format_tuples(data): return r'{:10.5f} \pm {:.5f}'.format(
         data[0], data[1]) if mass_errs else '{:12.5f}'.format(data)
 
     if printit:
@@ -1416,11 +1756,12 @@ def parameter_clusters(results, n_clusters=None, method='KMeans',
 
     if include_ecc:
         # data = res.posterior_sample[:, res.indices['planets']]
-        data = np.c_[res.posteriors.P.ravel(), res.posteriors.K.ravel(), res.posteriors.e.ravel()]
+        data = np.c_[res.posteriors.P.ravel(), res.posteriors.K.ravel(),
+                     res.posteriors.e.ravel()]
     else:
         # data = np.c_[res.T, res.A, res.Omega, res.phi]
         data = np.c_[
-            res.posteriors.P.ravel().copy(), 
+            res.posteriors.P.ravel().copy(),
             res.posteriors.K.ravel().copy()
         ]
 
@@ -1764,7 +2105,6 @@ def _columns_with_dynamic_range(results):
     return np.nonzero(dr)[0]
 
 
-
 def hpd_grid(sample, alpha=0.05, bw_method=None, roundto=2):
     """Calculate highest posterior density (HPD) of array for given alpha. 
     The HPD is the minimum width Bayesian credible interval (BCI). The function
@@ -1795,7 +2135,7 @@ def hpd_grid(sample, alpha=0.05, bw_method=None, roundto=2):
     print('done')
     x = np.linspace(l, u, max(2000, sample.size//5))
     y = density.evaluate(x)
-    #y = density.evaluate(x, l, u) waitting for PR to be accepted
+    # y = density.evaluate(x, l, u) waitting for PR to be accepted
     xy_zipped = zip(x, y/np.sum(y))
     xy = sorted(xy_zipped, key=lambda x: x[1], reverse=True)
     xy_cum_sum = 0
@@ -1818,7 +2158,7 @@ def hpd_grid(sample, alpha=0.05, bw_method=None, roundto=2):
     hpd = list(zip(ite, ite))
     modes = []
     for value in hpd:
-         x_hpd = x[(x > value[0]) & (x < value[1])]
-         y_hpd = y[(x > value[0]) & (x < value[1])]
-         modes.append(round(x_hpd[np.argmax(y_hpd)], roundto))
+        x_hpd = x[(x > value[0]) & (x < value[1])]
+        y_hpd = y[(x > value[0]) & (x < value[1])]
+        modes.append(round(x_hpd[np.argmax(y_hpd)], roundto))
     return hpd, x, y, modes
