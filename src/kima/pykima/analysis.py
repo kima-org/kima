@@ -956,31 +956,58 @@ def reorder_P2(res, replace=False, passes=1):
         res.posterior_sample[:, res.indices['planets.e']] = new_posterior.e
         res.posterior_sample[:, res.indices['planets.w']] = new_posterior.w
         res.posterior_sample[:, res.indices['planets.φ']] = new_posterior.φ
-def reorder_P5(res, replace=False):
+def reorder_P5(res, replace=False, until_detected=True,
+               sort_maximum_likelihood_by_K=True):
     from itertools import permutations
     from copy import deepcopy
     from tqdm import tqdm
     from warnings import warn
     warn('this function does not change res.posterior_sample even if replace=True')
+
     # make a copy of the posterior samples
     new_posterior = deepcopy(res.posteriors)
     fields = ('e', 'w', 'φ',
               'i', 'i_deg', 'W', 'W_deg', 'Ω', 'Ω_deg')
     # the maximum likelihood sample will serve as reference
-    p = res.maximum_likelihood_sample()
+    p = res.maximum_likelihood_sample(printit=False)
 
-    for j in range(res.npmax - 1):
+    if sort_maximum_likelihood_by_K:
+        sortK = np.argsort(p[res.indices['planets.K']])[::-1]
+        p[res.indices['planets.P']] = p[res.indices['planets.P']][sortK]
+        p[res.indices['planets.K']] = p[res.indices['planets.K']][sortK]
+        p[res.indices['planets.e']] = p[res.indices['planets.e']][sortK]
+        p[res.indices['planets.w']] = p[res.indices['planets.w']][sortK]
+        p[res.indices['planets.φ']] = p[res.indices['planets.φ']][sortK]
+        if res.model is MODELS.RVHGPMmodel:
+            p[res.indices['planets.i']] = p[res.indices['planets.i']][sortK]
+            p[res.indices['planets.W']] = p[res.indices['planets.W']][sortK]
+            # p[res.indices['planets.Ω']] = p[res.indices['planets.Ω']][sortK]
+
+    res.print_sample(p)
+
+    # covariance estimation...
+    logL = res.posterior_lnlike[:, 1]
+    errorP = new_posterior.P[logL > np.percentile(logL, 84)].std(axis=0)
+    errorK = new_posterior.K[logL > np.percentile(logL, 84)].std(axis=0)
+
+    # do reordering for all planets or until detected
+    maximum = np_bayes_factor_threshold(res) if until_detected else res.npmax - 1
+
+    for j in range(maximum):
         # all possible permutations of the columns after the jth
         perms = list(map(np.array, permutations(range(j, res.npmax))))
         # reference period and semi-amplitude
         refP = p[res.indices['planets.P']][j]
         refK = p[res.indices['planets.K']][j]
         # for each sample
-        for i, (sP, sK) in enumerate(tqdm(zip(new_posterior.P, new_posterior.K))):
+        for i, (sP, sK) in enumerate(tqdm(zip(new_posterior.P, new_posterior.K), total=res.ESS)):
             sP = sP[j:]
             sK = sK[j:]
             dist = [
-                np.hypot((sP[perm - j] - refP)[0], (sK[perm - j] - refK)[0])
+                np.hypot(
+                    (sP[perm - j] - refP)[0] / errorP[j],
+                    (sK[perm - j] - refK)[0] / errorK[j]
+                )
                 for perm in perms
             ]
             perm = perms[np.argmin(np.abs(dist))]
