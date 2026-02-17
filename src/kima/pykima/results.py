@@ -2248,8 +2248,8 @@ class KimaResults:
             return self.sample_info[ind, 1].max()
 
     def maximum_likelihood_sample(self, Np=None, printit=True, mask=None,
-                                  from_posterior=False, optimize=False):
-        """
+                                   from_posterior=False, optimize=False,
+                                   save=False):
         """Get the maximum likelihood sample.
 
         By default, this is the highest likelihood sample found by DNest4.
