@@ -4879,8 +4879,19 @@ def report(res):
         for i in res.instruments
     ]
 
-    fig, axs = plt.subplot_mosaic('aaab\npppt\nccco\nddde', figsize=(8.3, 11.7),
-                                  constrained_layout=True)
+    layout = [
+        ["a", "a", "a", "b"],
+        ["p", "p", "p", "t"],
+        ["c", "c", "c", "o"],
+        ["d", "d", "d", "e"],
+    ]
+
+    if diagnostic:
+        layout.append(['d1', 'd2', 'd3', 'd4'])
+
+    fig, axs = plt.subplot_mosaic(layout,
+        # 'aaab\npppt\nccco\nddde', 
+        figsize=(8.3, 11.7), constrained_layout=True)
 
     res.plot_random_samples(ax=axs['a'], ncurves=20,
                             clip_curves_to_data=True)
@@ -4893,7 +4904,11 @@ def report(res):
     else:
         res.plot1(ax=axs['b'], show_ESS=False, verbose=False)
         axs['b'].set(ylabel='posterior', title='', yticks=[])
-
+        _axb = axs['b'].twiny()
+        _axb.set(xlim=axs['b'].get_xlim(),
+                 xticks=axs['b'].get_xticks()[:-1] + 0.5)
+        _axb.set_xticklabels(res.ratios.round(1).astype(str),
+                             fontsize=10, rotation=45, ha='left')
 
     if res.max_components == 0 and not res.KO and not res.TR:
         axs['p'].axis('off')
@@ -4904,14 +4919,18 @@ def report(res):
         axs['p'].set(title='', ylabel='posterior', xlabel='')
 
         from .analysis import FIP
-        f_width = 1 / res.priors['Pprior'].upper
         ax_ = axs['p'].twinx()
-        FIP(res, f_width=f_width, ax=ax_, just_tip=True, show_ESS=False,
-            color='k', alpha=0.4)
+        FIP(res, ax=ax_, just_tip=True, show_ESS=False, color='k', alpha=0.4)
         
         axs['p'].set_ylim(ax_.get_ylim())
 
-        res.plot3(ax1=axs['c'], ax2=axs['d'])
+        if hexbin:
+            kw3 = dict(points=False, cmap='YlGnBu', show_colorbar=False)
+        else:
+            kw3 = dict()
+
+        res.plot3(ax1=axs['c'], ax2=axs['d'], **kw3)
+
         if res.ESS < 1000:
             for line in axs['c'].get_lines():
                 line.set_alpha(1.0)
@@ -4948,7 +4967,8 @@ def report(res):
         axs['o'].axis('off')
 
     # jitter violin plots
-    axs['e'].violinplot(res.jitter[:, 1:], showmedians=True,
+    _i = 1 if res.n_instruments > 1 else 0
+    axs['e'].violinplot(res.jitter[:, _i:], showmedians=True,
                         showextrema=False, vert=False)
     axs['e'].xaxis.minorticks_on()
     axs['e'].set_xlabel('jitter [m/s]')
@@ -4956,7 +4976,7 @@ def report(res):
     axs['e'].set_yticks(range(1, len(res.instruments) + 1))
     labels = short_instruments
     axs['e'].set_yticklabels(labels)
-    estimates = [percentile68_ranges_latex(j) for j in res.jitter[:, 1:].T]
+    estimates = [percentile68_ranges_latex(j) for j in res.jitter[:, _i:].T]
 
     xlim = axs['e'].get_xlim()
     axs['e'].margins(x=0.4, tight=False)
@@ -4984,5 +5004,6 @@ def report(res):
         axs['t'].text(0, y, 'student-t: True'); y -= 1
     axs['t'].set(ylim=(y-1, 1))
 
+    return fig, axs
 
     return fig, axs

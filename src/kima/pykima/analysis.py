@@ -86,6 +86,15 @@ def np_posterior_threshold(results: KimaResults, threshold: float = 0.9):
         above = (counts / results.ESS) > threshold
         return np.where(above, np.arange(values.size), 0).max(axis=1)
 
+def np_FIP_threshold(results: KimaResults, fip_threshold: float = 0.1):
+    from scipy.signal import find_peaks
+    T = results.priors['Pprior'].ppf(1)
+    if np.isinf(T):
+        T = np.ptp(results.data.t)
+    p, fip = FIP(results, plot=False, f_width=1 / T)
+    peaks, _ = find_peaks(1 - fip, height=1 - fip_threshold)
+    return peaks.size
+
 
 def compute_values_from_ratios(S, ratios):
     """
@@ -594,8 +603,8 @@ def aliases(P):
 #     return bins, FIP
 
 
-def FIP(results, f_center=None, f_width=None, oversampling=5, 
-        plot=True, show_peaks=True, peak_indices=None, include_aliases=False,
+def FIP(results, f_center=None, f_width=None, f_start=None, oversampling=5, 
+        plot=True, show_peaks=True, fip_threshold=0.1, peak_indices=None,
         include_known_object=False, include_transiting_planet=False,
         peak_ndigits=None, show_ESS=True, just_tip=False, ax=None, **kwargs):
     r"""
@@ -603,19 +612,57 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
     on (weighted) posterior samples.
 
     Arguments:
-        results (KimaResults): A results instance
+        results (KimaResults):
+            A results instance
         f_center (ndarray, optional):
-            Array of (linear) frequencies at which to compute the T/FIP.
+            Array of (linear) frequencies at which to compute the TIP/FIP.
         f_width (float, optional):
             Width of the frequency bins.
-    """
-    if f_center is None and f_width is None:
-        Tobs = np.ptp(results.data.t)
-        f_width = 1.0 / Tobs
-        f_center = np.arange(f_width, 1.0, f_width / oversampling)
+        f_start (float, optional):
+            Starting frequency of the frequency bins. Defaults to the prior
+            limit, if available, else the timespan of the data.
+        oversampling (int, optional):
+            Oversampling factor for the frequency bins.
+        plot (bool, optional):
+            Plot the TIP/FIP periodograms.
+        show_peaks (bool, optional):
+            Show prominent peaks in the TIP/FIP periodogram.
+        fip_threshold (float, optional):
+            FIP threshold for identifying peaks.
+        include_known_object (bool, optional):
+            Include known objects in the TIP/FIP calculation.
+        include_transiting_planet (bool, optional):
+            Include transiting planets in the TIP/FIP calculation.
+        peak_ndigits (int, optional):
+            Number of digits to show in the peak labels.
+        show_ESS (bool, optional):
+            Show the effective sample size in the plot.
+        just_tip (bool, optional):
+            Only plot the TIP periodogram.
+        ax (matplotlib.axes.Axes, optional):
+            Axis to plot on.
+        kwargs (dict, optional):
+            Keyword arguments to pass to the `ax.plot` method
     
+    Returns:
+        P (ndarray):
+            The period bins
+        FIP (ndarray):
+            The false inclusion probability
+        (fig, axs):
+            The figure and axes, if `plot=True`
+    """
+    Tobs = np.ptp(results.data.t)
+    if f_start is None:
+        prior_limit = results.priors['Pprior'].ppf(1)
+        if np.isinf(prior_limit):
+            f_start = 1.0 / Tobs
+        else:
+            f_start = 1.0 / prior_limit
+    if f_width is None:
+        f_width = 1.0 / Tobs
     if f_center is None:
-        f_center = np.arange(f_width, 1.0, f_width / oversampling)
+        f_center = np.arange(f_start, 1.0, f_width / oversampling)
     
     P = results.posteriors.P.copy()
 
@@ -673,7 +720,7 @@ def FIP(results, f_center=None, f_width=None, oversampling=5,
         if show_peaks:
             ndigits = peak_ndigits or len(str(results.ESS))
 
-            peaks, _peaks_info = find_peaks(TIP, height=0.9)
+            peaks, _peaks_info = find_peaks(TIP, height=1 - fip_threshold)
             if peak_indices is not None:
                 peaks = peaks[peak_indices]
 
