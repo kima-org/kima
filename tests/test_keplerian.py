@@ -34,8 +34,8 @@ def test_keplerian_is_array():
     from kima.postkepler import post_keplerian
 
     t = np.linspace(0, 1, 10)
-    P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid = 1.0, 1.0, 0.2, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, True, True
-    v = post_keplerian(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid)
+    P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid, Kprec = 1.0, 1.0, 0.2, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, True, True, 200
+    v = post_keplerian(t, P, K, ecc, w, wdot, M0, M0_epoch, cosi, M1, M2, R1, GR, Tid, Kprec)
     assert isinstance(v, np.ndarray)
 
     from kima.postkepler import post_keplerian_sb2
