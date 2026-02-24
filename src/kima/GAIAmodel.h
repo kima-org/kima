@@ -54,6 +54,12 @@ class KIMA_API GAIAmodel
         double mua;
         double mud;
         double plx;
+
+        // Parameters for accelerations if using
+        double accela;
+        double acceld;
+        double jerka;
+        double jerkd;
         
         double nu;
         double jitter;
@@ -107,6 +113,11 @@ class KIMA_API GAIAmodel
         size_t get_al_scan_bias_components() { return al_scan_bias_components; }
         /// set the number of components
         void set_al_scan_bias(size_t al_scan_bias_components);
+
+        ///Whether to use an acceleration solution (i.e. 7-parameter or 9-parameter rather than the default 5-parameter solution)
+        size_t n_background_params {5};
+        void GAIAmodel::set_background_solution(size_t n_background_params);
+
 
         std::vector<distribution> Ak_prior;
         std::vector<distribution> thetak_prior;

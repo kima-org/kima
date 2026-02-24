@@ -25,6 +25,25 @@ void GAIAmodel::initialize_from_data(GAIAdata& data)
     conditional->set_default_priors(data);
 }
 
+void GAIAmodel::set_background_solution(size_t n)
+{
+    if (n==5){
+        acceleration = false;
+        jerk = false
+    }
+    else if (n==7){
+        acceleration = true;
+        jerk = false;
+    }
+    else if (n==9){
+        acceleration = true;
+        jerk = true;
+    }
+    else {
+        throw std::logic_error("When setting a background solution please choose one of 5 (standard), 7 (+  (+jerk) for the number of parameters.");
+    }
+}
+
 void GAIAmodel::set_al_scan_bias(size_t n)
 {
     al_scan_bias = true;
