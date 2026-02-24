@@ -114,13 +114,21 @@ class KIMA_API GAIAmodel
         /// set the number of components
         void set_al_scan_bias(size_t al_scan_bias_components);
 
-        ///Whether to use an acceleration solution (i.e. 7-parameter or 9-parameter rather than the default 5-parameter solution)
-        size_t n_background_params {5};
-        void GAIAmodel::set_background_solution(size_t n_background_params);
-
 
         std::vector<distribution> Ak_prior;
         std::vector<distribution> thetak_prior;
+
+        ///Whether to use an acceleration solution (i.e. 7-parameter or 9-parameter rather than the default 5-parameter solution)
+        bool acceleration {false};
+        bool jerk {false};
+        size_t n_background_params {5};
+        size_t get_n_background_params() { return n_background_params; }
+        void GAIAmodel::set_background_solution(size_t n_background_params);
+        
+        std::vector<distribution> accela_prior;
+        std::vector<distribution> acceld_prior;
+        std::vector<distribution> jerka_prior;
+        std::vector<distribution> jerkd_prior;
         
         //priors for astrometric solution
         distribution da_prior;

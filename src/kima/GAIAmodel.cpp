@@ -112,6 +112,18 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
         mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!plx_prior)
         plx_prior = make_prior<LogUniform>(1.,100.);
+    if (acceleration) {
+        if (!accela_prior)
+            accela_prior = make_prior<Gaussian>(0.0,0.5);
+        if (!acceld_prior)
+            acceld_prior = make_prior<Gaussian>(0.0,0.5);
+        if (jerk) {
+            if (!jerka_prior)
+                jerka_prior = make_prior<Gaussian>(0.0,0.1);
+            if (!jerka_prior)
+                jerka_prior = make_prior<Gaussian>(0.0,0.1);
+        }
+    }
         
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
@@ -151,6 +163,15 @@ void GAIAmodel::from_prior(RNG& rng)
     mua = mua_prior->generate(rng);
     mud = mud_prior->generate(rng);
     plx = plx_prior->generate(rng);
+
+    if (acceleration){
+        accela = accela_prior->generate(rng);
+        acceld = acceld_prior->generate(rng);
+        if (jerk){
+            jerka = jerka_prior->generate(rng);
+            jerkd = jerkd_prior->generate(rng);
+        }
+    }
 
     
     if (known_object) { // KO mode!
