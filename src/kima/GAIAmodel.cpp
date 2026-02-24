@@ -9,6 +9,8 @@ using namespace brandt;
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
+const double daytoyear = 1/365.25;
+const double yeartoday = 365.25;
 
 
 void GAIAmodel::initialize_from_data(GAIAdata& data)
@@ -86,9 +88,9 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (!dd_prior)
         dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!plx_prior)
         plx_prior = make_prior<LogUniform>(1.,100.);
         
@@ -185,7 +187,7 @@ void GAIAmodel::calculate_mu()
         
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += (da + mua * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];
+            mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];
         }
 
         if (known_object) { // KO mode!
@@ -355,7 +357,7 @@ double GAIAmodel::perturb(RNG& rng)
         //subtract 5-parameter solution
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += -(da + mua * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
+            mu[i] += -(da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
         }
         // propose new parameters
         da_prior->perturb(da, rng);
@@ -367,7 +369,7 @@ double GAIAmodel::perturb(RNG& rng)
         //add 5-parameter solution back in
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += (da + mua * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];;
+            mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];;
         }
     }
 
@@ -760,11 +762,11 @@ NB_MODULE(GAIAmodel, m) {
         .def_prop_rw("mua_prior",
             [](GAIAmodel &m) { return m.mua_prior; },
             [](GAIAmodel &m, distribution &d) { m.mua_prior = d; },
-            "Prior for the proper-motion in right-ascension")
+            "Prior for the proper-motion in right-ascension (mas/yr)")
         .def_prop_rw("mud_prior",
             [](GAIAmodel &m) { return m.mud_prior; },
             [](GAIAmodel &m, distribution &d) { m.mud_prior = d; },
-            "Prior for the proper-motion in declination")
+            "Prior for the proper-motion in declination (mas/yr)")
         .def_prop_rw("parallax_prior",
             [](GAIAmodel &m) { return m.plx_prior; },
             [](GAIAmodel &m, distribution &d) { m.plx_prior = d; },

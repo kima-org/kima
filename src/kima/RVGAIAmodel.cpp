@@ -10,6 +10,8 @@ using namespace MassConv;
 #define TIMING false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
+const double daytoyear = 1/365.25;
+const double yeartoday = 365.25;
 
 
 void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVData& RV_data)
@@ -105,9 +107,9 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (!dd_prior)
         dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,1));
+        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!plx_prior)
         plx_prior = make_prior<LogUniform>(1.,100.);
         
@@ -233,7 +235,7 @@ void RVGAIAmodel::calculate_mu()
         
         for(size_t i=0; i<N_GAIA; i++)
         {
-            mu_GAIA[i] += (da + mua * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) + (dd + mud * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) + plx*GAIA_data.pf[i];
+            mu_GAIA[i] += (da + mua * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) + (dd + mud * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) + plx*GAIA_data.pf[i];
         }
         
         if(trend)
@@ -542,7 +544,7 @@ double RVGAIAmodel::perturb(RNG& rng)
         //subtract astrometric solution
         for(size_t i=0; i<mu_GAIA.size(); i++)
         {
-            mu_GAIA[i] += -(da + mua * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) - (dd + mud * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) - plx*GAIA_data.pf[i];
+            mu_GAIA[i] += -(da + mua * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) - (dd + mud * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) - plx*GAIA_data.pf[i];
         }
         // propose new parameters
         da_prior->perturb(da, rng);
@@ -554,7 +556,7 @@ double RVGAIAmodel::perturb(RNG& rng)
         //add astrometric solution back in
         for(size_t i=0; i<mu_GAIA.size(); i++)
         {
-            mu_GAIA[i] += (da + mua * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) + (dd + mud * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) + plx*GAIA_data.pf[i];
+            mu_GAIA[i] += (da + mua * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * sin(GAIA_data.psi[i]) + (dd + mud * daytoyear * (GAIA_data.t[i]-GAIA_data.M0_epoch)) * cos(GAIA_data.psi[i]) + plx*GAIA_data.pf[i];
 
         }
         
@@ -1157,11 +1159,11 @@ NB_MODULE(RVGAIAmodel, m) {
         .def_prop_rw("mua_prior",
             [](RVGAIAmodel &m) { return m.mua_prior; },
             [](RVGAIAmodel &m, distribution &d) { m.mua_prior = d; },
-            "Prior for the proper-motion in right-ascension")
+            "Prior for the proper-motion in right-ascension (mas/yr)")
         .def_prop_rw("mud_prior",
             [](RVGAIAmodel &m) { return m.mud_prior; },
             [](RVGAIAmodel &m, distribution &d) { m.mud_prior = d; },
-            "Prior for the proper-motion in declination")
+            "Prior for the proper-motion in declination (mas/yr)")
         .def_prop_rw("parallax_prior",
             [](RVGAIAmodel &m) { return m.plx_prior; },
             [](RVGAIAmodel &m, distribution &d) { m.plx_prior = d; },
