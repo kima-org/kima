@@ -92,12 +92,12 @@ def test_post_keplerians():
     
     t = np.linspace(0, 1, 10)
     P, K, q, ecc, w, wdot = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0
-    cosi, M1, M2, R1, R2, GR, Tid = 0.0, 1.0, 1.0, 1.0, 1.0, False, False
+    cosi, M1, M2, R1, R2, GR, Tid, Kprec = 0.0, 1.0, 1.0, 1.0, 1.0, False, False, 200
 
-    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid))
-    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True))
-    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid)).all()
-    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True)).all()
+    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid,Kprec))
+    assert np.isfinite(post_keplerian([0.0],P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True,Kprec))
+    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid,Kprec)).all()
+    assert np.isfinite(post_keplerian(t,P,K,ecc,w,wdot,0.0,0.0,cosi,M1,M2,R1,True,True,Kprec)).all()
 
     assert np.isfinite(post_keplerian_sb2([0.0],P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,GR,Tid)).all()
     assert np.isfinite(post_keplerian_sb2([0.0],P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,True,True)).all()
@@ -105,7 +105,7 @@ def test_post_keplerians():
     assert np.isfinite(post_keplerian_sb2(t,P,K,q,ecc,w,wdot,0.0,0.0,cosi,R1,R2,True,True)).all()
 
     np.testing.assert_allclose(
-        post_keplerian([0.0, P/2, P], P, K, ecc, w, wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid),
+        post_keplerian([0.0, P/2, P], P, K, ecc, w, wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid,Kprec),
         [K, -K, K]
     )
 
@@ -117,7 +117,7 @@ def test_post_keplerians():
 
     ecc = 0.1
     np.testing.assert_allclose(
-        post_keplerian([0.0, P/2, P], P, K, ecc, w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid),
+        post_keplerian([0.0, P/2, P], P, K, ecc, w,wdot,0.0,0.0,cosi,M1,M2,R1,GR,Tid,Kprec),
         [K+ecc, -K+ecc, K+ecc]
     )
 
