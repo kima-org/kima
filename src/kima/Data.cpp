@@ -1487,7 +1487,8 @@ Args:
         .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times")
         .def_prop_ro("N", [](ETVData &d) { return d.N(); }, "Total number of observations")
 
-        .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly");
+        .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly, not used in ETVmodel as reference time is a free parameter")
+        .def_ro("units", &ETVData::_units, "Units of the ETV data and uncertainties");
 
         //
         //.def("load", &GAIAData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
