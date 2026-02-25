@@ -442,23 +442,43 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
         (M, A) where
             M is the output of `get_planet_mass`
             A is the output of `get_planet_semimajor_axis`
-        star_mass (np.ndarray):
-            Gaussian samples if star_mass is a tuple or list
+        star_mass (float, np.ndarray):
+            Provided value of stellar mass or Gaussian samples if `star_mass` is
+            given as a tuple or list
     """
 
     if verbose:
         print('Using star mass = %s solar mass' % star_mass)
+
+    P = np.atleast_1d(P)
+    K = np.atleast_1d(K)
+    e = np.atleast_1d(e)
+
+    # check shapes
+    if P.shape != K.shape:
+        raise ValueError('P and K must have the same shape')
+    if P.shape != e.shape:
+        raise ValueError('P and e must have the same shape')
+
+    ndim1 = P.ndim == 1
+    if ndim1:
+        P = P[:, np.newaxis]
+        K = K[:, np.newaxis]
+        e = e[:, np.newaxis]
 
     if isinstance(star_mass, tuple) or isinstance(star_mass, list):
         # include (Gaussian) uncertainty on the stellar mass
         star_mass = star_mass_samples(*star_mass, P.shape[0])
         star_mass = np.repeat(star_mass.reshape(-1, 1), P.shape[1], axis=1)
 
-    mass = get_planet_mass(P, K, e, star_mass, full_output)
-    a = get_planet_semimajor_axis(P, K, star_mass, full_output)
-    if isinstance(star_mass, np.ndarray):
-        return mass, a, star_mass
-    return mass, a
+    mass = get_planet_mass(P, K, e, star_mass, full_output=full_output)
+    a = get_planet_semimajor_axis(P, K, star_mass, full_output=full_output)
+
+    if full_output and ndim1:
+        mass = mass[0], mass[1], mass[2].flatten()
+        a = a[0], a[1], a[2].flatten()
+
+    return mass, a, star_mass
 
 
 def get_bins(res, start=None, end=None, nbins=100):
