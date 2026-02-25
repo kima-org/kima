@@ -116,6 +116,9 @@ def test_ETVData(path_to_test_data):
     D = kima.ETVData(path_to_test_data('simulated3.txt'))
     assert_equal(D.N, 20)
 
+    D = kima.ETVData(path_to_test_data('ETVtest.txt'), skip=2)
+    assert_equal(D.N, 3)
+
 def test_GaiaData(path_to_test_data):
     D = kima.GAIAdata(path_to_test_data('simulated4.txt'))
     assert_equal(D.N, 13)
