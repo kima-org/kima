@@ -1477,7 +1477,7 @@ Args:
     nb::class_<ETVData>(m, "ETVData", "docs")
         // constructor
         .def(nb::init<const string&, const string& , int, int, const string&>(),
-              "filename"_a, "units"_a="days", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" ",
+              "filename"_a, "units"_a="days", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
               "Load Eclipse timing data from a file")
         // properties
         .def_ro("datafile", &ETVData::_datafile, "The file name")
