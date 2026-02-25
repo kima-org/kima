@@ -125,10 +125,10 @@ class KIMA_API GAIAmodel
         size_t get_n_background_params() { return n_background_params; }
         void GAIAmodel::set_background_solution(size_t n_background_params);
         
-        std::vector<distribution> accela_prior;
-        std::vector<distribution> acceld_prior;
-        std::vector<distribution> jerka_prior;
-        std::vector<distribution> jerkd_prior;
+        distribution accela_prior;
+        distribution acceld_prior;
+        distribution jerka_prior;
+        distribution jerkd_prior;
         
         //priors for astrometric solution
         distribution da_prior;
