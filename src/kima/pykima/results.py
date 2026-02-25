@@ -195,7 +195,7 @@ class ETV_data_holder:
         N (int): Total number of observations
     """
 
-    epoch: np.ndarray = field(init=False)
+    epochs: np.ndarray = field(init=False)
     et: np.ndarray = field(init=False)
     etsig: np.ndarray = field(init=False)
     N: int = field(init=False)
@@ -656,6 +656,9 @@ class KimaResults:
         if self.model is MODELS.SPLEAFmodel:
             self.nseries = int(setup['kima']['nseries'])
 
+        if self.model is MODELS.ETVmodel:
+            self.ephemeris = model.ephemeris
+
         if self.data_type=='RV':
             self._extra_data = np.array(np.copy(data.actind))
             self._extra_data_names = np.array(np.copy(data.indicator_names))
@@ -816,6 +819,20 @@ class KimaResults:
         #read astrometric solution
         if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
             self._read_astrometric_solution()
+
+        #if ETV read reference time and ephemerides
+        if self.model is MODELS.ETVmodel:
+            self.indices['ref_time'] = self._current_column
+            self._current_column += 1
+            self.indices['ephem1'] = self._current_column
+            self._current_column += 1
+            if self.ephemeris >=2:
+                self.indices['ephem2'] = self._current_column
+                self._current_column += 1
+            if self.ephemeris >=3:
+                self.indices['ephem3'] = self._current_column
+                self._current_column += 1
+
         
         # find KO in the compiled model
         self.KO = model.known_object
@@ -1826,7 +1843,7 @@ class KimaResults:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
             # TODO: _priors
         
-        if self.model != MODELS.GAIAmodel:
+        if self.model != MODELS.GAIAmodel and self.model != MODELS.ETVmodel:
             # systemic velocity
             self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']].reshape(-1, 1)
             if self.model is MODELS.BINARIESmodel and self.double_lined:
@@ -1835,6 +1852,14 @@ class KimaResults:
             if self.model is MODELS.RVFWHMmodel:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
                 self._priors.cfwhm = self.priors['Cfwhm_prior']
+
+        if self.model is MODELS.ETVmodel:
+            self.posteriors.ref_time = self.posterior_sample[:,self.indices['ref_time']].reshape(-1, 1)
+            self.posteriors.ephem1 = self.posterior_sample[:,self.indices['ephem1']]
+            if self.ephemeris >= 2:
+                self.posteriors.ephem2 = self.posterior_sample[:,self.indices['ephem2']]
+            if self.ephemeris >= 3:
+                self.posteriors.ephem3 = self.posterior_sample[:,self.indices['ephem3']]
 
         if self.data_type=='RV' and self.trend:
             ind = self.indices['trend']
@@ -1941,7 +1966,6 @@ class KimaResults:
                                                 self.posteriors.e, self.posteriors.cosi,
                                                 self.posteriors.plx.reshape(-1, 1))
 
-            ### Also add ETV ones
             else:
                 # periods
                 s = self.indices['planets.P']
@@ -1971,7 +1995,10 @@ class KimaResults:
                 self._priors.w = self.priors['wprior']
 
                 # times of periastron
-                self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+                if self.model is MODELS.ETVmodel:
+                    self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.posteriors.ref_time
+                else:
+                    self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
 
                 
                 if self.model is MODELS.RVHGPMmodel:
