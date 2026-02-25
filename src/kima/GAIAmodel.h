@@ -123,7 +123,7 @@ class KIMA_API GAIAmodel
         bool jerk {false};
         size_t n_background_params {5};
         size_t get_n_background_params() { return n_background_params; }
-        void GAIAmodel::set_background_solution(size_t n_background_params);
+        void set_background_solution(size_t n_background_params);
         
         distribution accela_prior;
         distribution acceld_prior;

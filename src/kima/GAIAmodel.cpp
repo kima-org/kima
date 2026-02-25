@@ -10,7 +10,8 @@ using namespace brandt;
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 const double daytoyear = 1/365.25;
-const double yeartoday = 365.25;
+const double daytoyear2 = 1/(365.25*365.25);
+const double daytoyear3 = 1/(365.25*365.25*365.25);
 
 
 void GAIAmodel::initialize_from_data(GAIAdata& data)
@@ -29,7 +30,7 @@ void GAIAmodel::set_background_solution(size_t n)
 {
     if (n==5){
         acceleration = false;
-        jerk = false
+        jerk = false;
     }
     else if (n==7){
         acceleration = true;
@@ -228,6 +229,12 @@ void GAIAmodel::calculate_mu()
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];
+            if (acceleration){
+                mu[i] += (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) + (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
+                if (jerk){
+                    mu[i] += (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) + (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
+                }
+            }
         }
 
         if (known_object) { // KO mode!
@@ -397,7 +404,13 @@ double GAIAmodel::perturb(RNG& rng)
         //subtract 5-parameter solution
         for(size_t i=0; i<mu.size(); i++)
         {
-            mu[i] += -(da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
+            mu[i] += - (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
+            if (acceleration){
+                mu[i] += - (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) - (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
+                if (jerk){
+                    mu[i] += - (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) - (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
+                }
+            }
         }
         // propose new parameters
         da_prior->perturb(da, rng);
@@ -405,11 +418,25 @@ double GAIAmodel::perturb(RNG& rng)
         mua_prior->perturb(mua, rng);
         mud_prior->perturb(mud, rng);
         plx_prior->perturb(plx, rng);
+        if (acceleration){
+            accela_prior->perturb(accela, rng);
+            acceld_prior->perturb(acceld, rng);
+            if (jerk){
+                jerka_prior->perturb(jerka, rng);
+                jerkd_prior->perturb(jerkd, rng);
+            }
+        }
 
         //add 5-parameter solution back in
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];;
+            if (acceleration){
+                mu[i] += (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) + (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
+                if (jerk){
+                    mu[i] += (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) + (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
+                }
+            }
         }
     }
 
@@ -499,6 +526,15 @@ void GAIAmodel::print(std::ostream& out) const
     out << mua << '\t';
     out << mud << '\t';
     out << plx << '\t';
+
+    if (acceleration){
+        out << accela << '\t';
+        out << acceld << '\t';
+        if (jerk){
+            out << jerka << '\t';
+            out << jerkd << '\t';
+        }
+    }
     
     out.precision(8);
 
@@ -540,6 +576,15 @@ string GAIAmodel::description() const
     desc += "mua" + sep;
     desc += "mud" + sep;
     desc += "parallax" + sep;
+
+    if (acceleration){
+        desc += "accela" + sep;
+        desc += "acceld" + sep;
+        if (jerk){
+            desc += "jerka" + sep;
+            desc += "jerkd" + sep;
+        }
+    }
 
     //auto data = get_data();
     if (al_scan_bias){
@@ -644,6 +689,15 @@ void GAIAmodel::save_setup() {
     fout << "mua_prior: " << *mua_prior << endl;
     fout << "mud_prior: " << *mud_prior << endl;
     fout << "parallax_prior: " << *plx_prior << endl;
+
+    if (acceleration){
+        fout << "accela_prior" << *accela_prior << endl;
+        fout << "acceld_prior" << *acceld_prior << endl;
+        if (jerk){
+            fout << "jerka _prior" << *jerka_prior << endl;
+            fout << "jerkd _prior" << *jerkd_prior << endl;
+        }
+    }
 
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
@@ -755,12 +809,17 @@ NB_MODULE(GAIAmodel, m) {
         .def_rw("DEC", &GAIAmodel_publicist::DEC,
                 "Declination of the target star (degrees)")
 
-        .def("set_al_scan_bias", &GAIAmodel::set_al_scan_bias)
+        .def("set_al_scan_bias", &GAIAmodel::set_al_scan_bias,
+                "set whether the model includes a model for potential scan-angle dependent signals")
         .def_prop_ro("al_scan_bias", [](GAIAmodel &m) { return m.get_al_scan_bias(); },
                      "whether the model includes a model for potential scan-angle dependent signals that could bias towards certain frequencies")
         .def_prop_ro("n_al_scan_componenets", [](GAIAmodel &m) { return m.get_al_scan_bias_components(); },
                      "how many components of scan-angle harmonics are included")
 
+        .def("set_background_solution", &GAIAmodel::set_background_solution,
+                "set the number of parameters for the background astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
+        .def_prop_ro("n_background_params", [](GAIAmodel &m) { return m.get_n_background_params(); },
+                "how many background astrometric parameters are included the model")
 //         //KO mode
 //         .def_rw("known_object", &GAIAmodel_publicist::known_object,
 //                 "whether to include (better) known extra Keplerian curve(s)")
@@ -811,6 +870,22 @@ NB_MODULE(GAIAmodel, m) {
             [](GAIAmodel &m) { return m.plx_prior; },
             [](GAIAmodel &m, distribution &d) { m.plx_prior = d; },
             "Prior for the parallax")
+        .def_prop_rw("accela_prior",
+            [](GAIAmodel &m) { return m.accela_prior; },
+            [](GAIAmodel &m, distribution &d) { m.accela_prior = d; },
+            "Prior for the proper-acceleration in right-ascension (mas/yr^2)")
+        .def_prop_rw("acceld_prior",
+            [](GAIAmodel &m) { return m.acceld_prior; },
+            [](GAIAmodel &m, distribution &d) { m.acceld_prior = d; },
+            "Prior for the proper-acceleration in declination (mas/yr^2)")
+        .def_prop_rw("jerka_prior",
+            [](GAIAmodel &m) { return m.jerka_prior; },
+            [](GAIAmodel &m, distribution &d) { m.jerka_prior = d; },
+            "Prior for the proper-jerk in right-ascension (mas/yr^3)")
+        .def_prop_rw("jerkd_prior",
+            [](GAIAmodel &m) { return m.jerkd_prior; },
+            [](GAIAmodel &m, distribution &d) { m.jerkd_prior = d; },
+            "Prior for the proper-jerk in declination (mas/yr^3)")    
 
         // known object priors
         // ? should these setters check if known_object is true?
