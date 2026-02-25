@@ -576,9 +576,9 @@ class KimaResults:
                 data = model.data
             self.ETVdata = ETV_data_holder()
             self.data = self.ETVdata
-            self.ETVdata.epochs = np.copy(data.t)
-            self.ETVdata.et = np.copy(data.w)
-            self.ETVdata.etsig = np.copy(data.wsig)
+            self.ETVdata.epochs = np.copy(data.epochs)
+            self.ETVdata.et = np.copy(data.et)
+            self.ETVdata.etsig = np.copy(data.etsig)
             self.ETVdata.N = data.N
             self.data_type = "ETV"
         elif self.model is MODELS.RVGAIAmodel:
