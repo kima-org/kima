@@ -1320,8 +1320,8 @@ def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
     K = K[inds]
     E = E[inds]
 
-    M, A = get_planet_mass_and_semimajor_axis(P, K, E, star_mass=star_mass,
-                                              full_output=True)
+    M, A, _ = get_planet_mass_and_semimajor_axis(P, K, E, star_mass=star_mass,
+                                                 full_output=True)
     M = M[2]
     A = A[2]
 
@@ -1732,8 +1732,7 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
             sm = star_mass[0]
         else:
             sm = star_mass
-        _Mpar, _Apar = get_planet_mass_and_semimajor_axis(
-            _P, _K, _ecc, star_mass=sm)
+        _Mpar, _Apar, _ = get_planet_mass_and_semimajor_axis(_P, _K, _ecc, star_mass=sm)
         _Mpar = _Mpar[1]
 
         _M = get_planet_mass(isamples[:, 0], isamples[:, 1], isamples[:, 3],

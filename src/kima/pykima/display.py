@@ -1446,7 +1446,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
             else:
                 mask = np.full(res.ESS, True)
 
-            m, a = get_planet_mass_and_semimajor_axis(
+            m, a, _ = get_planet_mass_and_semimajor_axis(
                 res.posteriors.P[mask, i], 
                 res.posteriors.K[mask, i], 
                 res.posteriors.e[mask, i],
@@ -1510,7 +1510,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
             priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
 
             if replace_angles_with_mass:
-                (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
                     priors[0], priors[1], priors[2], 
                     star_mass=star_mass, full_output=True
                 )
@@ -1543,7 +1543,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
             samples[:, [3, 2]] = samples[:, [2, 3]]
 
             if replace_angles_with_mass:
-                (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
                     samples[:, 0], samples[:, 1], samples[:, 2],
                     star_mass=star_mass, full_output=True
                 )
@@ -1564,7 +1564,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                           if 'KO_' in k and f'_{i}' in k]
                 priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
                 if replace_angles_with_mass:
-                    (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                    (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
                         priors[0], priors[1], priors[2], 
                         star_mass=star_mass, full_output=True
                     )
@@ -1605,7 +1605,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 samples[:, 4] = np.arctan2(np.sin(samples[:, 4]), np.cos(samples[:, 4]))
 
             if replace_angles_with_mass:
-                (*_, m), (*_, a) = get_planet_mass_and_semimajor_axis(
+                (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
                     samples[:, 0], samples[:, 1], samples[:, 2],
                     star_mass=star_mass, full_output=True
                 )
