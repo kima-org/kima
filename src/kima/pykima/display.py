@@ -2380,7 +2380,7 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
 
 def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
-              legend=True, show_rms=False, outliers=None, offsets=None, secondary_star=False, **kwargs):
+              legend=True, show_rms=False, outliers=None, offsets=None, secondary_star=False, sample=None, **kwargs):
 
     fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
     rhk_model = res.model is MODELS.RVFWHMRHKmodel and not (ignore_y3 or ignore_y2)
@@ -2397,7 +2397,15 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
         else:
             fig, ax = plt.subplots(1, 1)
 
-    t = res.data.t.copy()
+    if res.model is MODELS.ETVmodel:
+        epochs = res.data.epochs.copy()
+        try:
+            ephem1 = sample[res.indices['ephem1']]
+            t = epochs * ephem1
+        except:
+            t = res.data.t.copy()
+    else:
+        t = res.data.t.copy()
 
     if y is None:
         if sb2 and secondary_star:
@@ -3011,23 +3019,22 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     if res.model is MODELS.ETVmodel:
         epochs = res.data.epochs.copy()
         ephem1 = sample[res.indices['ephem1']]
-        t = epochs * ephem1
-        y, e = res.data.et.copy(), res.data.etsig.copy()
         M0_epoch = sample[res.indices['ref_time']]
+        t = epochs * ephem1 
+        y, e = res.data.et.copy(), res.data.etsig.copy()
     else:
         # make copies to not change attributes
         t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
         if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
                 y2, e2 = res.data.y2.copy(), res.data.e2.copy()
-        obs = res.data.obs.copy()
         M0_epoch = res.M0_epoch
+    obs = res.data.obs.copy()
         
     jitters = sample[res.indices['jitter']]
     if res.model is MODELS.RVGAIAmodel:
         jitters = jitters[1:]
-    if res.model != MODELS.ETVmodel:
-        jitter_array = jitters[obs.astype(int) - 1]
+    jitter_array = jitters[obs.astype(int) - 1]
     if res.model is MODELS.BINARIESmodel:
         if res.double_lined:
             jitter2_array = jitters[obs.astype(int) - 1 + res.n_instruments]
@@ -3044,6 +3051,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     else:
         time_offset = 0
         time_label = 'Time ['+dates+']'
+
 
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
@@ -3335,6 +3343,8 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
             ee = e.copy()
             if include_jitter:
                 jit = jitters[0]
+                if res.model is MODELS.ETVmodel:
+                    jit = jit/(24*3600)
                 ee = np.hypot(ee,jit)
 
 
@@ -3355,8 +3365,16 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                         alpha = 0.3 if j in (-1, 1) else 1
                         ax.errorbar(np.sort(phase) + j * tau, yy2[np.argsort(phase)], ee2[np.argsort(phase)],
                                     color='C0', alpha=alpha, **e2kwargs)
+        if res.model is MODELS.ETVmodel:
+            Kunits = 's'
+            yunits = 'days'
+            yname = 'O-C'
+        else:
+            Kunits = 'm/s'
+            yunits = 'm/s'
+            yname = 'RV'
 
-        ax.set(xlabel=xaxis, ylabel="RV [m/s]")
+        ax.set(xlabel=xaxis, ylabel=yname+" ["+yunits+"]")
         # ax.set_xlim(-0.1, 1.1)
         ax.set_xlim(-0.3, 2*np.pi+0.3)
 
@@ -3364,11 +3382,12 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
             ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi])
             ax.set_xticklabels([r'$0$', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$'])
 
+        
         if show_titles:
             # ax.set_title('%s' % letter, loc='left', **title_kwargs)
             K = params[letter]['K']
             ecc = params[letter]['e']
-            title = f'{P=:.2f} days\n {K=:.2f} m/s  {ecc=:.2f}'
+            title = f'{P=:.2f} days\n {K=:.2f} '+Kunits+f'  {ecc=:.2f}'
             title_kwargs = dict(fontsize=12)
             ax.set_title(title, loc='right', **title_kwargs)
 
@@ -3429,8 +3448,15 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     residuals = res.residuals(sample, full=True)
 
     if res.model is MODELS.ETVmodel:
+        Kunits = 's'
+        yunits = 'days'
+    else:
+        Kunits = 'm/s'
+        yunits = 'm/s'
+
+    if res.model is MODELS.ETVmodel:
         if include_jitter:
-            errors = np.hypot(res.data.etsig.copy(),jitter_array)
+            errors = np.hypot(res.data.etsig.copy(),jitter_array/(24*3600))
         else:
             errors = res.data.etsig.copy()
     else:
@@ -3456,8 +3482,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
-        if res.model is MODELS.ETVmodel: #This distinction is probably not needed
-            ax.errorbar(t[outliers] - time_offset, residuals[outliers],
+        if res.model is MODELS.ETVmodel:
+            touts = res.data.epochs.copy() * sample[res.indices['ephem1']]
+            ax.errorbar(touts[outliers] - time_offset, residuals[outliers],
                     errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
         else:
             ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
@@ -3473,7 +3500,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     plot_data(res, ax=ax, y=residuals, e=errors, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
-              highlight=highlight, **ekwargs)
+              highlight=highlight, sample=sample, **ekwargs)
 
     if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
@@ -3495,7 +3522,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     ax.axhline(y=0, ls='--', alpha=0.5, color='k')
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
-    ax.set(xlabel=time_label, ylabel='r [m/s]')
+    ax.set(xlabel=time_label, ylabel='r ['+yunits+']')
     title_kwargs = dict(loc='right', fontsize=12)
 
 

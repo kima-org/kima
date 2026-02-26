@@ -196,6 +196,9 @@ class ETV_data_holder:
     """
 
     t: np.ndarray = field(init=False) #hack to stop breaks
+    y: np.ndarray = field(init=False) #These give the same names as other datas
+    e: np.ndarray = field(init=False) #These give the same names as other datas
+
     obs: np.ndarray = field(init=False) #hack as well, in future could have different instruments in ETVmodel
     epochs: np.ndarray = field(init=False)
     et: np.ndarray = field(init=False)
@@ -581,7 +584,9 @@ class KimaResults:
             self.ETVdata.epochs = np.copy(data.epochs)
             self.ETVdata.t = np.copy(data.et) #Hack to not have breaks
             self.ETVdata.et = np.copy(data.et)
+            self.ETVdata.y = np.copy(data.et)
             self.ETVdata.etsig = np.copy(data.etsig)
+            self.ETVdata.e = np.copy(data.etsig)
             self.ETVdata.N = data.N
             self.ETVdata.obs = np.copy(data.obsi)
             self.data_type = "ETV"
@@ -2840,7 +2845,7 @@ class KimaResults:
                             Panom = period_correction(P,wdot)
                             v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
                         elif self.model is MODELS.ETVmodel:
-                            v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)
+                            v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                         else:
                             v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -2909,7 +2914,7 @@ class KimaResults:
                     if self.model is MODELS.BINARIESmodel:
                         v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 elif self.model is MODELS.ETVmodel:
-                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)
+                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -3162,7 +3167,7 @@ class KimaResults:
                         else:
                             v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 elif self.model is MODELS.ETVmodel:
-                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)
+                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -3225,7 +3230,7 @@ class KimaResults:
             if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
             elif self.model is MODELS.ETVmodel:
-                v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)
+                v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
             else:
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 

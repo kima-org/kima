@@ -1229,7 +1229,8 @@ def find_outliers(results, sample, threshold=10, full_output=False):
     elif J.shape[0] > 1:
         # one jitter per instrument
         J = J[(res.data.obs - 1).astype(int)]
-
+    if res.model is MODELS.ETVmodel:
+        J = J/(24*3600)
     nu = sample[res.indices['nu']]
 
     # probabilities within the Gaussian and Student-t likelihoods
