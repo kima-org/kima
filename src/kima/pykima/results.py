@@ -650,10 +650,16 @@ class KimaResults:
             self.thiele_innes = model.thiele_innes
             self.RA = model.RA
             self.DEC= model.DEC
+            self.n_background_params = model.n_background_params
+            self.al_scan_bias = model.al_scan_bias
+            self.n_bias_comps = model.n_al_scan_componenets
         if self.model is MODELS.RVGAIAmodel:
             self.thiele_innes = False
             self.RA = model.RA
             self.DEC= model.DEC
+            self.n_background_params = model.n_background_params
+            self.al_scan_bias = model.al_scan_bias
+            self.n_bias_comps = model.n_al_scan_componenets
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
@@ -828,6 +834,8 @@ class KimaResults:
         #read astrometric solution
         if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
             self._read_astrometric_solution()
+            if self.al_scan_bias:
+                self._read_al_scan_bias()
 
         #if ETV read reference time and ephemerides
         if self.model is MODELS.ETVmodel:
@@ -934,14 +942,33 @@ class KimaResults:
 
     def _read_astrometric_solution(self):
         self.n_astrometric_solution = 5
+        self.n_accel_params = self.n_background_params - self.n_astrometric_solution
         i1, i2 = self._current_column, self._current_column + self.n_astrometric_solution
         self.astrometric_solution = self.posterior_sample[:, i1:i2]
         self._current_column += self.n_astrometric_solution
         self.indices['astrometric_solution_start'] = i1
         self.indices['astrometric_solution_end'] = i2
         self.indices['astrometric_solution'] = slice(i1, i2)
+        if self.n_accel_params>0:
+            i1, i2 = self._current_column, self._current_column + self.n_accel_params
+            self.accel_solution = self.posterior_sample[:, i1:i2]
+            self._current_column += self.n_accel_params
+            self.indices['accel_solution_start'] = i1
+            self.indices['accel_solution_end'] = i2
+            self.indices['accel_solution'] = slice(i1, i2)
         if self._debug:
             print('finished reading astrometric solution')
+    
+    def _read_al_scan_bias(self):
+        i1, i2 = self._current_column, self._current_column + self.n_bias_comps*2
+        self.al_scan_params = self.posterior_sample[:, i1:i2]
+        self._current_column += self.n_bias_comps
+        self.indices['al_scan_bias_start'] = i1
+        self.indices['al_scan_bias_end'] = i2
+        self.indices['al_scan_bias'] = slice(i1, i2)
+        if self._debug:
+            print('finished reading along-scan bias')
+
 
     def _read_limb_dark(self):
         return
