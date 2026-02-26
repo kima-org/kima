@@ -2853,6 +2853,11 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     nplanets = int(sample[res.indices['np']])
 
+    if res.model is MODELS.ETVmodel:
+        M0_epoch = sample[res.indices['ref_time']]
+    else:
+        M0_epoch = res.M0_epoch
+
     if res.model is MODELS.RVGAIAmodel:
         da,dd,mua,mud,plx = sample[res.indices['astrometric_solution']]
 
@@ -2868,7 +2873,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             params[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
         else:
             params[k]['K'] = K = sample[res.indices['planets.K']][i]
-        params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        params[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
         params[k]['type'] = 'planet'
         params[k]['index'] = i + 1
 
@@ -2903,7 +2908,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
                     ko[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
                 else:
                     ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
-            ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            ko[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
             pj += 1
@@ -2921,7 +2926,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             f = np.pi/2 - w
             E = 2.0 * np.arctan(np.tan(f/2.0) * np.sqrt((1.0 - e) / (1.0 + e)))
             tr[k]['φ'] = φ = E - e * np.sin(E)
-            # tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            # tr[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['type'] = 'TR'
             tr[k]['index'] = -pj - 1
             pj += 1
@@ -3003,17 +3008,26 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     tau = 2 * np.pi
 
-    # make copies to not change attributes
-    t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
-    if res.model is MODELS.BINARIESmodel:
-        if res.double_lined:
-            y2, e2 = res.data.y2.copy(), res.data.e2.copy()
-    obs = res.data.obs.copy()
-    
+    if res.model is MODELS.ETVmodel:
+        epochs = res.data.epochs.copy()
+        ephem1 = sample[res.indices['ephem1']]
+        t = epochs * ephem1
+        y, e = res.data.et.copy(), res.data.etsig.copy()
+        M0_epoch = sample[res.indices['ref_time']]
+    else:
+        # make copies to not change attributes
+        t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                y2, e2 = res.data.y2.copy(), res.data.e2.copy()
+        obs = res.data.obs.copy()
+        M0_epoch = res.M0_epoch
+        
     jitters = sample[res.indices['jitter']]
     if res.model is MODELS.RVGAIAmodel:
         jitters = jitters[1:]
-    jitter_array = jitters[obs.astype(int) - 1]
+    if res.model != MODELS.ETVmodel:
+        jitter_array = jitters[obs.astype(int) - 1]
     if res.model is MODELS.BINARIESmodel:
         if res.double_lined:
             jitter2_array = jitters[obs.astype(int) - 1 + res.n_instruments]
@@ -3173,9 +3187,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         # plot the keplerian curve in phase (3 times)
         phase = np.linspace(0, tau, 200)
         if xaxis == 'mean anomaly':
-            tt = (phase - M0) * P / tau + res.M0_epoch
+            tt = (phase - M0) * P / tau + M0_epoch
         elif xaxis == 'mean longitude':
-            tt = (phase - M0 - w) * P / tau + res.M0_epoch
+            tt = (phase - M0 - w) * P / tau + M0_epoch
 
         # Msmooth = np.linspace(0, 360, 200)
         # M0 = 180 / np.pi * (λ0 - w)
@@ -3232,11 +3246,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = obs == k
-                # phase = ((t[m] - res.M0_epoch) / P) % 1.0
+                # phase = ((t[m] - M0_epoch) / P) % 1.0
                 if xaxis == 'mean anomaly':
-                    phase = mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) % tau
+                    phase = mean_anomaly_from_epoch(t[m], P, M0, M0_epoch) % tau
                 elif xaxis == 'mean longitude':
-                    phase = (mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) + w) % tau
+                    phase = (mean_anomaly_from_epoch(t[m], P, M0, M0_epoch) + w) % tau
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
@@ -3311,11 +3325,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                                     alpha=alpha, **hlkw)
 
         else:
-            # phase = ((t - res.M0_epoch) / P) % 1.0
+            # phase = ((t - M0_epoch) / P) % 1.0
             if xaxis == 'mean anomaly':
-                phase = mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) % tau
+                phase = mean_anomaly_from_epoch(t, P, M0, M0_epoch) % tau
             elif xaxis == 'mean longitude':
-                phase = (mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) + w) % tau
+                phase = (mean_anomaly_from_epoch(t, P, M0, M0_epoch) + w) % tau
 
             yy = y - vv
             ee = e.copy()
@@ -3414,10 +3428,16 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
 
-    if include_jitter:
-        errors = np.hypot(res.data.e.copy(),jitter_array)
+    if res.model is MODELS.ETVmodel:
+        if include_jitter:
+            errors = np.hypot(res.data.etsig.copy(),jitter_array)
+        else:
+            errors = res.data.etsig.copy()
     else:
-        errors = res.data.e.copy()
+        if include_jitter:
+            errors = np.hypot(res.data.e.copy(),jitter_array)
+        else:
+            errors = res.data.e.copy()
 
     if res.model is MODELS.BINARIESmodel:
         if res.double_lined:
@@ -3436,7 +3456,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
-        ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
+        if res.model is MODELS.ETVmodel: #This distinction is probably not needed
+            ax.errorbar(t[outliers] - time_offset, residuals[outliers],
+                    errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+        else:
+            ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
         if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
