@@ -1260,6 +1260,8 @@ ETVData::ETVData() {};
         et = data[1];
         etsig = data[2];
 
+        obsi = vector<int>(epochs.size(), 1);
+
         // epoch for the mean anomaly, by default the first epoch
         M0_epoch = et[0];
 
@@ -1486,6 +1488,8 @@ Args:
         .def_prop_ro("et", [](ETVData &d) { return d.get_et(); }, "The observed mid-eclipse times")
         .def_prop_ro("etsig", [](ETVData &d) { return d.get_etsig(); }, "The uncertainties in the eclipse times")
         .def_prop_ro("N", [](ETVData &d) { return d.N(); }, "Total number of observations")
+
+        .def_prop_ro("obsi", [](ETVData &d) { return d.get_obsi(); }, "The instrument identifier")
 
         .def_rw("M0_epoch", &ETVData::M0_epoch, "reference epoch for the mean anomaly, not used in ETVmodel as reference time is a free parameter")
         .def_ro("units", &ETVData::_units, "Units of the ETV data and uncertainties");
