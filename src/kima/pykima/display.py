@@ -3665,6 +3665,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         T = t - tref
         return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3)*np.sin(psi) + ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)*np.cos(psi)
 
+    def ra_dec_waccels(accela,acceld,jerka,jerkd,t,tref):
+        T = t - tref
+        return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3), ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)
+
     def wscanbias(A,theta,k,psi):
         return A*np.cos(k*(psi-theta))
 
@@ -3716,6 +3720,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         nextras += 1
     elif res.n_accel_params == 2:
         accela, acceld = sample[res.indices['accel_solution']]
+        jerka, jerkd = 0, 0
         nextras += 1
 
     if res.al_scan_bias:
@@ -3775,10 +3780,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
 
     #add accelerations
-    if res.n_accel_params == 4:
+    if res.n_accel_params >0:
         wmodel += waccels(accela, acceld, jerka, jerkd, t, psi, res.M0_epoch)
-    elif res.n_accel_params == 2:
-        wmodel += waccels(accela, acceld, 0, 0, t, psi, res.M0_epoch)
     
     #Get full model
     for letter in keys:
@@ -3818,14 +3821,14 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         raise Exception('times are not labelled in mjd but values are < 2400000, please either specify dates=\'mjd\' or give a value to date_sub such as date_sub = 2400000 such that date is in jd (or jd with correction)')
     elif t[0] < 2400000 and dates != 'mjd':
         t2 += date_sub
-        reft = res.M0_epoch + date_sub
+        tref = res.M0_epoch + date_sub
         time_label = str(dates) + ' - ' + str(date_sub)
     elif t[0] < 2400000 and dates == 'mjd':
         t2 += 2400000.5
-        reft = res.M0_epoch + 2400000.5
+        tref = res.M0_epoch + 2400000.5
         time_label = 'mjd'
     else:
-        reft = res.M0_epoch
+        tref = res.M0_epoch
         time_label = str(dates)
 
 
@@ -3838,25 +3841,59 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     else:
         parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array2,verbose=False,overwrite=False)
         parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t2,verbose=False,overwrite=False)
-        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,reft)
+        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,tref)
         ax.scatter(a,b,c=np.array(t2),cmap=colormap)
         cmap = matplotlib.colormaps[colormap]
         for i in range(len(t2)):
             colour = cmap((t2[i]-t2[0])/(t2[len(t2)-1]-t2[0]))
             ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
-        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,reft)
+        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,tref)
         ax.plot(a,b,c='black',alpha=0.8)
 
     ax.xaxis.set_inverted(True)
     ax.set_box_aspect(1)
     ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Parallax and Proper-Motion')
 
+    addind = 0
     #make plot for acceleration solution
 
-    #make plot for scan-angle bias
+    if res.n_accel_params >0:
+        ax = axs[addind +1]
+        addind +=1
+
+        accelra, acceldec = ra_dec_waccels(accela,acceld,jerka,jerkd,t,tref)
+        accelra2, acceldec2 = ra_dec_waccels(accela,acceld,jerka,jerkd,time_array,tref)
+
+        ax.plot(accelra2, acceldec2, color='k', lw=2, zorder=-1)
+        ax.scatter(accelra + alpha_res, acceldec + dec_res, c=t, cmap=colormap, alpha=1)
+        cmap = matplotlib.colormaps[colormap]
+        for i in range(len(t)):
+            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+            ax.plot([accelra[i]+alpha_res[i]-alpha_errs[i],accelra[i]+alpha_res[i]+alpha_errs[i]],[acceldec[i]+dec_res[i]-dec_errs[i],acceldec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+
+        ax.scatter(0,0,marker='x',c='grey')
+        #Make plot square to get good visual on e and inc
+        lowx,highx = ax.get_xlim()
+        lowy,highy = ax.get_ylim()
+        xwidth = highx - lowx
+        ywidth = highy - lowy
+        if xwidth < ywidth:
+            delta = ywidth - xwidth
+            ax.set(xlim = [lowx - delta/2,highx + delta/2])
+        else:
+            delta = xwidth - ywidth
+            ax.set(ylim = [lowy - delta/2,highy + delta/2])
+        ax.xaxis.set_inverted(True)
+
+        ax.set_box_aspect(1)
+        if res.n_accel_params == 4:
+            ifjerk = '+ Jerk'
+        else:
+            ifjerk = ''
+        ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Acceleration '+ifjerk)
 
     #make individual orbit plots "phased"
-    
+
     for j,letter in enumerate(keys):
         P = params[letter]['P']
         phi = params[letter]['φ']
@@ -3878,7 +3915,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
         ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
-        ax = axs[j+1+nextras]
+        ax = axs[j+1+addind]
+
         # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
         ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
         ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
@@ -3907,11 +3945,34 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
         ax.set_box_aspect(1)
         ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Photocentre Orbit '+str(j+1))
+    
+    addind += len(keys)
 
+    #make plot for scan-angle bias
+    if res.al_scan_bias:
+        ax = axs[addind +1]
+
+        psis = np.arange(-np.pi,np.pi,0.1)
+        scan_model = np.zeros_like(psis)
+
+        scan_data = wws.copy()
+        for j in range(res.n_bias_comps):
+            Ak = al_scan_bias_params[j]
+            thetak = al_scan_bias_params[j+res.n_bias_comps]
+            k = 2*j + 3
+            scan_data += wscanbias(Ak,thetak,k,psi)
+            scan_model += wscanbias(Ak,thetak,k,psis)
+        ax.errorbar(psi,scan_data,yerr=ws_err,fmt='none',c='grey', alpha=0.6, zorder=2)
+        ax.scatter(psi,scan_data,c=t,cmap=colormap,zorder=3)
+        ax.plot(psis,scan_model,c='black')
+        ax.axhline(0,c='grey',zorder=1,alpha=0.8)
+        ax.set(xlabel = r'$\psi$ (rad)',ylabel='AL-scan O-C (mas)',title='Scan-angle-dependent signal')
+
+    
     #along-scan residuals plot
     resax.errorbar(t,wws,yerr=ws_err,fmt='.',c='grey',alpha=0.8,zorder=2)
     resax.scatter(t,wws,c=t,cmap=colormap,zorder=3)
-    resax.axhline(0,c='grey',zorder=1)
+    resax.axhline(0,c='grey',zorder=1,alpha=0.8)
     resax.set(xlabel='Time ('+time_label+')',ylabel='Along-scan residuals (mas)')
 
 
