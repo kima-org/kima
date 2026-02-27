@@ -3952,7 +3952,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     if res.al_scan_bias:
         ax = axs[addind +1]
 
-        psis = np.arange(-np.pi,np.pi,0.1)
+        psis = np.arange(-np.pi,np.pi,0.01)
         scan_model = np.zeros_like(psis)
 
         scan_data = wws.copy()
