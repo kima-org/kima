@@ -962,7 +962,7 @@ class KimaResults:
     def _read_al_scan_bias(self):
         i1, i2 = self._current_column, self._current_column + self.n_bias_comps*2
         self.al_scan_params = self.posterior_sample[:, i1:i2]
-        self._current_column += self.n_bias_comps
+        self._current_column += self.n_bias_comps*2
         self.indices['al_scan_bias_start'] = i1
         self.indices['al_scan_bias_end'] = i2
         self.indices['al_scan_bias'] = slice(i1, i2)
@@ -1872,6 +1872,27 @@ class KimaResults:
             self.posteriors.mua = mua
             self.posteriors.mud = mud
             self.posteriors.plx = plx
+            if self.n_accel_params==4:
+                accela,acceld,jerka,jerkd = self.posterior_sample[:, self.indices['accel_solution']].T
+                self.posteriors.accela = accela
+                self.posteriors.acceld = acceld
+                self.posteriors.jerka = jerka
+                self.posteriors.jerkd = jerkd
+            elif self.n_accel_params==2:
+                accela,acceld = self.posterior_sample[:, self.indices['accel_solution']].T
+                self.posteriors.accela = accela
+                self.posteriors.acceld = acceld
+            if self.al_scan_bias:
+                al_scan_bias_params = self.posterior_sample[:,self.indices['al_scan_bias']].T
+                if self.n_bias_comps == 3:
+                    self.posteriors.Ak = al_scan_bias_params[[0,1,2]]
+                    self.posteriors.thetak = al_scan_bias_params[[3,4,5]]
+                elif self.n_bias_comps == 2:
+                    self.posteriors.Ak = al_scan_bias_params[[0,1]]
+                    self.posteriors.thetak = al_scan_bias_params[[2,3]]
+                elif self.n_bias_comps == 1:
+                    self.posteriors.Ak = al_scan_bias_params[0]
+                    self.posteriors.thetak = al_scan_bias_params[1]
             # TODO: _priors
 
         # instrument offsets

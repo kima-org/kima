@@ -23,6 +23,10 @@ try:
 except ImportError:
     tqdm = lambda x: x
 
+dty = 1/365.25
+dty2 = dty**2
+dty3 = dty**3
+
 
 def make_plots(res, options, save_plots=False):
     res.save_plots = save_plots
@@ -3655,7 +3659,14 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
     def wss(da,dd,par,mua,mud,t,psi,pf,tref):
         T = t - tref
-        return (da + mua*T)*np.sin(psi) + (dd +mud*T)*np.cos(psi) +par*pf
+        return (da + mua*dty*T)*np.sin(psi) + (dd +mud*dty*T)*np.cos(psi) +par*pf
+    
+    def waccels(accela,acceld,jerka,jerkd,t,psi,tref):
+        T = t - tref
+        return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3)*np.sin(psi) + ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)*np.cos(psi)
+
+    def wscanbias(A,theta,k,psi):
+        return A*np.cos(k*(psi-theta))
 
     def wk_orb(P,Tper,e,cosi,W,w,a0,t,psi):
         A, B, F, G = Thiele_Innes(a0, w, W, cosi)
@@ -3697,20 +3708,33 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
     nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
 
+    nextras = 0
+
     da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
+    if res.n_accel_params == 4:
+        accela, acceld, jerka, jerkd = sample[res.indices['accel_solution']]
+        nextras += 1
+    elif res.n_accel_params == 2:
+        accela, acceld = sample[res.indices['accel_solution']]
+        nextras += 1
+
+    if res.al_scan_bias:
+        al_scan_bias_params = sample[res.indices['al_scan_bias']]
+        nextras += 1
+
     # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
 
     nrows = {
         0: 3, 1: 3, 2: 3, 3: 4,
         4: 5, 5: 5, 6: 6
-    }[nplanets]
+    }[nplanets+nextras]
 
     # at least the residuals plot
 
     ncols = {
         0: 1, 1: 2, 2: 3, 3: 3,
         4: 3, 5: 3, 6: 3
-    }[nplanets]
+    }[nplanets+nextras]
 
     fs = [ncols*4,nrows*2]
 
@@ -3719,28 +3743,28 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     gs = gridspec.GridSpec(nrows, ncols, figure=fig)
     # gs_indices = {i: (i // 3, i % 3) for i in range(50)}
 
-    if nplanets == 0:
+    if nplanets+nextras == 0:
         axs = [fig.add_subplot(gs[:2, 0])]
         resax = fig.add_subplot(gs[2, 0])
-    elif nplanets == 1:
+    elif nplanets+nextras == 1:
         axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1])]
         resax = fig.add_subplot(gs[2, :])
-    elif nplanets == 2:
+    elif nplanets+nextras == 2:
         axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1]),fig.add_subplot(gs[:2, 2])]
         resax = fig.add_subplot(gs[2, :])
-    elif nplanets == 3:
+    elif nplanets+nextras == 3:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]), 
                fig.add_subplot(gs[2:, 0])]
         resax = fig.add_subplot(gs[2:, 1:])
-    elif nplanets == 4:
+    elif nplanets+nextras == 4:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                 fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1])]
         resax = fig.add_subplot(gs[4, :])
-    elif nplanets == 5:
+    elif nplanets+nextras == 5:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                 fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2])]
         resax = fig.add_subplot(gs[4, :])
-    elif nplanets == 6:
+    elif nplanets+nextras == 6:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2]),
                fig.add_subplot(gs[4:, 0])]
@@ -3749,6 +3773,12 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         raise NotImplementedError
     
     wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+
+    #add accelerations
+    if res.n_accel_params == 4:
+        wmodel += waccels(accela, acceld, jerka, jerkd, t, psi, res.M0_epoch)
+    elif res.n_accel_params == 2:
+        wmodel += waccels(accela, acceld, 0, 0, t, psi, res.M0_epoch)
     
     #Get full model
     for letter in keys:
@@ -3770,6 +3800,15 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         Tper = params[letter]['Tp']
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
+    
+    #add scan-angle bias signal
+    if res.al_scan_bias:
+        for j in range(res.n_bias_comps):
+            Ak = al_scan_bias_params[j]
+            thetak = al_scan_bias_params[j+res.n_bias_comps]
+            k = 2*j + 3
+            wmodel += wscanbias(Ak,thetak,k,psi)
+
     #get residuals
     wws = wobs - wmodel
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
@@ -3812,6 +3851,9 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     ax.set_box_aspect(1)
     ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Parallax and Proper-Motion')
 
+    #make plot for acceleration solution
+
+    #make plot for scan-angle bias
 
     #make individual orbit plots "phased"
     
@@ -3836,7 +3878,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
         ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
-        ax = axs[j+1]
+        ax = axs[j+1+nextras]
         # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
         ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
         ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
