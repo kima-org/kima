@@ -3966,7 +3966,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         ax.scatter(psi,scan_data,c=t,cmap=colormap,zorder=3)
         ax.plot(psis,scan_model,c='black')
         ax.axhline(0,c='grey',zorder=1,alpha=0.8)
-        ax.set(xlabel = r'$\psi$ (rad)',ylabel='AL-scan O-C (mas)',title='Scan-angle-dependent signal')
+        ax.set(xlabel = r'$\psi$ (rad)',ylabel='Along-scan O-C (mas)',title='Scan-angle-dependent signal')
 
     
     #along-scan residuals plot
