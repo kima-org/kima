@@ -154,8 +154,8 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
         if (jerk) {
             if (!jerka_prior)
                 jerka_prior = make_prior<Gaussian>(0.0,0.1);
-            if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,0.1);
+            if (!jerkd_prior)
+                jerkd_prior = make_prior<Gaussian>(0.0,0.1);
         }
     }
         
