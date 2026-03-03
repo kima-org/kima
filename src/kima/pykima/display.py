@@ -532,18 +532,19 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
     Khdr_threshold = 30
 
     if points:
-        kw = dict(markersize=2, zorder=2, alpha=0.1, picker=5)
+        rasterized = kwargs.pop('rasterized', True)
+        kw = dict(markersize=2, zorder=2, alpha=0.1, picker=True, pickradius=2)
         kw = {**kw, **kwargs}
 
         # plot known_object first so it always has the same color
         if include_known_object:
-            ax1.semilogx(P_KO, K_KO, '.', markersize=2, zorder=2)
-            ax2.semilogx(P_KO, E_KO, '.', markersize=2, zorder=2)
+            ax1.semilogx(P_KO, K_KO, '.', **kw, rasterized=rasterized)
+            ax2.semilogx(P_KO, E_KO, '.', **kw, rasterized=rasterized)
 
         # plot transiting_planet first so it always has the same color
         if include_transiting_planet:
-            ax1.semilogx(P_TR, K_TR, '.', markersize=2, zorder=2)
-            ax2.semilogx(P_TR, E_TR, '.', markersize=2, zorder=2)
+            ax1.semilogx(P_TR, K_TR, '.', **kw, rasterized=rasterized)
+            ax2.semilogx(P_TR, E_TR, '.', **kw, rasterized=rasterized)
 
         if not colors_np:
             P = P.ravel()

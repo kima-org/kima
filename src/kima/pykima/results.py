@@ -1697,6 +1697,100 @@ class KimaResults:
         if add_timestamp:
             id += get_timestamp()
         return id
+    
+    def to_parquet(self, directory=None, save_prior_samples=False, N=int(1e6)):
+        """ Save the results in parquet format.
+        
+        Args:
+            directory (str, optional): 
+                The directory where to save the files. If not given, a unique
+                name will be generated from the properties of the model.
+            save_prior_samples (bool, optional):
+                Whether to save random samples from the P,K,e priors (useful for
+                occurrence rate calculations). Defaults to False.
+            N (int, optional):
+                Number of prior samples to save if `save_prior_samples` is True.
+        
+        Returns:
+            This method does not return anything, but saves parquet files in the
+            specified directory: 
+            - `sample.parquet`: 
+              merged contents of `sample.txt` and `sample_info.txt` files
+            - `posterior_sample.parquet`: 
+              merged contents of `posterior_sample.txt` and
+              `posterior_sample_info.txt` files
+            - `levels.parquet`:
+              contents of `levels.txt` file
+            - `prior.parquet` (if `save_prior_samples`): 
+              contains random samples from the P, K, e priors
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError("pandas is required to save parquet files")
+
+        # columns on _info arrays
+        info_cols = ["level assignment", "log likelihood", "tiebreaker", "ID"]
+        # total number of parameters (columns)
+        npars = len(self._parameters)
+        # build indices dict with lists of integers instead of slices
+        indices = {
+            k: list(range(*v.indices(npars))) if isinstance(v, slice) else v
+            for k, v in self.indices.items()
+        }
+
+        sample = pd.DataFrame(self.sample, columns=self._parameters).join(
+            pd.DataFrame(self.sample_info, columns=info_cols)
+        )
+        sample.attrs['indices'] = indices
+
+        posterior_sample = pd.DataFrame(self.posterior_sample, columns=self._parameters).join(
+            pd.DataFrame(self.posterior_lnlike[:, :4], columns=info_cols)
+        )
+        posterior_sample.attrs['indices'] = indices
+
+        levels_cols = ['log_X', 'log_likelihood', 'tiebreaker', 'accepts', 'tries', 'exceeds', 'visits']
+        levels = pd.DataFrame(self.levels, columns=levels_cols)
+
+        if directory is None:
+            directory = self.get_model_id()
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        file1 = os.path.join(directory, 'sample.parquet')
+        sample.to_parquet(file1, compression='zstd')
+
+        file2 = os.path.join(directory, 'posterior_sample.parquet')
+        posterior_sample.to_parquet(file2, compression='zstd')
+
+        file3 = os.path.join(directory, 'levels.parquet')
+        levels.to_parquet(file3, compression='zstd')
+
+        if save_prior_samples:
+            from numpy.random import default_rng
+            rng = default_rng()
+            u = np.empty((3, N))
+            rng.random(u.shape, out=u)
+            u[0] = np.vectorize(self.priors['Pprior'].ppf)(u[0])
+            u[1] = np.vectorize(self.priors['Kprior'].ppf)(u[1])
+            u[2] = np.vectorize(self.priors['eprior'].ppf)(u[2])
+            prior_samples = pd.DataFrame(u.T, columns=('P', 'K', 'e'))
+            prior_samples.attrs['npmax'] = self.npmax
+            prior_samples.attrs['Pprior'] = str(self.priors['Pprior'])
+            prior_samples.attrs['Kprior'] = str(self.priors['Kprior'])
+            prior_samples.attrs['eprior'] = str(self.priors['eprior'])
+            file4 = os.path.join(directory, 'prior.parquet')
+            prior_samples.to_parquet(file4, compression='zstd')
+
+    
+    def to_npz(self, filename='res.npz'):
+        np.savez_compressed(
+            filename, 
+            sample=self.sample, sample_info=self.sample_info, levels=self.levels, 
+            posterior_sample=self.posterior_sample
+        )
+        print('Wrote to', filename)
+
     def save_pickle(self, filename: str = None, directory: str = None,
                     postfix: str = None, compress: Union[bool, str] = False,
                     verbose: bool = True, **kwargs):
