@@ -4871,7 +4871,7 @@ def interactive_plotter(res):
     fig.canvas.callbacks.connect('pick_event', on_pick)
 
 
-def report(res):
+def report(res, hexbin=False, diagnostic=False, **kwargs):
     from .utils import distribution_support
 
     short_instruments = [
