@@ -209,6 +209,43 @@ def compress_outputs(directory=None, posterior=True, delete_originals=False,
             raise FileNotFoundError(f'sample.txt not found in "{directory}"')
     
 
+def load_several_results(files, save_memory=False, verbose=True):
+    """ Load several results files
+    Args:
+        files (list of str):
+            List of paths to results files
+        save_memory (bool, optional):`
+            Whether to save memory by deleting the `.sample` array after
+            loading. Defaults to False.
+        verbose (bool, optional):
+            Whether to print progress messages. Defaults to True.
+    Returns:
+        results (list of kima.results.Results):
+            List of loaded results objects
+    """
+    from tqdm import tqdm
+    from .results import load_results
+    # from contextlib import redirect_stdout
+    # from io import StringIO
+    # from multiprocessing.pool import ThreadPool
+    results = []
+    pbar = tqdm(files, total=len(files)) if verbose else files
+    for f in pbar:
+        if verbose:
+            pbar.set_description(f'Loading {f}')
+        res = load_results(f, verbose=verbose)
+        if save_memory:
+            _ = res.maximum_likelihood(save=True)
+            # with redirect_stdout(StringIO()):
+            _ = res.maximum_likelihood_sample(save=True, printit=False)
+            del res.sample
+        results.append(res)
+        # del res
+    if save_memory:
+        import gc
+        gc.collect()
+    return results
+
 
 @contextlib.contextmanager
 def hide_stdout():
