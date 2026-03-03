@@ -17,7 +17,7 @@ from copy import copy, deepcopy
 
 
 from .. import __models__, MODELS
-from ..kepler import keplerian
+from ..kepler import keplerian, keplerian_etv
 from ..postkepler import post_keplerian, post_keplerian_sb2, period_correction, a0fromK, Kfroma0
 from kima import distributions
 from .classic import postprocess
@@ -195,7 +195,12 @@ class ETV_data_holder:
         N (int): Total number of observations
     """
 
-    epoch: np.ndarray = field(init=False)
+    t: np.ndarray = field(init=False) #hack to stop breaks
+    y: np.ndarray = field(init=False) #These give the same names as other datas
+    e: np.ndarray = field(init=False) #These give the same names as other datas
+
+    obs: np.ndarray = field(init=False) #hack as well, in future could have different instruments in ETVmodel
+    epochs: np.ndarray = field(init=False)
     et: np.ndarray = field(init=False)
     etsig: np.ndarray = field(init=False)
     N: int = field(init=False)
@@ -576,10 +581,14 @@ class KimaResults:
                 data = model.data
             self.ETVdata = ETV_data_holder()
             self.data = self.ETVdata
-            self.ETVdata.epochs = np.copy(data.t)
-            self.ETVdata.et = np.copy(data.w)
-            self.ETVdata.etsig = np.copy(data.wsig)
+            self.ETVdata.epochs = np.copy(data.epochs)
+            self.ETVdata.t = np.copy(data.et) #Hack to not have breaks
+            self.ETVdata.et = np.copy(data.et)
+            self.ETVdata.y = np.copy(data.et)
+            self.ETVdata.etsig = np.copy(data.etsig)
+            self.ETVdata.e = np.copy(data.etsig)
             self.ETVdata.N = data.N
+            self.ETVdata.obs = np.copy(data.obsi)
             self.data_type = "ETV"
         elif self.model is MODELS.RVGAIAmodel:
             if data is None:
@@ -641,10 +650,16 @@ class KimaResults:
             self.thiele_innes = model.thiele_innes
             self.RA = model.RA
             self.DEC= model.DEC
+            self.n_background_params = model.n_background_params
+            self.al_scan_bias = model.al_scan_bias
+            self.n_bias_comps = model.n_al_scan_componenets
         if self.model is MODELS.RVGAIAmodel:
             self.thiele_innes = False
             self.RA = model.RA
             self.DEC= model.DEC
+            self.n_background_params = model.n_background_params
+            self.al_scan_bias = model.al_scan_bias
+            self.n_bias_comps = model.n_al_scan_componenets
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
@@ -655,6 +670,9 @@ class KimaResults:
 
         if self.model is MODELS.SPLEAFmodel:
             self.nseries = int(setup['kima']['nseries'])
+
+        if self.model is MODELS.ETVmodel:
+            self.ephemeris = model.ephemeris
 
         if self.data_type=='RV':
             self._extra_data = np.array(np.copy(data.actind))
@@ -816,6 +834,22 @@ class KimaResults:
         #read astrometric solution
         if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
             self._read_astrometric_solution()
+            if self.al_scan_bias:
+                self._read_al_scan_bias()
+
+        #if ETV read reference time and ephemerides
+        if self.model is MODELS.ETVmodel:
+            self.indices['ref_time'] = self._current_column
+            self._current_column += 1
+            self.indices['ephem1'] = self._current_column
+            self._current_column += 1
+            if self.ephemeris >=2:
+                self.indices['ephem2'] = self._current_column
+                self._current_column += 1
+            if self.ephemeris >=3:
+                self.indices['ephem3'] = self._current_column
+                self._current_column += 1
+
         
         # find KO in the compiled model
         self.KO = model.known_object
@@ -908,14 +942,33 @@ class KimaResults:
 
     def _read_astrometric_solution(self):
         self.n_astrometric_solution = 5
+        self.n_accel_params = self.n_background_params - self.n_astrometric_solution
         i1, i2 = self._current_column, self._current_column + self.n_astrometric_solution
         self.astrometric_solution = self.posterior_sample[:, i1:i2]
         self._current_column += self.n_astrometric_solution
         self.indices['astrometric_solution_start'] = i1
         self.indices['astrometric_solution_end'] = i2
         self.indices['astrometric_solution'] = slice(i1, i2)
+        if self.n_accel_params>0:
+            i1, i2 = self._current_column, self._current_column + self.n_accel_params
+            self.accel_solution = self.posterior_sample[:, i1:i2]
+            self._current_column += self.n_accel_params
+            self.indices['accel_solution_start'] = i1
+            self.indices['accel_solution_end'] = i2
+            self.indices['accel_solution'] = slice(i1, i2)
         if self._debug:
             print('finished reading astrometric solution')
+    
+    def _read_al_scan_bias(self):
+        i1, i2 = self._current_column, self._current_column + self.n_bias_comps*2
+        self.al_scan_params = self.posterior_sample[:, i1:i2]
+        self._current_column += self.n_bias_comps*2
+        self.indices['al_scan_bias_start'] = i1
+        self.indices['al_scan_bias_end'] = i2
+        self.indices['al_scan_bias'] = slice(i1, i2)
+        if self._debug:
+            print('finished reading along-scan bias')
+
 
     def _read_limb_dark(self):
         return
@@ -1819,6 +1872,27 @@ class KimaResults:
             self.posteriors.mua = mua
             self.posteriors.mud = mud
             self.posteriors.plx = plx
+            if self.n_accel_params==4:
+                accela,acceld,jerka,jerkd = self.posterior_sample[:, self.indices['accel_solution']].T
+                self.posteriors.accela = accela
+                self.posteriors.acceld = acceld
+                self.posteriors.jerka = jerka
+                self.posteriors.jerkd = jerkd
+            elif self.n_accel_params==2:
+                accela,acceld = self.posterior_sample[:, self.indices['accel_solution']].T
+                self.posteriors.accela = accela
+                self.posteriors.acceld = acceld
+            if self.al_scan_bias:
+                al_scan_bias_params = self.posterior_sample[:,self.indices['al_scan_bias']].T
+                if self.n_bias_comps == 3:
+                    self.posteriors.Ak = al_scan_bias_params[[0,1,2]]
+                    self.posteriors.thetak = al_scan_bias_params[[3,4,5]]
+                elif self.n_bias_comps == 2:
+                    self.posteriors.Ak = al_scan_bias_params[[0,1]]
+                    self.posteriors.thetak = al_scan_bias_params[[2,3]]
+                elif self.n_bias_comps == 1:
+                    self.posteriors.Ak = al_scan_bias_params[0]
+                    self.posteriors.thetak = al_scan_bias_params[1]
             # TODO: _priors
 
         # instrument offsets
@@ -1826,7 +1900,7 @@ class KimaResults:
             self.posteriors.offset = self.posterior_sample[:, self.indices['inst_offsets']]
             # TODO: _priors
         
-        if self.model != MODELS.GAIAmodel:
+        if self.model != MODELS.GAIAmodel and self.model != MODELS.ETVmodel:
             # systemic velocity
             self.posteriors.vsys = self.posterior_sample[:, self.indices['vsys']].reshape(-1, 1)
             if self.model is MODELS.BINARIESmodel and self.double_lined:
@@ -1835,6 +1909,14 @@ class KimaResults:
             if self.model is MODELS.RVFWHMmodel:
                 self.posteriors.cfwhm = self.posterior_sample[:, self.indices['cfwhm']]
                 self._priors.cfwhm = self.priors['Cfwhm_prior']
+
+        if self.model is MODELS.ETVmodel:
+            self.posteriors.ref_time = self.posterior_sample[:,self.indices['ref_time']].reshape(-1, 1)
+            self.posteriors.ephem1 = self.posterior_sample[:,self.indices['ephem1']]
+            if self.ephemeris >= 2:
+                self.posteriors.ephem2 = self.posterior_sample[:,self.indices['ephem2']]
+            if self.ephemeris >= 3:
+                self.posteriors.ephem3 = self.posterior_sample[:,self.indices['ephem3']]
 
         if self.data_type=='RV' and self.trend:
             ind = self.indices['trend']
@@ -1941,7 +2023,6 @@ class KimaResults:
                                                 self.posteriors.e, self.posteriors.cosi,
                                                 self.posteriors.plx.reshape(-1, 1))
 
-            ### Also add ETV ones
             else:
                 # periods
                 s = self.indices['planets.P']
@@ -1971,7 +2052,10 @@ class KimaResults:
                 self._priors.w = self.priors['wprior']
 
                 # times of periastron
-                self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
+                if self.model is MODELS.ETVmodel:
+                    self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.posteriors.ref_time
+                else:
+                    self.posteriors.Tp = (self.posteriors.P * self.posteriors.φ) / (2 * np.pi) + self.M0_epoch
 
                 
                 if self.model is MODELS.RVHGPMmodel:
@@ -2691,10 +2775,15 @@ class KimaResults:
 
         data_t = False
         if t is None or t is self.data.t:
-            t = self.data.t.copy()
+            if self.model is MODELS.ETVmodel:
+                epochs = self.data.epochs.copy()
+                ephem1 = sample[self.indices['ephem1']]
+                t = epochs * ephem1
+            else:
+                t = self.data.t.copy()
             data_t = True
 
-        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel, MODELS.RVGAIAmodel]
+        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel, MODELS.RVGAIAmodel, MODELS.ETVmodel]
 
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
@@ -2713,6 +2802,20 @@ class KimaResults:
 
         if self.model is MODELS.RVGAIAmodel:
             da,dd,mua,mud,plx = sample[self.indices['astrometric_solution']]
+
+        if self.model is MODELS.ETVmodel:
+            if self.ephemeris >=3:
+                ephem1 = sample[self.indices['ephem1']]
+                ephem2 = sample[self.indices['ephem2']]
+                ephem3 = sample[self.indices['ephem3']]
+                v += sample[self.indices['ref_time']] + t + ephem2*(t**2)/ephem1/2 + ephem3*(t**3)/ephem2/6
+            elif self.ephemeris >=2:  
+                ephem1 = sample[self.indices['ephem1']]
+                ephem2 = sample[self.indices['ephem2']]
+                v += sample[self.indices['ref_time']] + t + ephem2*(t**2)/ephem1/2
+            else:
+                ephem1 = sample[self.indices['ephem1']]
+                v += sample[self.indices['ref_time']] + t
 
         if include_planets:
             if single_planet and except_planet:
@@ -2789,6 +2892,8 @@ class KimaResults:
                         if self.model is MODELS.BINARIESmodel and j==0:
                             Panom = period_correction(P,wdot)
                             v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
+                        elif self.model is MODELS.ETVmodel:
+                            v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                         else:
                             v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -2856,6 +2961,8 @@ class KimaResults:
                     v[0] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                     if self.model is MODELS.BINARIESmodel:
                         v[1] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                elif self.model is MODELS.ETVmodel:
+                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -2878,7 +2985,7 @@ class KimaResults:
                 v += C.reshape(-1, 1)
             else:
                 v += sample[self.indices['vsys']]
-        else:
+        elif self.model != MODELS.ETVmodel:
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
@@ -3005,9 +3112,13 @@ class KimaResults:
             n2 = self.posterior_sample.shape[1]
             msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
-
         if t is None or t is self.data.t:
-            t = self.data.t.copy()
+            if self.model is MODELS.ETVmodel:
+                epochs = self.data.epochs.copy()
+                ephem1 = sample[self.indices['ephem1']]
+                t = epochs * ephem1
+            else:
+                t = self.data.t.copy()
 
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
@@ -3103,6 +3214,8 @@ class KimaResults:
                                     v -= post_keplerian(t, P, K, ecc, w, 0, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, False, False)
                         else:
                             v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                elif self.model is MODELS.ETVmodel:
+                    v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                 else:
                     v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -3164,6 +3277,8 @@ class KimaResults:
                 w = pars[j + 4 * self.max_components]
             if self.model in (MODELS.RVFWHMmodel, MODELS.RVFWHMRHKmodel):
                 v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+            elif self.model is MODELS.ETVmodel:
+                v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
             else:
                 v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
@@ -3215,7 +3330,12 @@ class KimaResults:
             raise ValueError(msg)
 
         if t is None or t is self.data.t:
-            t = self.data.t.copy()
+            if self.model is MODELS.ETVmodel:
+                epochs = self.data.epochs.copy()
+                ephem1 = sample[self.indices['ephem1']]
+                t = epochs * ephem1
+            else:
+                t = self.data.t.copy()
 
         if not self.has_gp:
             if return_std:
@@ -3572,6 +3692,8 @@ class KimaResults:
                 D = np.vstack([self.data.y, self.data.y2])
             else:
                 D = self.data.y
+        elif self.model is MODELS.ETVmodel:
+            D = self.data.et
         else:
             D = self.data.y
 

@@ -36,6 +36,7 @@ void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVData& RV_data)
 
 void RVGAIAmodel::set_background_solution(size_t n)
 {
+    n_background_params = n;
     if (n==5){
         acceleration = false;
         jerk = false;
@@ -1115,11 +1116,11 @@ void RVGAIAmodel::save_setup() {
     fout << "parallax_prior: " << *plx_prior << endl;
 
     if (acceleration){
-        fout << "accela_prior" << *accela_prior << endl;
-        fout << "acceld_prior" << *acceld_prior << endl;
+        fout << "accela_prior: " << *accela_prior << endl;
+        fout << "acceld_prior: " << *acceld_prior << endl;
         if (jerk){
-            fout << "jerka _prior" << *jerka_prior << endl;
-            fout << "jerkd _prior" << *jerkd_prior << endl;
+            fout << "jerka _prior: " << *jerka_prior << endl;
+            fout << "jerkd _prior: " << *jerkd_prior << endl;
         }
     }
 

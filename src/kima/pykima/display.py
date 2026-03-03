@@ -23,6 +23,10 @@ try:
 except ImportError:
     tqdm = lambda x: x
 
+dty = 1/365.25
+dty2 = dty**2
+dty3 = dty**3
+
 
 def make_plots(res, options, save_plots=False):
     res.save_plots = save_plots
@@ -2380,7 +2384,7 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
 
 def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None, extract_offset=True,
               ignore_y2=False, ignore_y3=False, time_offset=0.0, highlight=None,
-              legend=True, show_rms=False, outliers=None, offsets=None, secondary_star=False, **kwargs):
+              legend=True, show_rms=False, outliers=None, offsets=None, secondary_star=False, sample=None, **kwargs):
 
     fwhm_model = res.model is MODELS.RVFWHMmodel and not ignore_y2
     rhk_model = res.model is MODELS.RVFWHMRHKmodel and not (ignore_y3 or ignore_y2)
@@ -2397,7 +2401,15 @@ def plot_data(res, ax=None, axf=None, axr=None, y=None, e=None, y2=None, y3=None
         else:
             fig, ax = plt.subplots(1, 1)
 
-    t = res.data.t.copy()
+    if res.model is MODELS.ETVmodel:
+        epochs = res.data.epochs.copy()
+        try:
+            ephem1 = sample[res.indices['ephem1']]
+            t = epochs * ephem1
+        except:
+            t = res.data.t.copy()
+    else:
+        t = res.data.t.copy()
 
     if y is None:
         if sb2 and secondary_star:
@@ -2853,6 +2865,11 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
 
     nplanets = int(sample[res.indices['np']])
 
+    if res.model is MODELS.ETVmodel:
+        M0_epoch = sample[res.indices['ref_time']]
+    else:
+        M0_epoch = res.M0_epoch
+
     if res.model is MODELS.RVGAIAmodel:
         da,dd,mua,mud,plx = sample[res.indices['astrometric_solution']]
 
@@ -2868,7 +2885,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             params[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
         else:
             params[k]['K'] = K = sample[res.indices['planets.K']][i]
-        params[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+        params[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
         params[k]['type'] = 'planet'
         params[k]['index'] = i + 1
 
@@ -2903,7 +2920,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
                     ko[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
                 else:
                     ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
-            ko[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            ko[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
             pj += 1
@@ -2921,7 +2938,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             f = np.pi/2 - w
             E = 2.0 * np.arctan(np.tan(f/2.0) * np.sqrt((1.0 - e) / (1.0 + e)))
             tr[k]['φ'] = φ = E - e * np.sin(E)
-            # tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
+            # tr[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['type'] = 'TR'
             tr[k]['index'] = -pj - 1
             pj += 1
@@ -3003,13 +3020,21 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     tau = 2 * np.pi
 
-    # make copies to not change attributes
-    t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
-    if res.model is MODELS.BINARIESmodel:
-        if res.double_lined:
-            y2, e2 = res.data.y2.copy(), res.data.e2.copy()
+    if res.model is MODELS.ETVmodel:
+        epochs = res.data.epochs.copy()
+        ephem1 = sample[res.indices['ephem1']]
+        M0_epoch = sample[res.indices['ref_time']]
+        t = epochs * ephem1 
+        y, e = res.data.et.copy(), res.data.etsig.copy()
+    else:
+        # make copies to not change attributes
+        t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
+        if res.model is MODELS.BINARIESmodel:
+            if res.double_lined:
+                y2, e2 = res.data.y2.copy(), res.data.e2.copy()
+        M0_epoch = res.M0_epoch
     obs = res.data.obs.copy()
-    
+        
     jitters = sample[res.indices['jitter']]
     if res.model is MODELS.RVGAIAmodel:
         jitters = jitters[1:]
@@ -3030,6 +3055,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     else:
         time_offset = 0
         time_label = 'Time ['+dates+']'
+
 
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
@@ -3173,9 +3199,9 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         # plot the keplerian curve in phase (3 times)
         phase = np.linspace(0, tau, 200)
         if xaxis == 'mean anomaly':
-            tt = (phase - M0) * P / tau + res.M0_epoch
+            tt = (phase - M0) * P / tau + M0_epoch
         elif xaxis == 'mean longitude':
-            tt = (phase - M0 - w) * P / tau + res.M0_epoch
+            tt = (phase - M0 - w) * P / tau + M0_epoch
 
         # Msmooth = np.linspace(0, 360, 200)
         # M0 = 180 / np.pi * (λ0 - w)
@@ -3232,11 +3258,11 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = obs == k
-                # phase = ((t[m] - res.M0_epoch) / P) % 1.0
+                # phase = ((t[m] - M0_epoch) / P) % 1.0
                 if xaxis == 'mean anomaly':
-                    phase = mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) % tau
+                    phase = mean_anomaly_from_epoch(t[m], P, M0, M0_epoch) % tau
                 elif xaxis == 'mean longitude':
-                    phase = (mean_anomaly_from_epoch(t[m], P, M0, res.M0_epoch) + w) % tau
+                    phase = (mean_anomaly_from_epoch(t[m], P, M0, M0_epoch) + w) % tau
 
                 yy = (y - vv)[m]
                 ee = e[m].copy()
@@ -3311,16 +3337,18 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                                     alpha=alpha, **hlkw)
 
         else:
-            # phase = ((t - res.M0_epoch) / P) % 1.0
+            # phase = ((t - M0_epoch) / P) % 1.0
             if xaxis == 'mean anomaly':
-                phase = mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) % tau
+                phase = mean_anomaly_from_epoch(t, P, M0, M0_epoch) % tau
             elif xaxis == 'mean longitude':
-                phase = (mean_anomaly_from_epoch(t, P, M0, res.M0_epoch) + w) % tau
+                phase = (mean_anomaly_from_epoch(t, P, M0, M0_epoch) + w) % tau
 
             yy = y - vv
             ee = e.copy()
             if include_jitter:
                 jit = jitters[0]
+                if res.model is MODELS.ETVmodel:
+                    jit = jit/(24*3600)
                 ee = np.hypot(ee,jit)
 
 
@@ -3341,8 +3369,16 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
                         alpha = 0.3 if j in (-1, 1) else 1
                         ax.errorbar(np.sort(phase) + j * tau, yy2[np.argsort(phase)], ee2[np.argsort(phase)],
                                     color='C0', alpha=alpha, **e2kwargs)
+        if res.model is MODELS.ETVmodel:
+            Kunits = 's'
+            yunits = 'days'
+            yname = 'O-C'
+        else:
+            Kunits = 'm/s'
+            yunits = 'm/s'
+            yname = 'RV'
 
-        ax.set(xlabel=xaxis, ylabel="RV [m/s]")
+        ax.set(xlabel=xaxis, ylabel=yname+" ["+yunits+"]")
         # ax.set_xlim(-0.1, 1.1)
         ax.set_xlim(-0.3, 2*np.pi+0.3)
 
@@ -3350,11 +3386,12 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
             ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi])
             ax.set_xticklabels([r'$0$', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$'])
 
+        
         if show_titles:
             # ax.set_title('%s' % letter, loc='left', **title_kwargs)
             K = params[letter]['K']
             ecc = params[letter]['e']
-            title = f'{P=:.2f} days\n {K=:.2f} m/s  {ecc=:.2f}'
+            title = f'{P=:.2f} days\n {K=:.2f} '+Kunits+f'  {ecc=:.2f}'
             title_kwargs = dict(fontsize=12)
             ax.set_title(title, loc='right', **title_kwargs)
 
@@ -3414,10 +3451,23 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
     ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
 
-    if include_jitter:
-        errors = np.hypot(res.data.e.copy(),jitter_array)
+    if res.model is MODELS.ETVmodel:
+        Kunits = 's'
+        yunits = 'days'
     else:
-        errors = res.data.e.copy()
+        Kunits = 'm/s'
+        yunits = 'm/s'
+
+    if res.model is MODELS.ETVmodel:
+        if include_jitter:
+            errors = np.hypot(res.data.etsig.copy(),jitter_array/(24*3600))
+        else:
+            errors = res.data.etsig.copy()
+    else:
+        if include_jitter:
+            errors = np.hypot(res.data.e.copy(),jitter_array)
+        else:
+            errors = res.data.e.copy()
 
     if res.model is MODELS.BINARIESmodel:
         if res.double_lined:
@@ -3436,7 +3486,12 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     if res.studentt and show_outliers:
         outliers = find_outliers(res, sample)
-        ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
+        if res.model is MODELS.ETVmodel:
+            touts = res.data.epochs.copy() * sample[res.indices['ephem1']]
+            ax.errorbar(touts[outliers] - time_offset, residuals[outliers],
+                    errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
+        else:
+            ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
                     errors[outliers], fmt='xr', ms=7, lw=3, zorder=-10)
         if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
@@ -3449,7 +3504,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     plot_data(res, ax=ax, y=residuals, e=errors, ignore_y2=True, legend=True,
               show_rms=True, time_offset=time_offset, outliers=outliers,
-              highlight=highlight, **ekwargs)
+              highlight=highlight, sample=sample, **ekwargs)
 
     if res.model is MODELS.BINARIESmodel:
             if res.double_lined:
@@ -3471,7 +3526,7 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
 
     ax.axhline(y=0, ls='--', alpha=0.5, color='k')
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
-    ax.set(xlabel=time_label, ylabel='r [m/s]')
+    ax.set(xlabel=time_label, ylabel='r ['+yunits+']')
     title_kwargs = dict(loc='right', fontsize=12)
 
 
@@ -3604,7 +3659,18 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
     def wss(da,dd,par,mua,mud,t,psi,pf,tref):
         T = t - tref
-        return (da + mua*T)*np.sin(psi) + (dd +mud*T)*np.cos(psi) +par*pf
+        return (da + mua*dty*T)*np.sin(psi) + (dd +mud*dty*T)*np.cos(psi) +par*pf
+    
+    def waccels(accela,acceld,jerka,jerkd,t,psi,tref):
+        T = t - tref
+        return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3)*np.sin(psi) + ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)*np.cos(psi)
+
+    def ra_dec_waccels(accela,acceld,jerka,jerkd,t,tref):
+        T = t - tref
+        return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3), ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)
+
+    def wscanbias(A,theta,k,psi):
+        return A*np.cos(k*(psi-theta))
 
     def wk_orb(P,Tper,e,cosi,W,w,a0,t,psi):
         A, B, F, G = Thiele_Innes(a0, w, W, cosi)
@@ -3646,20 +3712,34 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
     nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
 
+    nextras = 0
+
     da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
+    if res.n_accel_params == 4:
+        accela, acceld, jerka, jerkd = sample[res.indices['accel_solution']]
+        nextras += 1
+    elif res.n_accel_params == 2:
+        accela, acceld = sample[res.indices['accel_solution']]
+        jerka, jerkd = 0, 0
+        nextras += 1
+
+    if res.al_scan_bias:
+        al_scan_bias_params = sample[res.indices['al_scan_bias']]
+        nextras += 1
+
     # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
 
     nrows = {
         0: 3, 1: 3, 2: 3, 3: 4,
         4: 5, 5: 5, 6: 6
-    }[nplanets]
+    }[nplanets+nextras]
 
     # at least the residuals plot
 
     ncols = {
         0: 1, 1: 2, 2: 3, 3: 3,
         4: 3, 5: 3, 6: 3
-    }[nplanets]
+    }[nplanets+nextras]
 
     fs = [ncols*4,nrows*2]
 
@@ -3668,28 +3748,28 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     gs = gridspec.GridSpec(nrows, ncols, figure=fig)
     # gs_indices = {i: (i // 3, i % 3) for i in range(50)}
 
-    if nplanets == 0:
+    if nplanets+nextras == 0:
         axs = [fig.add_subplot(gs[:2, 0])]
         resax = fig.add_subplot(gs[2, 0])
-    elif nplanets == 1:
+    elif nplanets+nextras == 1:
         axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1])]
         resax = fig.add_subplot(gs[2, :])
-    elif nplanets == 2:
+    elif nplanets+nextras == 2:
         axs = [fig.add_subplot(gs[:2, 0]),fig.add_subplot(gs[:2, 1]),fig.add_subplot(gs[:2, 2])]
         resax = fig.add_subplot(gs[2, :])
-    elif nplanets == 3:
+    elif nplanets+nextras == 3:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]), 
                fig.add_subplot(gs[2:, 0])]
         resax = fig.add_subplot(gs[2:, 1:])
-    elif nplanets == 4:
+    elif nplanets+nextras == 4:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                 fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1])]
         resax = fig.add_subplot(gs[4, :])
-    elif nplanets == 5:
+    elif nplanets+nextras == 5:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                 fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2])]
         resax = fig.add_subplot(gs[4, :])
-    elif nplanets == 6:
+    elif nplanets+nextras == 6:
         axs = [fig.add_subplot(gs[:2, 0]), fig.add_subplot(gs[:2, 1]), fig.add_subplot(gs[:2, 2]),
                fig.add_subplot(gs[2:4, 0]), fig.add_subplot(gs[2:4, 1]), fig.add_subplot(gs[2:4, 2]),
                fig.add_subplot(gs[4:, 0])]
@@ -3698,6 +3778,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         raise NotImplementedError
     
     wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+
+    #add accelerations
+    if res.n_accel_params >0:
+        wmodel += waccels(accela, acceld, jerka, jerkd, t, psi, res.M0_epoch)
     
     #Get full model
     for letter in keys:
@@ -3719,6 +3803,15 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         Tper = params[letter]['Tp']
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
+    
+    #add scan-angle bias signal
+    if res.al_scan_bias:
+        for j in range(res.n_bias_comps):
+            Ak = al_scan_bias_params[j]
+            thetak = al_scan_bias_params[j+res.n_bias_comps]
+            k = 2*j + 3
+            wmodel += wscanbias(Ak,thetak,k,psi)
+
     #get residuals
     wws = wobs - wmodel
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
@@ -3728,14 +3821,14 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         raise Exception('times are not labelled in mjd but values are < 2400000, please either specify dates=\'mjd\' or give a value to date_sub such as date_sub = 2400000 such that date is in jd (or jd with correction)')
     elif t[0] < 2400000 and dates != 'mjd':
         t2 += date_sub
-        reft = res.M0_epoch + date_sub
+        tref = res.M0_epoch + date_sub
         time_label = str(dates) + ' - ' + str(date_sub)
     elif t[0] < 2400000 and dates == 'mjd':
         t2 += 2400000.5
-        reft = res.M0_epoch + 2400000.5
+        tref = res.M0_epoch + 2400000.5
         time_label = 'mjd'
     else:
-        reft = res.M0_epoch
+        tref = res.M0_epoch
         time_label = str(dates)
 
 
@@ -3748,22 +3841,59 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     else:
         parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array2,verbose=False,overwrite=False)
         parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t2,verbose=False,overwrite=False)
-        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,reft)
+        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,tref)
         ax.scatter(a,b,c=np.array(t2),cmap=colormap)
         cmap = matplotlib.colormaps[colormap]
         for i in range(len(t2)):
             colour = cmap((t2[i]-t2[0])/(t2[len(t2)-1]-t2[0]))
             ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
-        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,reft)
+        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,tref)
         ax.plot(a,b,c='black',alpha=0.8)
 
     ax.xaxis.set_inverted(True)
     ax.set_box_aspect(1)
     ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Parallax and Proper-Motion')
 
+    addind = 0
+    #make plot for acceleration solution
+
+    if res.n_accel_params >0:
+        ax = axs[addind +1]
+        addind +=1
+
+        accelra, acceldec = ra_dec_waccels(accela,acceld,jerka,jerkd,t,tref)
+        accelra2, acceldec2 = ra_dec_waccels(accela,acceld,jerka,jerkd,time_array,tref)
+
+        ax.plot(accelra2, acceldec2, color='k', lw=2, zorder=-1)
+        ax.scatter(accelra + alpha_res, acceldec + dec_res, c=t, cmap=colormap, alpha=1)
+        cmap = matplotlib.colormaps[colormap]
+        for i in range(len(t)):
+            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+            ax.plot([accelra[i]+alpha_res[i]-alpha_errs[i],accelra[i]+alpha_res[i]+alpha_errs[i]],[acceldec[i]+dec_res[i]-dec_errs[i],acceldec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+
+        ax.scatter(0,0,marker='x',c='grey')
+        #Make plot square to get good visual on e and inc
+        lowx,highx = ax.get_xlim()
+        lowy,highy = ax.get_ylim()
+        xwidth = highx - lowx
+        ywidth = highy - lowy
+        if xwidth < ywidth:
+            delta = ywidth - xwidth
+            ax.set(xlim = [lowx - delta/2,highx + delta/2])
+        else:
+            delta = xwidth - ywidth
+            ax.set(ylim = [lowy - delta/2,highy + delta/2])
+        ax.xaxis.set_inverted(True)
+
+        ax.set_box_aspect(1)
+        if res.n_accel_params == 4:
+            ifjerk = '+ Jerk'
+        else:
+            ifjerk = ''
+        ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Acceleration '+ifjerk)
 
     #make individual orbit plots "phased"
-    
+
     for j,letter in enumerate(keys):
         P = params[letter]['P']
         phi = params[letter]['φ']
@@ -3785,7 +3915,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
         ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
-        ax = axs[j+1]
+        ax = axs[j+1+addind]
+
         # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
         ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
         ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
@@ -3814,11 +3945,34 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
         ax.set_box_aspect(1)
         ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Photocentre Orbit '+str(j+1))
+    
+    addind += len(keys)
 
+    #make plot for scan-angle bias
+    if res.al_scan_bias:
+        ax = axs[addind +1]
+
+        psis = np.arange(-np.pi,np.pi,0.01)
+        scan_model = np.zeros_like(psis)
+
+        scan_data = wws.copy()
+        for j in range(res.n_bias_comps):
+            Ak = al_scan_bias_params[j]
+            thetak = al_scan_bias_params[j+res.n_bias_comps]
+            k = 2*j + 3
+            scan_data += wscanbias(Ak,thetak,k,psi)
+            scan_model += wscanbias(Ak,thetak,k,psis)
+        ax.errorbar(psi,scan_data,yerr=ws_err,fmt='none',c='grey', alpha=0.6, zorder=2)
+        ax.scatter(psi,scan_data,c=t,cmap=colormap,zorder=3)
+        ax.plot(psis,scan_model,c='black')
+        ax.axhline(0,c='grey',zorder=1,alpha=0.8)
+        ax.set(xlabel = r'$\psi$ (rad)',ylabel='Along-scan O-C (mas)',title='Scan-angle-dependent signal')
+
+    
     #along-scan residuals plot
     resax.errorbar(t,wws,yerr=ws_err,fmt='.',c='grey',alpha=0.8,zorder=2)
     resax.scatter(t,wws,c=t,cmap=colormap,zorder=3)
-    resax.axhline(0,c='grey',zorder=1)
+    resax.axhline(0,c='grey',zorder=1,alpha=0.8)
     resax.set(xlabel='Time ('+time_label+')',ylabel='Along-scan residuals (mas)')
 
 

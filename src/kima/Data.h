@@ -467,6 +467,7 @@ class ETVData {
   friend class ETVmodel;
   private:
     vector<double> epochs, et, etsig, y2, sig2;
+    vector<int> obsi;
 
   public:
   
@@ -502,6 +503,8 @@ class ETVData {
     /// Get the array of errors @return const vector<double>&
     const vector<double>& get_etsig() const { return etsig; }
     const vector<double>& get_sig2() const { return sig2; }
+
+    const vector<int>& get_obsi() const { return obsi; }
 
     /// @brief Get the mininum (starting) time @return double
     double get_et_min() const { return *min_element(et.begin(), et.end()); }
