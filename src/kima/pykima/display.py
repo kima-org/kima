@@ -5159,6 +5159,21 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         axs['t'].text(0, y, 'student-t: True'); y -= 1
     axs['t'].set(ylim=(y-1, 1))
 
+    if diagnostic:
+        from .classic import plot_diagnostic_1, plot_diagnostic_2
+        plot_diagnostic_1(res.sample_info, ax=axs['d1'])
+        axs['d1'].set(title='')
+        xticks = np.linspace(0, res.sample.shape[0], 5)
+        xticklabels = [str(int(x)) + 'k' if x > 0 else '0' for x in xticks / 1000]
+        axs['d1'].set(xticks=xticks, xticklabels=xticklabels)
+
+        plot_diagnostic_2(res.levels, ax=(axs['d2'], axs['d3']))
+        axs['d2'].set(title='')
+        axs['d3'].set(title='')
+
+        axs['d4'].axis('off')
+
+
     return fig, axs
 
     return fig, axs
