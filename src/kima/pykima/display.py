@@ -3005,16 +3005,20 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         one, the layout of the axes in the figure may not always be optimal.
     """
 
-    if res.max_components == 0 and not res.KO and not res.TR:
-        print('Model has no planets! phase_plot() doing nothing...')
-        return
+    # if res.max_components == 0 and not res.KO and not res.TR:
+    #     print('Model has no planets! phase_plot() doing nothing...')
+    #     return
 
     if res.model is MODELS.GAIAmodel:
         astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
         return
     elif res.model is MODELS.RVGAIAmodel:
         astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
-
+        if res.max_components == 0 and not res.KO and not res.TR:
+            return
+    elif res.max_components == 0 and not res.KO and not res.TR:
+        print('Model has no planets! phase_plot() doing nothing...')
+        return
 
     if xaxis not in ('mean anomaly', 'mean longitude'):
         raise ValueError(f'`xaxis` must be "mean anomaly" or "mean longitude", got {xaxis}')
@@ -3685,17 +3689,17 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     def wss_dep(da,dd,par,mua,mud,t,pfra,pfdec,tref):
         #Obtain RA and DEC values for parallax and PM plot curve
         T = t - tref
-        return (da + mua*T) + pfra*par,(dd +mud*T)+pfdec*par
+        return (da + mua*dty*T) + pfra*par,(dd +mud*dty*T)+pfdec*par
     
     def wss_dep_errs(alpha_res,dec_res,alpha_err,dec_err,da,dd,par,mua,mud,t,pf_ra,pf_dec,tref):
         #Obtain RA and DEC values and errors for parallax and PM plot points
         T = t - tref
-        ra = (da + mua*T) + pf_ra*par + alpha_res
-        raplus = (da + mua*T) + pf_ra*par + alpha_res + alpha_err
-        raminus = (da + mua*T) + pf_ra*par + alpha_res - alpha_err
-        dec = (dd +mud*T) + pf_dec*par + dec_res
-        decplus = (dd +mud*T) + pf_dec*par + dec_res + dec_err
-        decminus = (dd +mud*T) + pf_dec*par + dec_res - dec_err
+        ra = (da + mua*dty*T) + pf_ra*par + alpha_res
+        raplus = (da + mua*dty*T) + pf_ra*par + alpha_res + alpha_err
+        raminus = (da + mua*dty*T) + pf_ra*par + alpha_res - alpha_err
+        dec = (dd +mud*dty*T) + pf_dec*par + dec_res
+        decplus = (dd +mud*dty*T) + pf_dec*par + dec_res + dec_err
+        decminus = (dd +mud*dty*T) + pf_dec*par + dec_res - dec_err
         return ra,raplus,raminus,dec,decplus,decminus    
 
     t = np.array(res.GAIAdata.t)
