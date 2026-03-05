@@ -8,9 +8,9 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVFWHMmodel::initialize_from_data(RVData& data)
 {
-    if (data.actind.size() < 2) // need at least one activity indicator (the FWHM)
+    if (data.actind.size() < 2) // need at least one activity indicator (the FWHM) and uncertainties
     {
-        std::string msg = "kima: RVFWHMmodel: no data for activity indicators (FWHM)";
+        std::string msg = "kima: RVFWHMmodel: not enough data for FWHM (missing uncertainties?)";
         throw std::runtime_error(msg);
     }
 
