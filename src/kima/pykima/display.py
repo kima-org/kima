@@ -1144,7 +1144,7 @@ def corner_orbital(samples, labels=None, units=None, ranges=None, priors=None,
 
             ax.margins(x=0)
 
-            if priors[i] is not None:
+            if priors[i] is not None: #Bug? can plot hist just from name of prior??
                 xlim = ax.get_xlim()
                 prior_kwargs.setdefault('color', 'C0')
                 prior_kwargs.setdefault('alpha', 0.2)
@@ -1539,7 +1539,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 if res.thiele_innes:
                     priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'Aprior', 'Bprior', 'Fprior', 'Gprior']]
                 else:
-                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'wprior', 'Wprior', 'cosiprior']]
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'omegaprior', 'Omegaprior', 'cosiprior']]
             else:
                 priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
                 if res.model is MODELS.RVHGPMmodel:
