@@ -459,6 +459,9 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
     period and for eccentricity and orbital period. If `points` is True, plot
     each posterior sample, else plot hexbins
     """
+    if res.model is MODELS.GAIAmodel:
+        print('plot_PKE does nothing for the GAIAmodel as K is not a parameter')
+        return
     # if no known_object or not showing known_object periods
     cond = not res.KO or not include_known_object
     # and if no transiting_planet or not showing transiting_planet periods
