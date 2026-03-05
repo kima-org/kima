@@ -1358,9 +1358,13 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                              true_value_label='', true_value_kwargs={}, **kwargs):
     """ Corner plots of the posterior samples for the planet parameters """
 
-    if res.model is MODELS.GAIAmodel:
-        labels = ['$P$',  r'$\phi$', 'e', 'a',  r'$\omega$', r'$\cos i$', 'W']
-        units  = ['days', 'rad',     '',  'AU', 'rad',       '',          'rad']
+    if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+        if res.thiele_innes:
+            labels = ['$P$',  r'$\phi$', 'e', 'A',   'B',  'F',  'G']
+            units  = ['days', 'rad',     '', 'mas', 'mas', 'mas', 'mas']
+        else:
+            labels = ['$P$',  r'$\phi$', 'e', 'a',  r'$\omega$', r'$\cos i$', 'W']
+            units  = ['days', 'rad',     '',  'mas', 'rad',       '',          'rad']
     elif res.model is MODELS.RVHGPMmodel:
         if replace_angles_with_mass:
             labels = ['$P$',  '$K$', '$e$', '$M_p$',          '$a$']
@@ -1473,20 +1477,42 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 a,
             ]
         else:
-            samples = np.c_[
-                res.posteriors.P[:, i].copy(),
-                res.posteriors.K[:, i].copy(),
-                res.posteriors.e[:, i].copy(),
-                res.posteriors.φ[:, i].copy(),
-                res.posteriors.w[:, i].copy(),
-            ]
-
-            if res.model is MODELS.RVHGPMmodel:
+            if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                if res.thiele_innes:
+                    samples = np.c_[
+                        res.posteriors.P[:, i].copy(),
+                        res.posteriors.e[:, i].copy(),
+                        res.posteriors.φ[:, i].copy(),
+                        res.posteriors.A[:, i].copy(),
+                        res.posteriors.B[:, i].copy(),
+                        res.posteriors.F[:, i].copy(),
+                        res.posteriors.G[:, i].copy(),
+                    ]
+                else:
+                    samples = np.c_[
+                        res.posteriors.P[:, i].copy(),
+                        res.posteriors.e[:, i].copy(),
+                        res.posteriors.φ[:, i].copy(),
+                        res.posteriors.a0[:, i].copy(),
+                        res.posteriors.w[:, i].copy(),
+                        res.posteriors.W[:, i].copy(),
+                        res.posteriors.cosi[:, i].copy(),
+                    ]
+            else:
                 samples = np.c_[
-                    samples,
-                    res.posteriors.i[:, i].copy(),
-                    res.posteriors.Ω[:, i].copy()
+                    res.posteriors.P[:, i].copy(),
+                    res.posteriors.K[:, i].copy(),
+                    res.posteriors.e[:, i].copy(),
+                    res.posteriors.φ[:, i].copy(),
+                    res.posteriors.w[:, i].copy(),
                 ]
+
+                if res.model is MODELS.RVHGPMmodel:
+                    samples = np.c_[
+                        samples,
+                        res.posteriors.i[:, i].copy(),
+                        res.posteriors.Ω[:, i].copy()
+                    ]
 
 
         if wrap_M0 and not replace_angles_with_mass:
@@ -1509,21 +1535,27 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
 
         priors = None
         if show_prior:
-            priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
-            if res.model is MODELS.RVHGPMmodel:
-                priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
-            priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
+            if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                if res.thiele_innes:
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'Aprior', 'Bprior', 'Fprior', 'Gprior']]
+                else:
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'wprior', 'Wprior', 'cosiprior']]
+            else:
+                priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
+                if res.model is MODELS.RVHGPMmodel:
+                    priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
+                priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
 
-            if replace_angles_with_mass:
-                (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
-                    priors[0], priors[1], priors[2], 
-                    star_mass=star_mass, full_output=True
-                )
-                if mass_units == 'mearth':
-                    m *= mjup2mearth
-                a *= a_factor
-                priors[3] = m
-                priors[4] = a
+                if replace_angles_with_mass:
+                    (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
+                        priors[0], priors[1], priors[2], 
+                        star_mass=star_mass, full_output=True
+                    )
+                    if mass_units == 'mearth':
+                        m *= mjup2mearth
+                    a *= a_factor
+                    priors[3] = m
+                    priors[4] = a
 
         fig, axs = corner_orbital(samples, labels=labels, units=units, 
                                   priors=priors, truths=true_values[i], ranges=ranges,
