@@ -230,7 +230,7 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
 
 
 def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
-                             e: Union[float, np.ndarray], Inc: Union[float=None, np.ndarray=None],
+                             e: Union[float, np.ndarray], Inc: Union[float, np.ndarray, None],
                              star_mass: Union[float, Tuple] = 1.0,
                              full_output=False):
     r"""
