@@ -230,7 +230,7 @@ def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
 
 
 def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
-                             e: Union[float, np.ndarray], Inc: Union[float, np.ndarray],
+                             e: Union[float, np.ndarray], Inc: Union[float=None, np.ndarray=None],
                              star_mass: Union[float, Tuple] = 1.0,
                              full_output=False):
     r"""
@@ -250,7 +250,7 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
         e (Union[float, ndarray]):
             orbital eccentricity
         Inc (Union[float, ndarray]):
-            inclination [radians]
+            inclination [radians].  Defaults to None, in which case the minimum mass will be calculated.
         star_mass (Union[float, Tuple]):
             stellar mass, or (mass, uncertainty) [Msun]
 
@@ -329,12 +329,17 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
 
         # then K, e, and Inc should also be floats
         try:
-            K, e, Inc = float(K), float(e), float(Inc)
+            K, e = float(K), float(e)
+            if Inc is not None:
+                Inc = float(Inc)
         except TypeError:
             raise TypeError("K, e, and Inc should be floats if P is a float")
 
         # defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
+        if Inc is None:
+            D = (C * P**(1/3) * K * np.sqrt(1 - e**2))
+        else:
+            D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
 
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
 
@@ -376,7 +381,10 @@ def get_planet_mass_accurate(P: Union[float, np.ndarray], K: Union[float, np.nda
             star_mass = star_mass * np.ones(P.shape[0])
 
         # defining the main coefficient of the mass equation to solve (comprised of the provided orbital parameter values)
-        D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
+        if Inc is None:
+            D = (C * P**(1/3) * K * np.sqrt(1 - e**2))
+        else:
+            D = (C * P**(1/3) * K * np.sqrt(1 - e**2)) / np.sin(Inc)
 
         m_ms = np.empty(P.shape, dtype=float)
 
@@ -736,14 +744,15 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     return mass, a
 
 
-def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I, star_mass=1.0,
+def get_planet_mass_and_semimajor_axis_accurate(P, K, e, I=None, star_mass=1.0,
                                                 full_output=False, verbose=False):
     """
     Calculate the companion mass M and the semi-major axis given
     orbital period `P`, semi-amplitude `K`, eccentricity `e`, inclination `I`, and stellar mass.
     If `star_mass` is a tuple with (estimate, uncertainty), this (Gaussian)
     uncertainty will be taken into account in the calculation, and samples from
-    the star_mass distribution will be returned.
+    the star_mass distribution will be returned.  If `I` is not provided, then the 
+    minimum mass will be calculated, along with the corresponding semi-major axis.  
 
     Units:
         P [days]
