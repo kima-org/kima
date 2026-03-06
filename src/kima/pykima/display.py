@@ -459,6 +459,9 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
     period and for eccentricity and orbital period. If `points` is True, plot
     each posterior sample, else plot hexbins
     """
+    if res.model is MODELS.GAIAmodel:
+        print('plot_PKE does nothing for the GAIAmodel as K is not a parameter')
+        return
     # if no known_object or not showing known_object periods
     cond = not res.KO or not include_known_object
     # and if no transiting_planet or not showing transiting_planet periods
@@ -1144,7 +1147,7 @@ def corner_orbital(samples, labels=None, units=None, ranges=None, priors=None,
 
             ax.margins(x=0)
 
-            if priors[i] is not None:
+            if priors[i] is not None: #Bug? can plot hist just from name of prior??
                 xlim = ax.get_xlim()
                 prior_kwargs.setdefault('color', 'C0')
                 prior_kwargs.setdefault('alpha', 0.2)
@@ -1358,9 +1361,13 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                              true_value_label='', true_value_kwargs={}, **kwargs):
     """ Corner plots of the posterior samples for the planet parameters """
 
-    if res.model is MODELS.GAIAmodel:
-        labels = ['$P$',  r'$\phi$', 'e', 'a',  r'$\omega$', r'$\cos i$', 'W']
-        units  = ['days', 'rad',     '',  'AU', 'rad',       '',          'rad']
+    if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+        if res.thiele_innes:
+            labels = ['$P$',  r'$\phi$', 'e', 'A',   'B',  'F',  'G']
+            units  = ['days', 'rad',     '', 'mas', 'mas', 'mas', 'mas']
+        else:
+            labels = ['$P$',  r'$\phi$', 'e', 'a',  r'$\omega$', r'$\cos i$', 'W']
+            units  = ['days', 'rad',     '',  'mas', 'rad',       '',          'rad']
     elif res.model is MODELS.RVHGPMmodel:
         if replace_angles_with_mass:
             labels = ['$P$',  '$K$', '$e$', '$M_p$',          '$a$']
@@ -1473,20 +1480,42 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 a,
             ]
         else:
-            samples = np.c_[
-                res.posteriors.P[:, i].copy(),
-                res.posteriors.K[:, i].copy(),
-                res.posteriors.e[:, i].copy(),
-                res.posteriors.φ[:, i].copy(),
-                res.posteriors.w[:, i].copy(),
-            ]
-
-            if res.model is MODELS.RVHGPMmodel:
+            if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                if res.thiele_innes:
+                    samples = np.c_[
+                        res.posteriors.P[:, i].copy(),
+                        res.posteriors.e[:, i].copy(),
+                        res.posteriors.φ[:, i].copy(),
+                        res.posteriors.A[:, i].copy(),
+                        res.posteriors.B[:, i].copy(),
+                        res.posteriors.F[:, i].copy(),
+                        res.posteriors.G[:, i].copy(),
+                    ]
+                else:
+                    samples = np.c_[
+                        res.posteriors.P[:, i].copy(),
+                        res.posteriors.e[:, i].copy(),
+                        res.posteriors.φ[:, i].copy(),
+                        res.posteriors.a0[:, i].copy(),
+                        res.posteriors.w[:, i].copy(),
+                        res.posteriors.W[:, i].copy(),
+                        res.posteriors.cosi[:, i].copy(),
+                    ]
+            else:
                 samples = np.c_[
-                    samples,
-                    res.posteriors.i[:, i].copy(),
-                    res.posteriors.Ω[:, i].copy()
+                    res.posteriors.P[:, i].copy(),
+                    res.posteriors.K[:, i].copy(),
+                    res.posteriors.e[:, i].copy(),
+                    res.posteriors.φ[:, i].copy(),
+                    res.posteriors.w[:, i].copy(),
                 ]
+
+                if res.model is MODELS.RVHGPMmodel:
+                    samples = np.c_[
+                        samples,
+                        res.posteriors.i[:, i].copy(),
+                        res.posteriors.Ω[:, i].copy()
+                    ]
 
 
         if wrap_M0 and not replace_angles_with_mass:
@@ -1509,21 +1538,27 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
 
         priors = None
         if show_prior:
-            priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
-            if res.model is MODELS.RVHGPMmodel:
-                priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
-            priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
+            if res.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                if res.thiele_innes:
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'Aprior', 'Bprior', 'Fprior', 'Gprior']]
+                else:
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'omegaprior', 'Omegaprior', 'cosiprior']]
+            else:
+                priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
+                if res.model is MODELS.RVHGPMmodel:
+                    priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
+                priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
 
-            if replace_angles_with_mass:
-                (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
-                    priors[0], priors[1], priors[2], 
-                    star_mass=star_mass, full_output=True
-                )
-                if mass_units == 'mearth':
-                    m *= mjup2mearth
-                a *= a_factor
-                priors[3] = m
-                priors[4] = a
+                if replace_angles_with_mass:
+                    (*_, m), (*_, a), _ = get_planet_mass_and_semimajor_axis(
+                        priors[0], priors[1], priors[2], 
+                        star_mass=star_mass, full_output=True
+                    )
+                    if mass_units == 'mearth':
+                        m *= mjup2mearth
+                    a *= a_factor
+                    priors[3] = m
+                    priors[4] = a
 
         fig, axs = corner_orbital(samples, labels=labels, units=units, 
                                   priors=priors, truths=true_values[i], ranges=ranges,
@@ -3005,16 +3040,20 @@ def phase_plot(res, sample, phase_axs=None, xaxis='mean anomaly',
         one, the layout of the axes in the figure may not always be optimal.
     """
 
-    if res.max_components == 0 and not res.KO and not res.TR:
-        print('Model has no planets! phase_plot() doing nothing...')
-        return
+    # if res.max_components == 0 and not res.KO and not res.TR:
+    #     print('Model has no planets! phase_plot() doing nothing...')
+    #     return
 
     if res.model is MODELS.GAIAmodel:
         astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
         return
     elif res.model is MODELS.RVGAIAmodel:
         astrometry_phase_plot(res, sample, dates=dates, date_sub=date_sub, colormap=colormap,include_jitter=include_jitter)
-
+        if res.max_components == 0 and not res.KO and not res.TR:
+            return
+    elif res.max_components == 0 and not res.KO and not res.TR:
+        print('Model has no planets! phase_plot() doing nothing...')
+        return
 
     if xaxis not in ('mean anomaly', 'mean longitude'):
         raise ValueError(f'`xaxis` must be "mean anomaly" or "mean longitude", got {xaxis}')
@@ -3685,17 +3724,17 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     def wss_dep(da,dd,par,mua,mud,t,pfra,pfdec,tref):
         #Obtain RA and DEC values for parallax and PM plot curve
         T = t - tref
-        return (da + mua*T) + pfra*par,(dd +mud*T)+pfdec*par
+        return (da + mua*dty*T) + pfra*par,(dd +mud*dty*T)+pfdec*par
     
     def wss_dep_errs(alpha_res,dec_res,alpha_err,dec_err,da,dd,par,mua,mud,t,pf_ra,pf_dec,tref):
         #Obtain RA and DEC values and errors for parallax and PM plot points
         T = t - tref
-        ra = (da + mua*T) + pf_ra*par + alpha_res
-        raplus = (da + mua*T) + pf_ra*par + alpha_res + alpha_err
-        raminus = (da + mua*T) + pf_ra*par + alpha_res - alpha_err
-        dec = (dd +mud*T) + pf_dec*par + dec_res
-        decplus = (dd +mud*T) + pf_dec*par + dec_res + dec_err
-        decminus = (dd +mud*T) + pf_dec*par + dec_res - dec_err
+        ra = (da + mua*dty*T) + pf_ra*par + alpha_res
+        raplus = (da + mua*dty*T) + pf_ra*par + alpha_res + alpha_err
+        raminus = (da + mua*dty*T) + pf_ra*par + alpha_res - alpha_err
+        dec = (dd +mud*dty*T) + pf_dec*par + dec_res
+        decplus = (dd +mud*dty*T) + pf_dec*par + dec_res + dec_err
+        decminus = (dd +mud*dty*T) + pf_dec*par + dec_res - dec_err
         return ra,raplus,raminus,dec,decplus,decminus    
 
     t = np.array(res.GAIAdata.t)

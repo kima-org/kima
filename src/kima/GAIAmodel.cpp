@@ -103,11 +103,15 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
                 thetak_prior[i] = make_prior<Uniform>(0,2.*M_PI/(i*2 + 3));
         }
     }
+    // Alter default offset prior if there is an acceleration
+    double dp = 0;
+    if (acceleration)
+        dp = 2;
     
     if (!da_prior)
-        da_prior = make_prior<Gaussian>(0.0,pow(10,0));
+        da_prior = make_prior<Gaussian>(0.0,pow(10,dp));
     if (!dd_prior)
-        dd_prior = make_prior<Gaussian>(0.0,pow(10,0));
+        dd_prior = make_prior<Gaussian>(0.0,pow(10,dp));
     if (!mua_prior)
         mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
     if (!mud_prior)
@@ -116,14 +120,14 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
         plx_prior = make_prior<LogUniform>(1.,100.);
     if (acceleration) {
         if (!accela_prior)
-            accela_prior = make_prior<Gaussian>(0.0,0.5);
+            accela_prior = make_prior<Gaussian>(0.0,2);
         if (!acceld_prior)
-            acceld_prior = make_prior<Gaussian>(0.0,0.5);
+            acceld_prior = make_prior<Gaussian>(0.0,2);
         if (jerk) {
             if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,0.1);
-            if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,0.1);
+                jerka_prior = make_prior<Gaussian>(0.0,10);
+            if (!jerkd_prior)
+                jerkd_prior = make_prior<Gaussian>(0.0,10);
         }
     }
         
@@ -131,7 +135,7 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_a0prior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_cosiprior, KO_Omprior)");
+                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_omegaprior, KO_cosiprior, KO_Omegaprior)");
         }
     }
 
@@ -827,7 +831,8 @@ NB_MODULE(GAIAmodel, m) {
 //         .def_rw("n_known_object", &GAIAmodel_publicist::n_known_object,
 //                 "how many known objects")
         // KO mode
-        .def("set_known_object", &GAIAmodel::set_known_object)
+        .def("set_known_object", &GAIAmodel::set_known_object,
+            "set how many known objects to include")
         .def_prop_ro("known_object", [](GAIAmodel &m) { return m.get_known_object(); },
                      "whether the model includes (better) known extra Keplerian curve(s)")
         .def_prop_ro("n_known_object", [](GAIAmodel &m) { return m.get_n_known_object(); },

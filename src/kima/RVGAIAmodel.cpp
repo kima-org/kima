@@ -148,14 +148,14 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
         plx_prior = make_prior<LogUniform>(1.,100.);
     if (acceleration) {
         if (!accela_prior)
-            accela_prior = make_prior<Gaussian>(0.0,0.5);
+            accela_prior = make_prior<Gaussian>(0.0,2);
         if (!acceld_prior)
-            acceld_prior = make_prior<Gaussian>(0.0,0.5);
+            acceld_prior = make_prior<Gaussian>(0.0,2);
         if (jerk) {
             if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,0.1);
-            if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,0.1);
+                jerka_prior = make_prior<Gaussian>(0.0,10);
+            if (!jerkd_prior)
+                jerkd_prior = make_prior<Gaussian>(0.0,10);
         }
     }
         
