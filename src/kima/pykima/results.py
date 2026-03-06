@@ -1779,6 +1779,7 @@ class KimaResults:
             prior_samples.attrs['Pprior'] = str(self.priors['Pprior'])
             prior_samples.attrs['Kprior'] = str(self.priors['Kprior'])
             prior_samples.attrs['eprior'] = str(self.priors['eprior'])
+            prior_samples.attrs['N'] = N
             file4 = os.path.join(directory, 'prior.parquet')
             prior_samples.to_parquet(file4, compression='zstd')
 
