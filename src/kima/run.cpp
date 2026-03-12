@@ -130,27 +130,27 @@ NB_MODULE(Sampler, m)
 {
     m.def("run", RUN_SIGNATURE(RVmodel) { RUN_BODY(RVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(GPmodel) { RUN_BODY(GPmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(RVFWHMmodel) { RUN_BODY(RVFWHMmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(RVFWHMmodel) { RUN_BODY(RVFWHMmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(TRANSITmodel) { RUN_BODY(TRANSITmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(TRANSITmodel) { RUN_BODY(TRANSITmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(OutlierRVmodel) { RUN_BODY(OutlierRVmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(OutlierRVmodel) { RUN_BODY(OutlierRVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(BINARIESmodel) { RUN_BODY(BINARIESmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(BINARIESmodel) { RUN_BODY(BINARIESmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(GAIAmodel) { RUN_BODY(GAIAmodel) }, RUN_ARGS, RUN_DOC);
     
-    m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(RVGAIAmodel) { RUN_BODY(RVGAIAmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(RVFWHMRHKmodel) { RUN_BODY(RVFWHMRHKmodel) }, RUN_ARGS, RUN_DOC);
     
-    m.def("run", RUN_SIGNATURE(ETVmodel) { RUN_BODY(ETVmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(ETVmodel) { RUN_BODY(ETVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(SPLEAFmodel) { RUN_BODY(SPLEAFmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(SPLEAFmodel) { RUN_BODY(SPLEAFmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(ApodizedRVmodel) { RUN_BODY(ApodizedRVmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(ApodizedRVmodel) { RUN_BODY(ApodizedRVmodel) }, RUN_ARGS, RUN_DOC);
 
-    m.def("run", RUN_SIGNATURE(RVHGPMmodel) { RUN_BODY(RVHGPMmodel) }, RUN_ARGS);
+    m.def("run", RUN_SIGNATURE(RVHGPMmodel) { RUN_BODY(RVHGPMmodel) }, RUN_ARGS, RUN_DOC);
 }
