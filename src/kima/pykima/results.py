@@ -637,6 +637,7 @@ class KimaResults:
             self.double_lined = model.double_lined
             self.eclipsing = model.eclipsing
             self.relativistic_correction = model.relativistic_correction
+            self.correction_K_precision = model.correction_K_precision
             self.tidal_correction = model.tidal_correction
             self.star_mass = model.star_mass
             self.binary_mass = model.binary_mass
@@ -2986,7 +2987,7 @@ class KimaResults:
                     else:
                         if self.model is MODELS.BINARIESmodel and j==0:
                             Panom = period_correction(P,wdot)
-                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
+                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction, self.correction_K_precision)
                         elif self.model is MODELS.ETVmodel:
                             v += keplerian_etv(t/ephem1, P, K, ecc, w, phi, ephem1)/(24*3600)
                         else:
@@ -3303,10 +3304,10 @@ class KimaResults:
                     else:
                         if j==0:
                             Panom = period_correction(P,wdot)
-                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction)
+                            v += post_keplerian(t, Panom, K, ecc, w, wdot, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, self.relativistic_correction, self.tidal_correction, self.correction_K_precision)
                             if except_planet is not None:
                                 if -pj in except_planet:
-                                    v -= post_keplerian(t, P, K, ecc, w, 0, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, False, False)
+                                    v -= post_keplerian(t, P, K, ecc, w, 0, phi, self.M0_epoch, cosi, self.star_mass, self.binary_mass, self.star_radius, False, False, self.correction_K_precision)
                         else:
                             v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
                 elif self.model is MODELS.ETVmodel:
