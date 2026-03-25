@@ -121,6 +121,32 @@ def compute_values_from_ratios(S, ratios):
     values = [a1 * t for t in terms]
     return values
 
+def compute_values_from_ratios_log(logS, ratios):
+    """
+    Given a value for the log of the sum logS and a list of ratios between
+    consecutive terms, returns the log of all terms a_1, a_2, ..., a_n.
+
+    Args:
+        logS (float): log of the sum S
+        ratios (list): ratios between consecutive terms
+
+    Returns:
+        list of log of values [log(a1), ..., log(an)]
+    """
+    from scipy.special import logsumexp
+    # Step 1: build log(T_i)
+    log_terms = [0.0]  # log(1)
+    for r in ratios:
+        log_terms.append(log_terms[-1] + np.log(r))
+
+    # Step 2: compute log(sum T_i)
+    log_sum_T = logsumexp(log_terms)
+
+    # Step 3: compute log(a1)
+    log_a1 = logS - log_sum_T
+
+    return [log_a1 + lt for lt in log_terms]
+
 
 def star_mass_samples(star_mass, star_mass_uncertainty, n):
     from scipy.stats import truncnorm

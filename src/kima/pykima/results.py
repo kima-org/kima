@@ -3772,10 +3772,20 @@ class KimaResults:
         Calculates individual log-evidences for each Np value. When Np is fixed,
         simply return the full model log-evidence.
         """
+        import warnings
         if self.fix:
             return self.evidence
-        from .analysis import compute_values_from_ratios
-        return np.log(compute_values_from_ratios(np.exp(self.evidence), self.ratios))
+        from .analysis import compute_values_from_ratios_log
+        ratios = self.ratios.copy()
+        if (inf := np.isinf(ratios)).any():
+            warnings.warn(f'{self}: evidence values for Np={np.where(inf)[0]} are upper limits')
+            ratios[inf] = self.ESS
+        if (nan := np.isnan(ratios)).any():
+            warnings.warn(f'{self}: no samples for Np={np.where(nan)[0]} values')
+            ratios = ratios[~nan]
+        # return np.log(compute_values_from_ratios(np.exp(self.evidence), ratios))
+        logZs = compute_values_from_ratios_log(self.evidence, ratios)
+        return np.r_[np.full(nan.sum(), -np.inf), logZs]
 
     def residuals(self, sample, full=False):
         if self.model is MODELS.RVFWHMmodel:
