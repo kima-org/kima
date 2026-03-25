@@ -1145,7 +1145,7 @@ void RVGAIAmodel::save_setup() {
 
     if (al_scan_bias){
         fout << endl << "[priors.al_scan_bias]" << endl;
-        for(int i=0; i<n_known_object; i++){
+        for(int i=0; i<al_scan_bias_components; i++){
             fout << "Ak_prior_" << i << ": " << *Ak_prior[i] << endl;
             fout << "thetak_prior_" << i << ": " << *thetak_prior[i] << endl;
         }
