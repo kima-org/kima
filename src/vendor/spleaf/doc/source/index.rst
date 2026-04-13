@@ -2,7 +2,7 @@
 S+LEAF documentation
 ====================
 
-S+LEAF is an `open-source <https://gitlab.unige.ch/Jean-Baptiste.Delisle/spleaf>`_
+S+LEAF is an `open-source <https://gitlab.unige.ch/delisle/spleaf>`_
 software that provides a flexible noise model with fast and scalable methods.
 It is largely inspired by the
 `celerite <https://github.com/dfm/celerite>`_ / `celerite2 <https://github.com/exoplanet-dev/celerite2>`_
@@ -58,8 +58,12 @@ Examples
 --------
 
 .. toctree::
+   :maxdepth: 1
+
    calib
    multi
+   fenrir_phys
+   fenrir_datadriven
 
 .. _api_ref:
 

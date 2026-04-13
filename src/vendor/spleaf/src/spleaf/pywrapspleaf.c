@@ -1,21 +1,7 @@
-// Copyright 2019-2023 Jean-Baptiste Delisle
-//
-// This file is part of spleaf.
-//
-// spleaf is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// spleaf is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with spleaf.  If not, see <http://www.gnu.org/licenses/>.
+// Copyright 2019-2024 Jean-Baptiste Delisle
+// Licensed under the EUPL-1.2 or later
 
-#define NPY_NO_DEPRECATED_API NPY_1_18_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_19_API_VERSION
 
 #include "libspleaf.h"
 #include <Python.h>
@@ -23,7 +9,7 @@
 
 // Module docstring
 static char module_docstring[] =
-  "This module provides an interface for the C library libspleaf.";
+    "This module provides an interface for the C library libspleaf.";
 
 // Methods docstrings
 static char spleaf_cholesky_docstring[] =
@@ -155,12 +141,11 @@ static PyMethodDef module_methods[] = {
   {NULL, NULL, 0, NULL}};
 
 // Module definition
-static struct PyModuleDef myModule = {
-  PyModuleDef_HEAD_INIT, "libspleaf", module_docstring, -1, module_methods};
+static struct PyModuleDef myModule = {PyModuleDef_HEAD_INIT, "libspleaf",
+                                      module_docstring, -1, module_methods};
 
 // Module initialization
-PyMODINIT_FUNC PyInit_libspleaf(void)
-{
+PyMODINIT_FUNC PyInit_libspleaf(void) {
   // import numpy arrays
   import_array();
   return PyModule_Create(&myModule);
@@ -168,8 +153,8 @@ PyMODINIT_FUNC PyInit_libspleaf(void)
 
 static PyObject *libspleaf_spleaf_cholesky(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_A;
@@ -184,7 +169,7 @@ static PyObject *libspleaf_spleaf_cholesky(PyObject *self, PyObject *args)
   PyObject *obj_Z;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -202,8 +187,8 @@ static PyObject *libspleaf_spleaf_cholesky(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_A = (PyArrayObject*) PyArray_FROM_OTF(obj_A, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V = (PyArrayObject*) PyArray_FROM_OTF(obj_V, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -246,8 +231,8 @@ static PyObject *libspleaf_spleaf_cholesky(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *A = (double*)PyArray_DATA(arr_A);
   double *U = (double*)PyArray_DATA(arr_U);
   double *V = (double*)PyArray_DATA(arr_V);
@@ -295,8 +280,8 @@ static PyObject *libspleaf_spleaf_cholesky(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotL(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -308,7 +293,7 @@ static PyObject *libspleaf_spleaf_dotL(PyObject *self, PyObject *args)
   PyObject *obj_f;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -323,8 +308,8 @@ static PyObject *libspleaf_spleaf_dotL(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -358,8 +343,8 @@ static PyObject *libspleaf_spleaf_dotL(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -398,8 +383,8 @@ static PyObject *libspleaf_spleaf_dotL(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_solveL(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -411,7 +396,7 @@ static PyObject *libspleaf_spleaf_solveL(PyObject *self, PyObject *args)
   PyObject *obj_f;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -426,8 +411,8 @@ static PyObject *libspleaf_spleaf_solveL(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -461,8 +446,8 @@ static PyObject *libspleaf_spleaf_solveL(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -501,8 +486,8 @@ static PyObject *libspleaf_spleaf_solveL(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotLT(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -514,7 +499,7 @@ static PyObject *libspleaf_spleaf_dotLT(PyObject *self, PyObject *args)
   PyObject *obj_g;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -529,8 +514,8 @@ static PyObject *libspleaf_spleaf_dotLT(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -564,8 +549,8 @@ static PyObject *libspleaf_spleaf_dotLT(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -604,8 +589,8 @@ static PyObject *libspleaf_spleaf_dotLT(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_solveLT(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -617,7 +602,7 @@ static PyObject *libspleaf_spleaf_solveLT(PyObject *self, PyObject *args)
   PyObject *obj_g;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -632,8 +617,8 @@ static PyObject *libspleaf_spleaf_solveLT(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -667,8 +652,8 @@ static PyObject *libspleaf_spleaf_solveLT(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -707,8 +692,8 @@ static PyObject *libspleaf_spleaf_solveLT(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_cholesky_back(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_D;
@@ -730,7 +715,7 @@ static PyObject *libspleaf_spleaf_cholesky_back(PyObject *self, PyObject *args)
   PyObject *obj_Z;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -755,8 +740,8 @@ static PyObject *libspleaf_spleaf_cholesky_back(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_D = (PyArrayObject*) PyArray_FROM_OTF(obj_D, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -820,8 +805,8 @@ static PyObject *libspleaf_spleaf_cholesky_back(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *D = (double*)PyArray_DATA(arr_D);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
@@ -890,8 +875,8 @@ static PyObject *libspleaf_spleaf_cholesky_back(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotL_back(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -908,7 +893,7 @@ static PyObject *libspleaf_spleaf_dotL_back(PyObject *self, PyObject *args)
   PyObject *obj_f;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -928,8 +913,8 @@ static PyObject *libspleaf_spleaf_dotL_back(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -978,8 +963,8 @@ static PyObject *libspleaf_spleaf_dotL_back(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1033,8 +1018,8 @@ static PyObject *libspleaf_spleaf_dotL_back(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_solveL_back(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -1051,7 +1036,7 @@ static PyObject *libspleaf_spleaf_solveL_back(PyObject *self, PyObject *args)
   PyObject *obj_f;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -1071,8 +1056,8 @@ static PyObject *libspleaf_spleaf_solveL_back(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1121,8 +1106,8 @@ static PyObject *libspleaf_spleaf_solveL_back(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1176,8 +1161,8 @@ static PyObject *libspleaf_spleaf_solveL_back(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotLT_back(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -1194,7 +1179,7 @@ static PyObject *libspleaf_spleaf_dotLT_back(PyObject *self, PyObject *args)
   PyObject *obj_g;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -1214,8 +1199,8 @@ static PyObject *libspleaf_spleaf_dotLT_back(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1264,8 +1249,8 @@ static PyObject *libspleaf_spleaf_dotLT_back(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1319,8 +1304,8 @@ static PyObject *libspleaf_spleaf_dotLT_back(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_solveLT_back(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
+  int64_t n;
+  int64_t r;
   PyObject *obj_offsetrow;
   PyObject *obj_b;
   PyObject *obj_U;
@@ -1337,7 +1322,7 @@ static PyObject *libspleaf_spleaf_solveLT_back(PyObject *self, PyObject *args)
   PyObject *obj_g;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llOOOOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLOOOOOOOOOOOOOO",
     &n,
     &r,
     &obj_offsetrow,
@@ -1357,8 +1342,8 @@ static PyObject *libspleaf_spleaf_solveLT_back(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_offsetrow = (PyArrayObject*) PyArray_FROM_OTF(obj_offsetrow, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_b = (PyArrayObject*) PyArray_FROM_OTF(obj_b, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_W = (PyArrayObject*) PyArray_FROM_OTF(obj_W, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1407,8 +1392,8 @@ static PyObject *libspleaf_spleaf_solveLT_back(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *offsetrow = (long*)PyArray_DATA(arr_offsetrow);
-  long *b = (long*)PyArray_DATA(arr_b);
+  int64_t *offsetrow = (int64_t*)PyArray_DATA(arr_offsetrow);
+  int64_t *b = (int64_t*)PyArray_DATA(arr_b);
   double *U = (double*)PyArray_DATA(arr_U);
   double *W = (double*)PyArray_DATA(arr_W);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1462,9 +1447,9 @@ static PyObject *libspleaf_spleaf_solveLT_back(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_expandsep(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
-  long rsi;
+  int64_t n;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U;
   PyObject *obj_V;
@@ -1472,7 +1457,7 @@ static PyObject *libspleaf_spleaf_expandsep(PyObject *self, PyObject *args)
   PyObject *obj_K;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "lllOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLOOOOO",
     &n,
     &r,
     &rsi,
@@ -1484,7 +1469,7 @@ static PyObject *libspleaf_spleaf_expandsep(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V = (PyArrayObject*) PyArray_FROM_OTF(obj_V, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1507,7 +1492,7 @@ static PyObject *libspleaf_spleaf_expandsep(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U = (double*)PyArray_DATA(arr_U);
   double *V = (double*)PyArray_DATA(arr_V);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1536,10 +1521,10 @@ static PyObject *libspleaf_spleaf_expandsep(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_expandsepmixt(PyObject *self, PyObject *args)
 {
-  long n1;
-  long n2;
-  long r;
-  long rsi;
+  int64_t n1;
+  int64_t n2;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U1;
   PyObject *obj_V1;
@@ -1552,7 +1537,7 @@ static PyObject *libspleaf_spleaf_expandsepmixt(PyObject *self, PyObject *args)
   PyObject *obj_Km;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llllOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLLOOOOOOOOOO",
     &n1,
     &n2,
     &r,
@@ -1570,13 +1555,13 @@ static PyObject *libspleaf_spleaf_expandsepmixt(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U1 = (PyArrayObject*) PyArray_FROM_OTF(obj_U1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V1 = (PyArrayObject*) PyArray_FROM_OTF(obj_V1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi1 = (PyArrayObject*) PyArray_FROM_OTF(obj_phi1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U2 = (PyArrayObject*) PyArray_FROM_OTF(obj_U2, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V2 = (PyArrayObject*) PyArray_FROM_OTF(obj_V2, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_ref2left = (PyArrayObject*) PyArray_FROM_OTF(obj_ref2left, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_ref2left = (PyArrayObject*) PyArray_FROM_OTF(obj_ref2left, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi2left = (PyArrayObject*) PyArray_FROM_OTF(obj_phi2left, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi2right = (PyArrayObject*) PyArray_FROM_OTF(obj_phi2right, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_Km = (PyArrayObject*) PyArray_FROM_OTF(obj_Km, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1608,13 +1593,13 @@ static PyObject *libspleaf_spleaf_expandsepmixt(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U1 = (double*)PyArray_DATA(arr_U1);
   double *V1 = (double*)PyArray_DATA(arr_V1);
   double *phi1 = (double*)PyArray_DATA(arr_phi1);
   double *U2 = (double*)PyArray_DATA(arr_U2);
   double *V2 = (double*)PyArray_DATA(arr_V2);
-  long *ref2left = (long*)PyArray_DATA(arr_ref2left);
+  int64_t *ref2left = (int64_t*)PyArray_DATA(arr_ref2left);
   double *phi2left = (double*)PyArray_DATA(arr_phi2left);
   double *phi2right = (double*)PyArray_DATA(arr_phi2right);
   double *Km = (double*)PyArray_DATA(arr_Km);
@@ -1653,9 +1638,9 @@ static PyObject *libspleaf_spleaf_expandsepmixt(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_expandantisep(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
-  long rsi;
+  int64_t n;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U;
   PyObject *obj_V;
@@ -1663,7 +1648,7 @@ static PyObject *libspleaf_spleaf_expandantisep(PyObject *self, PyObject *args)
   PyObject *obj_K;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "lllOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLOOOOO",
     &n,
     &r,
     &rsi,
@@ -1675,7 +1660,7 @@ static PyObject *libspleaf_spleaf_expandantisep(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V = (PyArrayObject*) PyArray_FROM_OTF(obj_V, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1698,7 +1683,7 @@ static PyObject *libspleaf_spleaf_expandantisep(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U = (double*)PyArray_DATA(arr_U);
   double *V = (double*)PyArray_DATA(arr_V);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1727,9 +1712,9 @@ static PyObject *libspleaf_spleaf_expandantisep(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotsep(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
-  long rsi;
+  int64_t n;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U;
   PyObject *obj_V;
@@ -1738,7 +1723,7 @@ static PyObject *libspleaf_spleaf_dotsep(PyObject *self, PyObject *args)
   PyObject *obj_y;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "lllOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLOOOOOO",
     &n,
     &r,
     &rsi,
@@ -1751,7 +1736,7 @@ static PyObject *libspleaf_spleaf_dotsep(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V = (PyArrayObject*) PyArray_FROM_OTF(obj_V, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1777,7 +1762,7 @@ static PyObject *libspleaf_spleaf_dotsep(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U = (double*)PyArray_DATA(arr_U);
   double *V = (double*)PyArray_DATA(arr_V);
   double *phi = (double*)PyArray_DATA(arr_phi);
@@ -1809,10 +1794,10 @@ static PyObject *libspleaf_spleaf_dotsep(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotsepmixt(PyObject *self, PyObject *args)
 {
-  long n1;
-  long n2;
-  long r;
-  long rsi;
+  int64_t n1;
+  int64_t n2;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U1;
   PyObject *obj_V1;
@@ -1826,7 +1811,7 @@ static PyObject *libspleaf_spleaf_dotsepmixt(PyObject *self, PyObject *args)
   PyObject *obj_y;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "llllOOOOOOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLLOOOOOOOOOOO",
     &n1,
     &n2,
     &r,
@@ -1845,13 +1830,13 @@ static PyObject *libspleaf_spleaf_dotsepmixt(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U1 = (PyArrayObject*) PyArray_FROM_OTF(obj_U1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V1 = (PyArrayObject*) PyArray_FROM_OTF(obj_V1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi1 = (PyArrayObject*) PyArray_FROM_OTF(obj_phi1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U2 = (PyArrayObject*) PyArray_FROM_OTF(obj_U2, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V2 = (PyArrayObject*) PyArray_FROM_OTF(obj_V2, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-  PyArrayObject *arr_ref2left = (PyArrayObject*) PyArray_FROM_OTF(obj_ref2left, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_ref2left = (PyArrayObject*) PyArray_FROM_OTF(obj_ref2left, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi2left = (PyArrayObject*) PyArray_FROM_OTF(obj_phi2left, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi2right = (PyArrayObject*) PyArray_FROM_OTF(obj_phi2right, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_x = (PyArrayObject*) PyArray_FROM_OTF(obj_x, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1886,13 +1871,13 @@ static PyObject *libspleaf_spleaf_dotsepmixt(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U1 = (double*)PyArray_DATA(arr_U1);
   double *V1 = (double*)PyArray_DATA(arr_V1);
   double *phi1 = (double*)PyArray_DATA(arr_phi1);
   double *U2 = (double*)PyArray_DATA(arr_U2);
   double *V2 = (double*)PyArray_DATA(arr_V2);
-  long *ref2left = (long*)PyArray_DATA(arr_ref2left);
+  int64_t *ref2left = (int64_t*)PyArray_DATA(arr_ref2left);
   double *phi2left = (double*)PyArray_DATA(arr_phi2left);
   double *phi2right = (double*)PyArray_DATA(arr_phi2right);
   double *x = (double*)PyArray_DATA(arr_x);
@@ -1934,9 +1919,9 @@ static PyObject *libspleaf_spleaf_dotsepmixt(PyObject *self, PyObject *args)
 
 static PyObject *libspleaf_spleaf_dotantisep(PyObject *self, PyObject *args)
 {
-  long n;
-  long r;
-  long rsi;
+  int64_t n;
+  int64_t r;
+  int64_t rsi;
   PyObject *obj_sepindex;
   PyObject *obj_U;
   PyObject *obj_V;
@@ -1945,7 +1930,7 @@ static PyObject *libspleaf_spleaf_dotantisep(PyObject *self, PyObject *args)
   PyObject *obj_y;
 
   // Parse input tuple
-  if (!PyArg_ParseTuple(args, "lllOOOOOO",
+  if (!PyArg_ParseTuple(args, "LLLOOOOOO",
     &n,
     &r,
     &rsi,
@@ -1958,7 +1943,7 @@ static PyObject *libspleaf_spleaf_dotantisep(PyObject *self, PyObject *args)
     return(NULL);
 
   // Interpret input objects as numpy arrays
-  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+  PyArrayObject *arr_sepindex = (PyArrayObject*) PyArray_FROM_OTF(obj_sepindex, NPY_INT64, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_U = (PyArrayObject*) PyArray_FROM_OTF(obj_U, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_V = (PyArrayObject*) PyArray_FROM_OTF(obj_V, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
   PyArrayObject *arr_phi = (PyArrayObject*) PyArray_FROM_OTF(obj_phi, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -1984,7 +1969,7 @@ static PyObject *libspleaf_spleaf_dotantisep(PyObject *self, PyObject *args)
   }
 
   // Get C-types pointers to numpy arrays
-  long *sepindex = (long*)PyArray_DATA(arr_sepindex);
+  int64_t *sepindex = (int64_t*)PyArray_DATA(arr_sepindex);
   double *U = (double*)PyArray_DATA(arr_U);
   double *V = (double*)PyArray_DATA(arr_V);
   double *phi = (double*)PyArray_DATA(arr_phi);

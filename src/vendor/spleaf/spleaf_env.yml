@@ -1,13 +1,19 @@
 name: spleaf
 channels:
-   - conda-forge
+  - conda-forge
 dependencies:
-   - python>=3.6
-   - numpy>=1.16
-   - pytest
-   - sphinx
-   - numpydoc
-   - pydata-sphinx-theme
-   - matplotlib
-   - scipy
-   - twine
+  - python>=3.9
+  - numpy>=1.19
+  - python-build
+  - pytest
+  - sphinx>=8.1
+  - nbsphinx
+  - numpydoc
+  - pydata-sphinx-theme
+  - matplotlib
+  - scipy>=1.3
+  - twine>=6.0
+  - pygments
+  - ipython
+  - pip:
+      - nbsphinx-link>=1.3.1

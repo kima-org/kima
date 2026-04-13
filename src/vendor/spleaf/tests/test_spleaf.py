@@ -1,4 +1,8 @@
-import pytest
+# -*- coding: utf-8 -*-
+
+# Copyright 2019-2024 Jean-Baptiste Delisle
+# Licensed under the EUPL-1.2 or later
+
 import numpy as np
 from spleaf import Spleaf
 
@@ -22,11 +26,11 @@ def _generate_random_C(seed=0):
   b = np.minimum(k, np.random.randint(bmax + 1))
   offsetrow = np.cumsum(b - 1) + 1
   nF = offsetrow[-1] + n - 1
-  F = np.random.uniform(0.25, 0.5, nF)**2
+  F = np.random.uniform(0.25, 0.5, nF) ** 2
 
-  A = np.random.uniform(1.5, 2.5, n)**2 + np.sum(U * V, axis=1)
+  A = np.random.uniform(1.5, 2.5, n) ** 2 + np.sum(U * V, axis=1)
 
-  return (Spleaf(A, U, V, phi, offsetrow, b, F))
+  return Spleaf(A, U, V, phi, offsetrow, b, F)
 
 
 def _generate_random_param(C, seed=1):
@@ -38,9 +42,9 @@ def _generate_random_param(C, seed=1):
   phi = 10**log10phi
 
   nF = C.offsetrow[-1] + n - 1
-  F = np.random.uniform(0.25, 0.5, nF)**2
+  F = np.random.uniform(0.25, 0.5, nF) ** 2
 
-  A = np.random.uniform(1.5, 2.5, n)**2 + np.sum(U * V, axis=1)
+  A = np.random.uniform(1.5, 2.5, n) ** 2 + np.sum(U * V, axis=1)
 
   return (A, U, V, phi, F)
 
@@ -54,8 +58,9 @@ def test_Spleaf():
 
   LDLt_full = L_full @ D_full @ L_full.T
   err = np.max(np.abs(C_full - LDLt_full))
-  assert err < prec, ('Cholesky decomposition not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'Cholesky decomposition not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
 
 def test_set_param():
@@ -73,8 +78,9 @@ def test_set_param():
   err = max(err, np.max(np.abs(L_full - Lb_full)))
   err = max(err, np.max(np.abs(C.D - Cb.D)))
 
-  assert err < prec, ('set_param not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'set_param not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
 
 def test_expandInv():
@@ -85,8 +91,9 @@ def test_expandInv():
 
   CinvC_full = C_full @ invC_full
   err = np.max(np.abs(CinvC_full - np.identity(n)))
-  assert err < prec, ('Inversion not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'Inversion not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
 
 def test_expandInvL():
@@ -97,8 +104,9 @@ def test_expandInvL():
 
   LinvL_full = L_full @ invL_full
   err = np.max(np.abs(LinvL_full - np.identity(n)))
-  assert err < prec, ('Cholesky inversion not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'Cholesky inversion not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
 
 def test_logdet():
@@ -112,8 +120,9 @@ def test_logdet():
   err = abs(logdet / logdet_full - 1)
 
   assert sign_full > 0, 'logdet is not positive'
-  assert err < prec, ('logdet not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('logdet not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def test_dotL():
@@ -127,8 +136,9 @@ def test_dotL():
 
   err = np.max(np.abs(y - y_full))
 
-  assert err < prec, ('dotL not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('dotL not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def test_solveL():
@@ -142,8 +152,9 @@ def test_solveL():
 
   err = np.max(np.abs(x - x_full))
 
-  assert err < prec, ('solveL not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('solveL not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def test_dotLT():
@@ -157,8 +168,9 @@ def test_dotLT():
 
   err = np.max(np.abs(y - y_full))
 
-  assert err < prec, ('dotL not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('dotL not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def test_solveLT():
@@ -172,8 +184,9 @@ def test_solveLT():
 
   err = np.max(np.abs(x - x_full))
 
-  assert err < prec, ('solveL not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('solveL not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def _test_method_back(method):
@@ -205,8 +218,9 @@ def _test_method_back(method):
   err = np.max(np.abs(grad_a - np.mean(grad_a_num, axis=0)))
   num_err = np.max(np.abs(grad_a_num[1] - grad_a_num[0]))
   err = max(0.0, err - num_err)
-  assert err < prec, ('{}_back (a) not working'
-    ' at required precision ({} > {})').format(method, err, prec)
+  assert err < prec, (
+    '{}_back (a) not working' ' at required precision ({} > {})'
+  ).format(method, err, prec)
 
   # grad_param
   kwargs = {'A': C.A, 'U': C.U, 'V': C.V, 'phi': C.phi, 'F': C.F}
@@ -226,12 +240,12 @@ def _test_method_back(method):
       C.set_param(**kwargs)
       grad_param_num.append(grad_param_num_dx)
     grad_param_num = np.array(grad_param_num)
-    err = np.max(
-      np.abs(grad_param[kparam].flat - np.mean(grad_param_num, axis=0)))
+    err = np.max(np.abs(grad_param[kparam].flat - np.mean(grad_param_num, axis=0)))
     num_err = np.max(np.abs(grad_param_num[1] - grad_param_num[0]))
     err = max(0.0, err - num_err)
-    assert err < prec, ('{}_back ({}) not working'
-      ' at required precision ({} > {})').format(method, param, err, prec)
+    assert err < prec, (
+      '{}_back ({}) not working' ' at required precision ({} > {})'
+    ).format(method, param, err, prec)
 
 
 def test_dotL_back():
@@ -262,8 +276,9 @@ def test_chi2():
 
   err = abs(chi2 - chi2_full)
 
-  assert err < prec, ('chi2 not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('chi2 not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def test_loglike():
@@ -279,8 +294,9 @@ def test_loglike():
   loglike_full = -0.5 * (chi2_full + logdet_full + C.n * np.log(2.0 * np.pi))
 
   err = abs(loglike - loglike_full)
-  assert err < prec, ('loglike not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, ('loglike not working' ' at required precision ({} > {})').format(
+    err, prec
+  )
 
 
 def _test_method_grad(method):
@@ -308,8 +324,9 @@ def _test_method_grad(method):
   err = np.max(np.abs(f_grad_res - np.mean(f_grad_num, axis=0)))
   num_err = np.max(np.abs(f_grad_num[1] - f_grad_num[0]))
   err = max(0.0, err - num_err)
-  assert err < prec, ('{}_grad (y) not working'
-    ' at required precision ({} > {})').format(method, err, prec)
+  assert err < prec, (
+    '{}_grad (y) not working' ' at required precision ({} > {})'
+  ).format(method, err, prec)
 
   # grad_param
   kwargs = {'A': C.A, 'U': C.U, 'V': C.V, 'phi': C.phi, 'F': C.F}
@@ -329,12 +346,12 @@ def _test_method_grad(method):
       C.set_param(**kwargs)
       f_grad_num.append(f_grad_num_dx)
     f_grad_num = np.array(f_grad_num)
-    err = np.max(
-      np.abs(f_grad_param[kparam].flat - np.mean(f_grad_num, axis=0)))
+    err = np.max(np.abs(f_grad_param[kparam].flat - np.mean(f_grad_num, axis=0)))
     num_err = np.max(np.abs(f_grad_num[1] - f_grad_num[0]))
     err = max(0.0, err - num_err)
-    assert err < prec, ('{}_grad ({}) not working'
-      ' at required precision ({} > {})').format(method, param, err, prec)
+    assert err < prec, (
+      '{}_grad ({}) not working' ' at required precision ({} > {})'
+    ).format(method, param, err, prec)
 
 
 def test_chi2_grad():
@@ -362,24 +379,29 @@ def test_self_conditional():
   cov_full = K_full - K_full @ np.linalg.inv(C_full) @ K_full
 
   err = np.max(np.abs(mu - mu_full))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(muv - mu_full))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(muc - mu_full))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(var - np.diag(cov_full)))
-  assert err < prec, ('conditional var not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional var not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(cov - cov_full))
-  assert err < prec, ('conditional cov not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional cov not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
 
 def test_conditional():
@@ -393,26 +415,30 @@ def test_conditional():
   phi2right = np.concatenate((C.phi, np.ones((1, C.r))))
 
   mu = C.conditional(y, C.U, C.V, C.phi, ref, phi2left, phi2right)
-  muv, var = C.conditional(y, C.U, C.V, C.phi, ref, phi2left, phi2right,
-    'diag')
+  muv, var = C.conditional(y, C.U, C.V, C.phi, ref, phi2left, phi2right, 'diag')
   muc, cov = C.conditional(y, C.U, C.V, C.phi, ref, phi2left, phi2right, True)
 
   err = np.max(np.abs(mu - mu_self))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(muv - mu_self))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(muc - mu_self))
-  assert err < prec, ('conditional mean not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional mean not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(var - var_self))
-  assert err < prec, ('conditional var not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional var not working' ' at required precision ({} > {})'
+  ).format(err, prec)
 
   err = np.max(np.abs(cov - cov_self))
-  assert err < prec, ('conditional cov not working'
-    ' at required precision ({} > {})').format(err, prec)
+  assert err < prec, (
+    'conditional cov not working' ' at required precision ({} > {})'
+  ).format(err, prec)

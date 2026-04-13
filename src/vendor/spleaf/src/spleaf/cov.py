@@ -1,27 +1,14 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2019-2023 Jean-Baptiste Delisle
-#
-# This file is part of spleaf.
-#
-# spleaf is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# spleaf is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with spleaf.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright 2019-2024 Jean-Baptiste Delisle
+# Licensed under the EUPL-1.2 or later
 
 __all__ = ['Cov']
 
 import numpy as np
-from . import Spleaf, libspleaf
-from .term import Noise, Kernel
+
+from . import Spleaf
+from .term import Kernel, Noise
 
 
 def merge_series(list_t, *args):
@@ -53,8 +40,7 @@ def merge_series(list_t, *args):
   full_t = full_t[ksort]
   full_args = [np.hstack(arg)[ksort] for arg in args]
   series_index = [
-    np.where((ksort >= cum_n[k]) & (ksort < cum_n[k + 1]))[0]
-    for k in range(n_series)
+    np.where((ksort >= cum_n[k]) & (ksort < cum_n[k + 1]))[0] for k in range(n_series)
   ]
   return (full_t, *full_args, series_index)
 
@@ -110,8 +96,7 @@ class Cov(Spleaf):
     self.n = t.size
     self.dt = t[1:] - t[:-1]
     if np.min(self.dt) < 0:
-      raise Exception('Cov: the timeseries must be provided'
-        ' in increasing order.')
+      raise Exception('Cov: the timeseries must be provided' ' in increasing order.')
 
     # Read kwargs
     self.noise = {}
@@ -131,13 +116,12 @@ class Cov(Spleaf):
         kwargs[key]._link(self, self.r)
         self.r += kwargs[key]._r
       else:
-        raise Exception(
-          'The provided argument is not of type Noise or Kernel.')
+        raise Exception('The provided argument is not of type Noise or Kernel.')
       self.term[key] = kwargs[key]
       self.param += [f'{key}.{par}' for par in kwargs[key]._param]
       self._param_dict.update(
-        {f'{key}.{par}': (key, par)
-        for par in kwargs[key]._param})
+        {f'{key}.{par}': (key, par) for par in kwargs[key]._param}
+      )
 
     # Compute S+LEAF representation
     self.A = np.zeros(self.n)
@@ -149,8 +133,7 @@ class Cov(Spleaf):
     for key in self.term:
       self.term[key]._compute()
 
-    super().__init__(self.A, self.U, self.V, self.phi, self.offsetrow, self.b,
-      self.F)
+    super().__init__(self.A, self.U, self.V, self.phi, self.offsetrow, self.b, self.F)
 
     # Kernel derivative
     self._dU = np.empty((self.n, self.r))
@@ -182,7 +165,7 @@ class Cov(Spleaf):
     for k, keypar in enumerate(param):
       key, par = self._param_dict[keypar]
       value[k] = self.term[key]._get_param(par)
-    return (value[0] if single else value)
+    return value[0] if single else value
 
   def set_param(self, value, param=None):
     r"""
@@ -248,9 +231,9 @@ class Cov(Spleaf):
       for par in grad_key:
         grad[f'{key}.{par}'] = grad_key[par]
     if single:
-      return (grad[param[0]])
+      return grad[param[0]]
     else:
-      return (np.array([grad[keypar] for keypar in param]))
+      return np.array([grad[keypar] for keypar in param])
 
   def _kernel_index(self, kernel=None):
     r"""
@@ -269,14 +252,18 @@ class Cov(Spleaf):
     """
 
     if kernel is None:
-      return (None)
+      return None
     else:
-      return (np.array([
-        s for key in kernel
-        for s in range(self.kernel[key]._offset, self.kernel[key]._offset +
-        self.kernel[key]._r)
-      ],
-        dtype=int))
+      return np.array(
+        [
+          s
+          for key in kernel
+          for s in range(
+            self.kernel[key]._offset, self.kernel[key]._offset + self.kernel[key]._r
+          )
+        ],
+        dtype=int,
+      )
 
   def self_conditional(self, y, calc_cov=False, kernel=None):
     r"""
@@ -318,7 +305,7 @@ class Cov(Spleaf):
     :math:`\mathcal{O}(n^3)`.
     """
 
-    return (super().self_conditional(y, calc_cov, self._kernel_index(kernel)))
+    return super().self_conditional(y, calc_cov, self._kernel_index(kernel))
 
   def conditional(self, y, t2, calc_cov=False, kernel=None):
     r"""
@@ -366,8 +353,9 @@ class Cov(Spleaf):
     n2 = t2.size
     dt2 = t2[1:] - t2[:-1]
     if np.min(dt2) < 0:
-      raise Exception('Cov.conditional: the timeseries must be provided'
-        ' in increasing order.')
+      raise Exception(
+        'Cov.conditional: the timeseries must be provided' ' in increasing order.'
+      )
     U2 = np.empty((n2, self.r))
     V2 = np.empty((n2, self.r))
     phi2 = np.empty((n2 - 1, self.r))
@@ -382,11 +370,21 @@ class Cov(Spleaf):
 
     kernel_list = self.kernel if kernel is None else kernel
     for key in kernel_list:
-      self.kernel[key]._compute_t2(t2, dt2, U2, V2, phi2, ref2left, dt2left,
-        dt2right, phi2left, phi2right)
+      self.kernel[key]._compute_t2(
+        t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+      )
 
-    return (super().conditional(y, U2, V2, phi2, ref2left, phi2left, phi2right,
-      calc_cov, self._kernel_index(kernel)))
+    return super().conditional(
+      y,
+      U2,
+      V2,
+      phi2,
+      ref2left,
+      phi2left,
+      phi2right,
+      calc_cov,
+      self._kernel_index(kernel),
+    )
 
   def self_conditional_derivative(self, y, calc_cov=False, kernel=None):
     r"""
@@ -437,9 +435,9 @@ class Cov(Spleaf):
     for key in kernel_list:
       self.kernel[key]._deriv(calc_cov)
 
-    return (super().self_conditional_derivative(y,
-      calc_cov=calc_cov,
-      index=self._kernel_index(kernel)))
+    return super().self_conditional_derivative(
+      y, calc_cov=calc_cov, index=self._kernel_index(kernel)
+    )
 
   def conditional_derivative(self, y, t2, calc_cov=False, kernel=None):
     r"""
@@ -492,8 +490,10 @@ class Cov(Spleaf):
     n2 = t2.size
     dt2 = t2[1:] - t2[:-1]
     if np.min(dt2) < 0:
-      raise Exception('Cov.conditional_derivative: the timeseries must be provided'
-        ' in increasing order.')
+      raise Exception(
+        'Cov.conditional_derivative: the timeseries must be provided'
+        ' in increasing order.'
+      )
     dU2 = np.empty((n2, self.r))
     V2 = np.empty((n2, self.r))
     phi2 = np.empty((n2 - 1, self.r))
@@ -514,10 +514,12 @@ class Cov(Spleaf):
     kernel_list = self.kernel if kernel is None else kernel
     for key in kernel_list:
       self.kernel[key]._deriv(False)
-      self.kernel[key]._deriv_t2(t2, dt2, dU2, V2, phi2, ref2left, dt2left,
-        dt2right, phi2left, phi2right, dV2)
+      self.kernel[key]._deriv_t2(
+        t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right, dV2
+      )
 
-    return (super().conditional_derivative(y,
+    return super().conditional_derivative(
+      y,
       dU2,
       V2,
       dV2,
@@ -526,7 +528,8 @@ class Cov(Spleaf):
       phi2left,
       phi2right,
       calc_cov=calc_cov,
-      index=self._kernel_index(kernel)))
+      index=self._kernel_index(kernel),
+    )
 
   def eval(self, dt, kernel=None):
     r"""
@@ -553,4 +556,4 @@ class Cov(Spleaf):
 
     if kernel is None:
       kernel = self.kernel
-    return (sum(self.kernel[key].eval(dt) for key in kernel))
+    return sum(self.kernel[key].eval(dt) for key in kernel)
