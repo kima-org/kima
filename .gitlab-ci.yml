@@ -1,11 +1,12 @@
 default:
+  image: ubuntu:latest
   tags:
     - kubernetes-runner
 
 variables:
   PROJECT_NAME: "spleaf"
   PROJECT_ID: "1383"
-  DACECALC1: "10.194.66.55"
+  LOGIN01: "login01.astro.unige.ch"
 
 stages:
   - build
@@ -19,10 +20,10 @@ stages:
     - apt update
     - apt install -y curl rsync bzip2 build-essential openssh-client git
     - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - echo "$SSH_PRIVATE_KEY_LOGIN01" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - echo "$SSH_KNOWN_HOSTS_DACECALC1" >> ~/.ssh/known_hosts
+    - echo "$SSH_KNOWN_HOSTS_LOGIN01" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
     - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
     - eval "$(./bin/micromamba shell hook -s posix)"
@@ -33,7 +34,7 @@ Build distribution:
   extends: .setup_env
   stage: build
   script:
-    - python setup.py sdist
+    - python -m build
   artifacts:
     paths:
       - dist/*.tar.gz
@@ -44,7 +45,7 @@ Run test:
   stage: test
   script:
     - pip install dist/*.tar.gz
-    - cd test
+    - cd tests
     - python -m pytest
 
 Generate documentation:
@@ -63,31 +64,30 @@ Deploy on Staging:
   extends: .setup_env
   stage: staging
   script:
-    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/doc
+    - rsync -v dist/*.tar.gz delisle@${LOGIN01}:/www/people/delisle/public/staging/${PROJECT_NAME}/
+    - rsync -rv --delete doc/build/html/ delisle@${LOGIN01}:/www/people/delisle/public/staging/${PROJECT_NAME}/doc
 
 Release and deploy on Production:
   extends: .setup_env
   stage: production
   script:
-    # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
+    # According to documentation, gitlab uses detached HEAD and we need to go back to main to release.
     # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
-    - git checkout -B master origin/master
+    - git checkout -B main origin/main
     - git config --global user.name 'Gitlab CI'
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/delisle/${PROJECT_NAME}.git"
     # Tag
-    - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - VERSION=$(sed -n -e 's/^version = "\([^"]*\)"/\1/p' pyproject.toml)
     - TAG_VERSION="v$VERSION"
     - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
-    - git push origin "$TAG_VERSION" --quiet
-    - CHANGES=`cat CHANGES.txt`
+    - git push origin "$TAG_VERSION" --quiet -o ci.skip
     # Add release on gitlab (via gitlab API)
-    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
+    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
     # Deploy on https://obswww.unige.ch/~delisle/
-    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/doc
-    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
+    - rsync -v dist/*.tar.gz delisle@${LOGIN01}:/www/people/delisle/public/${PROJECT_NAME}/
+    - rsync -rv --delete doc/build/html/ delisle@${LOGIN01}:/www/people/delisle/public/${PROJECT_NAME}/doc
+    - rsync -rv --delete doc/build/html/ delisle@${LOGIN01}:/www/people/delisle/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
     # Deploy on Pypi
     - python -m twine upload dist/*.tar.gz
     # Upgrade to next version
@@ -98,8 +98,8 @@ Release and deploy on Production:
     - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
     - echo $NEW_VERSION
     # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" ${PROJECT_NAME}/__info__.py
-    - git add ${PROJECT_NAME}/__info__.py
+    - sed -i.bak s"/version = \"$VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+    - git add pyproject.toml
     - git commit -m "Upgrade project to next version $NEW_VERSION"
-    - git push origin master --quiet
+    - git push origin main --quiet -o ci.skip
   when: manual

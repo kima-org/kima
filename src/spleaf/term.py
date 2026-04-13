@@ -1,34 +1,36 @@
-# -*- coding: utf-8 -*-
-
-# Copyright 2019-2023 Jean-Baptiste Delisle
-#
-# This file is part of spleaf.
-#
-# spleaf is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# spleaf is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with spleaf.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright 2019-2024 Jean-Baptiste Delisle
+# Licensed under the EUPL-1.2 or later
 
 __all__ = [
-  'Error', 'Jitter', 'InstrumentJitter', 'CalibrationError',
-  'CalibrationJitter', 'ExponentialKernel', 'QuasiperiodicKernel',
-  'Matern12Kernel', 'Matern32Kernel', 'Matern52Kernel', 'SumKernel',
-  'SimpleSumKernel', 'ProductKernel', 'SimpleProductKernel', 'TransformKernel',
-  'USHOKernel', 'OSHOKernel', 'SHOKernel', 'MEPKernel', 'ESKernel',
-  'ESPKernel', 'MultiSeriesKernel', 'MultiFourierKernel'
+  'Error',
+  'Jitter',
+  'InstrumentJitter',
+  'CalibrationError',
+  'CalibrationJitter',
+  'ExponentialKernel',
+  'QuasiperiodicKernel',
+  'Matern12Kernel',
+  'Matern32Kernel',
+  'Matern52Kernel',
+  'SumKernel',
+  'SimpleSumKernel',
+  'ProductKernel',
+  'SimpleProductKernel',
+  'TransformKernel',
+  'USHOKernel',
+  'OSHOKernel',
+  'SHOKernel',
+  'MEPKernel',
+  'ESKernel',
+  'ESPKernel',
+  'MultiSeriesKernel',
+  'MultiFourierKernel',
 ]
+
+import warnings
 
 import numpy as np
 from scipy.special import ive
-import warnings
 
 
 class Term:
@@ -45,8 +47,7 @@ class Term:
     Link the term to a covariance matrix.
     """
     if self._linked:
-      raise Exception(
-        'This term has already been linked to a covariance matrix.')
+      raise Exception('This term has already been linked to a covariance matrix.')
     self._cov = cov
     self._linked = True
 
@@ -72,14 +73,14 @@ class Term:
     r"""
     Get the term parameters.
     """
-    return (self.__dict__[f'_{par}'])
+    return self.__dict__[f'_{par}']
 
   def _grad_param(self):
     r"""
     Gradient of a function with respect to the term parameters
     (listed in self._param).
     """
-    return ({})
+    return {}
 
 
 class Noise(Term):
@@ -105,8 +106,9 @@ class Kernel(Term):
     super()._link(cov)
     self._offset = offset
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     r"""
     Compute the S+LEAF representation of the covariance for a new calendar t2.
     """
@@ -120,7 +122,8 @@ class Kernel(Term):
 
     pass
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -131,7 +134,8 @@ class Kernel(Term):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     r"""
     Compute the S+LEAF representation of the derivative of the GP
     for a new calendar t2.
@@ -151,8 +155,7 @@ class Kernel(Term):
     Evaluate the kernel at lag dt.
     """
 
-    raise NotImplementedError(
-      'The eval method should be implemented in Kernel childs.')
+    raise NotImplementedError('The eval method should be implemented in Kernel childs.')
 
 
 class Error(Noise):
@@ -198,7 +201,7 @@ class Jitter(Noise):
   def _grad_param(self):
     grad = {}
     grad['sig'] = 2 * self._sig * self._cov._sum_grad_A
-    return (grad)
+    return grad
 
 
 class InstrumentJitter(Noise):
@@ -229,7 +232,7 @@ class InstrumentJitter(Noise):
   def _grad_param(self):
     grad = {}
     grad['sig'] = 2 * self._sig * np.sum(self._cov._grad_A[self._indices])
-    return (grad)
+    return grad
 
 
 class CalibrationError(Noise):
@@ -269,8 +272,7 @@ class CalibrationError(Noise):
     for group in self._groups.values():
       for i in range(1, len(group)):
         for j in range(i):
-          self._cov.F[self._cov.offsetrow[group[i]] +
-            group[j]] += var[group[0]]
+          self._cov.F[self._cov.offsetrow[group[i]] + group[j]] += var[group[0]]
 
 
 class CalibrationJitter(Noise):
@@ -328,9 +330,15 @@ class CalibrationJitter(Noise):
 
   def _grad_param(self):
     grad = {}
-    grad['sig'] = 2 * self._sig * (np.sum(self._cov._grad_A[self._indices]) +
-      np.sum(self._cov._grad_F[self._Fmask]))
-    return (grad)
+    grad['sig'] = (
+      2
+      * self._sig
+      * (
+        np.sum(self._cov._grad_A[self._indices])
+        + np.sum(self._cov._grad_F[self._Fmask])
+      )
+    )
+    return grad
 
 
 class ExponentialKernel(Kernel):
@@ -370,10 +378,12 @@ class ExponentialKernel(Kernel):
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     grad = {}
-    grad['a'] = self._cov._sum_grad_A + np.sum(self._cov._grad_U[:,
-      self._offset])
-    grad['la'] = -np.sum(self._cov.dt * self._cov.phi[:, self._offset] *
-      self._cov._grad_phi[:, self._offset])
+    grad['a'] = self._cov._sum_grad_A + np.sum(self._cov._grad_U[:, self._offset])
+    grad['la'] = -np.sum(
+      self._cov.dt
+      * self._cov.phi[:, self._offset]
+      * self._cov._grad_phi[:, self._offset]
+    )
 
     if grad_dU is not None:
       # self._cov._dU[:, self._offset] = -self._la * self._a
@@ -385,10 +395,11 @@ class ExponentialKernel(Kernel):
       # self._cov._dV[:, self._offset] = self._la
       grad['la'] += np.sum(grad_dV[:, self._offset])
 
-    return (grad)
+    return grad
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     U2[:, self._offset] = self._a
     V2[:, self._offset] = 1.0
     phi2[:, self._offset] = np.exp(-self._la * dt2)
@@ -400,7 +411,8 @@ class ExponentialKernel(Kernel):
     if calc_d2:
       self._cov._dV[:, self._offset] = self._la
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -411,7 +423,8 @@ class ExponentialKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     dU2[:, self._offset] = -self._la * self._a
     V2[:, self._offset] = 1.0
     phi2[:, self._offset] = np.exp(-self._la * dt2)
@@ -421,7 +434,7 @@ class ExponentialKernel(Kernel):
       dV2[:, self._offset] = self._la
 
   def eval(self, dt, series_id=None):
-    return (self._a * np.exp(-self._la * np.abs(dt)))
+    return self._a * np.exp(-self._la * np.abs(dt))
 
 
 class QuasiperiodicKernel(Kernel):
@@ -459,12 +472,11 @@ class QuasiperiodicKernel(Kernel):
     self._snut = np.sin(self._nut)
     self._cov.U[:, self._offset] = self._a * self._cnut + self._b * self._snut
     self._cov.V[:, self._offset] = self._cnut
-    self._cov.U[:,
-      self._offset + 1] = self._a * self._snut - self._b * self._cnut
+    self._cov.U[:, self._offset + 1] = self._a * self._snut - self._b * self._cnut
     self._cov.V[:, self._offset + 1] = self._snut
-    self._cov.phi[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * self._cov.dt)[:,
-      None]
+    self._cov.phi[:, self._offset : self._offset + 2] = np.exp(
+      -self._la * self._cov.dt
+    )[:, None]
 
   def _set_param(self, a=None, b=None, la=None, nu=None):
     if a is not None:
@@ -478,31 +490,49 @@ class QuasiperiodicKernel(Kernel):
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     grad = {}
-    grad['a'] = self._cov._sum_grad_A + np.sum(self._cov.V[:, self._offset] *
-      self._cov._grad_U[:, self._offset] + self._cov.V[:, self._offset + 1] *
-      self._cov._grad_U[:, self._offset + 1])
-    grad['b'] = np.sum(self._cov.V[:, self._offset + 1] *
-      self._cov._grad_U[:, self._offset] -
-      self._cov.V[:, self._offset] * self._cov._grad_U[:, self._offset + 1])
-    grad['la'] = -np.sum(self._cov.dt * self._cov.phi[:, self._offset] *
-      (self._cov._grad_phi[:, self._offset] +
-      self._cov._grad_phi[:, self._offset + 1]))
-    grad['nu'] = np.sum(self._cov.t *
-      (self._cov.U[:, self._offset] * self._cov._grad_U[:, self._offset + 1] -
-      self._cov.U[:, self._offset + 1] * self._cov._grad_U[:, self._offset] +
-      self._cov.V[:, self._offset] * self._cov._grad_V[:, self._offset + 1] -
-      self._cov.V[:, self._offset + 1] * self._cov._grad_V[:, self._offset]))
+    grad['a'] = self._cov._sum_grad_A + np.sum(
+      self._cov.V[:, self._offset] * self._cov._grad_U[:, self._offset]
+      + self._cov.V[:, self._offset + 1] * self._cov._grad_U[:, self._offset + 1]
+    )
+    grad['b'] = np.sum(
+      self._cov.V[:, self._offset + 1] * self._cov._grad_U[:, self._offset]
+      - self._cov.V[:, self._offset] * self._cov._grad_U[:, self._offset + 1]
+    )
+    grad['la'] = -np.sum(
+      self._cov.dt
+      * self._cov.phi[:, self._offset]
+      * (
+        self._cov._grad_phi[:, self._offset] + self._cov._grad_phi[:, self._offset + 1]
+      )
+    )
+    grad['nu'] = np.sum(
+      self._cov.t
+      * (
+        self._cov.U[:, self._offset] * self._cov._grad_U[:, self._offset + 1]
+        - self._cov.U[:, self._offset + 1] * self._cov._grad_U[:, self._offset]
+        + self._cov.V[:, self._offset] * self._cov._grad_V[:, self._offset + 1]
+        - self._cov.V[:, self._offset + 1] * self._cov._grad_V[:, self._offset]
+      )
+    )
 
     if grad_dU is not None:
       # self._cov._dU[:, self._offset] = da * self._cnut + db * self._snut
       # self._cov._dU[:, self._offset + 1] = da * self._snut - db * self._cnut
-      grad_da = np.sum(self._cnut * grad_dU[:, self._offset] +
-        self._snut * grad_dU[:, self._offset + 1])
-      grad_db = np.sum(self._snut * grad_dU[:, self._offset] -
-        self._cnut * grad_dU[:, self._offset + 1])
-      grad['nu'] += np.sum(self._cov.t *
-        (self._cov._dU[:, self._offset] * grad_dU[:, self._offset + 1] -
-        self._cov._dU[:, self._offset + 1] * grad_dU[:, self._offset]))
+      grad_da = np.sum(
+        self._cnut * grad_dU[:, self._offset]
+        + self._snut * grad_dU[:, self._offset + 1]
+      )
+      grad_db = np.sum(
+        self._snut * grad_dU[:, self._offset]
+        - self._cnut * grad_dU[:, self._offset + 1]
+      )
+      grad['nu'] += np.sum(
+        self._cov.t
+        * (
+          self._cov._dU[:, self._offset] * grad_dU[:, self._offset + 1]
+          - self._cov._dU[:, self._offset + 1] * grad_dU[:, self._offset]
+        )
+      )
       # da = -self._la * self._a + self._nu * self._b
       # db = -self._la * self._b - self._nu * self._a
       grad['a'] -= self._la * grad_da + self._nu * grad_db
@@ -513,18 +543,21 @@ class QuasiperiodicKernel(Kernel):
     if grad_dV is not None:
       # self._cov._dV[:, self._offset] = self._la * self._cnut - self._nu * self._snut
       # self._cov._dV[:, self._offset + 1] = self._la * self._snut + self._nu * self._cnut
-      grad['la'] += np.sum(self._cnut * grad_dV[:, self._offset] +
-        self._snut * grad_dV[:, self._offset + 1])
+      grad['la'] += np.sum(
+        self._cnut * grad_dV[:, self._offset]
+        + self._snut * grad_dV[:, self._offset + 1]
+      )
       latp1 = self._la * self._cov.t + 1
-      grad['nu'] += np.sum((latp1 * self._cnut - self._nut * self._snut) *
-        grad_dV[:, self._offset + 1] -
-        (self._nut * self._cnut + latp1 * self._snut) *
-        grad_dV[:, self._offset])
+      grad['nu'] += np.sum(
+        (latp1 * self._cnut - self._nut * self._snut) * grad_dV[:, self._offset + 1]
+        - (self._nut * self._cnut + latp1 * self._snut) * grad_dV[:, self._offset]
+      )
 
-    return (grad)
+    return grad
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     nut2 = self._nu * t2
     cnut2 = np.cos(nut2)
     snut2 = np.sin(nut2)
@@ -532,11 +565,11 @@ class QuasiperiodicKernel(Kernel):
     V2[:, self._offset] = cnut2
     U2[:, self._offset + 1] = self._a * snut2 - self._b * cnut2
     V2[:, self._offset + 1] = snut2
-    phi2[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
 
   def _deriv(self, calc_d2=False):
     da = -self._la * self._a + self._nu * self._b
@@ -544,12 +577,11 @@ class QuasiperiodicKernel(Kernel):
     self._cov._dU[:, self._offset] = da * self._cnut + db * self._snut
     self._cov._dU[:, self._offset + 1] = da * self._snut - db * self._cnut
     if calc_d2:
-      self._cov._dV[:,
-        self._offset] = self._la * self._cnut - self._nu * self._snut
-      self._cov._dV[:,
-        self._offset + 1] = self._la * self._snut + self._nu * self._cnut
+      self._cov._dV[:, self._offset] = self._la * self._cnut - self._nu * self._snut
+      self._cov._dV[:, self._offset + 1] = self._la * self._snut + self._nu * self._cnut
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -560,7 +592,8 @@ class QuasiperiodicKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     da = -self._la * self._a + self._nu * self._b
     db = -self._la * self._b - self._nu * self._a
     nut2 = self._nu * t2
@@ -570,19 +603,20 @@ class QuasiperiodicKernel(Kernel):
     V2[:, self._offset] = cnut2
     dU2[:, self._offset + 1] = da * snut2 - db * cnut2
     V2[:, self._offset + 1] = snut2
-    phi2[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
     if dV2 is not None:
       dV2[:, self._offset] = self._la * cnut2 - self._nu * snut2
       dV2[:, self._offset + 1] = self._la * snut2 + self._nu * cnut2
 
   def eval(self, dt, series_id=None):
     adt = np.abs(dt)
-    return (np.exp(-self._la * adt) *
-      (self._a * np.cos(self._nu * adt) + self._b * np.sin(self._nu * adt)))
+    return np.exp(-self._la * adt) * (
+      self._a * np.cos(self._nu * adt) + self._b * np.sin(self._nu * adt)
+    )
 
 
 class Matern12Kernel(ExponentialKernel):
@@ -618,7 +652,7 @@ class Matern12Kernel(ExponentialKernel):
     grad = {}
     grad['sig'] = 2 * self._sig * sgrad['a']
     grad['rho'] = -self._la * self._la * sgrad['la']
-    return (grad)
+    return grad
 
 
 class Matern32Kernel(Kernel):
@@ -641,6 +675,8 @@ class Matern32Kernel(Kernel):
     self._sig = sig
     self._rho = rho
     self._r = 2
+    self._a = self._sig**2
+    self._la = np.sqrt(3) / self._rho
     self._param = ['sig', 'rho']
 
   def _link(self, cov, offset):
@@ -649,8 +685,6 @@ class Matern32Kernel(Kernel):
     self._dt0 = self._cov.t - self._t0
 
   def _compute(self):
-    self._a = self._sig**2
-    self._la = np.sqrt(3) / self._rho
     self._la2 = self._la**2
     self._x = self._la * self._dt0
     self._1mx = 1 - self._x
@@ -659,57 +693,92 @@ class Matern32Kernel(Kernel):
     self._cov.V[:, self._offset] = 1.0
     self._cov.U[:, self._offset + 1] = self._a
     self._cov.V[:, self._offset + 1] = self._1mx
-    self._cov.phi[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * self._cov.dt)[:,
-      None]
+    self._cov.phi[:, self._offset : self._offset + 2] = np.exp(
+      -self._la * self._cov.dt
+    )[:, None]
 
   def _set_param(self, sig=None, rho=None):
     if sig is not None:
       self._sig = sig
     if rho is not None:
       self._rho = rho
+    self._a = self._sig**2
+    self._la = np.sqrt(3) / self._rho
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     grad = {}
-    grad['sig'] = 2 * self._sig * (self._cov._sum_grad_A +
-      np.sum(self._x * self._cov._grad_U[:, self._offset] +
-      self._cov._grad_U[:, self._offset + 1]))
-    grad['rho'] = -1 / self._rho * (np.sum(self._x *
-      (self._a * self._cov._grad_U[:, self._offset] -
-      self._cov._grad_V[:, self._offset + 1])) -
-      self._la * np.sum(self._cov.dt * self._cov.phi[:, self._offset] *
-      (self._cov._grad_phi[:, self._offset] +
-      self._cov._grad_phi[:, self._offset + 1])))
+    grad['sig'] = (
+      2
+      * self._sig
+      * (
+        self._cov._sum_grad_A
+        + np.sum(
+          self._x * self._cov._grad_U[:, self._offset]
+          + self._cov._grad_U[:, self._offset + 1]
+        )
+      )
+    )
+    grad['rho'] = (
+      -1
+      / self._rho
+      * (
+        np.sum(
+          self._x
+          * (
+            self._a * self._cov._grad_U[:, self._offset]
+            - self._cov._grad_V[:, self._offset + 1]
+          )
+        )
+        - self._la
+        * np.sum(
+          self._cov.dt
+          * self._cov.phi[:, self._offset]
+          * (
+            self._cov._grad_phi[:, self._offset]
+            + self._cov._grad_phi[:, self._offset + 1]
+          )
+        )
+      )
+    )
 
     if grad_dU is not None:
       # self._cov._dU[:, self._offset] = self._la * self._a * self._1mx
       # self._cov._dU[:, self._offset + 1] = -self._la * self._a
-      sum_grad_dU = np.sum(self._1mx * grad_dU[:, self._offset] -
-        grad_dU[:, self._offset + 1])
+      sum_grad_dU = np.sum(
+        self._1mx * grad_dU[:, self._offset] - grad_dU[:, self._offset + 1]
+      )
       grad['sig'] += 2 * self._sig * self._la * sum_grad_dU
-      grad['rho'] -= self._la / self._rho * self._a * (sum_grad_dU -
-        np.sum(self._x * grad_dU[:, self._offset]))
+      grad['rho'] -= (
+        self._la
+        / self._rho
+        * self._a
+        * (sum_grad_dU - np.sum(self._x * grad_dU[:, self._offset]))
+      )
 
     if grad_dV is not None:
       # self._cov._dV[:, self._offset] = self._la
       # self._cov._dV[:, self._offset + 1] = -self._la * self._x
-      grad['rho'] -= self._la / self._rho * np.sum(grad_dV[:, self._offset] -
-        2 * self._x * grad_dV[:, self._offset + 1])
+      grad['rho'] -= (
+        self._la
+        / self._rho
+        * np.sum(grad_dV[:, self._offset] - 2 * self._x * grad_dV[:, self._offset + 1])
+      )
 
-    return (grad)
+    return grad
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     x2 = self._la * (t2 - self._t0)
     U2[:, self._offset] = self._a * x2
     V2[:, self._offset] = 1.0
     U2[:, self._offset + 1] = self._a
     V2[:, self._offset + 1] = 1 - x2
-    phi2[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
 
   def _deriv(self, calc_d2=False):
     self._cov._dU[:, self._offset] = self._la * self._a * self._1mx
@@ -718,7 +787,8 @@ class Matern32Kernel(Kernel):
       self._cov._dV[:, self._offset] = self._la
       self._cov._dV[:, self._offset + 1] = -self._la * self._x
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -729,25 +799,26 @@ class Matern32Kernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     x2 = self._la * (t2 - self._t0)
     onemx2 = 1 - x2
     dU2[:, self._offset] = self._la * self._a * onemx2
     V2[:, self._offset] = 1.0
     dU2[:, self._offset + 1] = -self._la * self._a
     V2[:, self._offset + 1] = onemx2
-    phi2[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 2] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 2] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 2] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
     if dV2 is not None:
       dV2[:, self._offset] = self._la
       dV2[:, self._offset + 1] = -self._la * x2
 
   def eval(self, dt, series_id=None):
     dx = self._la * np.abs(dt)
-    return (self._a * np.exp(-dx) * (1 + dx))
+    return self._a * np.exp(-dx) * (1 + dx)
 
 
 class Matern52Kernel(Kernel):
@@ -771,6 +842,8 @@ class Matern52Kernel(Kernel):
     self._sig = sig
     self._rho = rho
     self._r = 3
+    self._a = self._sig**2
+    self._la = np.sqrt(5) / self._rho
     self._param = ['sig', 'rho']
 
   def _link(self, cov, offset):
@@ -779,8 +852,6 @@ class Matern52Kernel(Kernel):
     self._dt0 = self._cov.t - self._t0
 
   def _compute(self):
-    self._a = self._sig**2
-    self._la = np.sqrt(5) / self._rho
     self._la2 = self._la**2
     self._x = self._la * self._dt0
     self._x2_3 = self._x * self._x / 3
@@ -792,56 +863,101 @@ class Matern52Kernel(Kernel):
     self._cov.V[:, self._offset + 1] = self._1mx + self._x2_3
     self._cov.U[:, self._offset + 2] = self._a * self._x
     self._cov.V[:, self._offset + 2] = -2 / 3 * self._x
-    self._cov.phi[:,
-      self._offset:self._offset + 3] = np.exp(-self._la * self._cov.dt)[:,
-      None]
+    self._cov.phi[:, self._offset : self._offset + 3] = np.exp(
+      -self._la * self._cov.dt
+    )[:, None]
 
   def _set_param(self, sig=None, rho=None):
     if sig is not None:
       self._sig = sig
     if rho is not None:
       self._rho = rho
+    self._a = self._sig**2
+    self._la = np.sqrt(5) / self._rho
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     grad = {}
-    grad['sig'] = 2 * self._sig * (self._cov._sum_grad_A +
-      np.sum((self._x + self._x2_3) * self._cov._grad_U[:, self._offset] +
-      self._cov._grad_U[:, self._offset + 1] +
-      self._x * self._cov._grad_U[:, self._offset + 2]))
-    grad['rho'] = -1 / self._rho * (np.sum(self._a *
-      (self._x + 2 * self._x2_3) * self._cov._grad_U[:, self._offset] +
-      (2 * self._x2_3 - self._x) * self._cov._grad_V[:, self._offset + 1] +
-      self._x * (self._a * self._cov._grad_U[:, self._offset + 2] -
-      2 / 3 * self._cov._grad_V[:, self._offset + 2])) -
-      self._la * np.sum(self._cov.dt * self._cov.phi[:, self._offset] *
-      (self._cov._grad_phi[:, self._offset] + self._cov._grad_phi[:,
-      self._offset + 1] + self._cov._grad_phi[:, self._offset + 2])))
+    grad['sig'] = (
+      2
+      * self._sig
+      * (
+        self._cov._sum_grad_A
+        + np.sum(
+          (self._x + self._x2_3) * self._cov._grad_U[:, self._offset]
+          + self._cov._grad_U[:, self._offset + 1]
+          + self._x * self._cov._grad_U[:, self._offset + 2]
+        )
+      )
+    )
+    grad['rho'] = (
+      -1
+      / self._rho
+      * (
+        np.sum(
+          self._a * (self._x + 2 * self._x2_3) * self._cov._grad_U[:, self._offset]
+          + (2 * self._x2_3 - self._x) * self._cov._grad_V[:, self._offset + 1]
+          + self._x
+          * (
+            self._a * self._cov._grad_U[:, self._offset + 2]
+            - 2 / 3 * self._cov._grad_V[:, self._offset + 2]
+          )
+        )
+        - self._la
+        * np.sum(
+          self._cov.dt
+          * self._cov.phi[:, self._offset]
+          * (
+            self._cov._grad_phi[:, self._offset]
+            + self._cov._grad_phi[:, self._offset + 1]
+            + self._cov._grad_phi[:, self._offset + 2]
+          )
+        )
+      )
+    )
 
     if grad_dU is not None:
       # self._cov._dU[:,
       #   self._offset] = self._la * self._a * (1 - self._x / 3 - self._x2_3)
       # self._cov._dU[:, self._offset + 1] = -self._la * self._a
       # self._cov._dU[:, self._offset + 2] = self._la * self._1mx * self._a
-      sum_grad_dU = np.sum((1 - self._x / 3 - self._x2_3) *
-        grad_dU[:, self._offset] - grad_dU[:, self._offset + 1] +
-        self._1mx * grad_dU[:, self._offset + 2])
+      sum_grad_dU = np.sum(
+        (1 - self._x / 3 - self._x2_3) * grad_dU[:, self._offset]
+        - grad_dU[:, self._offset + 1]
+        + self._1mx * grad_dU[:, self._offset + 2]
+      )
       grad['sig'] += 2 * self._sig * self._la * sum_grad_dU
-      grad['rho'] -= self._la / self._rho * self._a * (sum_grad_dU -
-        np.sum((self._x / 3 + 2 * self._x2_3) * grad_dU[:, self._offset] +
-        self._x * grad_dU[:, self._offset + 2]))
+      grad['rho'] -= (
+        self._la
+        / self._rho
+        * self._a
+        * (
+          sum_grad_dU
+          - np.sum(
+            (self._x / 3 + 2 * self._x2_3) * grad_dU[:, self._offset]
+            + self._x * grad_dU[:, self._offset + 2]
+          )
+        )
+      )
 
     if grad_dV is not None:
       # self._cov._dV[:, self._offset] = self._la
       # self._cov._dV[:, self._offset + 1] = -self._la * self._x / 3 * self._1mx
       # self._cov._dV[:, self._offset + 2] = -2 / 3 * self._la * (1 + self._x)
-      grad['rho'] -= self._la / self._rho * np.sum(grad_dV[:, self._offset] +
-        (3 * self._x2_3 - 2 / 3 * self._x) * grad_dV[:, self._offset + 1] -
-        2 / 3 * (1 + 2 * self._x) * grad_dV[:, self._offset + 2])
+      grad['rho'] -= (
+        self._la
+        / self._rho
+        * np.sum(
+          grad_dV[:, self._offset]
+          + (3 * self._x2_3 - 2 / 3 * self._x) * grad_dV[:, self._offset + 1]
+          - 2 / 3 * (1 + 2 * self._x) * grad_dV[:, self._offset + 2]
+        )
+      )
 
-    return (grad)
+    return grad
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     x2 = self._la * (t2 - self._t0)
     x22_3 = x2 * x2 / 3
     U2[:, self._offset] = self._a * (x2 + x22_3)
@@ -850,15 +966,14 @@ class Matern52Kernel(Kernel):
     V2[:, self._offset + 1] = 1 - x2 + x22_3
     U2[:, self._offset + 2] = self._a * x2
     V2[:, self._offset + 2] = -2 / 3 * x2
-    phi2[:, self._offset:self._offset + 3] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 3] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 3] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
 
   def _deriv(self, calc_d2=False):
-    self._cov._dU[:,
-      self._offset] = self._la * self._a * (1 - self._x / 3 - self._x2_3)
+    self._cov._dU[:, self._offset] = self._la * self._a * (1 - self._x / 3 - self._x2_3)
     self._cov._dU[:, self._offset + 1] = -self._la * self._a
     self._cov._dU[:, self._offset + 2] = self._la * self._a * self._1mx
     if calc_d2:
@@ -866,7 +981,8 @@ class Matern52Kernel(Kernel):
       self._cov._dV[:, self._offset + 1] = -self._la * self._x / 3 * self._1mx
       self._cov._dV[:, self._offset + 2] = -2 / 3 * self._la * (1 + self._x)
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -877,7 +993,8 @@ class Matern52Kernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     x2 = self._la * (t2 - self._t0)
     onemx2 = 1 - x2
     x22_3 = x2 * x2 / 3
@@ -887,11 +1004,11 @@ class Matern52Kernel(Kernel):
     V2[:, self._offset + 1] = onemx2 + x22_3
     dU2[:, self._offset + 2] = self._la * onemx2 * self._a
     V2[:, self._offset + 2] = -2 / 3 * x2
-    phi2[:, self._offset:self._offset + 3] = np.exp(-self._la * dt2)[:, None]
-    phi2left[:, self._offset:self._offset + 3] = np.exp(-self._la * dt2left)[:,
-      None]
-    phi2right[:,
-      self._offset:self._offset + 3] = np.exp(-self._la * dt2right)[:, None]
+    phi2[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2)[:, None]
+    phi2left[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2left)[:, None]
+    phi2right[:, self._offset : self._offset + 3] = np.exp(-self._la * dt2right)[
+      :, None
+    ]
     if dV2 is not None:
       dV2[:, self._offset] = self._la
       dV2[:, self._offset + 1] = -self._la * x2 / 3 * onemx2
@@ -899,12 +1016,18 @@ class Matern52Kernel(Kernel):
 
   def eval(self, dt, series_id=None):
     dx = self._la * np.abs(dt)
-    return (self._a * np.exp(-dx) * (1 + dx + dx * dx / 3))
+    return self._a * np.exp(-dx) * (1 + dx + dx * dx / 3)
 
 
 class SumKernel(Kernel):
   r"""
   Generic class for the sum of several kernel terms.
+
+  The :class:`SimpleSumKernel` class should be used instead of this unless
+  specific parameters mapping are required.
+  This class should not be used as is, but should be inherited from
+  and the :func:`_kernel_param` and :func:`_kernel_param_back` methods
+  should be defined to deal with the parameters mapping.
   """
 
   def __init__(self, *args):
@@ -925,40 +1048,42 @@ class SumKernel(Kernel):
 
   def _kernel_param(self, **kwargs):
     raise NotImplementedError(
-      'The _kernel_param method should be implemented in SumKernel childs.')
+      'The _kernel_param method should be implemented in SumKernel childs.'
+    )
 
   def _kernel_param_back(self, *args):
     raise NotImplementedError(
-      'The _kernel_param method should be implemented in SumKernel childs.')
+      'The _kernel_param method should be implemented in SumKernel childs.'
+    )
 
   def _set_param(self, *args, **kwargs):
     for karg, arg in enumerate(args):
       par = self._param[karg]
       if par in kwargs:
-        raise Exception(
-          f'SumKernel._set_param: parameter {par} multiply defined.')
+        raise Exception(f'SumKernel._set_param: parameter {par} multiply defined.')
       kwargs[par] = arg
     kernel_param = self._kernel_param(**kwargs)
     for kernel, param in zip(self._kernels, kernel_param):
       kernel._set_param(**param)
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
-    kernel_grad = [
-      kernel._grad_param(grad_dU, grad_dV) for kernel in self._kernels
-    ]
-    return (self._kernel_param_back(*kernel_grad))
+    kernel_grad = [kernel._grad_param(grad_dU, grad_dV) for kernel in self._kernels]
+    return self._kernel_param_back(*kernel_grad)
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     for kernel in self._kernels:
-      kernel._compute_t2(t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-        phi2left, phi2right)
+      kernel._compute_t2(
+        t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+      )
 
   def _deriv(self, calc_d2=False):
     for kernel in self._kernels:
       kernel._deriv(calc_d2)
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -969,43 +1094,52 @@ class SumKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     for kernel in self._kernels:
-      kernel._deriv_t2(t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right,
-        phi2left, phi2right, dV2)
+      kernel._deriv_t2(
+        t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right, dV2
+      )
 
   def eval(self, dt, series_id=(0, 0)):
-    return (sum(kernel.eval(dt, series_id) for kernel in self._kernels))
+    return sum(kernel.eval(dt, series_id) for kernel in self._kernels)
 
 
 class SimpleSumKernel(SumKernel):
   r"""
+  Sum of several kernel terms.
+
+  The :class:`SumKernel` class can be used for more advanced parameters mapping.
+
+  Parameters
+  ----------
+  **kwargs:
+    Kernels to be summed, indexed by their names.
+    The names used here will then be prepended to all corresponding parameters names.
   """
 
   def __init__(self, **kwargs):
     self._kerneldic = kwargs
     super().__init__(*kwargs.values())
-    self._param = [
-      f'{kern}_{key}' for kern in kwargs for key in kwargs[kern]._param
-    ]
+    self._param = [f'{kern}_{key}' for kern in kwargs for key in kwargs[kern]._param]
 
   def _kernel_param(self, **kwargs):
     paramKern = {kern: {} for kern in self._kerneldic}
     for par in kwargs:
       kern, key = par.split('_', 1)
       paramKern[kern][key] = kwargs[par]
-    return (paramKern.values())
+    return paramKern.values()
 
   def _kernel_param_back(self, *args):
     grad = {}
     for kern, gk in zip(self._kerneldic, args):
       for key in gk:
         grad[f'{kern}_{key}'] = gk[key]
-    return (grad)
+    return grad
 
   def _get_param(self, par):
     kern, key = par.split('_', 1)
-    return (self._kerneldic[kern]._get_param(key))
+    return self._kerneldic[kern]._get_param(key)
 
   def set_conditional_coef(self, **kwargs):
     r"""
@@ -1024,7 +1158,6 @@ class SimpleSumKernel(SumKernel):
 
 
 class _FakeCov:
-
   def __init__(self, t, dt, r):
     self.t = t
     self.dt = dt
@@ -1053,6 +1186,12 @@ class _FakeCov:
 class ProductKernel(Kernel):
   r"""
   Generic class for the product of two kernel terms.
+
+  The :class:`SimpleProductKernel` class should be used instead of this unless
+  specific parameters mapping are required.
+  This class should not be used as is, but should be inherited from
+  and the :func:`_kernel_param` and :func:`_kernel_param_back` methods
+  should be defined to deal with the parameters mapping.
   """
 
   def __init__(self, kernel1, kernel2):
@@ -1073,15 +1212,21 @@ class ProductKernel(Kernel):
     self._kernel2._compute()
     self._cov.A += self._kernel1._cov.A * self._kernel2._cov.A
     for k1 in range(self._kernel1._r):
-      self._cov.U[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = self._kernel1._cov.U[:, k1,
-        None] * self._kernel2._cov.U
-      self._cov.V[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = self._kernel1._cov.V[:, k1,
-        None] * self._kernel2._cov.V
-      self._cov.phi[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = self._kernel1._cov.phi[:, k1,
-        None] * self._kernel2._cov.phi
+      self._cov.U[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = self._kernel1._cov.U[:, k1, None] * self._kernel2._cov.U
+      self._cov.V[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = self._kernel1._cov.V[:, k1, None] * self._kernel2._cov.V
+      self._cov.phi[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = self._kernel1._cov.phi[:, k1, None] * self._kernel2._cov.phi
 
   def _kernel_param(self, **kwargs):
     raise NotImplementedError(
@@ -1097,8 +1242,7 @@ class ProductKernel(Kernel):
     for karg, arg in enumerate(args):
       par = self._param[karg]
       if par in kwargs:
-        raise Exception(
-          f'ProductKernel._set_param: parameter {par} multiply defined.')
+        raise Exception(f'ProductKernel._set_param: parameter {par} multiply defined.')
       kwargs[par] = arg
     kernel1_param, kernel2_param = self._kernel_param(**kwargs)
     self._kernel1._set_param(**kernel1_param)
@@ -1110,125 +1254,217 @@ class ProductKernel(Kernel):
     self._kernel1._cov._sum_grad_A = np.sum(self._kernel1._cov._grad_A)
     self._kernel2._cov._sum_grad_A = np.sum(self._kernel2._cov._grad_A)
     for k1 in range(self._kernel1._r):
-      self._kernel1._cov._grad_U[:,
-        k1] = np.sum(self._kernel2._cov.U * self._cov._grad_U[:, self._offset +
-        k1 * self._kernel2._r:self._offset + (k1 + 1) * self._kernel2._r],
-        axis=1)
-      self._kernel1._cov._grad_V[:,
-        k1] = np.sum(self._kernel2._cov.V * self._cov._grad_V[:, self._offset +
-        k1 * self._kernel2._r:self._offset + (k1 + 1) * self._kernel2._r],
-        axis=1)
-      self._kernel1._cov._grad_phi[:,
-        k1] = np.sum(self._kernel2._cov.phi * self._cov._grad_phi[:,
-        self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r],
-        axis=1)
+      self._kernel1._cov._grad_U[:, k1] = np.sum(
+        self._kernel2._cov.U
+        * self._cov._grad_U[
+          :,
+          self._offset + k1 * self._kernel2._r : self._offset
+          + (k1 + 1) * self._kernel2._r,
+        ],
+        axis=1,
+      )
+      self._kernel1._cov._grad_V[:, k1] = np.sum(
+        self._kernel2._cov.V
+        * self._cov._grad_V[
+          :,
+          self._offset + k1 * self._kernel2._r : self._offset
+          + (k1 + 1) * self._kernel2._r,
+        ],
+        axis=1,
+      )
+      self._kernel1._cov._grad_phi[:, k1] = np.sum(
+        self._kernel2._cov.phi
+        * self._cov._grad_phi[
+          :,
+          self._offset + k1 * self._kernel2._r : self._offset
+          + (k1 + 1) * self._kernel2._r,
+        ],
+        axis=1,
+      )
       if grad_dU is not None:
-        self._kernel1._cov._grad_U[:, k1] += np.sum(self._kernel2._cov._dU *
-          grad_dU[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r],
-          axis=1)
-        self._kernel1._cov._grad_dU[:, k1] = np.sum(self._kernel2._cov.U *
-          grad_dU[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r],
-          axis=1)
+        self._kernel1._cov._grad_U[:, k1] += np.sum(
+          self._kernel2._cov._dU
+          * grad_dU[
+            :,
+            self._offset + k1 * self._kernel2._r : self._offset
+            + (k1 + 1) * self._kernel2._r,
+          ],
+          axis=1,
+        )
+        self._kernel1._cov._grad_dU[:, k1] = np.sum(
+          self._kernel2._cov.U
+          * grad_dU[
+            :,
+            self._offset + k1 * self._kernel2._r : self._offset
+            + (k1 + 1) * self._kernel2._r,
+          ],
+          axis=1,
+        )
       if grad_dV is not None:
-        self._kernel1._cov._grad_V[:, k1] += np.sum(self._kernel2._cov._dV *
-          grad_dV[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r],
-          axis=1)
-        self._kernel1._cov._grad_dV[:, k1] = np.sum(self._kernel2._cov.V *
-          grad_dV[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r],
-          axis=1)
+        self._kernel1._cov._grad_V[:, k1] += np.sum(
+          self._kernel2._cov._dV
+          * grad_dV[
+            :,
+            self._offset + k1 * self._kernel2._r : self._offset
+            + (k1 + 1) * self._kernel2._r,
+          ],
+          axis=1,
+        )
+        self._kernel1._cov._grad_dV[:, k1] = np.sum(
+          self._kernel2._cov.V
+          * grad_dV[
+            :,
+            self._offset + k1 * self._kernel2._r : self._offset
+            + (k1 + 1) * self._kernel2._r,
+          ],
+          axis=1,
+        )
 
     for k2 in range(self._kernel2._r):
-      self._kernel2._cov._grad_U[:,
-        k2] = np.sum(self._kernel1._cov.U * self._cov._grad_U[:,
-        self._offset + k2:self._offset + self._r:self._kernel2._r],
-        axis=1)
-      self._kernel2._cov._grad_V[:,
-        k2] = np.sum(self._kernel1._cov.V * self._cov._grad_V[:,
-        self._offset + k2:self._offset + self._r:self._kernel2._r],
-        axis=1)
-      self._kernel2._cov._grad_phi[:,
-        k2] = np.sum(self._kernel1._cov.phi * self._cov._grad_phi[:,
-        self._offset + k2:self._offset + self._r:self._kernel2._r],
-        axis=1)
+      self._kernel2._cov._grad_U[:, k2] = np.sum(
+        self._kernel1._cov.U
+        * self._cov._grad_U[
+          :, self._offset + k2 : self._offset + self._r : self._kernel2._r
+        ],
+        axis=1,
+      )
+      self._kernel2._cov._grad_V[:, k2] = np.sum(
+        self._kernel1._cov.V
+        * self._cov._grad_V[
+          :, self._offset + k2 : self._offset + self._r : self._kernel2._r
+        ],
+        axis=1,
+      )
+      self._kernel2._cov._grad_phi[:, k2] = np.sum(
+        self._kernel1._cov.phi
+        * self._cov._grad_phi[
+          :, self._offset + k2 : self._offset + self._r : self._kernel2._r
+        ],
+        axis=1,
+      )
       if grad_dU is not None:
-        self._kernel2._cov._grad_U[:,
-          k2] += np.sum(self._kernel1._cov._dU * grad_dU[:,
-          self._offset + k2:self._offset + self._r:self._kernel2._r],
-          axis=1)
-        self._kernel2._cov._grad_dU[:,
-          k2] = np.sum(self._kernel1._cov.U * grad_dU[:,
-          self._offset + k2:self._offset + self._r:self._kernel2._r],
-          axis=1)
+        self._kernel2._cov._grad_U[:, k2] += np.sum(
+          self._kernel1._cov._dU
+          * grad_dU[:, self._offset + k2 : self._offset + self._r : self._kernel2._r],
+          axis=1,
+        )
+        self._kernel2._cov._grad_dU[:, k2] = np.sum(
+          self._kernel1._cov.U
+          * grad_dU[:, self._offset + k2 : self._offset + self._r : self._kernel2._r],
+          axis=1,
+        )
       if grad_dV is not None:
-        self._kernel2._cov._grad_V[:,
-          k2] += np.sum(self._kernel1._cov._dV * grad_dV[:,
-          self._offset + k2:self._offset + self._r:self._kernel2._r],
-          axis=1)
-        self._kernel2._cov._grad_dV[:,
-          k2] = np.sum(self._kernel1._cov.V * grad_dV[:,
-          self._offset + k2:self._offset + self._r:self._kernel2._r],
-          axis=1)
+        self._kernel2._cov._grad_V[:, k2] += np.sum(
+          self._kernel1._cov._dV
+          * grad_dV[:, self._offset + k2 : self._offset + self._r : self._kernel2._r],
+          axis=1,
+        )
+        self._kernel2._cov._grad_dV[:, k2] = np.sum(
+          self._kernel1._cov.V
+          * grad_dV[:, self._offset + k2 : self._offset + self._r : self._kernel2._r],
+          axis=1,
+        )
 
     kernel1_grad = self._kernel1._grad_param(
       self._kernel1._cov._grad_dU if grad_dU is not None else None,
-      self._kernel1._cov._grad_dV if grad_dV is not None else None)
+      self._kernel1._cov._grad_dV if grad_dV is not None else None,
+    )
     kernel2_grad = self._kernel2._grad_param(
       self._kernel2._cov._grad_dU if grad_dU is not None else None,
-      self._kernel2._cov._grad_dV if grad_dV is not None else None)
-    return (self._kernel_param_back(kernel1_grad, kernel2_grad))
+      self._kernel2._cov._grad_dV if grad_dV is not None else None,
+    )
+    return self._kernel_param_back(kernel1_grad, kernel2_grad)
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     kernel1_U2 = np.empty((t2.size, self._kernel1._r))
     kernel1_V2 = np.empty((t2.size, self._kernel1._r))
     kernel1_phi2 = np.empty((t2.size - 1, self._kernel1._r))
     kernel1_phi2left = np.empty((t2.size, self._kernel1._r))
     kernel1_phi2right = np.empty((t2.size, self._kernel1._r))
-    self._kernel1._compute_t2(t2, dt2, kernel1_U2, kernel1_V2, kernel1_phi2,
-      ref2left, dt2left, dt2right, kernel1_phi2left, kernel1_phi2right)
+    self._kernel1._compute_t2(
+      t2,
+      dt2,
+      kernel1_U2,
+      kernel1_V2,
+      kernel1_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel1_phi2left,
+      kernel1_phi2right,
+    )
 
     kernel2_U2 = np.empty((t2.size, self._kernel2._r))
     kernel2_V2 = np.empty((t2.size, self._kernel2._r))
     kernel2_phi2 = np.empty((t2.size - 1, self._kernel2._r))
     kernel2_phi2left = np.empty((t2.size, self._kernel2._r))
     kernel2_phi2right = np.empty((t2.size, self._kernel2._r))
-    self._kernel2._compute_t2(t2, dt2, kernel2_U2, kernel2_V2, kernel2_phi2,
-      ref2left, dt2left, dt2right, kernel2_phi2left, kernel2_phi2right)
+    self._kernel2._compute_t2(
+      t2,
+      dt2,
+      kernel2_U2,
+      kernel2_V2,
+      kernel2_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel2_phi2left,
+      kernel2_phi2right,
+    )
 
     for k1 in range(self._kernel1._r):
-      U2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_U2[:, k1, None] * kernel2_U2
-      V2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_V2[:, k1, None] * kernel2_V2
-      phi2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_phi2[:, k1, None] * kernel2_phi2
-      phi2left[:,
-        self._offset + k1 * self._kernel2._r:self._offset + (k1 + 1) *
-        self._kernel2._r] = kernel1_phi2left[:, k1, None] * kernel2_phi2left
-      phi2right[:,
-        self._offset + k1 * self._kernel2._r:self._offset + (k1 + 1) *
-        self._kernel2._r] = kernel1_phi2right[:, k1, None] * kernel2_phi2right
+      U2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_U2[:, k1, None] * kernel2_U2
+      V2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_V2[:, k1, None] * kernel2_V2
+      phi2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2[:, k1, None] * kernel2_phi2
+      phi2left[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2left[:, k1, None] * kernel2_phi2left
+      phi2right[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2right[:, k1, None] * kernel2_phi2right
 
   def _deriv(self, calc_d2=False):
     self._kernel1._deriv(calc_d2)
     self._kernel2._deriv(calc_d2)
     for k1 in range(self._kernel1._r):
-      self._cov._dU[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = self._kernel1._cov._dU[:, k1,
-        None] * self._kernel2._cov.U + self._kernel1._cov.U[:, k1,
-        None] * self._kernel2._cov._dU
+      self._cov._dU[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = (
+        self._kernel1._cov._dU[:, k1, None] * self._kernel2._cov.U
+        + self._kernel1._cov.U[:, k1, None] * self._kernel2._cov._dU
+      )
       if calc_d2:
-        self._cov._dV[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r] = self._kernel1._cov._dV[:, k1,
-          None] * self._kernel2._cov.V + self._kernel1._cov.V[:, k1,
-          None] * self._kernel2._cov._dV
+        self._cov._dV[
+          :,
+          self._offset + k1 * self._kernel2._r : self._offset
+          + (k1 + 1) * self._kernel2._r,
+        ] = (
+          self._kernel1._cov._dV[:, k1, None] * self._kernel2._cov.V
+          + self._kernel1._cov.V[:, k1, None] * self._kernel2._cov._dV
+        )
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -1239,8 +1475,8 @@ class ProductKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
-
+    dV2=None,
+  ):
     kernel1_U2 = np.empty((t2.size, self._kernel1._r))
     kernel1_dU2 = np.empty((t2.size, self._kernel1._r))
     kernel1_V2 = np.empty((t2.size, self._kernel1._r))
@@ -1251,11 +1487,31 @@ class ProductKernel(Kernel):
     kernel1_phi2 = np.empty((t2.size - 1, self._kernel1._r))
     kernel1_phi2left = np.empty((t2.size, self._kernel1._r))
     kernel1_phi2right = np.empty((t2.size, self._kernel1._r))
-    self._kernel1._compute_t2(t2, dt2, kernel1_U2, kernel1_V2, kernel1_phi2,
-      ref2left, dt2left, dt2right, kernel1_phi2left, kernel1_phi2right)
-    self._kernel1._deriv_t2(t2, dt2, kernel1_dU2, kernel1_V2, kernel1_phi2,
-      ref2left, dt2left, dt2right, kernel1_phi2left, kernel1_phi2right,
-      kernel1_dV2)
+    self._kernel1._compute_t2(
+      t2,
+      dt2,
+      kernel1_U2,
+      kernel1_V2,
+      kernel1_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel1_phi2left,
+      kernel1_phi2right,
+    )
+    self._kernel1._deriv_t2(
+      t2,
+      dt2,
+      kernel1_dU2,
+      kernel1_V2,
+      kernel1_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel1_phi2left,
+      kernel1_phi2right,
+      kernel1_dV2,
+    )
 
     kernel2_U2 = np.empty((t2.size, self._kernel2._r))
     kernel2_dU2 = np.empty((t2.size, self._kernel2._r))
@@ -1267,65 +1523,107 @@ class ProductKernel(Kernel):
     kernel2_phi2 = np.empty((t2.size - 1, self._kernel2._r))
     kernel2_phi2left = np.empty((t2.size, self._kernel2._r))
     kernel2_phi2right = np.empty((t2.size, self._kernel2._r))
-    self._kernel2._compute_t2(t2, dt2, kernel2_U2, kernel2_V2, kernel2_phi2,
-      ref2left, dt2left, dt2right, kernel2_phi2left, kernel2_phi2right)
-    self._kernel2._deriv_t2(t2, dt2, kernel2_dU2, kernel2_V2, kernel2_phi2,
-      ref2left, dt2left, dt2right, kernel2_phi2left, kernel2_phi2right,
-      kernel2_dV2)
+    self._kernel2._compute_t2(
+      t2,
+      dt2,
+      kernel2_U2,
+      kernel2_V2,
+      kernel2_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel2_phi2left,
+      kernel2_phi2right,
+    )
+    self._kernel2._deriv_t2(
+      t2,
+      dt2,
+      kernel2_dU2,
+      kernel2_V2,
+      kernel2_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel2_phi2left,
+      kernel2_phi2right,
+      kernel2_dV2,
+    )
 
     for k1 in range(self._kernel1._r):
-      dU2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_dU2[:, k1,
-        None] * kernel2_U2 + kernel1_U2[:, k1, None] * kernel2_dU2
-      V2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_V2[:, k1, None] * kernel2_V2
-      phi2[:, self._offset + k1 * self._kernel2._r:self._offset +
-        (k1 + 1) * self._kernel2._r] = kernel1_phi2[:, k1, None] * kernel2_phi2
-      phi2left[:,
-        self._offset + k1 * self._kernel2._r:self._offset + (k1 + 1) *
-        self._kernel2._r] = kernel1_phi2left[:, k1, None] * kernel2_phi2left
-      phi2right[:,
-        self._offset + k1 * self._kernel2._r:self._offset + (k1 + 1) *
-        self._kernel2._r] = kernel1_phi2right[:, k1, None] * kernel2_phi2right
+      dU2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_dU2[:, k1, None] * kernel2_U2 + kernel1_U2[:, k1, None] * kernel2_dU2
+      V2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_V2[:, k1, None] * kernel2_V2
+      phi2[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2[:, k1, None] * kernel2_phi2
+      phi2left[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2left[:, k1, None] * kernel2_phi2left
+      phi2right[
+        :,
+        self._offset + k1 * self._kernel2._r : self._offset
+        + (k1 + 1) * self._kernel2._r,
+      ] = kernel1_phi2right[:, k1, None] * kernel2_phi2right
       if dV2 is not None:
-        dV2[:, self._offset + k1 * self._kernel2._r:self._offset +
-          (k1 + 1) * self._kernel2._r] = kernel1_dV2[:, k1,
-          None] * kernel2_V2 + kernel1_V2[:, k1, None] * kernel2_dV2
+        dV2[
+          :,
+          self._offset + k1 * self._kernel2._r : self._offset
+          + (k1 + 1) * self._kernel2._r,
+        ] = (
+          kernel1_dV2[:, k1, None] * kernel2_V2 + kernel1_V2[:, k1, None] * kernel2_dV2
+        )
 
   def eval(self, dt, series_id=(0, 0)):
-    return (self._kernel1.eval(dt, series_id) *
-      self._kernel2.eval(dt, series_id))
+    return self._kernel1.eval(dt, series_id) * self._kernel2.eval(dt, series_id)
 
 
 class SimpleProductKernel(ProductKernel):
   r"""
+  Product of two kernel terms.
+
+  The :class:`ProductKernel` class can be used for more advanced parameters mapping.
+
+  Parameters
+  ----------
+  **kwargs:
+    Kernels to be multiplied together, indexed by their names.
+    The names used here will then be prepended to all corresponding parameters names.
   """
 
   def __init__(self, **kwargs):
     assert len(kwargs) == 2
     self._kerneldic = kwargs
     super().__init__(*kwargs.values())
-    self._param = [
-      f'{kern}_{key}' for kern in kwargs for key in kwargs[kern]._param
-    ]
+    self._param = [f'{kern}_{key}' for kern in kwargs for key in kwargs[kern]._param]
 
   def _kernel_param(self, **kwargs):
     paramKern = {kern: {} for kern in self._kerneldic}
     for par in kwargs:
       kern, key = par.split('_', 1)
       paramKern[kern][key] = kwargs[par]
-    return (paramKern.values())
+    return paramKern.values()
 
   def _kernel_param_back(self, *args):
     grad = {}
     for kern, gk in zip(self._kerneldic, args):
       for key in gk:
         grad[f'{kern}_{key}'] = gk[key]
-    return (grad)
+    return grad
 
   def _get_param(self, par):
     kern, key = par.split('_', 1)
-    return (self._kerneldic[kern]._get_param(key))
+    return self._kerneldic[kern]._get_param(key)
 
   def set_conditional_coef(self, **kwargs):
     r"""
@@ -1342,15 +1640,28 @@ class SimpleProductKernel(ProductKernel):
     for kern in self._kerneldic:
       self._kerneldic[kern].set_conditional_coef(**paramKern[kern])
 
+
 class TransformKernel(Kernel):
+  r"""
+  Wrapper to apply a change of parameters to any kernel.
+
+  Parameters
+  ----------
+    inner_kernel: Kernel
+      Kernel to be used internally.
+    translate_param: function
+      Function to compute the inner kernel parameters as a function
+      of the new parameters which will be presented to the user.
+    translate_param_back: function (optional)
+      Back propagation of the gradient for translate_param.
+      This should be provided if the gradient with respect to parameters is needed.
+    **kwargs:
+      Parameters (new) to be provided to initialize the kernel.
+  """
 
   def __init__(
-      self,
-      inner_kernel,
-      translate_param,
-      translate_param_back=None,
-      **kwargs):
-
+    self, inner_kernel, translate_param, translate_param_back=None, **kwargs
+  ):
     super().__init__()
     self._value = kwargs
     self._translate_param = translate_param
@@ -1368,21 +1679,22 @@ class TransformKernel(Kernel):
     self._kernel._compute()
 
   def _get_param(self, par):
-    return (self._value[par])
+    return self._value[par]
 
   def _set_param(self, *args, **kwargs):
     for karg, arg in enumerate(args):
       par = self._param[karg]
       if par in kwargs:
         raise Exception(
-          f'TransformKernel._set_param: parameter {par} multiply defined.')
+          f'TransformKernel._set_param: parameter {par} multiply defined.'
+        )
       kwargs[par] = arg
     self._value.update(kwargs)
     self._kernel._set_param(**self._translate_param(**self._value))
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     grad_kernel = self._kernel._grad_param(grad_dU, grad_dV)
-    return (self._translate_param_back(grad_kernel))
+    return self._translate_param_back(grad_kernel)
 
   def set_conditional_coef(self, *args, **kwargs):
     r"""
@@ -1391,14 +1703,36 @@ class TransformKernel(Kernel):
 
     self._kernel.set_conditional_coef(*args, **kwargs)
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
+    self._kernel._compute_t2(
+      t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+    )
 
-    self._kernel._compute_t2(t2, dt2, U2, V2, phi2, ref2left, dt2left,
-      dt2right, phi2left, phi2right)
+  def _deriv(self, calc_d2=False):
+    self._kernel._deriv(calc_d2)
+
+  def _deriv_t2(
+    self,
+    t2,
+    dt2,
+    dU2,
+    V2,
+    phi2,
+    ref2left,
+    dt2left,
+    dt2right,
+    phi2left,
+    phi2right,
+    dV2=None,
+  ):
+    self._kernel._deriv_t2(
+      t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right, dV2
+    )
 
   def eval(self, dt, series_id=(0, 0)):
-    return (self._kernel.eval(dt, series_id))
+    return self._kernel.eval(dt, series_id)
 
 
 class USHOKernel(QuasiperiodicKernel):
@@ -1453,14 +1787,20 @@ class USHOKernel(QuasiperiodicKernel):
     gradQP = super()._grad_param(grad_dU, grad_dV)
     grad = {}
     grad['sig'] = 2 * self._sig * (gradQP['a'] + gradQP['b'] / self._sqQ)
-    grad['P0'] = -np.pi / (self._P0**2 * self._Q) * (gradQP['la'] +
-      gradQP['nu'] * self._sqQ)
-    grad['Q'] = -np.pi / (self._P0 * self._Q**2) * (gradQP['la'] +
-      gradQP['nu'] * self._sqQ)
-    if 4 * self._Q**2 - 1 > self._eps:
-      grad['Q'] += 4 * self._Q / self._sqQ * (gradQP['nu'] * self._la -
-        gradQP['b'] * self._a / self._sqQ**2)
-    return (grad)
+    grad['P0'] = (
+      -np.pi / (self._P0**2 * self._Q) * (gradQP['la'] + gradQP['nu'] * self._sqQ)
+    )
+    grad['Q'] = (
+      -np.pi / (self._P0 * self._Q**2) * (gradQP['la'] + gradQP['nu'] * self._sqQ)
+    )
+    if self._eps < 4 * self._Q**2 - 1:
+      grad['Q'] += (
+        4
+        * self._Q
+        / self._sqQ
+        * (gradQP['nu'] * self._la - gradQP['b'] * self._a / self._sqQ**2)
+      )
+    return grad
 
 
 class OSHOKernel(SumKernel):
@@ -1500,8 +1840,12 @@ class OSHOKernel(SumKernel):
     self._sqQ = np.sqrt(max(1 - 4 * self._Q**2, self._eps))
     self._a = self._sig**2
     self._la = np.pi / (self._P0 * self._Q)
-    return (self._a * (1 + 1 / self._sqQ) / 2, self._la * (1 - self._sqQ),
-      self._a * (1 - 1 / self._sqQ) / 2, self._la * (1 + self._sqQ))
+    return (
+      self._a * (1 + 1 / self._sqQ) / 2,
+      self._la * (1 - self._sqQ),
+      self._a * (1 - 1 / self._sqQ) / 2,
+      self._la * (1 + self._sqQ),
+    )
 
   def _kernel_param(self, sig=None, P0=None, Q=None):
     if sig is not None:
@@ -1515,17 +1859,35 @@ class OSHOKernel(SumKernel):
 
   def _kernel_param_back(self, gradExp1, gradExp2):
     grad = {}
-    grad['sig'] = 2 * self._sig * (gradExp1['a'] *
-      (1 + 1 / self._sqQ) / 2 + gradExp2['a'] * (1 - 1 / self._sqQ) / 2)
-    grad['P0'] = -np.pi / (self._P0**2 * self._Q) * (gradExp1['la'] *
-      (1 - self._sqQ) + gradExp2['la'] * (1 + self._sqQ))
-    grad['Q'] = -np.pi / (self._P0 * self._Q**2) * (gradExp1['la'] *
-      (1 - self._sqQ) + gradExp2['la'] * (1 + self._sqQ))
-    if 1 - 4 * self._Q**2 > self._eps:
-      grad['Q'] -= 4 * self._Q / self._sqQ * (
-        (gradExp2['a'] - gradExp1['a']) * self._a / (2 * self._sqQ**2) +
-        (gradExp2['la'] - gradExp1['la']) * self._la)
-    return (grad)
+    grad['sig'] = (
+      2
+      * self._sig
+      * (
+        gradExp1['a'] * (1 + 1 / self._sqQ) / 2
+        + gradExp2['a'] * (1 - 1 / self._sqQ) / 2
+      )
+    )
+    grad['P0'] = (
+      -np.pi
+      / (self._P0**2 * self._Q)
+      * (gradExp1['la'] * (1 - self._sqQ) + gradExp2['la'] * (1 + self._sqQ))
+    )
+    grad['Q'] = (
+      -np.pi
+      / (self._P0 * self._Q**2)
+      * (gradExp1['la'] * (1 - self._sqQ) + gradExp2['la'] * (1 + self._sqQ))
+    )
+    if self._eps < 1 - 4 * self._Q**2:
+      grad['Q'] -= (
+        4
+        * self._Q
+        / self._sqQ
+        * (
+          (gradExp2['a'] - gradExp1['a']) * self._a / (2 * self._sqQ**2)
+          + (gradExp2['la'] - gradExp1['la']) * self._la
+        )
+      )
+    return grad
 
 
 class SHOKernel(Kernel):
@@ -1587,18 +1949,21 @@ class SHOKernel(Kernel):
 
   def _grad_param(self, grad_dU=None, grad_dV=None):
     if self._Q > 0.5:
-      return (self._usho._grad_param(grad_dU, grad_dV))
+      return self._usho._grad_param(grad_dU, grad_dV)
     else:
-      return (self._osho._grad_param(grad_dU, grad_dV))
+      return self._osho._grad_param(grad_dU, grad_dV)
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     if self._Q > 0.5:
-      self._usho._compute_t2(t2, dt2, U2, V2, phi2, ref2left, dt2left,
-        dt2right, phi2left, phi2right)
+      self._usho._compute_t2(
+        t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+      )
     else:
-      self._osho._compute_t2(t2, dt2, U2, V2, phi2, ref2left, dt2left,
-        dt2right, phi2left, phi2right)
+      self._osho._compute_t2(
+        t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+      )
 
   def _deriv(self, calc_d2=False):
     if self._Q > 0.5:
@@ -1606,7 +1971,8 @@ class SHOKernel(Kernel):
     else:
       self._osho._deriv(calc_d2)
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -1617,19 +1983,22 @@ class SHOKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
+    dV2=None,
+  ):
     if self._Q > 0.5:
-      self._usho._deriv_t2(t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right,
-        phi2left, phi2right, dV2)
+      self._usho._deriv_t2(
+        t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right, dV2
+      )
     else:
-      self._osho._deriv_t2(t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right,
-        phi2left, phi2right, dV2)
+      self._osho._deriv_t2(
+        t2, dt2, dU2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right, dV2
+      )
 
   def eval(self, dt, series_id=None):
     if self._Q > 0.5:
-      return (self._usho.eval(dt))
+      return self._usho.eval(dt)
     else:
-      return (self._osho.eval(dt))
+      return self._osho.eval(dt)
 
 
 class MEPKernel(SumKernel):
@@ -1717,8 +2086,11 @@ class MEPKernel(SumKernel):
     if eta is not None:
       self._eta = eta
     sig0, a1, a2, b1, b2, la, nu = self._getcoefs()
-    return (dict(sig=sig0, rho=self._rho), dict(a=a1, b=b1, la=la,
-      nu=nu), dict(a=a2, b=b2, la=la, nu=2 * nu))
+    return (
+      dict(sig=sig0, rho=self._rho),
+      dict(a=a1, b=b1, la=la, nu=nu),
+      dict(a=a2, b=b2, la=la, nu=2 * nu),
+    )
 
   def _kernel_param_back(self, gradMat, gradQP1, gradQP2):
     sgs0 = self._mat._sig * gradMat['sig']
@@ -1731,13 +2103,18 @@ class MEPKernel(SumKernel):
 
     grad = {}
     grad['sig'] = sgs / self._sig
-    grad['P'] = (bgb - self._qp1._nu * gradQP1['nu'] -
-      self._qp2._nu * gradQP2['nu']) / self._P
-    grad['rho'] = gradMat['rho'] - (bgb + self._qp1._la *
-      (gradQP1['la'] + gradQP2['la'])) / self._rho
-    grad['eta'] = (sgs * (self._f + self._f2 / 2) / self._deno - 2 *
-      (aga1 + bgb1 + 2 * (aga2 + bgb2))) / self._eta
-    return (grad)
+    grad['P'] = (
+      bgb - self._qp1._nu * gradQP1['nu'] - self._qp2._nu * gradQP2['nu']
+    ) / self._P
+    grad['rho'] = (
+      gradMat['rho']
+      - (bgb + self._qp1._la * (gradQP1['la'] + gradQP2['la'])) / self._rho
+    )
+    grad['eta'] = (
+      sgs * (self._f + self._f2 / 2) / self._deno
+      - 2 * (aga1 + bgb1 + 2 * (aga2 + bgb2))
+    ) / self._eta
+    return grad
 
 
 class ESKernel(SumKernel):
@@ -1775,12 +2152,7 @@ class ESKernel(SumKernel):
     from the SE kernel is below 0.9%.
   """
 
-  def __init__(self,
-    sig,
-    rho,
-    coef_la=1.0907260149419182,
-    mu=1.326644517327145):
-
+  def __init__(self, sig, rho, coef_la=1.0907260149419182, mu=1.326644517327145):
     self._sig = sig
     self._rho = rho
 
@@ -1815,11 +2187,21 @@ class ESKernel(SumKernel):
 
   def _kernel_param_back(self, gradExp, gradQP):
     grad = {}
-    grad['sig'] = 2 / self._sig * (gradExp['a'] * self._exp._a +
-      gradQP['a'] * self._qp._a + gradQP['b'] * self._qp._b)
-    grad['rho'] = -self._exp._la / self._rho * (gradExp['la'] + gradQP['la'] +
-      self._mu * gradQP['nu'])
-    return (grad)
+    grad['sig'] = (
+      2
+      / self._sig
+      * (
+        gradExp['a'] * self._exp._a
+        + gradQP['a'] * self._qp._a
+        + gradQP['b'] * self._qp._b
+      )
+    )
+    grad['rho'] = (
+      -self._exp._la
+      / self._rho
+      * (gradExp['la'] + gradQP['la'] + self._mu * gradQP['nu'])
+    )
+    return grad
 
 
 class _ESP_PKernel(SumKernel):
@@ -1838,8 +2220,7 @@ class _ESP_PKernel(SumKernel):
     self._bessel = np.empty(self._nharm + 1)
     self._calccoefs()
     kernels = [ExponentialKernel(self._a[0], 0)] + [
-      QuasiperiodicKernel(self._a[k], 0, 0, k * self._nu)
-      for k in range(1, nharm + 1)
+      QuasiperiodicKernel(self._a[k], 0, 0, k * self._nu) for k in range(1, nharm + 1)
     ]
     super().__init__(*kernels)
     self._param = ['P', 'eta']
@@ -1861,15 +2242,18 @@ class _ESP_PKernel(SumKernel):
     if eta is not None:
       self._eta = eta
     self._calccoefs()
-    return ([dict(a=self._a[0])] +
-      [dict(a=self._a[k], nu=k * self._nu) for k in range(1, self._nharm + 1)])
+    return [dict(a=self._a[0])] + [
+      dict(a=self._a[k], nu=k * self._nu) for k in range(1, self._nharm + 1)
+    ]
 
   def _kernel_param_back(self, *gradkernels):
     grad = {}
-    grad['P'] = -np.sum([
-      self._kernels[k]._nu * gradkernels[k]['nu']
-      for k in range(1, self._nharm + 1)
-    ]) / self._P
+    grad['P'] = (
+      -np.sum(
+        [self._kernels[k]._nu * gradkernels[k]['nu'] for k in range(1, self._nharm + 1)]
+      )
+      / self._P
+    )
 
     ga = np.array([gk['a'] for gk in gradkernels])
     # Use recurrence relations for derivative of Bessel functions:
@@ -1879,7 +2263,7 @@ class _ESP_PKernel(SumKernel):
     da_df = (da_df - self._a * ddeno_df) / self._deno
     df_deta = -2 * self._f / self._eta
     grad['eta'] = df_deta * (da_df @ ga)
-    return (grad)
+    return grad
 
 
 class ESPKernel(ProductKernel):
@@ -1940,7 +2324,7 @@ class ESPKernel(ProductKernel):
     return (dict(sig=sig, rho=rho), dict(P=P, eta=eta))
 
   def _kernel_param_back(self, gradES, gradP):
-    return ({**gradES, **gradP})
+    return {**gradES, **gradP}
 
 
 class MultiSeriesKernel(Kernel):
@@ -2004,33 +2388,37 @@ class MultiSeriesKernel(Kernel):
     self._kernel._compute()
     if self._with_derivative:
       self._kernel._deriv(True)
-      self._kernel._cov._B = np.sum(self._kernel._cov._dU *
-        self._kernel._cov._dV,
-        axis=1)
+      self._kernel._cov._B = np.sum(
+        self._kernel._cov._dU * self._kernel._cov._dV, axis=1
+      )
     for k in range(self._nseries):
       ik = self._series_index[k]
       # cov(GP, GP)
-      self._cov.A[ik] += self._alpha[k]**2 * self._kernel._cov.A[ik]
-      self._cov.U[ik, self._offset:self._offset +
-        self._r] = self._alpha[k] * self._kernel._cov.U[ik]
-      self._cov.V[ik, self._offset:self._offset +
-        self._r] = self._alpha[k] * self._kernel._cov.V[ik]
+      self._cov.A[ik] += self._alpha[k] ** 2 * self._kernel._cov.A[ik]
+      self._cov.U[ik, self._offset : self._offset + self._r] = (
+        self._alpha[k] * self._kernel._cov.U[ik]
+      )
+      self._cov.V[ik, self._offset : self._offset + self._r] = (
+        self._alpha[k] * self._kernel._cov.V[ik]
+      )
       if self._with_derivative:
         # cov(GP, dGP), cov(dGP, GP), cov(dGP, dGP)
-        self._cov.A[ik] += self._beta[k]**2 * self._kernel._cov._B[ik]
-        self._cov.U[ik, self._offset:self._offset +
-          self._r] += self._beta[k] * self._kernel._cov._dU[ik]
-        self._cov.V[ik, self._offset:self._offset +
-          self._r] += self._beta[k] * self._kernel._cov._dV[ik]
-    self._cov.phi[:,
-      self._offset:self._offset + self._r] = self._kernel._cov.phi
+        self._cov.A[ik] += self._beta[k] ** 2 * self._kernel._cov._B[ik]
+        self._cov.U[ik, self._offset : self._offset + self._r] += (
+          self._beta[k] * self._kernel._cov._dU[ik]
+        )
+        self._cov.V[ik, self._offset : self._offset + self._r] += (
+          self._beta[k] * self._kernel._cov._dV[ik]
+        )
+    self._cov.phi[:, self._offset : self._offset + self._r] = self._kernel._cov.phi
 
   def _set_param(self, *args, **kwargs):
     for karg, arg in enumerate(args):
       par = self._param[karg]
       if par in kwargs:
         raise Exception(
-          f'MultiSeriesKernel._set_param: parameter {par} multiply defined.')
+          f'MultiSeriesKernel._set_param: parameter {par} multiply defined.'
+        )
       kwargs[par] = arg
     kernel_kwargs = {}
     for par in kwargs:
@@ -2044,58 +2432,70 @@ class MultiSeriesKernel(Kernel):
 
   def _get_param(self, par):
     if par.startswith('alpha_'):
-      return (self._alpha[int(par.replace('alpha_', ''))])
+      return self._alpha[int(par.replace('alpha_', ''))]
     elif par.startswith('beta_'):
-      return (self._beta[int(par.replace('beta_', ''))])
+      return self._beta[int(par.replace('beta_', ''))]
     else:
-      return (self._kernel._get_param(par))
+      return self._kernel._get_param(par)
 
   def _grad_param(self):
     grad = {}
     for k in range(self._nseries):
       ik = self._series_index[k]
       # cov(GP, GP)
-      grad[f'alpha_{k}'] = 2 * self._alpha[k] * np.sum(
-        self._cov._grad_A[ik] * self._kernel._cov.A[ik])
-      grad[f'alpha_{k}'] += np.sum(self._cov._grad_U[ik,
-        self._offset:self._offset + self._r] * self._kernel._cov.U[ik] +
-        self._cov._grad_V[ik, self._offset:self._offset + self._r] *
-        self._kernel._cov.V[ik])
-      self._kernel._cov._grad_A[ik] = self._alpha[k]**2 * self._cov._grad_A[ik]
-      self._kernel._cov._grad_U[ik] = self._alpha[k] * self._cov._grad_U[ik,
-        self._offset:self._offset + self._r]
-      self._kernel._cov._grad_V[ik] = self._alpha[k] * self._cov._grad_V[ik,
-        self._offset:self._offset + self._r]
+      grad[f'alpha_{k}'] = (
+        2 * self._alpha[k] * np.sum(self._cov._grad_A[ik] * self._kernel._cov.A[ik])
+      )
+      grad[f'alpha_{k}'] += np.sum(
+        self._cov._grad_U[ik, self._offset : self._offset + self._r]
+        * self._kernel._cov.U[ik]
+        + self._cov._grad_V[ik, self._offset : self._offset + self._r]
+        * self._kernel._cov.V[ik]
+      )
+      self._kernel._cov._grad_A[ik] = self._alpha[k] ** 2 * self._cov._grad_A[ik]
+      self._kernel._cov._grad_U[ik] = (
+        self._alpha[k] * self._cov._grad_U[ik, self._offset : self._offset + self._r]
+      )
+      self._kernel._cov._grad_V[ik] = (
+        self._alpha[k] * self._cov._grad_V[ik, self._offset : self._offset + self._r]
+      )
       if self._with_derivative:
         # cov(GP, dGP), cov(dGP, GP), cov(dGP, dGP)
-        grad[f'beta_{k}'] = 2 * self._beta[k] * np.sum(
-          self._cov._grad_A[ik] * self._kernel._cov._B[ik])
-        grad[f'beta_{k}'] += np.sum(self._cov._grad_U[ik,
-          self._offset:self._offset + self._r] * self._kernel._cov._dU[ik] +
-          self._cov._grad_V[ik, self._offset:self._offset + self._r] *
-          self._kernel._cov._dV[ik])
-        self._kernel._cov._grad_B[
-          ik] = self._beta[k]**2 * self._cov._grad_A[ik]
-        self._kernel._cov._grad_dU[ik] = self._beta[k] * self._cov._grad_U[ik,
-          self._offset:self._offset + self._r]
-        self._kernel._cov._grad_dV[ik] = self._beta[k] * self._cov._grad_V[ik,
-          self._offset:self._offset + self._r]
-    self._kernel._cov._grad_phi = self._cov._grad_phi[:,
-      self._offset:self._offset + self._r]
+        grad[f'beta_{k}'] = (
+          2 * self._beta[k] * np.sum(self._cov._grad_A[ik] * self._kernel._cov._B[ik])
+        )
+        grad[f'beta_{k}'] += np.sum(
+          self._cov._grad_U[ik, self._offset : self._offset + self._r]
+          * self._kernel._cov._dU[ik]
+          + self._cov._grad_V[ik, self._offset : self._offset + self._r]
+          * self._kernel._cov._dV[ik]
+        )
+        self._kernel._cov._grad_B[ik] = self._beta[k] ** 2 * self._cov._grad_A[ik]
+        self._kernel._cov._grad_dU[ik] = (
+          self._beta[k] * self._cov._grad_U[ik, self._offset : self._offset + self._r]
+        )
+        self._kernel._cov._grad_dV[ik] = (
+          self._beta[k] * self._cov._grad_V[ik, self._offset : self._offset + self._r]
+        )
+    self._kernel._cov._grad_phi = self._cov._grad_phi[
+      :, self._offset : self._offset + self._r
+    ]
 
     self._kernel._cov._sum_grad_A = np.sum(self._kernel._cov._grad_A)
     if self._with_derivative:
-      self._kernel._cov._grad_dU += self._kernel._cov._dV * self._kernel._cov._grad_B[:,
-        None]
-      self._kernel._cov._grad_dV += self._kernel._cov._dU * self._kernel._cov._grad_B[:,
-        None]
+      self._kernel._cov._grad_dU += (
+        self._kernel._cov._dV * self._kernel._cov._grad_B[:, None]
+      )
+      self._kernel._cov._grad_dV += (
+        self._kernel._cov._dU * self._kernel._cov._grad_B[:, None]
+      )
       grad.update(
-        self._kernel._grad_param(self._kernel._cov._grad_dU,
-        self._kernel._cov._grad_dV))
+        self._kernel._grad_param(self._kernel._cov._grad_dU, self._kernel._cov._grad_dV)
+      )
     else:
       grad.update(self._kernel._grad_param())
 
-    return (grad)
+    return grad
 
   def set_conditional_coef(self, alpha=1, beta=0, series_id=None):
     r"""
@@ -2127,13 +2527,14 @@ class MultiSeriesKernel(Kernel):
     """
 
     warnings.warn(
-      "Please use the set_conditional_coef method (with a single n).",
-      DeprecationWarning)
+      'Please use the set_conditional_coef method (with a single n).',
+      DeprecationWarning,
+    )
     self.set_conditional_coef(*args, **kwargs)
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
-
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     if self._cond_series_id is None:
       alpha = self._cond_alpha
       if self._with_derivative:
@@ -2148,24 +2549,44 @@ class MultiSeriesKernel(Kernel):
     kernel_phi2 = np.empty((t2.size - 1, self._r))
     kernel_phi2left = np.empty((t2.size, self._r))
     kernel_phi2right = np.empty((t2.size, self._r))
-    self._kernel._compute_t2(t2, dt2, kernel_U2, kernel_V2, kernel_phi2,
-      ref2left, dt2left, dt2right, kernel_phi2left, kernel_phi2right)
+    self._kernel._compute_t2(
+      t2,
+      dt2,
+      kernel_U2,
+      kernel_V2,
+      kernel_phi2,
+      ref2left,
+      dt2left,
+      dt2right,
+      kernel_phi2left,
+      kernel_phi2right,
+    )
     # cov(GP, GP)
-    U2[:, self._offset:self._offset + self._r] = alpha * kernel_U2
-    V2[:, self._offset:self._offset + self._r] = alpha * kernel_V2
-    phi2[:, self._offset:self._offset + self._r] = kernel_phi2
-    phi2left[:, self._offset:self._offset + self._r] = kernel_phi2left
-    phi2right[:, self._offset:self._offset + self._r] = kernel_phi2right
+    U2[:, self._offset : self._offset + self._r] = alpha * kernel_U2
+    V2[:, self._offset : self._offset + self._r] = alpha * kernel_V2
+    phi2[:, self._offset : self._offset + self._r] = kernel_phi2
+    phi2left[:, self._offset : self._offset + self._r] = kernel_phi2left
+    phi2right[:, self._offset : self._offset + self._r] = kernel_phi2right
 
     if self._with_derivative and beta != 0:
       kernel_dU2 = np.empty((t2.size, self._r))
       kernel_dV2 = np.empty((t2.size, self._r))
-      self._kernel._deriv_t2(t2, dt2, kernel_dU2, kernel_V2, kernel_phi2,
-        ref2left, dt2left, dt2right, kernel_phi2left, kernel_phi2right,
-        kernel_dV2)
+      self._kernel._deriv_t2(
+        t2,
+        dt2,
+        kernel_dU2,
+        kernel_V2,
+        kernel_phi2,
+        ref2left,
+        dt2left,
+        dt2right,
+        kernel_phi2left,
+        kernel_phi2right,
+        kernel_dV2,
+      )
       # cov(GP, dGP), cov(dGP, GP), cov(dGP, dGP)
-      U2[:, self._offset:self._offset + self._r] += beta * kernel_dU2
-      V2[:, self._offset:self._offset + self._r] += beta * kernel_dV2
+      U2[:, self._offset : self._offset + self._r] += beta * kernel_dU2
+      V2[:, self._offset : self._offset + self._r] += beta * kernel_dV2
 
   def _deriv(self, calc_d2=False):
     if self._with_derivative:
@@ -2174,13 +2595,16 @@ class MultiSeriesKernel(Kernel):
       self._kernel._deriv(calc_d2)
       for k in range(self._nseries):
         ik = self._series_index[k]
-        self._cov._dU[ik, self._offset:self._offset +
-          self._r] = self._alpha[k] * self._kernel._cov._dU
+        self._cov._dU[ik, self._offset : self._offset + self._r] = (
+          self._alpha[k] * self._kernel._cov._dU
+        )
         if calc_d2:
-          self._cov._dV[ik, self._offset:self._offset +
-            self._r] = self._alpha[k] * self._kernel._cov._dV
+          self._cov._dV[ik, self._offset : self._offset + self._r] = (
+            self._alpha[k] * self._kernel._cov._dV
+          )
 
-  def _deriv_t2(self,
+  def _deriv_t2(
+    self,
     t2,
     dt2,
     dU2,
@@ -2191,8 +2615,8 @@ class MultiSeriesKernel(Kernel):
     dt2right,
     phi2left,
     phi2right,
-    dV2=None):
-
+    dV2=None,
+  ):
     if self._with_derivative:
       raise NotImplementedError()
     else:
@@ -2209,22 +2633,32 @@ class MultiSeriesKernel(Kernel):
         kernel_dV2 = None
       else:
         kernel_dV2 = np.empty((t2.size, self._r))
-      self._kernel._deriv_t2(t2, dt2, kernel_dU2, kernel_V2, kernel_phi2,
-        ref2left, dt2left, dt2right, kernel_phi2left, kernel_phi2right,
-        kernel_dV2)
-      dU2[:, self._offset:self._offset + self._r] = alpha * kernel_dU2
-      V2[:, self._offset:self._offset + self._r] = alpha * kernel_V2
+      self._kernel._deriv_t2(
+        t2,
+        dt2,
+        kernel_dU2,
+        kernel_V2,
+        kernel_phi2,
+        ref2left,
+        dt2left,
+        dt2right,
+        kernel_phi2left,
+        kernel_phi2right,
+        kernel_dV2,
+      )
+      dU2[:, self._offset : self._offset + self._r] = alpha * kernel_dU2
+      V2[:, self._offset : self._offset + self._r] = alpha * kernel_V2
       if dV2 is not None:
-        dV2[:, self._offset:self._offset + self._r] = alpha * kernel_dV2
+        dV2[:, self._offset : self._offset + self._r] = alpha * kernel_dV2
 
-      phi2[:, self._offset:self._offset + self._r] = kernel_phi2
-      phi2left[:, self._offset:self._offset + self._r] = kernel_phi2left
-      phi2right[:, self._offset:self._offset + self._r] = kernel_phi2right
+      phi2[:, self._offset : self._offset + self._r] = kernel_phi2
+      phi2left[:, self._offset : self._offset + self._r] = kernel_phi2left
+      phi2right[:, self._offset : self._offset + self._r] = kernel_phi2right
 
   def eval(self, dt, series_id=None):
     if series_id is not None:
       raise NotImplementedError()
-    return (self._kernel.eval(dt))
+    return self._kernel.eval(dt)
 
 
 class MultiFourierKernel(Kernel):
@@ -2246,8 +2680,8 @@ class MultiFourierKernel(Kernel):
 
   Parameters
   ----------
-  nu : float
-    Fundamental angular frequency.
+  P : float
+    Fundamental period (related to the fundamental impulsion :math:`\nu=\frac{2\pi}{P}`).
   alpha, beta: (nharm + 1, m, r) ndarrays
     Fourier coefficients. beta[0] should be filled with zeros.
   series_index : list of ndarrays
@@ -2282,12 +2716,16 @@ class MultiFourierKernel(Kernel):
       param_beta = ['beta']
     else:
       param_alpha = [
-        f'alpha_{h}_{i}_{s}' for h in range(self._nfreq)
-        for i in range(self._nseries) for s in range(self._coef_rank)
+        f'alpha_{h}_{i}_{s}'
+        for h in range(self._nfreq)
+        for i in range(self._nseries)
+        for s in range(self._coef_rank)
       ]
       param_beta = [
-        f'beta_{h}_{i}_{s}' for h in range(self._nfreq)
-        for i in range(self._nseries) for s in range(self._coef_rank)
+        f'beta_{h}_{i}_{s}'
+        for h in range(self._nfreq)
+        for i in range(self._nseries)
+        for s in range(self._coef_rank)
       ]
     if self._nharm == 0:
       self._param = param_alpha
@@ -2298,8 +2736,9 @@ class MultiFourierKernel(Kernel):
     if self._nharm == 0:
       for k, ik in enumerate(self._series_index):
         self._cov.A[ik] += np.sum(self._alpha[0, k] * self._alpha[0, k])
-        self._cov.U[ik,
-          self._offset:self._offset + self._coef_rank] = self._alpha[0, k]
+        self._cov.U[ik, self._offset : self._offset + self._coef_rank] = self._alpha[
+          0, k
+        ]
     else:
       self._nu = 2 * np.pi / self._P
       self._nut = self._nu * self._cov.t
@@ -2308,44 +2747,55 @@ class MultiFourierKernel(Kernel):
       self._cjnut[:, 0] = np.cos(self._nut)
       self._sjnut[:, 0] = np.sin(self._nut)
       for j in range(1, self._nharm):
-        self._cjnut[:, j] = self._cjnut[:, j - 1] * self._cjnut[:,
-          0] - self._sjnut[:, j - 1] * self._sjnut[:, 0]
-        self._sjnut[:, j] = self._sjnut[:, j - 1] * self._cjnut[:,
-          0] + self._cjnut[:, j - 1] * self._sjnut[:, 0]
+        self._cjnut[:, j] = (
+          self._cjnut[:, j - 1] * self._cjnut[:, 0]
+          - self._sjnut[:, j - 1] * self._sjnut[:, 0]
+        )
+        self._sjnut[:, j] = (
+          self._sjnut[:, j - 1] * self._cjnut[:, 0]
+          + self._cjnut[:, j - 1] * self._sjnut[:, 0]
+        )
 
       for k, ik in enumerate(self._series_index):
-        self._cov.A[ik] += np.sum(self._alpha[:, k] * self._alpha[:, k] +
-          self._beta[:, k] * self._beta[:, k])
-        self._cov.U[ik,
-          self._offset:self._offset + self._coef_rank] = self._alpha[0, k]
-        self._cov.U[ik, self._offset + self._coef_rank:self._offset +
-          self._nfreq * self._coef_rank] = (
-          self._alpha[1:, k] * self._cjnut[ik, :, np.newaxis] -
-          self._beta[1:, k] * self._sjnut[ik, :, np.newaxis]).reshape(
-          -1, self._nharm * self._coef_rank)
-        self._cov.U[ik,
-          self._offset + self._nfreq * self._coef_rank:self._offset +
-          self._r] = (self._alpha[1:, k] * self._sjnut[ik, :, np.newaxis] +
-          self._beta[1:, k] * self._cjnut[ik, :, np.newaxis]).reshape(
-          -1, self._nharm * self._coef_rank)
-    self._cov.V[:, self._offset:self._offset + self._r] = self._cov.U[:,
-      self._offset:self._offset + self._r]
-    self._cov.phi[:, self._offset:self._offset + self._r] = 1.0
+        self._cov.A[ik] += np.sum(
+          self._alpha[:, k] * self._alpha[:, k] + self._beta[:, k] * self._beta[:, k]
+        )
+        self._cov.U[ik, self._offset : self._offset + self._coef_rank] = self._alpha[
+          0, k
+        ]
+        self._cov.U[
+          ik,
+          self._offset + self._coef_rank : self._offset + self._nfreq * self._coef_rank,
+        ] = (
+          self._alpha[1:, k] * self._cjnut[ik, :, np.newaxis]
+          - self._beta[1:, k] * self._sjnut[ik, :, np.newaxis]
+        ).reshape(-1, self._nharm * self._coef_rank)
+        self._cov.U[
+          ik, self._offset + self._nfreq * self._coef_rank : self._offset + self._r
+        ] = (
+          self._alpha[1:, k] * self._sjnut[ik, :, np.newaxis]
+          + self._beta[1:, k] * self._cjnut[ik, :, np.newaxis]
+        ).reshape(-1, self._nharm * self._coef_rank)
+    self._cov.V[:, self._offset : self._offset + self._r] = self._cov.U[
+      :, self._offset : self._offset + self._r
+    ]
+    self._cov.phi[:, self._offset : self._offset + self._r] = 1.0
 
   def _get_param(self, par):
     if par.startswith('alpha_'):
-      return (self._alpha[tuple(int(s) for s in par.split('_')[1:])])
+      return self._alpha[tuple(int(s) for s in par.split('_')[1:])]
     elif par.startswith('beta_'):
-      return (self._beta[tuple(int(s) for s in par.split('_')[1:])])
+      return self._beta[tuple(int(s) for s in par.split('_')[1:])]
     else:
-      return (super()._get_param(par))
+      return super()._get_param(par)
 
   def _set_param(self, *args, **kwargs):
     for karg, arg in enumerate(args):
       par = self._param[karg]
       if par in kwargs:
         raise Exception(
-          f'MultiFourierKernel._set_param: parameter {par} multiply defined.')
+          f'MultiFourierKernel._set_param: parameter {par} multiply defined.'
+        )
       kwargs[par] = arg
 
     self._P = kwargs.get('P', self._P)
@@ -2367,19 +2817,31 @@ class MultiFourierKernel(Kernel):
 
     grad = {}
 
-    grad_U = self._cov._grad_U[:, self._offset:self._offset +
-      self._r] + self._cov._grad_V[:, self._offset:self._offset + self._r]
+    grad_U = (
+      self._cov._grad_U[:, self._offset : self._offset + self._r]
+      + self._cov._grad_V[:, self._offset : self._offset + self._r]
+    )
 
     if self._nharm > 0:
-      grad_nu = self._cov.t @ np.sum(
-        (grad_U[:, self._nfreq * self._coef_rank:] *
-        self._cov.U[:, self._offset + self._coef_rank:self._offset +
-        self._nfreq * self._coef_rank] -
-        grad_U[:, self._coef_rank:self._nfreq * self._coef_rank] *
-        self._cov.U[:, self._offset +
-        self._nfreq * self._coef_rank:self._offset + self._r]).reshape(
-        (-1, self._nharm, self._coef_rank)),
-        axis=2) @ np.arange(1, self._nfreq)
+      grad_nu = (
+        self._cov.t
+        @ np.sum(
+          (
+            grad_U[:, self._nfreq * self._coef_rank :]
+            * self._cov.U[
+              :,
+              self._offset + self._coef_rank : self._offset
+              + self._nfreq * self._coef_rank,
+            ]
+            - grad_U[:, self._coef_rank : self._nfreq * self._coef_rank]
+            * self._cov.U[
+              :, self._offset + self._nfreq * self._coef_rank : self._offset + self._r
+            ]
+          ).reshape((-1, self._nharm, self._coef_rank)),
+          axis=2,
+        )
+        @ np.arange(1, self._nfreq)
+      )
       grad['P'] = -self._nu / self._P * grad_nu
 
     grad_alpha = np.empty((self._nfreq, self._nseries, self._coef_rank))
@@ -2388,25 +2850,37 @@ class MultiFourierKernel(Kernel):
     for k, ik in enumerate(self._series_index):
       grad_A_k = np.sum(self._cov._grad_A[ik])
       grad_alpha[:, k] = 2 * self._alpha[:, k] * grad_A_k
-      grad_alpha[0, k] += np.sum(grad_U[ik, :self._coef_rank], axis=0)
+      grad_alpha[0, k] += np.sum(grad_U[ik, : self._coef_rank], axis=0)
       if self._nharm > 0:
         grad_beta[1:, k] = 2 * self._beta[1:, k] * grad_A_k
-        grad_alpha[1:, k] += np.sum(self._cjnut[ik, :, np.newaxis] *
-          grad_U[ik, self._coef_rank:self._nfreq * self._coef_rank].reshape(
-          -1, self._nharm, self._coef_rank),
-          axis=0)
-        grad_beta[1:, k] -= np.sum(self._sjnut[ik, :, np.newaxis] *
-          grad_U[ik, self._coef_rank:self._nfreq * self._coef_rank].reshape(
-          -1, self._nharm, self._coef_rank),
-          axis=0)
-        grad_alpha[1:, k] += np.sum(self._sjnut[ik, :, np.newaxis] *
-          grad_U[ik, self._nfreq * self._coef_rank:].reshape(
-          -1, self._nharm, self._coef_rank),
-          axis=0)
-        grad_beta[1:, k] += np.sum(self._cjnut[ik, :, np.newaxis] *
-          grad_U[ik, self._nfreq * self._coef_rank:].reshape(
-          -1, self._nharm, self._coef_rank),
-          axis=0)
+        grad_alpha[1:, k] += np.sum(
+          self._cjnut[ik, :, np.newaxis]
+          * grad_U[ik, self._coef_rank : self._nfreq * self._coef_rank].reshape(
+            -1, self._nharm, self._coef_rank
+          ),
+          axis=0,
+        )
+        grad_beta[1:, k] -= np.sum(
+          self._sjnut[ik, :, np.newaxis]
+          * grad_U[ik, self._coef_rank : self._nfreq * self._coef_rank].reshape(
+            -1, self._nharm, self._coef_rank
+          ),
+          axis=0,
+        )
+        grad_alpha[1:, k] += np.sum(
+          self._sjnut[ik, :, np.newaxis]
+          * grad_U[ik, self._nfreq * self._coef_rank :].reshape(
+            -1, self._nharm, self._coef_rank
+          ),
+          axis=0,
+        )
+        grad_beta[1:, k] += np.sum(
+          self._cjnut[ik, :, np.newaxis]
+          * grad_U[ik, self._nfreq * self._coef_rank :].reshape(
+            -1, self._nharm, self._coef_rank
+          ),
+          axis=0,
+        )
     if self._vectorize:
       grad['alpha'] = grad_alpha
       if self._nharm > 0:
@@ -2417,7 +2891,7 @@ class MultiFourierKernel(Kernel):
         if self._nharm > 0:
           grad['beta_' + '_'.join([f'{k}' for k in ndk])] = grad_beta[ndk]
 
-    return (grad)
+    return grad
 
   def set_conditional_coef(self, alpha=None, beta=None, series_id=0):
     r"""
@@ -2427,21 +2901,18 @@ class MultiFourierKernel(Kernel):
     ----------
     alpha, beta : (nharm + 1, r) ndarray
       Fourier coefficients for the conditional computation.
-      This is only used if series_id is None.
     series_id : int
       Use the coefficents corresponding to a given time series.
+      This is only used if alpha, beta are None.
     """
 
-    self._cond_series_id = series_id
-    if series_id is None:
-      self._cond_alpha = alpha
-      self._cond_beta = beta
-    else:
-      self._cond_alpha = None
-      self._cond_beta = None
+    self._cond_alpha = alpha
+    self._cond_beta = beta
+    self._cond_series_id = series_id if alpha is None else None
 
-  def _compute_t2(self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right,
-    phi2left, phi2right):
+  def _compute_t2(
+    self, t2, dt2, U2, V2, phi2, ref2left, dt2left, dt2right, phi2left, phi2right
+  ):
     if self._cond_series_id is None:
       alpha = self._cond_alpha
       beta = self._cond_beta
@@ -2450,7 +2921,7 @@ class MultiFourierKernel(Kernel):
       if self._nharm > 0:
         beta = self._beta[:, self._cond_series_id]
 
-    U2[:, self._offset:self._offset + self._coef_rank] = alpha[0]
+    U2[:, self._offset : self._offset + self._coef_rank] = alpha[0]
     if self._nharm > 0:
       nut2 = self._nu * t2
       cjnut2 = np.empty((t2.size, self._nharm))
@@ -2458,36 +2929,36 @@ class MultiFourierKernel(Kernel):
       cjnut2[:, 0] = np.cos(nut2)
       sjnut2[:, 0] = np.sin(nut2)
       for j in range(1, self._nharm):
-        cjnut2[:, j] = cjnut2[:, j - 1] * cjnut2[:, 0] - sjnut2[:,
-          j - 1] * sjnut2[:, 0]
-        sjnut2[:, j] = sjnut2[:, j - 1] * cjnut2[:, 0] + cjnut2[:,
-          j - 1] * sjnut2[:, 0]
-      U2[:, self._offset + self._coef_rank:self._offset +
-        self._nfreq * self._coef_rank] = (
-        alpha[1:] * cjnut2[:, :, np.newaxis] -
-        beta[1:] * sjnut2[:, :, np.newaxis]).reshape(
-        -1, self._nharm * self._coef_rank)
-      U2[:, self._offset + self._nfreq * self._coef_rank:self._offset +
-        self._r] = (alpha[1:] * sjnut2[:, :, np.newaxis] +
-        beta[1:] * cjnut2[:, :, np.newaxis]).reshape(
-        -1, self._nharm * self._coef_rank)
-    V2[:, self._offset:self._offset + self._r] = U2[:,
-      self._offset:self._offset + self._r]
-    phi2[:, self._offset:self._offset + self._r] = 1.0
-    phi2left[:, self._offset:self._offset + self._r] = 1.0
-    phi2right[:, self._offset:self._offset + self._r] = 1.0
+        cjnut2[:, j] = cjnut2[:, j - 1] * cjnut2[:, 0] - sjnut2[:, j - 1] * sjnut2[:, 0]
+        sjnut2[:, j] = sjnut2[:, j - 1] * cjnut2[:, 0] + cjnut2[:, j - 1] * sjnut2[:, 0]
+      U2[
+        :, self._offset + self._coef_rank : self._offset + self._nfreq * self._coef_rank
+      ] = (
+        alpha[1:] * cjnut2[:, :, np.newaxis] - beta[1:] * sjnut2[:, :, np.newaxis]
+      ).reshape(-1, self._nharm * self._coef_rank)
+      U2[:, self._offset + self._nfreq * self._coef_rank : self._offset + self._r] = (
+        alpha[1:] * sjnut2[:, :, np.newaxis] + beta[1:] * cjnut2[:, :, np.newaxis]
+      ).reshape(-1, self._nharm * self._coef_rank)
+    V2[:, self._offset : self._offset + self._r] = U2[
+      :, self._offset : self._offset + self._r
+    ]
+    phi2[:, self._offset : self._offset + self._r] = 1.0
+    phi2left[:, self._offset : self._offset + self._r] = 1.0
+    phi2right[:, self._offset : self._offset + self._r] = 1.0
 
   def eval(self, dt, series_id=(0, 0)):
     k = np.sum(self._alpha[0, series_id[0]] * self._alpha[0, series_id[1]])
     if self._nharm > 0:
       a = np.sum(
-        self._alpha[1:, series_id[0]] * self._alpha[1:, series_id[1]] +
-        self._beta[1:, series_id[0]] * self._beta[1:, series_id[1]],
-        axis=1)
+        self._alpha[1:, series_id[0]] * self._alpha[1:, series_id[1]]
+        + self._beta[1:, series_id[0]] * self._beta[1:, series_id[1]],
+        axis=1,
+      )
       b = np.sum(
-        self._alpha[1:, series_id[0]] * self._beta[1:, series_id[1]] -
-        self._beta[1:, series_id[0]] * self._alpha[1:, series_id[1]],
-        axis=1)
+        self._alpha[1:, series_id[0]] * self._beta[1:, series_id[1]]
+        - self._beta[1:, series_id[0]] * self._alpha[1:, series_id[1]],
+        axis=1,
+      )
 
       cjnudt = np.empty((dt.size, self._nharm))
       sjnudt = np.empty((dt.size, self._nharm))
@@ -2495,9 +2966,7 @@ class MultiFourierKernel(Kernel):
       cjnudt[:, 0] = np.cos(nudt)
       sjnudt[:, 0] = np.sin(nudt)
       for j in range(1, self._nharm):
-        cjnudt[:, j] = cjnudt[:, j - 1] * cjnudt[:, 0] - sjnudt[:,
-          j - 1] * sjnudt[:, 0]
-        sjnudt[:, j] = sjnudt[:, j - 1] * cjnudt[:, 0] + cjnudt[:,
-          j - 1] * sjnudt[:, 0]
+        cjnudt[:, j] = cjnudt[:, j - 1] * cjnudt[:, 0] - sjnudt[:, j - 1] * sjnudt[:, 0]
+        sjnudt[:, j] = sjnudt[:, j - 1] * cjnudt[:, 0] + cjnudt[:, j - 1] * sjnudt[:, 0]
       k += cjnudt @ a + sjnudt @ b
-    return (k)
+    return k

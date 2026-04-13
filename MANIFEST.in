@@ -1,2 +1,1 @@
-graft spleaf
-include COPYING
+recursive-include src *.h
