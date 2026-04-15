@@ -1050,7 +1050,8 @@ string BINARIESmodel::description() const
 */
 void BINARIESmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
-    fout << std::boolalpha;
+    fout << std::boolalpha << std::fixed;
+    fout.precision(15);
 
     fout << "; " << timestamp() << endl << endl;
 
@@ -1085,9 +1086,7 @@ void BINARIESmodel::save_setup() {
         fout << f << ",";
     fout << endl;
 
-    fout.precision(15);
     fout << "M0_epoch: " << data.M0_epoch << endl;
-    fout.precision(6);
 
     fout << endl;
 

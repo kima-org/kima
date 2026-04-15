@@ -422,7 +422,8 @@ string ETVmodel::description() const
 void ETVmodel::save_setup() {
 
     std::fstream fout("kima_model_setup.txt", std::ios::out);
-    fout << std::boolalpha;
+    fout << std::boolalpha << std::fixed;
+    fout.precision(15);
 
     fout << "; " << timestamp() << endl << endl;
 
@@ -444,8 +445,6 @@ void ETVmodel::save_setup() {
     fout << "file: " << data._datafile << endl;
     fout << "skip: " << data._skip << endl;
 
-
-    fout.precision(12);
 
     fout << endl;
 
