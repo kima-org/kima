@@ -7,6 +7,7 @@
 #include <array>
 #include <numeric>
 #include <random>
+#include <cstdint>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -31,7 +32,7 @@ using namespace nb::literals;
 
 // Eigen types
 using namespace Eigen;
-typedef Eigen::Matrix<long, -1, 1> VectorXl; // vector of long integers
+typedef Eigen::Matrix<std::int64_t, -1, 1> VectorXl; // vector of int64
 // in order to interface with C spleaf functions, matrices must be 
 // stored in row-major order, and by default Eigen uses column-major
 typedef Eigen::Matrix<double, -1, -1, Eigen::RowMajor> MatrixXd_RM;
