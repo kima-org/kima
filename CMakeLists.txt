@@ -22,7 +22,7 @@ endif()
 set(LOADTXT_PATH src/vendor/cpp-loadtxt/src)
 set(GCEM_PATH src/vendor/gcem/include)
 set(EIGEN_PATH src/vendor/eigen)
-set(SPLEAF_PATH src/vendor/spleaf/spleaf)
+set(SPLEAF_PATH src/vendor/spleaf/src/spleaf)
 
 
 
