@@ -947,6 +947,7 @@ string ApodizedRVmodel::description() const
 void ApodizedRVmodel::save_setup() {
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha << std::fixed;
+    fout.precision(15);
 
     fout << "; " << timestamp() << endl << endl;
 
