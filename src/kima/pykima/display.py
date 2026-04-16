@@ -3933,6 +3933,14 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     resax.axhline(0,c='grey',zorder=1,alpha=0.8)
     resax.set(xlabel='Time ('+time_label+')',ylabel='Along-scan residuals (mas)')
 
+    if res.save_plots:
+        filename = 'kima-showresults-fig6.2.png'
+        print('saving in', filename)
+        fig.savefig(filename)
+
+    if res.return_figs:
+        return fig
+
 
 def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
     if res.model != MODELS.GAIAmodel:
