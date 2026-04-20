@@ -107,7 +107,7 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
         );
     
     if (!J_GAIA_prior)
-        J_GAIA_prior = make_prior<ModifiedLogUniform>(0.1,100.);
+        J_GAIA_prior = make_prior<ModifiedLogUniform>(0.01,10.);
 
     // if (!star_mass_prior)
     //     star_mass_prior = make_prior<Gaussian>(1.0,0.5);

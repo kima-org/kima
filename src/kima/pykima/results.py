@@ -166,7 +166,7 @@ class astrometric_data_holder:
     Attributes:
         t (ndarray): The observation times
         w (ndarray): 
-        sigw (ndarray): 
+        wsig (ndarray): 
         psi (ndarray): 
         pf (ndarray): 
         N (int): Total number of observations
@@ -174,14 +174,14 @@ class astrometric_data_holder:
 
     t: np.ndarray = field(init=False)
     w: np.ndarray = field(init=False)
-    sigw: np.ndarray = field(init=False)
+    wsig: np.ndarray = field(init=False)
     psi: np.ndarray = field(init=False)
     pf: np.ndarray = field(init=False)
     N: int = field(init=False)
     instrument: str = 'Gaia'
 
     def __repr__(self):
-        return f"data_holder(N={self.N}, t, w, sigw, psi, pf)"
+        return f"data_holder(N={self.N}, t, w, wsig, psi, pf)"
 
 
 @dataclass
