@@ -61,7 +61,7 @@ MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
 
 
 # add plot method to data classes
-from .pykima.display import plot_RVData, plot_HGPMdata
+from .pykima.display_hooks import plot_RVData, plot_HGPMdata
 RVData.plot = plot_RVData
 
 class HGPMdata(HGPMdata_original):
