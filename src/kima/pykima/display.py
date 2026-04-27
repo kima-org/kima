@@ -3970,6 +3970,59 @@ def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
     fig.subplots_adjust(wspace=0.25, hspace=0.15)
     return fig
 
+def hist_astrometric_solution(res, show_prior=False, axs=None, **kwargs):
+    if res.model != MODELS.GAIAmodel:
+        print('Model is not GAIAmodel! hist_astrometric_solution() doing nothing...')
+        return
+    
+    if axs is None:
+        fig, axs = plt.subplot_mosaic(
+            [['da', 'dd'], ['mua', 'mud'], 2*['plx']],
+            constrained_layout=True
+        )
+    else:
+        if len(axs) != 5:
+            raise ValueError('must provide 5 axes')
+        fig = axs[0].figure
+        axs = dict(da=axs[0], dd=axs[1], mua=axs[2], mud=axs[3], plx=axs[4])
+
+    bins = kwargs.get('bins', 'doane')
+    density = kwargs.get('density', True)
+    hist_kw = dict(bins=bins, density=density)
+    hist_prior_kw = dict(**hist_kw, alpha=0.15, color='k', zorder=-1)
+
+    estimate = percentile68_ranges_latex(res.posteriors.da)
+    axs['da'].hist(res.posteriors.da, label=estimate, **hist_kw)
+    estimate = percentile68_ranges_latex(res.posteriors.dd)
+    axs['dd'].hist(res.posteriors.dd, label=estimate, **hist_kw)
+    estimate = percentile68_ranges_latex(res.posteriors.mua)
+    axs['mua'].hist(res.posteriors.mua, label=estimate, **hist_kw)
+    estimate = percentile68_ranges_latex(res.posteriors.mud)
+    axs['mud'].hist(res.posteriors.mud, label=estimate, **hist_kw)
+    estimate = percentile68_ranges_latex(res.posteriors.plx)
+    axs['plx'].hist(res.posteriors.plx, label=estimate, **hist_kw)
+
+    if show_prior:
+        names = 'da_prior', 'dd_prior', 'mua_prior', 'mud_prior', 'parallax_prior'
+        for name, ax in zip(names, axs.values()):
+            prior = res.priors[name]
+            ax.hist(distribution_rvs(prior, size=res.ESS), 
+                    label='prior', **hist_prior_kw)
+
+    show_legend = kwargs.get('show_legend', True)
+    for i, ax in enumerate(axs.values()):
+        ax.set(yticks=[], ylabel='posterior')
+        if show_legend:
+            ax.legend()
+
+    axs['da'].set(xlabel=r'$d_a$ [mas]')
+    axs['dd'].set(xlabel=r'$d_d$ [mas]')
+    axs['mua'].set(xlabel=r'$\mu_a$ [mas/yr]')
+    axs['mud'].set(xlabel=r'$\mu_d$ [mas/yr]')
+    axs['plx'].set(xlabel=r'$\pi$ [mas]')
+
+    return fig, list(axs.values())
+
 
 def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
               include_planets=None, **kwargs):
