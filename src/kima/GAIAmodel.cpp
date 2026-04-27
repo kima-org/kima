@@ -599,21 +599,22 @@ string GAIAmodel::description() const
             desc += "theta"+std::to_string(i*2 + 3) + sep;
     }
 
+    auto printi = [&](const size_t n, const string& name )
+    {
+        for(size_t i = 0; i < n; i++) 
+        {
+            desc += name + std::to_string(i + 1) + sep;
+        }
+    };
+
     if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_a0" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_omega" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_cosi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_Omega" + std::to_string(i) + sep;
+        printi(n_known_object, "KO_P");
+        printi(n_known_object, "KO_phi");
+        printi(n_known_object, "KO_ecc");
+        printi(n_known_object, "KO_a0");
+        printi(n_known_object, "KO_w");
+        printi(n_known_object, "KO_cosi");
+        printi(n_known_object, "KO_W");
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -622,22 +623,22 @@ string GAIAmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
+        printi(maxpl, "P");
+        printi(maxpl, "phi");
+        printi(maxpl, "ecc");
         if(thiele_innes)
         {
-            for(int i = 0; i < maxpl; i++) desc += "A" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "B" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "F" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "G" + std::to_string(i) + sep;
+            printi(maxpl, "A");
+            printi(maxpl, "B");
+            printi(maxpl, "F");
+            printi(maxpl, "G");
         }
         else
         {
-            for(int i = 0; i < maxpl; i++) desc += "a0" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "cosi" + std::to_string(i) + sep;
-            for(int i = 0; i < maxpl; i++) desc += "W" + std::to_string(i) + sep;
+            printi(maxpl, "a0");
+            printi(maxpl, "w");
+            printi(maxpl, "cosi");
+            printi(maxpl, "W");
         }
     }
 
