@@ -4508,6 +4508,9 @@ class KimaResults:
             self.plot_hgpm = partial(display.plot_hgpm,
                                      res=self, pm_data=self.pm_data)
             self.hist_bary = partial(display.hist_bary, res=self)
+        
+        if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
+            self.hist_astrometric_solution = partial(display.hist_astrometric_solution, res=self)
 
     #
     hist_vsys = display.hist_vsys
