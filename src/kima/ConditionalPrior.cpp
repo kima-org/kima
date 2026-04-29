@@ -278,7 +278,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 
 void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
 {
-    Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
+    if (!Pprior) Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
 }
 
 void GAIAConditionalPrior::use_thiele_innes()
