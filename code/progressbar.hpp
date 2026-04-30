@@ -152,7 +152,7 @@ inline void progressbar::update() {
     if (perc == last_perc + 1) {
         // erase the correct  number of characters
         if      (perc <= 10)                output << "\b\b"   << perc << '%';
-        else if (perc  > 10 and perc < 100) output << "\b\b\b" << perc << '%';
+        else if (perc  > 10 && perc < 100) output << "\b\b\b" << perc << '%';
         else if (perc == 100)               output << "\b\b\b" << perc << '%';
     }
     if (do_show_bar == true) {
