@@ -29,7 +29,9 @@ NB_MODULE(distributions, m)
         .def(nb::init<unsigned int>(), "seed"_a)
         // 
         .def("rand", &DNest4::RNG::rand, "Uniform(0, 1)")
-        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N+1); }, "IntegerUniform(0, N)");
+        .def("randh", &DNest4::RNG::randh, "Brendon's heavy-tailed distribution")
+        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N+1); }, "IntegerUniform(0, N)")
+        .def_static("wrap", [](double x, double a, double b){ DNest4::wrap(x, a, b); return x; }, "Wrap a number to the range [a, b]");
         //.def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
     //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
