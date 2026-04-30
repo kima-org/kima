@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        py: [cp38, cp39]
+        py: [cp39]
 
     steps:
       - uses: actions/checkout@v5
