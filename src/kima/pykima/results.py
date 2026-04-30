@@ -2187,9 +2187,9 @@ class KimaResults:
                     self.posteriors.KO.wdot = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
                     self.posteriors.KO.cosi = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
             elif self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
-                self.posteriors.KO.a0 = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
-                self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
-                self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                self.posteriors.KO.φ = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
+                self.posteriors.KO.e = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                self.posteriors.KO.a0 = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
                 self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
                 self.posteriors.KO.cosi = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
                 self.posteriors.KO.W = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
@@ -2644,7 +2644,7 @@ class KimaResults:
             print('orbital parameters: ', end='')
             extra_n = 0
             if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
-                pars = ['P', 'a0', 'phi', 'ecc', 'w', 'cosi', 'W']
+                pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
                     pars = ['P', 'K', 'q', 'M0', 'e', 'w', 'wdot','cosi']
@@ -2945,9 +2945,9 @@ class KimaResults:
 
                     P = pars[j + 0 * self.nKO]
                     if self.model is MODELS.RVGAIAmodel:
-                        a0 = pars[j + 1 * self.nKO]
-                        phi = pars[j + 2 * self.nKO]
-                        ecc = pars[j + 3 * self.nKO]
+                        phi = pars[j + 1 * self.nKO]
+                        ecc = pars[j + 2 * self.nKO]
+                        a0 = pars[j + 3 * self.nKO]
                         w = pars[j + 4 * self.nKO]
                         cosi = pars[j + 5 * self.nKO]
                         K = Kfroma0(P,a0,ecc,cosi,plx)
@@ -3274,9 +3274,9 @@ class KimaResults:
                         wdot = pars[j + 5 * self.nKO]
                         cosi = pars[j + 6 * self.nKO]
                 elif self.model is MODELS.RVGAIAmodel:
-                    a0 = pars[j + 1 * self.nKO]
-                    phi = pars[j + 2 * self.nKO]
-                    ecc = pars[j + 3 * self.nKO]
+                    phi = pars[j + 1 * self.nKO]
+                    ecc = pars[j + 2 * self.nKO]
+                    a0 = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
                     cosi = pars[j + 5 * self.nKO]
                     K = Kfroma0(P,a0,ecc,cosi,plx)

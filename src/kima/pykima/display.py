@@ -2865,15 +2865,18 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
                     ko[k]['wdot'] = wdot = sample[res.indices['KOpars']][i + 5 * res.nKO]
                     ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 6 * res.nKO]
             else:
-                ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
-                ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
-                ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
                 if res.model is MODELS.RVGAIAmodel:
-                    ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + res.nKO]
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
                     ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
                     ko[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
                 else:
-                    ko[k]['K'] = K = sample[res.indices['KOpars']][i + res.nKO]
+                    ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
+                    ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
+                    ko[k]['K'] = K = sample[res.indices['KOpars']][i + 1 * res.nKO]
             ko[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             ko[k]['type'] = 'KO'
             ko[k]['index'] = -pj - 1
@@ -3538,9 +3541,9 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
         nplanets += res.nKO
         for i, k in enumerate(params.keys()):
             params[k]['P'] = P = sample[res.indices['KOpars']][i]
-            params[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 1 * res.nKO]
-            params[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
-            params[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
+            params[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
+            params[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
+            params[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
             params[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             params[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
             params[k]['W'] = W = sample[res.indices['KOpars']][i + 6 * res.nKO]
