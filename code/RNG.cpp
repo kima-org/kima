@@ -58,13 +58,15 @@ double RNG::randh2()
 
 int RNG::rand_int(int N)
 {
-	return static_cast<int>(floor(N*this->rand()));
+	return uniform_int(twister, std::uniform_int_distribution<int>::param_type(0, N-1));
+	// return static_cast<int>(floor(N*this->rand()));
 }
 
 int RNG::rand_int(int L, int U)
 {
-	int N = U + 1 - L;
-	return static_cast<int>(floor(L + N*this->rand()));
+	return uniform_int(twister, std::uniform_int_distribution<int>::param_type(L, U));
+	// int N = U + 1 - L;
+	// return static_cast<int>(floor(L + N*this->rand()));
 }
 
 } // namespace DNest4
