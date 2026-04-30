@@ -651,16 +651,16 @@ class KimaResults:
             self.thiele_innes = model.thiele_innes
             self.RA = model.RA
             self.DEC= model.DEC
-            self.n_background_params = model.n_background_params
-            self.al_scan_bias = model.al_scan_bias
-            self.n_bias_comps = model.n_al_scan_componenets
+            self.n_baseline_params = model.n_baseline_params
+            self.scan_dep_signal = model.scan_dep_signal
+            self.n_scan_dep_comps = model.n_scan_dep_components
         if self.model is MODELS.RVGAIAmodel:
             self.thiele_innes = False
             self.RA = model.RA
             self.DEC= model.DEC
-            self.n_background_params = model.n_background_params
-            self.al_scan_bias = model.al_scan_bias
-            self.n_bias_comps = model.n_al_scan_componenets
+            self.n_baseline_params = model.n_baseline_params
+            self.scan_dep_signal = model.scan_dep_signal
+            self.n_scan_dep_comps = model.n_scan_dep_components
         if self.model is MODELS.RVFWHMmodel:
             self.series = ('RV', 'FWHM')
             self.data.y2, self.data.e2, *_ = np.array(data.actind)
@@ -835,8 +835,8 @@ class KimaResults:
         #read astrometric solution
         if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
             self._read_astrometric_solution()
-            if self.al_scan_bias:
-                self._read_al_scan_bias()
+            if self.scan_dep_signal:
+                self._read_scan_dep_signal()
 
         #if ETV read reference time and ephemerides
         if self.model is MODELS.ETVmodel:
@@ -943,7 +943,7 @@ class KimaResults:
 
     def _read_astrometric_solution(self):
         self.n_astrometric_solution = 5
-        self.n_accel_params = self.n_background_params - self.n_astrometric_solution
+        self.n_accel_params = self.n_baseline_params - self.n_astrometric_solution
         i1, i2 = self._current_column, self._current_column + self.n_astrometric_solution
         self.astrometric_solution = self.posterior_sample[:, i1:i2]
         self._current_column += self.n_astrometric_solution
@@ -960,15 +960,15 @@ class KimaResults:
         if self._debug:
             print('finished reading astrometric solution')
     
-    def _read_al_scan_bias(self):
-        i1, i2 = self._current_column, self._current_column + self.n_bias_comps*2
-        self.al_scan_params = self.posterior_sample[:, i1:i2]
-        self._current_column += self.n_bias_comps*2
-        self.indices['al_scan_bias_start'] = i1
-        self.indices['al_scan_bias_end'] = i2
-        self.indices['al_scan_bias'] = slice(i1, i2)
+    def _read_scan_dep_signal(self):
+        i1, i2 = self._current_column, self._current_column + self.n_scan_dep_comps*2
+        self.scan_dep_signal_params = self.posterior_sample[:, i1:i2]
+        self._current_column += self.n_scan_dep_comps*2
+        self.indices['scan_dep_signal_start'] = i1
+        self.indices['scan_dep_signal_end'] = i2
+        self.indices['scan_dep_signal'] = slice(i1, i2)
         if self._debug:
-            print('finished reading along-scan bias')
+            print('finished reading scan-angle dependent signal')
 
 
     def _read_limb_dark(self):
@@ -1978,17 +1978,17 @@ class KimaResults:
                 accela,acceld = self.posterior_sample[:, self.indices['accel_solution']].T
                 self.posteriors.accela = accela
                 self.posteriors.acceld = acceld
-            if self.al_scan_bias:
-                al_scan_bias_params = self.posterior_sample[:,self.indices['al_scan_bias']].T
-                if self.n_bias_comps == 3:
-                    self.posteriors.Ak = al_scan_bias_params[[0,1,2]]
-                    self.posteriors.thetak = al_scan_bias_params[[3,4,5]]
-                elif self.n_bias_comps == 2:
-                    self.posteriors.Ak = al_scan_bias_params[[0,1]]
-                    self.posteriors.thetak = al_scan_bias_params[[2,3]]
-                elif self.n_bias_comps == 1:
-                    self.posteriors.Ak = al_scan_bias_params[0]
-                    self.posteriors.thetak = al_scan_bias_params[1]
+            if self.scan_dep_signal:
+                scan_dep_signal_params = self.posterior_sample[:,self.indices['scan_dep_signal']].T
+                if self.n_scan_dep_comps == 3:
+                    self.posteriors.Ak = scan_dep_signal_params[[0,1,2]]
+                    self.posteriors.thetak = scan_dep_signal_params[[3,4,5]]
+                elif self.n_scan_dep_comps == 2:
+                    self.posteriors.Ak = scan_dep_signal_params[[0,1]]
+                    self.posteriors.thetak = scan_dep_signal_params[[2,3]]
+                elif self.n_scan_dep_comps == 1:
+                    self.posteriors.Ak = scan_dep_signal_params[0]
+                    self.posteriors.thetak = scan_dep_signal_params[1]
             # TODO: _priors
 
         # instrument offsets

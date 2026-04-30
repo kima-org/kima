@@ -3684,8 +3684,8 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         jerka, jerkd = 0, 0
         nextras += 1
 
-    if res.al_scan_bias:
-        al_scan_bias_params = sample[res.indices['al_scan_bias']]
+    if res.scan_dep_signal:
+        scan_dep_signal_params = sample[res.indices['scan_dep_signal']]
         nextras += 1
 
     # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
@@ -3766,10 +3766,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
     
     #add scan-angle bias signal
-    if res.al_scan_bias:
-        for j in range(res.n_bias_comps):
-            Ak = al_scan_bias_params[j]
-            thetak = al_scan_bias_params[j+res.n_bias_comps]
+    if res.scan_dep_signal:
+        for j in range(res.n_scan_dep_comps):
+            Ak = scan_dep_signal_params[j]
+            thetak = scan_dep_signal_params[j+res.n_scan_dep_comps]
             k = 2*j + 3
             wmodel += wscanbias(Ak,thetak,k,psi)
 
@@ -3910,16 +3910,16 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     addind += len(keys)
 
     #make plot for scan-angle bias
-    if res.al_scan_bias:
+    if res.scan_dep_signal:
         ax = axs[addind +1]
 
         psis = np.arange(-np.pi,np.pi,0.01)
         scan_model = np.zeros_like(psis)
 
         scan_data = wws.copy()
-        for j in range(res.n_bias_comps):
-            Ak = al_scan_bias_params[j]
-            thetak = al_scan_bias_params[j+res.n_bias_comps]
+        for j in range(res.n_scan_dep_comps):
+            Ak = scan_dep_signal_params[j]
+            thetak = scan_dep_signal_params[j+res.n_scan_dep_comps]
             k = 2*j + 3
             scan_data += wscanbias(Ak,thetak,k,psi)
             scan_model += wscanbias(Ak,thetak,k,psis)
