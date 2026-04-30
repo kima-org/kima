@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        py: [cp38, cp39]
 
     steps:
       - uses: actions/checkout@v5
@@ -18,6 +19,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
+          CIBW_BUILD: ${{ matrix.py }}*
           # Skip 32-bit builds, musllinux builds, and disable building PyPy wheels on all platforms
           CIBW_SKIP: "*-win32 *-manylinux_i686 *musllinux* pp*"
           # Needed for full C++17 support
