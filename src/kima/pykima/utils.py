@@ -670,6 +670,43 @@ def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False, us
             raise ValueError('either `use_ptp` or `use_std` should be True')
     return [Gaussian(loc, scale) for loc, scale in loc_scale[::-1]]
 
+def get_gaussian_prior_astrometric_baseline(data, sig_mu=0.1, sig_plx=0.1):
+    """
+    Get informative Gaussian priors for the five parameters of the astrometric
+    baseline model (positions, proper motions, parallax) using the data.
+
+    Args:
+        data (kima.GAIAdata): 
+            The Gaia dataset 
+        sig_mu (float, optional):
+            The standard deviation of the proper motion priors, in mas/yr.
+        sig_plx (float, optional):
+            The standard deviation of the parallax prior, in mas.
+    Returns:
+        priors (list[kima.distributions.Gaussian]):
+            Gaussian priors for the five parameters of the astrometric baseline
+            model
+    
+    Examples:
+        ```python
+        data = kima.GAIAdata(...)
+        model = kima.GAIAmodel(...)
+        priors = get_gaussian_prior_astrometric_baseline(data)
+        model.da_prior, model.dd_prior, model.mua_prior, model.mud_prior, model.parallax_prior = priors
+        ```
+    """
+    from kima.distributions import Gaussian
+    t = (np.array(data.t) - data.M0_epoch) / 365.25
+    X = np.c_[np.sin(data.psi), np.cos(data.psi), t * np.sin(data.psi), t * np.cos(data.psi), data.pf]
+    da, dd, mua, mud, plx = np.linalg.lstsq(X, data.w)[0]
+
+    da_prior = Gaussian(0, 1)
+    dd_prior = Gaussian(0, 1)
+    mua_prior = Gaussian(mua, sig_mu)
+    mud_prior = Gaussian(mud, sig_mu)
+    parallax_prior = Gaussian(plx, sig_plx)
+    return [da_prior, dd_prior, mua_prior, mud_prior, parallax_prior]
+
 
 def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, lower_limit=1.0):
     from kima.distributions import GaussianMixture
