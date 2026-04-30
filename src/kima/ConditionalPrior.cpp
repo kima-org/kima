@@ -419,7 +419,7 @@ void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIA_data, RVDat
     tmin2 = GAIA_data.get_t_min();
     tmax2 = GAIA_data.get_t_max();
     double tspan = max(tmax1,tmax2) - min(tmin1,tmin2);
-    Pprior = make_shared<LogUniform>(1.0, max(1.1, tspan));
+    if (!Pprior) Pprior = make_shared<LogUniform>(1.0, max(1.1, tspan));
 }
 
 void RVGAIAConditionalPrior::from_prior(RNG& rng)//needed?
