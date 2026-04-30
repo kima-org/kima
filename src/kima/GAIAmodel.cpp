@@ -551,9 +551,9 @@ void GAIAmodel::print(std::ostream& out) const
 
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
-        for (auto a: KO_a0) out << a << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e) out << e << "\t";
+        for (auto a: KO_a0) out << a << "\t";
         for (auto w: KO_omega) out << w << "\t";
         for (auto cosi: KO_cosi) out << cosi << "\t";
         for (auto Om: KO_Omega) out << Om << "\t";
