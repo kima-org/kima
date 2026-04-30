@@ -10,6 +10,7 @@
 #include "Level.h"
 #include "RNG.h"
 #include "Barrier.h"
+#include "progressbar.hpp"
 
 namespace DNest4
 {
@@ -65,6 +66,10 @@ class Sampler
         // For adaptation
         double difficulty, work_ratio;
 
+		// For optional progress bar
+		bool progress_bar;
+		progressbar bar;
+
 		// Storage for likelihoods above threshold
 		std::vector< std::vector<LikelihoodType> > above;
 
@@ -115,7 +120,7 @@ class Sampler
 		void initialise(unsigned int first_seed);
 
 		// Launch everything
-		void run(unsigned int thin=1);
+		void run(unsigned int thin=1, bool show_progress_bar=false);
 
 		// Increase max_num_saves (allows continuation)
 		void increase_max_num_saves(unsigned int increment);

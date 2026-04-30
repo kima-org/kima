@@ -19,6 +19,9 @@ class RNG
         // For uniform distribution
         std::uniform_real_distribution<double> uniform;
 
+        // For uniform int distribution
+        std::uniform_int_distribution<int> uniform_int;
+
         // For normal distribution
         std::normal_distribution<double> normal;
 

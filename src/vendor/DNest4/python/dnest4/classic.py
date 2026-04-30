@@ -232,9 +232,6 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 			np.savetxt("posterior_sample.txt", posterior_sample,\
 													header=header)
 
-	if plot:
-		plt.show()
-
 	return [logz_estimate, H_estimate, logx_samples]
 
 def postprocess_abc(temperature=1., numResampleLogX=1, plot=True, loaded=[], \

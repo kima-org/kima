@@ -34,6 +34,7 @@ Sampler<ModelType>::Sampler(unsigned int num_threads, double compression,
 ,count_mcmc_steps(0)
 ,difficulty(1.0)
 ,work_ratio(1.0)
+,progress_bar(false)
 ,above(num_threads)
 {
 	assert(num_threads >= 1);
@@ -50,6 +51,9 @@ Sampler<ModelType>::Sampler(unsigned int num_threads, double compression,
     auto indices = argsort(log_likelihoods);
     best_ever_particle = particles[indices.back()];
     best_ever_log_likelihood = log_likelihoods[indices.back()];
+
+	// Set up progress bar
+	bar.set_niter(options.max_num_saves);
 }
 
 template<class ModelType>
@@ -83,10 +87,12 @@ void Sampler<ModelType>::initialise(unsigned int first_seed)
 }
 
 template<class ModelType>
-void Sampler<ModelType>::run(unsigned int thin)
+void Sampler<ModelType>::run(unsigned int thin, bool show_progress_bar)
 {
 	// Set the thining of terminal output
 	thin_print = thin;
+	// Showing the progress bar?
+	progress_bar = show_progress_bar;
 
 #ifndef NO_THREADS
 	// Set up threads and barrier
@@ -389,9 +395,12 @@ void Sampler<ModelType>::do_bookkeeping()
 		// Create the level
 		std::sort(all_above.begin(), all_above.end());
 		int index = static_cast<int>((1. - 1./compression)*all_above.size());
-		std::cout<<"# Creating level "<<levels.size()<<" with log likelihood = ";
-		std::cout<<std::setprecision(12);
-		std::cout<<all_above[index].get_value()<<"."<<std::endl;
+
+		if (!progress_bar) {
+			std::cout<<"# Creating level "<<levels.size()<<" with log likelihood = ";
+			std::cout<<std::setprecision(12);
+			std::cout<<all_above[index].get_value()<<"."<<std::endl;
+		}
 
 		levels.push_back(Level(all_above[index]));
 		all_above.erase(all_above.begin(), all_above.begin() + index + 1);
@@ -406,7 +415,10 @@ void Sampler<ModelType>::do_bookkeeping()
 			Level::renormalise_visits(levels, static_cast<int>(reg));
 			all_above.clear();
             options.max_num_levels = levels.size();
-            std::cout<<"# Done creating levels."<<std::endl;
+
+			if (!progress_bar) {
+				std::cout<<"# Done creating levels."<<std::endl;
+			}
 		}
 		else
 		{
@@ -548,8 +560,13 @@ void Sampler<ModelType>::save_particle()
 	if(!save_to_disk)
 		return;
 
-	if(count_saves % thin_print == 0)
-		std::cout<<"# Saving particle to disk. N = "<<count_saves<<"."<<std::endl;
+	if (progress_bar) {
+		bar.update();
+	}
+	else {
+		if(count_saves % thin_print == 0)
+			std::cout<<"# Saving particle to disk. N = "<<count_saves<<"."<<std::endl;
+	}
 
 	// Output file
 	std::fstream fout;
@@ -618,9 +635,11 @@ void Sampler<ModelType>::kill_lagging_particles()
 				level_assignments[i] = level_assignments[i_copy];
 				++deletions;
 
-				std::cout<<"# Replacing lagging particle.";
-				std::cout<<" This has happened "<<deletions;
-				std::cout<<" times."<<std::endl;
+				if (!progress_bar) {
+					std::cout<<"# Replacing lagging particle.";
+					std::cout<<" This has happened "<<deletions;
+					std::cout<<" times."<<std::endl;
+				}
 			}
 		}
 	}
