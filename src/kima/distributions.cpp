@@ -503,14 +503,14 @@ NB_MODULE(distributions, m)
     // Uniform.cpp
     nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform")
         .def(nb::init<double, double>(), "lower"_a, "upper"_a, R"D(
-        "Uniform distribution in [lower, upper]
+        Uniform distribution in [lower, upper]
 
         Args:
             lower (float): lower bound
             upper (float): upper bound
         )D")
-        .def_rw("lower", &DNest4::Uniform::lower)
-        .def_rw("upper", &DNest4::Uniform::upper)
+        .def_rw("lower", &DNest4::Uniform::lower, "lower bound")
+        .def_rw("upper", &DNest4::Uniform::upper, "upper bound")
         .def("__repr__", [](const DNest4::Uniform &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Uniform::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Uniform::cdf_inverse, "q"_a, PPF_DOC)
