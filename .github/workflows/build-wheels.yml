@@ -6,12 +6,12 @@ on:
 jobs:
 
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: wheels on ${{ matrix.os }} py ${{ matrix.py }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        py: [cp39]
+        py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
       - uses: actions/checkout@v5
@@ -33,7 +33,7 @@ jobs:
       # #   run: |
       # #     python metadata_tilde.py wheel
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
@@ -51,7 +51,7 @@ jobs:
         run: |
           python metadata_tilde.py dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
