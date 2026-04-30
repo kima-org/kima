@@ -34,9 +34,9 @@ void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVData& RV_data)
     conditional->set_default_priors(GAIA_data, RV_data);
 }
 
-void RVGAIAmodel::set_background_solution(size_t n)
+void RVGAIAmodel::set_baseline_model(size_t n)
 {
-    n_background_params = n;
+    n_baseline_params = n;
     if (n==5){
         acceleration = false;
         jerk = false;
@@ -50,14 +50,14 @@ void RVGAIAmodel::set_background_solution(size_t n)
         jerk = true;
     }
     else {
-        throw std::logic_error("When setting a background solution please choose one of 5 (standard), 7 (+  (+jerk) for the number of parameters.");
+        throw std::logic_error("When setting an astrometric baseline solution please choose one of 5 (standard), 7 (+ acceleration) or 9 (+ jerk) for the number of parameters.");
     }
 }
 
-void RVGAIAmodel::set_al_scan_bias(size_t n)
+void RVGAIAmodel::set_scan_dep_signal(size_t n)
 {
-    al_scan_bias = true;
-    al_scan_bias_components = n;
+    scan_dep_signal = true;
+    n_scan_dep_components = n;
 
     Ak.resize(n);
     thetak.resize(n);
@@ -188,9 +188,9 @@ void RVGAIAmodel::from_prior(RNG& rng)
     
     jitter_GAIA = J_GAIA_prior->generate(rng);
 
-    if (al_scan_bias)
+    if (scan_dep_signal)
     {
-        for (int i=0; i<al_scan_bias_components; i++){
+        for (int i=0; i<n_scan_dep_components; i++){
             Ak[i] = Ak_prior[i]->generate(rng);
             thetak[i] = thetak_prior[i]->generate(rng);
         }
@@ -342,8 +342,8 @@ void RVGAIAmodel::calculate_mu()
             add_known_object();
         }
 
-        if (al_scan_bias) {
-            for (int j=0; j<al_scan_bias_components; j++){
+        if (scan_dep_signal) {
+            for (int j=0; j<n_scan_dep_components; j++){
                 for(size_t i=0; i<mu_GAIA.size(); i++){
                     mu_GAIA[i] += Ak[j] * cos((j*2 + 3)*(GAIA_data.psi[i] - thetak[j]));
                 }
@@ -615,8 +615,8 @@ double RVGAIAmodel::perturb(RNG& rng)
 
         }
 
-        if (al_scan_bias) {
-            for (int j=0; j<al_scan_bias_components; j++){
+        if (scan_dep_signal) {
+            for (int j=0; j<n_scan_dep_components; j++){
                 for(size_t i=0; i<mu_GAIA.size(); i++){
                     mu_GAIA[i] -= Ak[j] * cos((j*2 + 3)*(GAIA_data.psi[i] - thetak[j]));
                 }
@@ -902,7 +902,7 @@ void RVGAIAmodel::print(std::ostream& out) const
     out.precision(8);
 
     //auto data = get_data();
-    if (al_scan_bias){
+    if (scan_dep_signal){
         for (auto A: Ak) out << A << "\t";
         for (auto theta: thetak) out << theta << "\t";
     }
@@ -984,10 +984,10 @@ string RVGAIAmodel::description() const
     }
 
     //auto data = get_data();
-    if (al_scan_bias){
-        for (int i=0; i<al_scan_bias_components; i++)
+    if (scan_dep_signal){
+        for (int i=0; i<n_scan_dep_components; i++)
             desc += "A"+std::to_string(i*2 + 3) + sep;
-        for (int i=0; i<al_scan_bias_components; i++)
+        for (int i=0; i<n_scan_dep_components; i++)
             desc += "theta"+std::to_string(i*2 + 3) + sep;
     }
 
@@ -1143,9 +1143,9 @@ void RVGAIAmodel::save_setup() {
         fout << "Omegaprior: " << *conditional->Omegaprior << endl;
     }
 
-    if (al_scan_bias){
-        fout << endl << "[priors.al_scan_bias]" << endl;
-        for(int i=0; i<al_scan_bias_components; i++){
+    if (scan_dep_signal){
+        fout << endl << "[priors.scan_dep_signal]" << endl;
+        for(int i=0; i<n_scan_dep_components; i++){
             fout << "Ak_prior_" << i << ": " << *Ak_prior[i] << endl;
             fout << "thetak_prior_" << i << ": " << *thetak_prior[i] << endl;
         }
@@ -1253,17 +1253,17 @@ NB_MODULE(RVGAIAmodel, m) {
         .def_rw("indicator_correlations", &RVGAIAmodel_publicist::indicator_correlations, 
                 "include in the model linear correlations with indicators")
 
-        .def("set_al_scan_bias", &RVGAIAmodel::set_al_scan_bias,
+        .def("set_scan_dep_signal", &RVGAIAmodel::set_scan_dep_signal,
                 "set whether the model includes a model for potential scan-angle dependent signals")
-        .def_prop_ro("al_scan_bias", [](RVGAIAmodel &m) { return m.get_al_scan_bias(); },
+        .def_prop_ro("scan_dep_signal", [](RVGAIAmodel &m) { return m.get_scan_dep_signal(); },
                      "whether the model includes a model for potential scan-angle dependent signals that could bias towards certain frequencies")
-        .def_prop_ro("n_al_scan_componenets", [](RVGAIAmodel &m) { return m.get_al_scan_bias_components(); },
+        .def_prop_ro("n_scan_dep_components", [](RVGAIAmodel &m) { return m.get_n_scan_dep_components(); },
                      "how many components of scan-angle harmonics are included")
 
-        .def("set_background_solution", &RVGAIAmodel::set_background_solution,
-                "set the number of parameters for the background astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
-        .def_prop_ro("n_background_params", [](RVGAIAmodel &m) { return m.get_n_background_params(); },
-                "how many background astrometric parameters are included the model")
+        .def("set_baseline_model", &RVGAIAmodel::set_baseline_model,
+                "set the number of parameters for the baseline astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
+        .def_prop_ro("n_baseline_params", [](RVGAIAmodel &m) { return m.get_n_baseline_params(); },
+                "how many baseline astrometric parameters are included the model")
 
 
         // priors

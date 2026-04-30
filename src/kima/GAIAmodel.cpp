@@ -26,9 +26,9 @@ void GAIAmodel::initialize_from_data(GAIAdata& data)
     conditional->set_default_priors(data);
 }
 
-void GAIAmodel::set_background_solution(size_t n)
+void GAIAmodel::set_baseline_model(size_t n)
 {
-    n_background_params = n;
+    n_baseline_params = n;
     if (n==5){
         acceleration = false;
         jerk = false;
@@ -42,14 +42,14 @@ void GAIAmodel::set_background_solution(size_t n)
         jerk = true;
     }
     else {
-        throw std::logic_error("When setting a background solution please choose one of 5 (standard), 7 (+  (+jerk) for the number of parameters.");
+        throw std::logic_error("When setting a baseline solution please choose one of 5 (standard), 7 (+acceleration) or 9 (+jerk) for the number of parameters.");
     }
 }
 
-void GAIAmodel::set_al_scan_bias(size_t n)
+void GAIAmodel::set_scan_dep_signal(size_t n)
 {
-    al_scan_bias = true;
-    al_scan_bias_components = n;
+    scan_dep_signal = true;
+    n_scan_dep_components = n;
 
     Ak.resize(n);
     thetak.resize(n);
@@ -93,9 +93,9 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (!Jprior)
         Jprior = make_prior<ModifiedLogUniform>(0.01,10.);
 
-    if (al_scan_bias)
+    if (scan_dep_signal)
     {
-        for (int i = 0; i < al_scan_bias_components; i++)
+        for (int i = 0; i < n_scan_dep_components; i++)
         {
             if (!Ak_prior[i])
                 Ak_prior[i] = make_prior<ModifiedLogUniform>(0.05,10.);
@@ -156,9 +156,9 @@ void GAIAmodel::from_prior(RNG& rng)
     
     jitter = Jprior->generate(rng);
 
-    if (al_scan_bias)
+    if (scan_dep_signal)
     {
-        for (int i=0; i<al_scan_bias_components; i++){
+        for (int i=0; i<n_scan_dep_components; i++){
             Ak[i] = Ak_prior[i]->generate(rng);
             thetak[i] = thetak_prior[i]->generate(rng);
         }
@@ -246,8 +246,8 @@ void GAIAmodel::calculate_mu()
             add_known_object();
         }
 
-        if (al_scan_bias) {
-            for (int j=0; j<al_scan_bias_components; j++){
+        if (scan_dep_signal) {
+            for (int j=0; j<n_scan_dep_components; j++){
                 for(size_t i=0; i<mu.size(); i++){
                     mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
                 }
@@ -354,7 +354,7 @@ double GAIAmodel::perturb(RNG& rng)
     if (known_object){
         prob_add += 0.2;
     }
-    if (al_scan_bias){
+    if (scan_dep_signal){
         prob_add +=0.2;
     }
 
@@ -390,8 +390,8 @@ double GAIAmodel::perturb(RNG& rng)
             add_known_object();
         }
 
-        if (al_scan_bias) {
-            for (int j=0; j<al_scan_bias_components; j++){
+        if (scan_dep_signal) {
+            for (int j=0; j<n_scan_dep_components; j++){
                 for(size_t i=0; i<mu.size(); i++){
                     mu[i] -= Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
                 }
@@ -404,7 +404,7 @@ double GAIAmodel::perturb(RNG& rng)
         }
         
     }
-    else //perturb background solution
+    else //perturb baseline solution
     {
         //subtract 5-parameter solution
         for(size_t i=0; i<mu.size(); i++)
@@ -544,7 +544,7 @@ void GAIAmodel::print(std::ostream& out) const
     out.precision(8);
 
     //auto data = get_data();
-    if (al_scan_bias){
+    if (scan_dep_signal){
         for (auto A: Ak) out << A << "\t";
         for (auto theta: thetak) out << theta << "\t";
     }
@@ -592,10 +592,10 @@ string GAIAmodel::description() const
     }
 
     //auto data = get_data();
-    if (al_scan_bias){
-        for (int i=0; i<al_scan_bias_components; i++)
+    if (scan_dep_signal){
+        for (int i=0; i<n_scan_dep_components; i++)
             desc += "A"+std::to_string(i*2 + 3) + sep;
-        for (int i=0; i<al_scan_bias_components; i++)
+        for (int i=0; i<n_scan_dep_components; i++)
             desc += "theta"+std::to_string(i*2 + 3) + sep;
     }
 
@@ -731,9 +731,9 @@ void GAIAmodel::save_setup() {
         }
     }
 
-    if (al_scan_bias){
-        fout << endl << "[priors.al_scan_bias]" << endl;
-        for(int i=0; i<al_scan_bias_components; i++){
+    if (scan_dep_signal){
+        fout << endl << "[priors.scan_dep_signal]" << endl;
+        for(int i=0; i<n_scan_dep_components; i++){
             fout << "Ak_prior_" << i << ": " << *Ak_prior[i] << endl;
             fout << "thetak_prior_" << i << ": " << *thetak_prior[i] << endl;
         }
@@ -814,17 +814,17 @@ NB_MODULE(GAIAmodel, m) {
         .def_rw("DEC", &GAIAmodel_publicist::DEC,
                 "Declination of the target star (degrees)")
 
-        .def("set_al_scan_bias", &GAIAmodel::set_al_scan_bias,
+        .def("set_scan_dep_signal", &GAIAmodel::set_scan_dep_signal,
                 "set whether the model includes a model for potential scan-angle dependent signals")
-        .def_prop_ro("al_scan_bias", [](GAIAmodel &m) { return m.get_al_scan_bias(); },
+        .def_prop_ro("scan_dep_signal", [](GAIAmodel &m) { return m.get_scan_dep_signal(); },
                      "whether the model includes a model for potential scan-angle dependent signals that could bias towards certain frequencies")
-        .def_prop_ro("n_al_scan_componenets", [](GAIAmodel &m) { return m.get_al_scan_bias_components(); },
+        .def_prop_ro("n_scan_dep_components", [](GAIAmodel &m) { return m.get_n_scan_dep_components(); },
                      "how many components of scan-angle harmonics are included")
 
-        .def("set_background_solution", &GAIAmodel::set_background_solution,
-                "set the number of parameters for the background astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
-        .def_prop_ro("n_background_params", [](GAIAmodel &m) { return m.get_n_background_params(); },
-                "how many background astrometric parameters are included the model")
+        .def("set_baseline_model", &GAIAmodel::set_baseline_model,
+                "set the number of parameters for the baseline astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
+        .def_prop_ro("n_baseline_params", [](GAIAmodel &m) { return m.get_n_baseline_params(); },
+                "how many baseline astrometric parameters are included the model")
 //         //KO mode
 //         .def_rw("known_object", &GAIAmodel_publicist::known_object,
 //                 "whether to include (better) known extra Keplerian curve(s)")

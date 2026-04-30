@@ -105,14 +105,14 @@ class KIMA_API GAIAmodel
         /// prior for student-t degree of freedom
         distribution nu_prior;
 
-        ///Whether to include a model of the along-scan bias from a close binary (see Holl et al. 2023)
-        bool al_scan_bias {false};
-        bool get_al_scan_bias() { return al_scan_bias; }
-        ///number of components of the al_scan bias model up to 3?
-        size_t al_scan_bias_components {0};
-        size_t get_al_scan_bias_components() { return al_scan_bias_components; }
+        ///Whether to include a model of the scan-angle dependent signal from a close binary (see Holl et al. 2023)
+        bool scan_dep_signal {false};
+        bool get_scan_dep_signal() { return scan_dep_signal; }
+        ///number of components of the scan-angle dependent signal model up to 3?
+        size_t n_scan_dep_components {0};
+        size_t get_n_scan_dep_components() { return n_scan_dep_components; }
         /// set the number of components
-        void set_al_scan_bias(size_t al_scan_bias_components);
+        void set_scan_dep_signal(size_t n_scan_dep_components);
 
 
         std::vector<distribution> Ak_prior;
@@ -121,9 +121,9 @@ class KIMA_API GAIAmodel
         ///Whether to use an acceleration solution (i.e. 7-parameter or 9-parameter rather than the default 5-parameter solution)
         bool acceleration {false};
         bool jerk {false};
-        size_t n_background_params {5};
-        size_t get_n_background_params() { return n_background_params; }
-        void set_background_solution(size_t n_background_params);
+        size_t n_baseline_params {5};
+        size_t get_n_baseline_params() { return n_baseline_params; }
+        void set_baseline_model(size_t n_baseline_params);
         
         distribution accela_prior;
         distribution acceld_prior;
