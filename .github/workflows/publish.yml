@@ -8,22 +8,24 @@ on:
 jobs:
 
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: wheels on ${{ matrix.os }} py ${{ matrix.py }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
       - uses: actions/checkout@v5
 
-      # - name: Build wheels
-      #   uses: pypa/cibuildwheel@v3.3.1
-      #   env:
-      #     # Skip 32-bit builds, musllinux builds, and disable building PyPy wheels on all platforms
-      #     CIBW_SKIP: "*-win32 *-manylinux_i686 *musllinux* pp*"
-      #     # Needed for full C++17 support
-      #     CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        env:
+          CIBW_BUILD: ${{ matrix.py }}*
+          # # Skip 32-bit builds, musllinux builds, and disable building PyPy wheels on all platforms
+          # CIBW_SKIP: "*-win32 *-manylinux_i686 *musllinux* pp*"
+          # Needed for full C++17 support
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
 
       # # - uses: actions/setup-python@v5
       # #   with:
@@ -33,10 +35,10 @@ jobs:
       # #   run: |
       # #     python metadata_tilde.py wheel
 
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-      #     path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
 
   build_sdist:
     name: Build source distribution
@@ -51,7 +53,7 @@ jobs:
         run: |
           python metadata_tilde.py dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
@@ -67,13 +69,14 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           # unpacks all CIBW artifacts into dist/
           pattern: cibw-*
           path: dist
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         # with:
         #   repository-url: https://test.pypi.org/legacy/
