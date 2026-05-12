@@ -47,9 +47,8 @@ add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
 
 
 # import Python components needed by nanobind
-find_package(Python 3.8
-REQUIRED COMPONENTS Interpreter Development.Module
-OPTIONAL_COMPONENTS Development.SABIModule)
+find_package(Python 3.9
+  REQUIRED COMPONENTS Interpreter Development.Module)
 
 # import nanobind
 find_package(nanobind CONFIG REQUIRED)
@@ -63,11 +62,13 @@ set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH})
 set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
 
-set(COMMON_UNITS src/kima/Data.cpp src/kima/ConditionalPrior.cpp 
-                 src/kima/default_priors.cpp
-                 src/kima/kepler.cpp src/kima/postkepler.cpp src/kima/AMDstability.cpp src/kima/kmath.cpp)
+set(COMMON_UNITS src/kima/ConditionalPrior.cpp)
 
-set(GP_UNITS src/kima/GP.cpp src/kima/bessel-library.cpp)
+# add_library(common_objects OBJECT ${COMMON_UNITS})
+# target_compile_features(common_objects PRIVATE cxx_std_17)
+# target_include_directories(common_objects PRIVATE ${INCLUDES})
+# target_include_directories(common_objects PRIVATE ${NB_DIR}/include)
+# target_include_directories(common_objects PRIVATE ${Python_INCLUDE_DIRS})
 
 set(DISTRIBUTION_UNITS 
     src/kima/distributions/InverseGamma.cpp
@@ -78,72 +79,116 @@ set(DISTRIBUTION_UNITS
     src/kima/distributions/PowerLaw.cpp
     src/kima/distributions/Sine.cpp)
 
-set(COMMON_UNITS ${COMMON_UNITS} ${DISTRIBUTION_UNITS})
+# set(COMMON_UNITS ${COMMON_UNITS} ${DISTRIBUTION_UNITS})
 
 # compile the extension modules
 # this will make them available as kima.module
 
-nanobind_add_module(kmath STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(kmath NB_STATIC NB_DOMAIN kima 
                     src/kima/kmath.cpp)
 
-nanobind_add_module(distributions STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/distributions.cpp ${DISTRIBUTION_UNITS})
+add_library(distribution_objects OBJECT ${DISTRIBUTION_UNITS})
+target_compile_features(distribution_objects PRIVATE cxx_std_17)
+target_include_directories(distribution_objects PRIVATE ${INCLUDES})
 
-nanobind_add_module(default_priors STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/default_priors.cpp src/kima/Data.cpp ${DISTRIBUTION_UNITS})
+add_library(common_objects OBJECT 
+            src/kima/Data.cpp src/kima/kepler.cpp src/kima/postkepler.cpp
+            src/kima/AMDstability.cpp src/kima/kmath.cpp
+            src/kima/default_priors.cpp)
+target_compile_features(common_objects PRIVATE cxx_std_17)
+target_include_directories(common_objects PRIVATE ${INCLUDES})
+target_include_directories(common_objects PRIVATE ${NB_DIR}/include)
+target_include_directories(common_objects PRIVATE ${Python_INCLUDE_DIRS})
 
-nanobind_add_module(Data STABLE_ABI NB_STATIC NB_DOMAIN kima
+add_library(conditional OBJECT src/kima/ConditionalPrior.cpp)
+target_compile_features(conditional PRIVATE cxx_std_17)
+target_include_directories(conditional PRIVATE ${INCLUDES})
+target_include_directories(conditional PRIVATE ${NB_DIR}/include)
+target_include_directories(conditional PRIVATE ${Python_INCLUDE_DIRS})
+
+
+add_library(gp_objects OBJECT src/kima/GP.cpp src/kima/bessel-library.cpp)
+target_compile_features(gp_objects PRIVATE cxx_std_17)
+target_include_directories(gp_objects PRIVATE ${INCLUDES_SPLEAF})
+target_include_directories(gp_objects PRIVATE ${NB_DIR}/include)
+target_include_directories(gp_objects PRIVATE ${Python_INCLUDE_DIRS})
+
+nanobind_add_module(distributions NB_STATIC NB_DOMAIN kima 
+                    src/kima/distributions.cpp
+                    $<TARGET_OBJECTS:distribution_objects>)
+
+nanobind_add_module(default_priors NB_STATIC NB_DOMAIN kima 
+                    src/kima/default_priors.cpp src/kima/Data.cpp
+                    $<TARGET_OBJECTS:distribution_objects>)
+
+nanobind_add_module(Data NB_STATIC NB_DOMAIN kima
                     src/kima/Data.cpp)
 
-nanobind_add_module(ConditionalPrior STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    ${COMMON_UNITS})
+# target_link_directories(common_objects PRIVATE ${Python_SABI_LIBRARY_DIRS})
+# target_link_libraries(common_objects PRIVATE dnest4)
+
+nanobind_add_module(ConditionalPrior NB_STATIC NB_DOMAIN kima 
+                    src/kima/ConditionalPrior.cpp 
+                    $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
 # different models, with their corresponding dependencies
-nanobind_add_module(RVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(RVmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/RVmodel.cpp 
+                    $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:distribution_objects>)
+# nanobind_add_stub(RVmodel_stub MODULE kima.RVmodel OUTPUT RVmodel.pyi DEPENDS RVmodel)
 
-nanobind_add_module(OutlierRVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/OutlierRVmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(OutlierRVmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/OutlierRVmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(TRANSITmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/TRANSITmodel.cpp 
-                    ${COMMON_UNITS} src/kima/transits.cpp)
+nanobind_add_module(TRANSITmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/TRANSITmodel.cpp src/kima/transits.cpp
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(GPmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/GPmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
+nanobind_add_module(GPmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/GPmodel.cpp $<TARGET_OBJECTS:conditional> 
+                    $<TARGET_OBJECTS:gp_objects> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(SPLEAFmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/SPLEAFmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
+nanobind_add_module(SPLEAFmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/SPLEAFmodel.cpp $<TARGET_OBJECTS:conditional> 
+                    $<TARGET_OBJECTS:gp_objects> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(RVFWHMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
+nanobind_add_module(RVFWHMmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/RVFWHMmodel.cpp $<TARGET_OBJECTS:conditional> 
+                    $<TARGET_OBJECTS:gp_objects> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(RVFWHMRHKmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVFWHMRHKmodel.cpp ${COMMON_UNITS} ${GP_UNITS})
+nanobind_add_module(RVFWHMRHKmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/RVFWHMRHKmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>
+                    $<TARGET_OBJECTS:gp_objects>)
 
-nanobind_add_module(BINARIESmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/BINARIESmodel.cpp 
-                    ${COMMON_UNITS} src/kima/postkepler.cpp)
+nanobind_add_module(BINARIESmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/BINARIESmodel.cpp
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
                     
-nanobind_add_module(GAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/GAIAmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(GAIAmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/GAIAmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
                     
-nanobind_add_module(RVGAIAmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
+nanobind_add_module(RVGAIAmodel NB_STATIC NB_DOMAIN kima
                     src/kima/RVGAIAmodel.cpp
-                    ${COMMON_UNITS} src/kima/postkepler.cpp)
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
                     
-nanobind_add_module(ETVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/ETVmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(ETVmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/ETVmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(ApodizedRVmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/ApodizedRVmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(ApodizedRVmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/ApodizedRVmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
-nanobind_add_module(RVHGPMmodel STABLE_ABI NB_STATIC NB_DOMAIN kima
-                    src/kima/RVHGPMmodel.cpp ${COMMON_UNITS})
+nanobind_add_module(RVHGPMmodel NB_STATIC NB_DOMAIN kima
+                    src/kima/RVHGPMmodel.cpp 
+                    $<TARGET_OBJECTS:conditional> $<TARGET_OBJECTS:common_objects> $<TARGET_OBJECTS:distribution_objects>)
 
 
 # compile the Sampler module to create the kima.run function
-nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
+nanobind_add_module(Sampler NB_STATIC NB_DOMAIN kima
                     src/kima/run.cpp
                     src/kima/RVmodel.cpp
                     src/kima/OutlierRVmodel.cpp
@@ -159,10 +204,10 @@ nanobind_add_module(Sampler STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/ApodizedRVmodel.cpp
                     src/kima/RVHGPMmodel.cpp
                     ${COMMON_UNITS}
-                    src/kima/postkepler.cpp 
                     src/kima/transits.cpp
-                    ${GP_UNITS}
-                    ${DISTRIBUTION_UNITS}
+                    $<TARGET_OBJECTS:common_objects> 
+                    $<TARGET_OBJECTS:gp_objects> 
+                    $<TARGET_OBJECTS:distribution_objects>
                     )
 
 
@@ -177,9 +222,10 @@ target_compile_features(postkepler PRIVATE cxx_std_17)
 nanobind_add_module(AMDstability STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/AMDstability.cpp)
 target_compile_features(AMDstability PRIVATE cxx_std_17)
+target_include_directories(AMDstability PRIVATE ${INCLUDES})
 
 nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    ${GP_UNITS})
+                    src/kima/GP.cpp src/kima/bessel-library.cpp)
 target_compile_features(GP PRIVATE cxx_std_17)
 
 nanobind_add_module(transits STABLE_ABI NB_STATIC NB_DOMAIN kima 
@@ -218,18 +264,31 @@ target_link_libraries(Sampler PRIVATE libspleaf)
 
 
 # install directives for scikit-build-core
-foreach(module kmath distributions default_priors kepler postkepler GP transits AMDstability)
-  install(TARGETS ${module} LIBRARY DESTINATION kima)  
-endforeach()
+install(TARGETS distributions    LIBRARY DESTINATION kima)
+install(TARGETS default_priors   LIBRARY DESTINATION kima)
+install(TARGETS kmath            LIBRARY DESTINATION kima)  
+install(TARGETS kepler           LIBRARY DESTINATION kima)
+install(TARGETS postkepler       LIBRARY DESTINATION kima)
+install(TARGETS GP               LIBRARY DESTINATION kima)
+install(TARGETS transits         LIBRARY DESTINATION kima)
+install(TARGETS AMDstability     LIBRARY DESTINATION kima)
+install(TARGETS Data             LIBRARY DESTINATION kima)
+install(TARGETS ConditionalPrior LIBRARY DESTINATION kima)
+install(TARGETS RVmodel          LIBRARY DESTINATION kima)
+install(TARGETS GPmodel          LIBRARY DESTINATION kima)
+install(TARGETS RVFWHMmodel      LIBRARY DESTINATION kima)
+install(TARGETS TRANSITmodel     LIBRARY DESTINATION kima)
+install(TARGETS RVHGPMmodel      LIBRARY DESTINATION kima)
+install(TARGETS RVFWHMRHKmodel   LIBRARY DESTINATION kima)
+install(TARGETS SPLEAFmodel      LIBRARY DESTINATION kima)
+install(TARGETS BINARIESmodel    LIBRARY DESTINATION kima)
+install(TARGETS GAIAmodel        LIBRARY DESTINATION kima)
+install(TARGETS RVGAIAmodel      LIBRARY DESTINATION kima)
+install(TARGETS ETVmodel         LIBRARY DESTINATION kima)
+install(TARGETS OutlierRVmodel   LIBRARY DESTINATION kima)
+install(TARGETS ApodizedRVmodel  LIBRARY DESTINATION kima)
+install(TARGETS Sampler          LIBRARY DESTINATION kima)
 
-foreach(module Data ConditionalPrior)
-  install(TARGETS ${module} LIBRARY DESTINATION kima)  
-endforeach()
-
-foreach(module RVmodel OutlierRVmodel ApodizedRVmodel RVHGPMmodel TRANSITmodel 
-        GPmodel RVFWHMmodel RVFWHMRHKmodel SPLEAFmodel
-        BINARIESmodel GAIAmodel RVGAIAmodel ETVmodel)
-  install(TARGETS ${module} LIBRARY DESTINATION kima)  
-endforeach()
-
-install(TARGETS Sampler LIBRARY DESTINATION kima)
+# foreach(module distributions kepler GP Data RVmodel OutlierRVmodel ApodizedRVmodel RVHGPMmodel TRANSITmodel)
+#   nanobind_add_stub(${module}_stub MODULE kima.${module} OUTPUT ${module}.pyi DEPENDS ${module} INSTALL_TIME)
+# endforeach()
