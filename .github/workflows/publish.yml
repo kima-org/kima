@@ -8,15 +8,12 @@ on:
 jobs:
 
   build_wheels:
-    name: wheels on ${{ matrix.os }} ${{ matrix.py }}
+    name: wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-latest]
-        py: [cp312, cp313]
-        arch: [x86_64, arm64]
-        
-        # py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
       - uses: actions/checkout@v5
@@ -24,16 +21,15 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
-          CIBW_BUILD: ${{ matrix.py }}*
-          CIBW_ARCHS: ${{ matrix.arch }}
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
+          # CIBW_BUILD: ${{ matrix.py }}*
+          # CIBW_ARCHS: ${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v7
         with:
-          # name: cibw-wheels-${{ matrix.os }}-${{ matrix.py }}-${{ matrix.arch }}
+          name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
-          archive: false
 
   build_sdist:
     name: Build source distribution
@@ -50,9 +46,9 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          # name: cibw-sdist
+          name: sdist
           path: dist/*.tar.gz
-          archive: false
+
 
   upload_pypi:
     name: Upload to PyPI
@@ -67,15 +63,20 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          # pattern: cibw-*
           path: dist
 
       - name: Test downloaded artifacts
         run: |
-          ls dist
+          ls dist/*
+
+      - name: Flatten artifact directories
+        run: |
+          mkdir final_dist
+          find dist -name "*.whl" -exec cp {} final_dist/ \;
+          find dist -name "*.tar.gz" -exec cp {} final_dist/ \;
 
       - name: Check 
-        run: pipx run twine check dist/*.whl --strict
+        run: pipx run twine check final_dist/*.whl --strict
 
       # - name: Publish package distributions to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
