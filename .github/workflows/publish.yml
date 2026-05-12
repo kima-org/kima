@@ -31,8 +31,9 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: cibw-wheels-${{ matrix.os }}-${{ matrix.py }}-${{ matrix.arch }}
+          # name: cibw-wheels-${{ matrix.os }}-${{ matrix.py }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
+          archive: false
 
   build_sdist:
     name: Build source distribution
@@ -49,8 +50,9 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: cibw-sdist
+          # name: cibw-sdist
           path: dist/*.tar.gz
+          archive: false
 
   upload_pypi:
     name: Upload to PyPI
@@ -65,14 +67,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: cibw-*
+          # pattern: cibw-*
           path: dist
 
       - name: Test downloaded artifacts
         run: |
-          ls dist
-          mv dist/*.whl .
-          mv dist/*.tar.gz .
           ls dist
 
       - name: Check 
