@@ -12,8 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        py: [cp39, cp310, cp311, cp312, cp313, cp314]
+        os: [macos-latest]
+        py: [cp39]
+        # py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
       - uses: actions/checkout@v5
@@ -36,17 +37,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # - name: Build sdist
-      #   run: pipx run build --sdist
+      - name: Build sdist
+        run: pipx run build --sdist
 
-      # - name: Tilde
-      #   run: |
-      #     python metadata_tilde.py dist
+      - name: Tilde
+        run: |
+          python metadata_tilde.py dist
 
-      # - uses: actions/upload-artifact@v7
-      #   with:
-      #     name: cibw-sdist
-      #     path: dist/*.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
 
   upload_pypi:
     name: Upload to PyPI
@@ -63,9 +64,12 @@ jobs:
         with:
           pattern: cibw-*
           path: dist
-          merge-multiple: false
+          merge-multiple: true
+      
+      - name: Test downloaded artifacts
+        run: ls dist
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        # with:
-        #   repository-url: https://test.pypi.org/legacy/
+      # - name: Publish package distributions to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   # with:
+      #   #   repository-url: https://test.pypi.org/legacy/
