@@ -68,7 +68,9 @@ jobs:
 
       
       - name: Test downloaded artifacts
-        run: ls dist
+        run: |
+          ls dist
+          unzip dist/*
 
       - name: Check 
         run: pipx run twine check dist/*.whl --strict
