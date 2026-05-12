@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        py: [cp311, cp312]
 
     steps:
       - uses: actions/checkout@v5
@@ -21,13 +22,13 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
-          CIBW_BUILD: "cp312-*"
+          CIBW_BUILD: "${{ matrix.py }}-*"
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
 
       - uses: actions/upload-artifact@v7
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-${{ matrix.os }}-${{ matrix.py }}
           path: wheelhouse/*.whl
 
   build_sdist:
@@ -80,5 +81,6 @@ jobs:
 
       # - name: Publish package distributions to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   # with:
-      #   #   repository-url: https://test.pypi.org/legacy/
+      #   with:
+      #     packages-dir: final_dist
+      #     # repository-url: https://test.pypi.org/legacy/
