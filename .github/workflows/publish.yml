@@ -29,7 +29,7 @@ jobs:
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ matrix.py }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -70,6 +70,9 @@ jobs:
 
       - name: Test downloaded artifacts
         run: |
+          ls dist
+          mv dist/*.whl .
+          mv dist/*.tar.gz .
           ls dist
 
       - name: Check 
