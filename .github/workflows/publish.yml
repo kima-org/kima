@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        py: [cp311]
+        py: [cp312, cp313]
         # py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
@@ -68,6 +68,9 @@ jobs:
       
       - name: Test downloaded artifacts
         run: ls dist
+
+      - name: Check 
+        run: pipx run twine check dist --strict
 
       # - name: Publish package distributions to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
