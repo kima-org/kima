@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v5
@@ -21,10 +21,9 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
+          CIBW_BUILD: "cp312-*"
           # Needed for full C++17 support
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET='10.15'
-          # CIBW_BUILD: ${{ matrix.py }}*
-          # CIBW_ARCHS: ${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v7
         with:
@@ -74,6 +73,7 @@ jobs:
           mkdir final_dist
           find dist -name "*.whl" -exec cp {} final_dist/ \;
           find dist -name "*.tar.gz" -exec cp {} final_dist/ \;
+          ls final_dist
 
       - name: Check 
         run: pipx run twine check final_dist/*.whl --strict
