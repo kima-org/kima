@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [macos-latest]
         py: [cp312, cp313]
         # py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
@@ -64,13 +64,14 @@ jobs:
         with:
           pattern: cibw-*
           path: dist
-          merge-multiple: true
+          skip-decompress: true
+
       
       - name: Test downloaded artifacts
         run: ls dist
 
       - name: Check 
-        run: pipx run twine check dist --strict
+        run: pipx run twine check dist/*.whl --strict
 
       # - name: Publish package distributions to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
