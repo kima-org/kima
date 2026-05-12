@@ -29,7 +29,9 @@ NB_MODULE(distributions, m)
         .def(nb::init<unsigned int>(), "seed"_a)
         // 
         .def("rand", &DNest4::RNG::rand, "Uniform(0, 1)")
-        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N+1); }, "IntegerUniform(0, N)");
+        .def("randh", &DNest4::RNG::randh, "Brendon's heavy-tailed distribution")
+        .def("rand_int", [](DNest4::RNG& rng, int N){ return rng.rand_int(N+1); }, "IntegerUniform(0, N)")
+        .def_static("wrap", [](double x, double a, double b){ DNest4::wrap(x, a, b); return x; }, "Wrap a number to the range [a, b]");
         //.def("rand_int", [](DNest4::RNG& rng, int L, int U){ return rng.rand_int(L, U); });
     //
     nb::class_<DNest4::ContinuousDistribution>(m, "Distribution");
@@ -501,14 +503,14 @@ NB_MODULE(distributions, m)
     // Uniform.cpp
     nb::class_<DNest4::Uniform, DNest4::ContinuousDistribution>(m, "Uniform")
         .def(nb::init<double, double>(), "lower"_a, "upper"_a, R"D(
-        "Uniform distribution in [lower, upper]
+        Uniform distribution in [lower, upper]
 
         Args:
             lower (float): lower bound
             upper (float): upper bound
         )D")
-        .def_rw("lower", &DNest4::Uniform::lower)
-        .def_rw("upper", &DNest4::Uniform::upper)
+        .def_rw("lower", &DNest4::Uniform::lower, "lower bound")
+        .def_rw("upper", &DNest4::Uniform::upper, "upper bound")
         .def("__repr__", [](const DNest4::Uniform &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Uniform::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Uniform::cdf_inverse, "q"_a, PPF_DOC)
@@ -533,25 +535,6 @@ NB_MODULE(distributions, m)
         // for pickling
         .def("__getstate__", [](const DNest4::UniformAngle &d) { return 0; })
         .def("__setstate__", [](DNest4::UniformAngle &d, const int &state) { new (&d) DNest4::UniformAngle(); });
-
-    // nb::class_<DNest4::UniformInt, DNest4::DiscreteDistribution>(m, "UniformInt", "Uniform distribution in [lower, upper]")
-    //     .def(nb::init<int, int>(), "lower"_a, "upper"_a)
-    //     .def_rw("lower", &DNest4::UniformInt::lower)
-    //     .def_rw("upper", &DNest4::UniformInt::upper)
-    //     .def("__repr__", [](const DNest4::UniformInt &d){ std::ostringstream out; d.print(out); return out.str(); })
-    //     .def("cdf", &DNest4::UniformInt::cdf, "x"_a, CDF_DOC)
-    //     .def("ppf", &DNest4::UniformInt::cdf_inverse, "q"_a, PPF_DOC)
-    //     .def("logpdf", &DNest4::UniformInt::log_pdf, "x"_a, LOG_PDF_DOC)
-    //     // for pickling
-    //     .def("__getstate__",
-    //          [](const DNest4::UniformInt &d) { 
-    //             return std::make_tuple(d.lower, d.upper, 0.0, 0.0); 
-    //     })
-    //     .def("__setstate__",
-    //          [](DNest4::UniformInt &d, const _state_type &state) {
-    //             new (&d) DNest4::UniformInt(std::get<0>(state), std::get<1>(state));
-    //         }
-    //     );
 
 
     // InverseMoment
