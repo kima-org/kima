@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest]
-        py: [cp39]
+        os: [ubuntu-latest]
+        py: [cp311]
         # py: [cp39, cp310, cp311, cp312, cp313, cp314]
 
     steps:
