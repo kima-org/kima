@@ -1335,6 +1335,26 @@ Args:
     delimiter (str):
         Delimiter between columns
     indicators (list):
+        List of names for the indicator columns (should be present in all files)
+    double_lined (bool):
+        Whether the data is for a double-lined binary
+)D";
+
+auto RVData_DOC2 = R"D(
+Load RV data from a file.
+
+Args:
+    filename (str):
+        Name of the file to read
+    units (str):
+        Units of the data ('ms' or 'kms')
+    skip (int):
+        Number of lines to skip at the top of the file
+    max_rows (int):
+        Maximum number of rows to read
+    delimiter (str):
+        Delimiter between columns
+    indicators (list):
         List of names for the indicator columns
     double_lined (bool):
         Whether the data is for a double-lined binary
