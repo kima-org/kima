@@ -825,6 +825,28 @@ int RVData::get_trend_magnitude(int degree, int i) const
     }
 }
 
+double RVData::get_actind_min(size_t i) const
+{
+    auto NaNless = []( const auto &a, const auto &b )
+    {
+        if (std::isnan(b)) return true;  // NaN is greater than *any* non-NaN value
+        if (std::isnan(a)) return false; // *any* non-NaN value is less than NaN
+        return (a < b);
+    };
+    return *min_element(actind.at(i).begin(), actind.at(i).end(), NaNless);
+}
+
+double RVData::get_actind_max(size_t i) const
+{
+    auto NaNless = []( const auto &a, const auto &b )
+    {
+        if (std::isnan(b)) return false; // NaN is less than *any* non-NaN value
+        if (std::isnan(a)) return true;  // *any* non-NaN value is greater than NaN
+        return (a < b);
+    };
+    return *max_element(actind.at(i).begin(), actind.at(i).end(), NaNless);
+}
+
 double RVData::get_actind_mean(size_t i) const
 {
     auto ind = actind[i];
@@ -838,11 +860,20 @@ double RVData::get_actind_mean(size_t i) const
 
 double RVData::get_actind_var(size_t i) const
 {
-    double sum = accumulate(begin(actind[i]), end(actind[i]), 0.0);
-    double mean = sum / actind[i].size();
-    double accum = 0.0;
-    for_each(begin(actind[i]), end(actind[i]), [&](const double d) { accum += (d - mean) * (d - mean); });
-    return accum / (actind[i].size() - 1);
+    auto ind = actind[i];
+
+    size_t n = std::count_if(begin(ind), end(ind), [](double d) { return !std::isnan(d); });
+
+    double sum = std::accumulate(begin(ind), end(ind), 0.0,
+                                 [](double acc, double other) { return std::isnan(other) ? acc : acc + other; });
+    double mean = sum / n;
+
+    double accum = std::accumulate(begin(ind), end(ind), 0.0,
+                                   [mean](double acc, double other) {
+                                     return std::isnan(other) ? acc : acc + (other - mean) * (other - mean);
+                                   });
+
+    return accum / (n - 1);
 }
 
 // normalize activity indicators from 0 to 1
@@ -1434,26 +1465,19 @@ NB_MODULE(Data, m) {
         .def("get_RV_mean", &RVData::get_RV_mean, "Get the mean RV")
         .def("get_RV_var", &RVData::get_RV_var, "Get the variance of RVs")
         .def("get_RV_std", &RVData::get_RV_std, "Get the standard deviation of RVs")
+        // 
+        .def("get_actind_min", &RVData::get_actind_min, "Get the minimum value of activity indicator i")
+        .def("get_actind_max", &RVData::get_actind_max, "Get the maximum value of activity indicator i")
+        .def("get_actind_span", &RVData::get_actind_span, "Get the span of activity indicator i")
+        .def("get_actind_mean", &RVData::get_actind_mean, "Get the mean of activity indicator i")
+        .def("get_actind_var", &RVData::get_actind_var, "Get the variance of activity indicator i")
+        .def("get_actind_std", &RVData::get_actind_std, "Get the standard deviation of activity indicator i")
+        // 
         .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
-        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "degree"_a, "i"_a = -1, "Order of magnitude of trend coefficient (of degree) given the data")
+        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "degree"_a, "i"_a = -1, 
+             "Order of magnitude for trend coefficient (of `degree`) given the data")
         .def("get_unique_t", &RVData::get_unique_t, "Get the unique times")
-        .def("_inverse_time_indices", &RVData::_inverse_time_indices, "")
-        // ...
-        .def("load", &RVData::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a, "indicators"_a,
-            //  nb::raw_doc(
-             R"D(
-Load RV data from a tab/space separated file with columns
-```
-time  vrad  error  quant  error
-...   ...   ...    ...    ...
-```
-Args:
-    filename (str): the name of the file
-    untis (str): units of the RVs and errors, either "kms" or "ms"
-    skip (int): number of lines to skip in the beginning of the file (default = 2)
-    indicators (list[str]): nodoc
-)D");
-// )
+        .def("_inverse_time_indices", &RVData::_inverse_time_indices, "");
 
     // 
 
