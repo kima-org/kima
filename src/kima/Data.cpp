@@ -1289,6 +1289,23 @@ ETVData::ETVData() {};
 
 // the types of objects in the RVData state (for pickling)
 using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
+auto RVData_DOC1 = R"D(
+Load RV data from a list of files.
+
+Args:
+    filenames (list):
+        List of filenames to load
+    units (str):
+        Units of the data ('ms' or 'kms')
+    skip (int):
+        Number of lines to skip at the top of the file
+    max_rows (int):
+        Maximum number of rows to read
+    delimiter (str):
+        Delimiter between columns
+    indicators (list):
+        List of names for the indicator columns
+)D";
 
 
 NB_MODULE(Data, m) {
@@ -1308,7 +1325,7 @@ NB_MODULE(Data, m) {
         // constructors
         .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&, bool>(),
              "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
-             "Load RV data from a list of files")
+             RVData_DOC1)
         //
         .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&, bool>(),
              "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
