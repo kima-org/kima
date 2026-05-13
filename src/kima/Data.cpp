@@ -68,6 +68,7 @@ RVData::RVData(const vector<string>& filenames, const string& units, int skip, i
 
 /// @brief Load data from vectors directly
 RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<double> _sig,
+               const vector<vector<double>> indicators,
                const string& units, const string& instrument)
 : t(_t), y(_y), sig(_sig)
 {
@@ -80,10 +81,27 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
     _skip = 0;
     _multi = false;
     _indicator_names = {};
-    number_indicators = 0;
+    number_indicators = static_cast<int>(indicators.size());
     number_instruments = 1;
     _instrument = instrument;
     _instruments = {};
+
+    // empty and resize the indicator vectors
+    actind.clear();
+    actind.resize(number_indicators);
+    normalized_actind.clear();
+    normalized_actind.resize(number_indicators);
+    for (int n = 0; n < number_indicators; n++) {
+        actind[n].clear();
+        normalized_actind[n].clear();
+    }
+
+    // set the indicator vectors
+    for (size_t i = 0; i < number_indicators; i++)
+    {
+        actind[i] = indicators[i];
+        normalized_actind[i] = indicators[i];
+    }
 
     if (units == "kms")
     {
@@ -107,38 +125,55 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
     if (units == "kms" && VERBOSE)
         printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
+    // normalize the activity indicators
+    normalize_actind();
+
 }
 
 /// @brief Load data from vectors directly, for multiple instruments
 RVData::RVData(const vector<vector<double>> _t, 
                const vector<vector<double>> _y, 
                const vector<vector<double>> _sig,
+               const vector<vector<vector<double>>> indicators,
                const string& units, const vector<string>& instruments)
 {
     t.clear();
     y.clear();
     sig.clear();
-
+    // 
     y2.clear();
     sig2.clear();
-
+    // 
+    obsi.clear();
     medians.clear();
 
     if (_t.size() != _y.size()) 
-    {
-        string msg = "RVData: data arrays must have the same size size(t) != size(y)";
-        throw invalid_argument(msg);
-    }
+        throw invalid_argument("RVData: data arrays must have the same size size(t) != size(y)");
     if (_t.size() != _sig.size()) 
+        throw invalid_argument("RVData: data arrays must have the same size size(t) != size(sig)");
+    if (_t.size() != instruments.size()) 
+        throw invalid_argument("RVData: data and instruments must have the same size size(t) != size(instruments)");
+    
+    for (size_t i = 0; i < indicators.size(); i++)
     {
-        string msg = "RVData: data arrays must have the same size size(t) != size(sig)";
-        throw invalid_argument(msg);
+        if (_t.size() != indicators[i].size()) 
+        {
+            string msg = "RVData: data arrays must have the same size size(t) != size(indicators[" + to_string(i) + "])";
+            throw invalid_argument(msg);
+        }
     }
 
-    if (_t.size() != instruments.size()) 
-    {
-        string msg = "RVData: data and instruments must have the same size size(t) != size(instruments)";
-        throw invalid_argument(msg);
+    // TODO: check the individual sizes of each array in _t, _y, _sig, and indicators
+    
+    // empty and resize the indicator vectors
+    number_indicators = static_cast<int>(indicators.size());
+    actind.clear();
+    actind.resize(number_indicators);
+    normalized_actind.clear();
+    normalized_actind.resize(number_indicators);
+    for (int n = 0; n < number_indicators; n++) {
+        actind[n].clear();
+        normalized_actind[n].clear();
     }
 
     for (size_t i = 0; i < _t.size(); i++)
@@ -150,10 +185,16 @@ RVData::RVData(const vector<vector<double>> _t,
         // store medians
         medians.push_back(median(_y[i]));
 
+        for (size_t j = 0; j < number_indicators; j++)
+        {
+            actind[j].insert(actind[j].end(), indicators[j][i].begin(), indicators[j][i].end());
+            normalized_actind[j].insert(normalized_actind[j].end(), indicators[j][i].begin(), indicators[j][i].end());
+        }
+        
+
         for (size_t n = 0; n < _t[i].size(); n++)
             obsi.push_back(static_cast<int>(i) + 1);
     }
-    actind.clear();
 
     _datafile = "";
     _datafiles = {};
@@ -161,7 +202,6 @@ RVData::RVData(const vector<vector<double>> _t,
     _skip = 0;
     _multi = _t.size() > 1;
     _indicator_names = {};
-    number_indicators = 0;
     number_instruments = static_cast<int>(_t.size());
     _instrument = _t.size() == 1 ? instruments[0] : "";
     _instruments = instruments;
@@ -175,11 +215,6 @@ RVData::RVData(const vector<vector<double>> _t,
         }
     }
 
-    // epoch for the mean anomaly, by default the mid time
-    M0_epoch = get_t_middle();
-    // epoch for the trend, by default the mid time
-    trend_epoch = get_t_middle();
-
     // How many points did we read?
     if (VERBOSE)
         printf("# Loaded %zu data points from arrays\n", t.size());
@@ -191,8 +226,9 @@ RVData::RVData(const vector<vector<double>> _t,
     // We need to sort t because it comes from different instruments
     if (number_instruments > 1) {
         size_t N = t.size();
-        vector<double> tt(N), yy(N);
-        vector<double> sigsig(N);
+        vector<double> tt(N), yy(N), sigsig(N);
+        vector<vector<double>> aiai(number_indicators, vector<double>(N));
+        vector<vector<double>> nainai(number_indicators, vector<double>(N));
         vector<int> order(N), obsiobsi(N);
 
         // order = argsort(t)
@@ -206,6 +242,11 @@ RVData::RVData(const vector<vector<double>> _t,
             yy[i] = y[order[i]];
             sigsig[i] = sig[order[i]];
             obsiobsi[i] = obsi[order[i]];
+            for (size_t j = 0; j < number_indicators; j++)
+            {
+                aiai[j][i] = actind[j][order[i]];
+                nainai[j][i] = normalized_actind[j][order[i]];
+            }
         }
 
         for (size_t i = 0; i < N; i++) {
@@ -213,8 +254,21 @@ RVData::RVData(const vector<vector<double>> _t,
             y[i] = yy[i];
             sig[i] = sigsig[i];
             obsi[i] = obsiobsi[i];
+            for (size_t j = 0; j < number_indicators; j++)
+            {
+                actind[j][i] = aiai[j][i];
+                normalized_actind[j][i] = nainai[j][i];
+            }
         }
     }
+
+    // epoch for the mean anomaly, by default the mid time
+    M0_epoch = get_t_middle();
+    // epoch for the trend, by default the mid time
+    trend_epoch = get_t_middle();
+
+    // normalize the activity indicators
+    normalize_actind();
 
 }
 
