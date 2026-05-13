@@ -1305,8 +1305,46 @@ Args:
         Delimiter between columns
     indicators (list):
         List of names for the indicator columns
+    double_lined (bool):
+        Whether the data is for a double-lined binary
 )D";
 
+
+auto RVData_DOC3 = R"D(
+Load RV data from arrays for a single instrument.
+
+Args:
+    t (list, array):
+        List of observation times
+    y (list, array):
+        List of RV values
+    sig (list, array):
+        List of RV uncertainties
+    indicators (list[list]):
+        Lists of indicator values
+    units (str):
+        Units of the radial velocity data ('ms' or 'kms')
+    instrument (str):
+        Name of the instrument
+)D";
+
+auto RVData_DOC4 = R"D(
+Load RV data from arrays for multiple instruments.
+
+Args:
+    t (list[list], array[array]):
+        Lists of observation times
+    y (list[list], array[array]):
+        Lists of RV values
+    sig (list[list], array[array]):
+        Lists of RV uncertainties
+    indicators (list[list]):
+        Lists of indicator values (3D array)
+    units (str):
+        Units of the radial velocity data ('ms' or 'kms')
+    instrument (str):
+        Name of the instrument
+)D";
 
 NB_MODULE(Data, m) {
     // 
@@ -1329,15 +1367,15 @@ NB_MODULE(Data, m) {
         //
         .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&, bool>(),
              "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
-             "Load RV data from a file")
+             RVData_DOC2)
         //
-        .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const string&,  const string&>(),
-             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instrument"_a="",
-             "Load RV data from arrays")
+        .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const vector<vector<double>>, const string&,  const string&>(),
+             "t"_a, "y"_a, "sig"_a, "indicators"_a=vector<vector<double>>(), "units"_a="ms", "instrument"_a="",
+             RVData_DOC3)
         //
-        .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const string&,  const vector<string>&>(),
-             "t"_a, "y"_a, "sig"_a, "units"_a="ms", "instruments"_a=vector<string>(),
-             "Load RV data from arrays, for multiple instruments")
+        .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const vector<vector<vector<double>>>, const string&,  const vector<string>&>(),
+             "t"_a, "y"_a, "sig"_a, "indicators"_a=vector<vector<vector<double>>>(), "units"_a="ms", "instruments"_a=vector<string>(),
+             RVData_DOC4)
 
 
         // properties
