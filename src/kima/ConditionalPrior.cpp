@@ -245,7 +245,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 {
     
     if (!Pprior)
-        Pprior = make_shared<LogUniform>(1., 1e5);
+        Pprior = make_shared<LogUniform>(10., 1e4);
     if (!eprior)
         eprior = make_shared<Uniform>(0, 1);
     if (!phiprior)
@@ -264,7 +264,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
     else
     {
         if (!a0prior)
-            a0prior = make_shared<ModifiedLogUniform>(0.01, 1);
+            a0prior = make_shared<ModifiedLogUniform>(0.01, 10);
         if (!omegaprior)
             omegaprior = make_shared<Uniform>(0, 2*M_PI);
         if (!cosiprior)
@@ -278,7 +278,7 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 
 void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
 {
-    if (!Pprior) Pprior = make_shared<LogUniform>(1.0, max(1.1, data.get_timespan()));
+    if (!Pprior) Pprior = make_shared<LogUniform>(10.0, max(1.1, data.get_timespan()*2));
 }
 
 void GAIAConditionalPrior::use_thiele_innes()
@@ -395,13 +395,13 @@ void GAIAConditionalPrior::print(std::ostream& out) const //needed?
 RVGAIAConditionalPrior::RVGAIAConditionalPrior()
 {
     if (!Pprior)
-        Pprior = make_shared<LogUniform>(1., 1e5);
+        Pprior = make_shared<LogUniform>(10., 1e4);
     if (!eprior)
         eprior = make_shared<Uniform>(0, 1);
     if (!phiprior)
         phiprior = make_shared<Uniform>(0, 2*M_PI);
     if (!a0prior)
-        a0prior = make_shared<ModifiedLogUniform>(0.01, 1);
+        a0prior = make_shared<ModifiedLogUniform>(0.01, 10);
     if (!omegaprior)
         omegaprior = make_shared<Uniform>(0, 2*M_PI);
     if (!cosiprior)
