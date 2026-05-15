@@ -263,6 +263,12 @@ target_link_libraries(Sampler PRIVATE dnest4)
 target_link_libraries(Sampler PRIVATE libspleaf)
 
 
+# # foreach(module distributions kepler GP Data RVmodel OutlierRVmodel ApodizedRVmodel RVHGPMmodel TRANSITmodel)
+# foreach(module Sampler kepler)
+#   nanobind_add_stub(${module}_stub MODULE kima.${module} 
+#                     OUTPUT ${module}.pyi DEPENDS ${module})
+# endforeach()
+
 # install directives for scikit-build-core
 install(TARGETS distributions    LIBRARY DESTINATION kima)
 install(TARGETS default_priors   LIBRARY DESTINATION kima)
@@ -288,8 +294,3 @@ install(TARGETS ETVmodel         LIBRARY DESTINATION kima)
 install(TARGETS OutlierRVmodel   LIBRARY DESTINATION kima)
 install(TARGETS ApodizedRVmodel  LIBRARY DESTINATION kima)
 install(TARGETS Sampler          LIBRARY DESTINATION kima)
-
-# foreach(module distributions kepler GP Data RVmodel OutlierRVmodel ApodizedRVmodel RVHGPMmodel TRANSITmodel)
-foreach(module Sampler kepler)
-  nanobind_add_stub(${module}_stub MODULE kima.${module} OUTPUT ${module}.pyi DEPENDS ${module})
-endforeach()
