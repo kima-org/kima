@@ -1573,11 +1573,11 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 if res.thiele_innes:
                     priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'Aprior', 'Bprior', 'Fprior', 'Gprior']]
                 else:
-                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'omegaprior', 'Omegaprior', 'cosiprior']]
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'wprior', 'Wprior', 'cosiprior']]
             else:
                 priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
                 if res.model is MODELS.RVHGPMmodel:
-                    priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
+                    priors += [res.priors[k] for k in ['iprior', 'Wprior']]
                 priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
 
                 if replace_angles_with_mass:

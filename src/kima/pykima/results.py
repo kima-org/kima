@@ -2099,7 +2099,7 @@ class KimaResults:
                     s = self.indices['planets.w']
                     w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
                     self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
-                    self._priors.w = self.priors['omegaprior']
+                    self._priors.w = self.priors['wprior']
 
                     # cosi
                     s = self.indices['planets.cosi']
@@ -2111,7 +2111,7 @@ class KimaResults:
                     s = self.indices['planets.W']
                     W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                    self._priors.W = self.priors['Omegaprior']
+                    self._priors.W = self.priors['Wprior']
 
                 if self.model is MODELS.RVGAIAmodel:
                     _Kfroma0 = np.vectorize(Kfroma0)
@@ -2163,7 +2163,7 @@ class KimaResults:
                     s = self.indices['planets.W']
                     W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                    self._priors.W = self.priors['Omegaprior']
+                    self._priors.W = self.priors['Wprior']
 
 
         if self.KO:

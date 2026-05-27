@@ -893,7 +893,7 @@ def true_within_hdi(results, truths, hdi_prob=0.95, only_periods=False,
 
             # if the argument of periastron is not fixed
             if 'Fixed' not in str(results.priors['wprior']):
-                wint = Interval(*hdi(results.Omega[mask], hdi_prob))
+                wint = Interval(*hdi(results.Omega[mask], hdi_prob)) #results.Omega doesnt exist anymore? Maybe?
                 w = truths[i][3]
                 found.append(w in wint)
                 within['w'] = w in wint
