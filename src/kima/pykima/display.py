@@ -651,12 +651,18 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
         #     ax.vlines(alias_solar_day, 0, ymax, color='k', ls='--', alpha=0.1)
         #     ax.vlines(alias_sidereal_day, 0, ymax, color='k', ls='--', alpha=0.1)
         # ax.set_xlim(np.min(alias_solar_day), None)
-
-    ax1.set(ylabel='Semi-amplitude [m/s]',
-            title='Joint posterior semi-amplitude $-$ orbital period')
-    ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
-            title='Joint posterior eccentricity $-$ orbital period',
-            ylim=[0, 1])
+    if gaia:
+        ax1.set(ylabel='Photocentre Semi-major-axis [mas]',
+                title='Joint posterior semi-major-axis $-$ orbital period')
+        ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1])
+    else:
+        ax1.set(ylabel='Semi-amplitude [m/s]',
+                title='Joint posterior semi-amplitude $-$ orbital period')
+        ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1])
 
     # if show_prior:
     #     try:
