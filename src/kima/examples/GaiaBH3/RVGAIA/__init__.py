@@ -37,7 +37,7 @@ def RVGAIA(run=False, load=False, **kwargs):
 
     model.conditional.eprior = Kumaraswamy(0.867, 3.03)
     model.conditional.Pprior = LogUniform(10.0, 4000.0)
-    model.conditional.a0prior = ModifiedLogUniform(0.01, 2)
+    model.conditional.aprior = ModifiedLogUniform(0.01, 2)
     model.conditional.cosiprior = Uniform(-1, 1)
 
     model.da_prior = Gaussian(4.2, 0.4)
@@ -53,10 +53,10 @@ def RVGAIA(run=False, load=False, **kwargs):
     model.set_known_object(1)
 
     model.KO_Pprior = [Gaussian(4280, 500)]
-    model.KO_a0prior = [Gaussian(27.3, 4.0)]
+    model.KO_aprior = [Gaussian(27.3, 4.0)]
     model.KO_eprior = [Gaussian(0.73, 0.04)]
-    model.KO_omegaprior = [Gaussian(1.36, 0.05)]
-    model.KO_Omegaprior = [Gaussian(2.38, 0.05)]
+    model.KO_wprior = [Gaussian(1.36, 0.05)]
+    model.KO_Wprior = [Gaussian(2.38, 0.05)]
     model.KO_phiprior = [Uniform(0, 2 * np.pi)]
     model.KO_cosiprior = [Gaussian(-0.35, 0.05)]
 

@@ -50,8 +50,8 @@ def test_keplerian_is_array():
 
     t_rv = np.linspace(0, 1, 10)
     t_pm = np.array([0,0,1,1])
-    parallax,P, K, ecc, w, M0, M0_epoch, inc, Omega = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, np.pi/2, 0.0
-    v,pmra,pmdec,pmhg = keplerian_rvpm(t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, Omega)
+    parallax,P, K, ecc, w, M0, M0_epoch, inc, W = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, np.pi/2, 0.0
+    v,pmra,pmdec,pmhg = keplerian_rvpm(t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, W)
     assert isinstance(v, np.ndarray)
     assert isinstance(pmra, np.ndarray)
     assert isinstance(pmdec, np.ndarray)
