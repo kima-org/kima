@@ -265,12 +265,12 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
     {
         if (!a0prior)
             a0prior = make_shared<ModifiedLogUniform>(0.01, 10);
-        if (!omegaprior)
-            omegaprior = make_shared<Uniform>(0, 2*M_PI);
+        if (!wprior)
+            wprior = make_shared<Uniform>(0, 2*M_PI);
         if (!cosiprior)
             cosiprior = make_shared<Uniform>(-1, 1);
-        if (!Omegaprior)
-            Omegaprior = make_shared<Uniform>(0, M_PI);
+        if (!Wprior)
+            Wprior = make_shared<Uniform>(0, M_PI);
     }
     
     
@@ -329,9 +329,9 @@ double GAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
                 phiprior->log_pdf(vec[1]) + 
                 eprior->log_pdf(vec[2]) + 
                 a0prior->log_pdf(vec[3]) + 
-                omegaprior->log_pdf(vec[4]) +
+                wprior->log_pdf(vec[4]) +
                 cosiprior->log_pdf(vec[5]) + 
-                Omegaprior->log_pdf(vec[6]);
+                Wprior->log_pdf(vec[6]);
     }
 }
 
@@ -353,9 +353,9 @@ void GAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
         vec[1] = phiprior->cdf_inverse(vec[1]);
         vec[2] = eprior->cdf_inverse(vec[2]);
         vec[3] = a0prior->cdf_inverse(vec[3]);
-        vec[4] = omegaprior->cdf_inverse(vec[4]);
+        vec[4] = wprior->cdf_inverse(vec[4]);
         vec[5] = cosiprior->cdf_inverse(vec[5]);
-        vec[6] = Omegaprior->cdf_inverse(vec[6]);
+        vec[6] = Wprior->cdf_inverse(vec[6]);
     }
 }
 
@@ -377,9 +377,9 @@ void GAIAConditionalPrior::to_uniform(std::vector<double>& vec) const
         vec[1] = phiprior->cdf(vec[1]);
         vec[2] = eprior->cdf(vec[2]);
         vec[3] = a0prior->cdf(vec[3]);
-        vec[4] = omegaprior->cdf(vec[4]);
+        vec[4] = wprior->cdf(vec[4]);
         vec[5] = cosiprior->cdf(vec[5]);
-        vec[6] = Omegaprior->cdf(vec[6]);
+        vec[6] = Wprior->cdf(vec[6]);
     }
 }
 
@@ -402,12 +402,12 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
         phiprior = make_shared<Uniform>(0, 2*M_PI);
     if (!a0prior)
         a0prior = make_shared<ModifiedLogUniform>(0.01, 10);
-    if (!omegaprior)
-        omegaprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!wprior)
+        wprior = make_shared<Uniform>(0, 2*M_PI);
     if (!cosiprior)
         cosiprior = make_shared<Uniform>(-1, 1);
-    if (!Omegaprior)
-        Omegaprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!Wprior)
+        Wprior = make_shared<Uniform>(0, 2*M_PI);
     
 }
 
@@ -439,9 +439,9 @@ double RVGAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
             phiprior->log_pdf(vec[1]) + 
             eprior->log_pdf(vec[2]) + 
             a0prior->log_pdf(vec[3]) + 
-            omegaprior->log_pdf(vec[4]) +
+            wprior->log_pdf(vec[4]) +
             cosiprior->log_pdf(vec[5]) + 
-            Omegaprior->log_pdf(vec[6]);
+            Wprior->log_pdf(vec[6]);
 
 }
 
@@ -452,9 +452,9 @@ void RVGAIAConditionalPrior::from_uniform(std::vector<double>& vec) const
     vec[1] = phiprior->cdf_inverse(vec[1]);
     vec[2] = eprior->cdf_inverse(vec[2]);
     vec[3] = a0prior->cdf_inverse(vec[3]);
-    vec[4] = omegaprior->cdf_inverse(vec[4]);
+    vec[4] = wprior->cdf_inverse(vec[4]);
     vec[5] = cosiprior->cdf_inverse(vec[5]);
-    vec[6] = Omegaprior->cdf_inverse(vec[6]);
+    vec[6] = Wprior->cdf_inverse(vec[6]);
     
 }
 
@@ -464,9 +464,9 @@ void RVGAIAConditionalPrior::to_uniform(std::vector<double>& vec) const
     vec[1] = phiprior->cdf(vec[1]);
     vec[2] = eprior->cdf(vec[2]);
     vec[3] = a0prior->cdf(vec[3]);
-    vec[4] = omegaprior->cdf(vec[4]);
+    vec[4] = wprior->cdf(vec[4]);
     vec[5] = cosiprior->cdf(vec[5]);
-    vec[6] = Omegaprior->cdf(vec[6]);
+    vec[6] = Wprior->cdf(vec[6]);
 }
 
 void RVGAIAConditionalPrior::print(std::ostream& out) const //needed?
@@ -864,17 +864,17 @@ void bind_GAIAConditionalPrior(nb::module_ &m) {
             [](GAIAConditionalPrior &c) { return c.a0prior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.a0prior = d; },
             "Prior for the photocentre semi-major-axis(es) (mas)")
-        .def_prop_rw("omegaprior",
-            [](GAIAConditionalPrior &c) { return c.omegaprior; },
-            [](GAIAConditionalPrior &c, distribution &d) { c.omegaprior = d; },
+        .def_prop_rw("wprior",
+            [](GAIAConditionalPrior &c) { return c.wprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
         .def_prop_rw("phiprior",
             [](GAIAConditionalPrior &c) { return c.phiprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)")
-        .def_prop_rw("Omegaprior",
-            [](GAIAConditionalPrior &c) { return c.Omegaprior; },
-            [](GAIAConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+        .def_prop_rw("Wprior",
+            [](GAIAConditionalPrior &c) { return c.Wprior; },
+            [](GAIAConditionalPrior &c, distribution &d) { c.Wprior = d; },
             "Prior for the longitude(s) of ascending node")
         .def_prop_rw("cosiprior",
             [](GAIAConditionalPrior &c) { return c.cosiprior; },
@@ -913,17 +913,17 @@ void bind_RVGAIAConditionalPrior(nb::module_ &m) {
             [](RVGAIAConditionalPrior &c) { return c.a0prior; },
             [](RVGAIAConditionalPrior &c, distribution &d) { c.a0prior = d; },
             "Prior for the angular photocentre semi-major axis(es) (mas)")
-        .def_prop_rw("omegaprior",
-            [](RVGAIAConditionalPrior &c) { return c.omegaprior; },
-            [](RVGAIAConditionalPrior &c, distribution &d) { c.omegaprior = d; },
+        .def_prop_rw("wprior",
+            [](RVGAIAConditionalPrior &c) { return c.wprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron")
         .def_prop_rw("phiprior",
             [](RVGAIAConditionalPrior &c) { return c.phiprior; },
             [](RVGAIAConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)")
-        .def_prop_rw("Omegaprior",
-            [](RVGAIAConditionalPrior &c) { return c.Omegaprior; },
-            [](RVGAIAConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+        .def_prop_rw("Wprior",
+            [](RVGAIAConditionalPrior &c) { return c.Wprior; },
+            [](RVGAIAConditionalPrior &c, distribution &d) { c.Wprior = d; },
             "Prior for the longitude(s) of ascending node")
         .def_prop_rw("cosiprior",
             [](RVGAIAConditionalPrior &c) { return c.cosiprior; },

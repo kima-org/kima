@@ -140,11 +140,11 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the photocentre semi major axes (in ...).
         distribution a0prior;
         /// Prior for the arguments of periastron.
-        distribution omegaprior;
+        distribution wprior;
         /// Prior for cos of the inclination.
         distribution cosiprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
         ///Priors for the thiele_innes parameters
         distribution Aprior;
@@ -199,11 +199,11 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the RV semi-amplitude.
         distribution a0prior;
         /// Prior for the arguments of periastron.
-        distribution omegaprior;
+        distribution wprior;
         /// Prior for cos of the inclination.
         distribution cosiprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
 
 

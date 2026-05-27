@@ -74,9 +74,9 @@ class KIMA_API GAIAmodel
         std::vector<double> KO_a0;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
-        std::vector<double> KO_omega;
+        std::vector<double> KO_w;
         std::vector<double> KO_cosi;
-        std::vector<double> KO_Omega;
+        std::vector<double> KO_W;
 
         // The signal
         std::vector<double> mu;// = the astrometric model
@@ -150,16 +150,9 @@ class KIMA_API GAIAmodel
         std::vector<distribution> KO_a0prior;
         std::vector<distribution> KO_eprior;
         std::vector<distribution> KO_phiprior;
-        std::vector<distribution> KO_omegaprior;
+        std::vector<distribution> KO_wprior;
         std::vector<distribution> KO_cosiprior;
-        std::vector<distribution> KO_Omegaprior;
-//         distribution KO_a0prior {(size_t) n_known_object};
-//         distribution KO_eprior {(size_t) n_known_object};
-//         distribution KO_phiprior {(size_t) n_known_object};
-//         distribution KO_omegaprior {(size_t) n_known_object};
-//         distribution KO_cosiprior {(size_t) n_known_object};
-//         distribution KO_Omegaprior {(size_t) n_known_object};
-        
+        std::vector<distribution> KO_Wprior;        
         
 
         GAIAConditionalPrior* get_conditional_prior() {

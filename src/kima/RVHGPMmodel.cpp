@@ -33,10 +33,10 @@ void RVHGPMmodel::set_known_object(size_t n)
     // jitKO_perturb_prob = 0.3;
 
     KO_Pprior.resize(n); KO_Kprior.resize(n); KO_eprior.resize(n); KO_phiprior.resize(n); KO_wprior.resize(n);
-    KO_iprior.resize(n); KO_Omegaprior.resize(n);
+    KO_iprior.resize(n); KO_Wprior.resize(n);
 
     KO_P.resize(n); KO_K.resize(n); KO_e.resize(n); KO_phi.resize(n); KO_w.resize(n);
-    KO_i.resize(n); KO_Omega.resize(n);
+    KO_i.resize(n); KO_W.resize(n);
 }
 
 void RVHGPMmodel::set_transiting_planet(size_t n)
@@ -126,7 +126,7 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
         {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
             {
-                std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_iprior, KO_Omegaprior";
+                std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_iprior, KO_Wprior";
                 std::string msg = "When known_object=true, must set explicit priors for each of " + p;
                 throw std::logic_error(msg);
             }
@@ -222,7 +222,7 @@ void RVHGPMmodel::from_prior(RNG& rng)
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
             KO_i[i] = KO_iprior[i]->generate(rng);
-            KO_Omega[i] = KO_Omegaprior[i]->generate(rng);
+            KO_W[i] = KO_Wprior[i]->generate(rng);
         }
     }
 
@@ -642,7 +642,7 @@ double RVHGPMmodel::perturb(RNG& rng)
                 logH += KO_phiprior[i]->perturb(KO_phi[i], rng);
                 logH += KO_wprior[i]->perturb(KO_w[i], rng);
                 logH += KO_iprior[i]->perturb(KO_i[i], rng);
-                logH += KO_Omegaprior[i]->perturb(KO_Omega[i], rng);
+                logH += KO_Wprior[i]->perturb(KO_W[i], rng);
             }
 
             add_known_object();
@@ -893,7 +893,7 @@ void RVHGPMmodel::print(std::ostream& out) const
         for (auto e: KO_e)     out << e << "\t";
         for (auto w: KO_w)     out << w << "\t";
         for (auto i: KO_i)     out << i << "\t";
-        for (auto W: KO_Omega) out << W << "\t";
+        for (auto W: KO_W) out << W << "\t";
     }
 
     if(transiting_planet){
@@ -977,7 +977,7 @@ string RVHGPMmodel::description() const
         for (int i = 0; i < n_known_object; i++) desc += "KO_ecc" + std::to_string(i) + sep;
         for (int i = 0; i < n_known_object; i++) desc += "KO_w" + std::to_string(i) + sep;
         for (int i = 0; i < n_known_object; i++) desc += "KO_i" + std::to_string(i) + sep;
-        for (int i = 0; i < n_known_object; i++) desc += "KO_Omega" + std::to_string(i) + sep;
+        for (int i = 0; i < n_known_object; i++) desc += "KO_W" + std::to_string(i) + sep;
     }
 
     if(transiting_planet) {
@@ -1124,7 +1124,7 @@ void RVHGPMmodel::save_setup() {
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
         fout << "iprior: " << *conditional->iprior << endl;
-        fout << "Omegaprior: " << *conditional->Omegaprior << endl;
+        fout << "Wprior: " << *conditional->Wprior << endl;
     }
 
     if (known_object) {

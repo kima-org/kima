@@ -4,7 +4,7 @@ from _typeshed import Incomplete
 
 class RVHGPMConditionalPrior:
     Kprior: kima.distributions.Distribution
-    Omegaprior: kima.distributions.Distribution
+    Wprior: kima.distributions.Distribution
     Pprior: kima.distributions.Distribution
     eprior: kima.distributions.Distribution
     iprior: kima.distributions.Distribution
@@ -27,6 +27,8 @@ class RVHGPMmodel:
     KO_eprior: list[kima.distributions.Distribution]
     KO_phiprior: list[kima.distributions.Distribution]
     KO_wprior: list[kima.distributions.Distribution]
+    KO_iprior: list[kima.distributions.Distribution]
+    KO_Wprior: list[kima.distributions.Distribution]
     TR_Kprior: list[kima.distributions.Distribution]
     TR_Pprior: list[kima.distributions.Distribution]
     TR_Tcprior: list[kima.distributions.Distribution]

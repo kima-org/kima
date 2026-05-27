@@ -91,7 +91,7 @@ class KIMA_API RVHGPMmodel
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
         std::vector<double> KO_i;
-        std::vector<double> KO_Omega;
+        std::vector<double> KO_W;
 
         // Parameters for the transiting planet, if set
         std::vector<double> TR_P;
@@ -206,7 +206,7 @@ class KIMA_API RVHGPMmodel
         /// Prior for the KO inclination(s)
         std::vector<distribution> KO_iprior;
         /// Prior for the KO argument(s) of the node
-        std::vector<distribution> KO_Omegaprior;
+        std::vector<distribution> KO_Wprior;
 
 
         /* Transiting planets! */
