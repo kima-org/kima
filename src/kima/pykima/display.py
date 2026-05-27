@@ -460,8 +460,11 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
     each posterior sample, else plot hexbins
     """
     if res.model is MODELS.GAIAmodel:
-        print('plot_PKE does nothing for the GAIAmodel as K is not a parameter')
-        return
+        print('For the GAIAmodel, since K is not a parameter it is replaced with a')
+        gaia = True
+    else:
+        gaia = False
+        
     # if no known_object or not showing known_object periods
     cond = not res.KO or not include_known_object
     # and if no transiting_planet or not showing transiting_planet periods
@@ -482,21 +485,33 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
             from .analysis import reorder_P
             post = reorder_P(res)
             P = post.P.copy()
-            K = post.K.copy()
+            if gaia:
+                K = post.a0.copy()
+            else:
+                K = post.K.copy()
             E = post.e.copy()
         elif sort_by_increasing_P:
             from .analysis import sort_planet_samples
             post = sort_planet_samples(res)
             P = post.P.copy()
-            K = post.K.copy()
+            if gaia:
+                K = post.a0.copy()
+            else:
+                K = post.K.copy()
             E = post.e.copy()
         else:
             P = res.posteriors.P.copy()
-            K = res.posteriors.K.copy()
+            if gaia:
+                K = res.posteriors.a0.copy()
+            else:
+                K = res.posteriors.K.copy()
             E = res.posteriors.e.copy()
     else:
         P = res.posteriors.P[mask].copy()
-        K = res.posteriors.K[mask].copy()
+        if gaia:
+            K = res.posteriors.a0[mask].copy()
+        else:
+            K = res.posteriors.K[mask].copy()
         E = res.posteriors.e[mask].copy()
 
     include_known_object = include_known_object and res.KO
@@ -507,8 +522,12 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
         else:
             KOpars = res.posterior_sample[mask, res.indices['KOpars']]
         P_KO = np.hstack(KOpars[:, 0 * res.nKO:1 * res.nKO])
-        K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
-        E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
+        if gaia:
+            K_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
+            E_KO = np.hstack(KOpars[:, 2 * res.nKO:3 * res.nKO])
+        else:
+            K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
+            E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
 
     include_transiting_planet = include_transiting_planet and res.TR
 
@@ -584,7 +603,10 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
             for i in range(res.nKO):
                 if f'KO_Pprior_{i}' in res.priors:
                     P_KO_prior.append(distribution_rvs(res.priors[f'KO_Pprior_{i}'], n))
-                    K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], n))
+                    if gaia:
+                        K_KO_prior.append(distribution_rvs(res.priors[f'KO_a0prior_{i}'], n))
+                    else:
+                        K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], n))
                     E_KO_prior.append(distribution_rvs(res.priors[f'KO_eprior_{i}'], n))
                 else:
                     break
@@ -593,7 +615,10 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
 
         try:
             P_prior = distribution_rvs(res.priors['Pprior'], n)
-            K_prior = distribution_rvs(res.priors['Kprior'], n)
+            if gaia:
+                K_prior = distribution_rvs(res.priors['a0prior'], n)
+            else:
+                K_prior = distribution_rvs(res.priors['Kprior'], n)
             E_prior = distribution_rvs(res.priors['eprior'], n)
             ax1.plot(P_prior, K_prior, '.', **kw_prior)
             ax2.plot(P_prior, E_prior, '.', **kw_prior)
