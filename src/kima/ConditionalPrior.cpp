@@ -703,7 +703,7 @@ void RVHGPMConditionalPrior::set_default_priors(const RVData &rv_data)
     if (!wprior) wprior = defaults.get("wprior");
     // TOOD: move to defaults
     if (!iprior) iprior = defaults.get("iprior");
-    if (!Omegaprior) Omegaprior = defaults.get("Ωprior");
+    if (!Wprior) Wprior = defaults.get("Ωprior");
 }
 
 void RVHGPMConditionalPrior::from_prior(RNG& rng)
@@ -722,7 +722,7 @@ double RVHGPMConditionalPrior::log_pdf(const std::vector<double>& vec) const
            eprior->log_pdf(vec[3]) +
            wprior->log_pdf(vec[4]) +
            iprior->log_pdf(vec[5]) +
-           Omegaprior->log_pdf(vec[6]);
+           Wprior->log_pdf(vec[6]);
 }
 
 void RVHGPMConditionalPrior::from_uniform(std::vector<double>& vec) const
@@ -733,7 +733,7 @@ void RVHGPMConditionalPrior::from_uniform(std::vector<double>& vec) const
     vec[3] = eprior->cdf_inverse(vec[3]);
     vec[4] = wprior->cdf_inverse(vec[4]);
     vec[5] = iprior->cdf_inverse(vec[5]);
-    vec[6] = Omegaprior->cdf_inverse(vec[6]);
+    vec[6] = Wprior->cdf_inverse(vec[6]);
 }
 
 void RVHGPMConditionalPrior::to_uniform(std::vector<double>& vec) const
@@ -744,7 +744,7 @@ void RVHGPMConditionalPrior::to_uniform(std::vector<double>& vec) const
     vec[3] = eprior->cdf(vec[3]);
     vec[4] = wprior->cdf(vec[4]);
     vec[5] = iprior->cdf(vec[5]);
-    vec[6] = Omegaprior->cdf(vec[6]);
+    vec[6] = Wprior->cdf(vec[6]);
 }
 
 void RVHGPMConditionalPrior::print(std::ostream& out) const
@@ -979,9 +979,9 @@ void bind_RVHGPMConditionalPrior(nb::module_ &m) {
             [](RVHGPMConditionalPrior &c) { return c.phiprior; },
             [](RVHGPMConditionalPrior &c, distribution &d) { c.phiprior = d; },
             "Prior for the mean anomaly(ies)")
-        .def_prop_rw("Omegaprior",
-            [](RVHGPMConditionalPrior &c) { return c.Omegaprior; },
-            [](RVHGPMConditionalPrior &c, distribution &d) { c.Omegaprior = d; },
+        .def_prop_rw("Wprior",
+            [](RVHGPMConditionalPrior &c) { return c.Wprior; },
+            [](RVHGPMConditionalPrior &c, distribution &d) { c.Wprior = d; },
             "Prior for the longitude(s) of ascending node")
         .def_prop_rw("iprior",
             [](RVHGPMConditionalPrior &c) { return c.iprior; },

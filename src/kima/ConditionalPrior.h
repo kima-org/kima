@@ -248,7 +248,7 @@ class RVHGPMConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the inclination (in radians).
         distribution iprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
         /// Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
