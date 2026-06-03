@@ -460,8 +460,11 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
     each posterior sample, else plot hexbins
     """
     if res.model is MODELS.GAIAmodel:
-        print('plot_PKE does nothing for the GAIAmodel as K is not a parameter')
-        return
+        print('For the GAIAmodel, since K is not a parameter it is replaced with a')
+        gaia = True
+    else:
+        gaia = False
+        
     # if no known_object or not showing known_object periods
     cond = not res.KO or not include_known_object
     # and if no transiting_planet or not showing transiting_planet periods
@@ -482,21 +485,33 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
             from .analysis import reorder_P
             post = reorder_P(res)
             P = post.P.copy()
-            K = post.K.copy()
+            if gaia:
+                K = post.a.copy()
+            else:
+                K = post.K.copy()
             E = post.e.copy()
         elif sort_by_increasing_P:
             from .analysis import sort_planet_samples
             post = sort_planet_samples(res)
             P = post.P.copy()
-            K = post.K.copy()
+            if gaia:
+                K = post.a.copy()
+            else:
+                K = post.K.copy()
             E = post.e.copy()
         else:
             P = res.posteriors.P.copy()
-            K = res.posteriors.K.copy()
+            if gaia:
+                K = res.posteriors.a.copy()
+            else:
+                K = res.posteriors.K.copy()
             E = res.posteriors.e.copy()
     else:
         P = res.posteriors.P[mask].copy()
-        K = res.posteriors.K[mask].copy()
+        if gaia:
+            K = res.posteriors.a[mask].copy()
+        else:
+            K = res.posteriors.K[mask].copy()
         E = res.posteriors.e[mask].copy()
 
     include_known_object = include_known_object and res.KO
@@ -507,8 +522,12 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
         else:
             KOpars = res.posterior_sample[mask, res.indices['KOpars']]
         P_KO = np.hstack(KOpars[:, 0 * res.nKO:1 * res.nKO])
-        K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
-        E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
+        if gaia:
+            K_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
+            E_KO = np.hstack(KOpars[:, 2 * res.nKO:3 * res.nKO])
+        else:
+            K_KO = np.hstack(KOpars[:, 1 * res.nKO:2 * res.nKO])
+            E_KO = np.hstack(KOpars[:, 3 * res.nKO:4 * res.nKO])
 
     include_transiting_planet = include_transiting_planet and res.TR
 
@@ -584,7 +603,10 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
             for i in range(res.nKO):
                 if f'KO_Pprior_{i}' in res.priors:
                     P_KO_prior.append(distribution_rvs(res.priors[f'KO_Pprior_{i}'], n))
-                    K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], n))
+                    if gaia:
+                        K_KO_prior.append(distribution_rvs(res.priors[f'KO_aprior_{i}'], n))
+                    else:
+                        K_KO_prior.append(distribution_rvs(res.priors[f'KO_Kprior_{i}'], n))
                     E_KO_prior.append(distribution_rvs(res.priors[f'KO_eprior_{i}'], n))
                 else:
                     break
@@ -593,7 +615,10 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
 
         try:
             P_prior = distribution_rvs(res.priors['Pprior'], n)
-            K_prior = distribution_rvs(res.priors['Kprior'], n)
+            if gaia:
+                K_prior = distribution_rvs(res.priors['aprior'], n)
+            else:
+                K_prior = distribution_rvs(res.priors['Kprior'], n)
             E_prior = distribution_rvs(res.priors['eprior'], n)
             ax1.plot(P_prior, K_prior, '.', **kw_prior)
             ax2.plot(P_prior, E_prior, '.', **kw_prior)
@@ -626,12 +651,18 @@ def plot_PKE(res, mask=None, include_known_object=False, include_transiting_plan
         #     ax.vlines(alias_solar_day, 0, ymax, color='k', ls='--', alpha=0.1)
         #     ax.vlines(alias_sidereal_day, 0, ymax, color='k', ls='--', alpha=0.1)
         # ax.set_xlim(np.min(alias_solar_day), None)
-
-    ax1.set(ylabel='Semi-amplitude [m/s]',
-            title='Joint posterior semi-amplitude $-$ orbital period')
-    ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
-            title='Joint posterior eccentricity $-$ orbital period',
-            ylim=[0, 1])
+    if gaia:
+        ax1.set(ylabel='Photocentre Semi-major-axis [mas]',
+                title='Joint posterior semi-major-axis $-$ orbital period')
+        ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1])
+    else:
+        ax1.set(ylabel='Semi-amplitude [m/s]',
+                title='Joint posterior semi-amplitude $-$ orbital period')
+        ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1])
 
     # if show_prior:
     #     try:
@@ -1496,7 +1527,7 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                         res.posteriors.P[:, i].copy(),
                         res.posteriors.e[:, i].copy(),
                         res.posteriors.φ[:, i].copy(),
-                        res.posteriors.a0[:, i].copy(),
+                        res.posteriors.a[:, i].copy(),
                         res.posteriors.w[:, i].copy(),
                         res.posteriors.W[:, i].copy(),
                         res.posteriors.cosi[:, i].copy(),
@@ -1542,11 +1573,11 @@ def corner_planet_parameters(res, fig=None, Np=None, true_values=None, period_ra
                 if res.thiele_innes:
                     priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'Aprior', 'Bprior', 'Fprior', 'Gprior']]
                 else:
-                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'a0prior', 'omegaprior', 'Omegaprior', 'cosiprior']]
+                    priors = [res.priors[k] for k in ['Pprior', 'eprior', 'phiprior', 'aprior', 'wprior', 'Wprior', 'cosiprior']]
             else:
                 priors = [res.priors[k] for k in ['Pprior', 'Kprior', 'eprior', 'phiprior', 'wprior']]
                 if res.model is MODELS.RVHGPMmodel:
-                    priors += [res.priors[k] for k in ['iprior', 'Omegaprior']]
+                    priors += [res.priors[k] for k in ['iprior', 'Wprior']]
                 priors = [distribution_rvs(p, res.ESS) if p else None for p in priors]
 
                 if replace_angles_with_mass:
@@ -2834,9 +2865,9 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
         params[k]['φ'] = φ = sample[res.indices['planets.φ']][i]
         params[k]['w'] = w = sample[res.indices['planets.w']][i]
         if res.model is MODELS.RVGAIAmodel:
-            params[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
+            params[k]['a'] = a = sample[res.indices['planets.a']][i]
             params[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
-            params[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
+            params[k]['K'] = K = Kfroma0(P,a,e,cosi,plx)
         else:
             params[k]['K'] = K = sample[res.indices['planets.K']][i]
         params[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
@@ -2868,10 +2899,10 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
                 if res.model is MODELS.RVGAIAmodel:
                     ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
                     ko[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
-                    ko[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
+                    ko[k]['a'] = a = sample[res.indices['KOpars']][i + 3 * res.nKO]
                     ko[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
                     ko[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
-                    ko[k]['K'] = K = Kfroma0(P,a0,e,cosi,plx)
+                    ko[k]['K'] = K = Kfroma0(P,a,e,cosi,plx)
                 else:
                     ko[k]['φ'] = φ = sample[res.indices['KOpars']][i + 2 * res.nKO]
                     ko[k]['e'] = e = sample[res.indices['KOpars']][i + 3 * res.nKO]
@@ -3543,7 +3574,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
             params[k]['P'] = P = sample[res.indices['KOpars']][i]
             params[k]['φ'] = φ = sample[res.indices['KOpars']][i + 1 * res.nKO]
             params[k]['e'] = e = sample[res.indices['KOpars']][i + 2 * res.nKO]
-            params[k]['a0'] = a0 = sample[res.indices['KOpars']][i + 3 * res.nKO]
+            params[k]['a'] = a = sample[res.indices['KOpars']][i + 3 * res.nKO]
             params[k]['w'] = w = sample[res.indices['KOpars']][i + 4 * res.nKO]
             params[k]['cosi'] = cosi = sample[res.indices['KOpars']][i + 5 * res.nKO]
             params[k]['W'] = W = sample[res.indices['KOpars']][i + 6 * res.nKO]
@@ -3566,7 +3597,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
             planets[k]['F'] = F = sample[res.indices['planets.F']][i]
             planets[k]['G'] = G = sample[res.indices['planets.G']][i]
         else:
-            planets[k]['a0'] = a0 = sample[res.indices['planets.a0']][i]
+            planets[k]['a'] = a = sample[res.indices['planets.a']][i]
             planets[k]['w'] = w = sample[res.indices['planets.w']][i]
             planets[k]['cosi'] = cosi = sample[res.indices['planets.cosi']][i]
             planets[k]['W'] = W = sample[res.indices['planets.W']][i]
@@ -3578,7 +3609,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
     keys = list(params.keys())
 
     if sort_by_decreasing_a:
-        keys = sorted(params, key=lambda i: params[i]['a0'], reverse=True)
+        keys = sorted(params, key=lambda i: params[i]['a'], reverse=True)
 
     if sort_by_increasing_P:
         keys = sorted(params, key=lambda i: params[i]['P'])
@@ -3688,7 +3719,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         scan_dep_signal_params = sample[res.indices['scan_dep_signal']]
         nextras += 1
 
-    # P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
+    # P, phi, e, a, w, cosi, W = sample[res.indices['planets']]
 
     nrows = {
         0: 3, 1: 3, 2: 3, 3: 4,
@@ -3746,7 +3777,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     
     #Get full model
     for letter in keys:
-        # P, phi, e, a0, w, cosi, W, Tper, type, index = params[letter]
+        # P, phi, e, a, w, cosi, W, Tper, type, index = params[letter]
         P = params[letter]['P']
         phi = params[letter]['φ']
         e = params[letter]['e']
@@ -3756,11 +3787,11 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             F = params[letter]['F']
             G = params[letter]['G']
         else:
-            a0 = params[letter]['a0']
+            a = params[letter]['a']
             w = params[letter]['w']
             cosi = params[letter]['cosi']
             W = params[letter]['W']
-            A,B,F,G = Thiele_Innes(a0,w,W,cosi)
+            A,B,F,G = Thiele_Innes(a,w,W,cosi)
         Tper = params[letter]['Tp']
 
         wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
@@ -3865,11 +3896,11 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             F = params[letter]['F']
             G = params[letter]['G']
         else:
-            a0 = params[letter]['a0']
+            a = params[letter]['a']
             w = params[letter]['w']
             cosi = params[letter]['cosi']
             W = params[letter]['W']
-            A,B,F,G = Thiele_Innes(a0,w,W,cosi) 
+            A,B,F,G = Thiele_Innes(a,w,W,cosi) 
         Tper = params[letter]['Tp']  
         
 

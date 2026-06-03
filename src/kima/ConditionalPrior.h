@@ -138,13 +138,13 @@ class GAIAConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the phases (maybe do T0s instead?).
         distribution phiprior;
         /// Prior for the photocentre semi major axes (in ...).
-        distribution a0prior;
+        distribution aprior;
         /// Prior for the arguments of periastron.
-        distribution omegaprior;
+        distribution wprior;
         /// Prior for cos of the inclination.
         distribution cosiprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
         ///Priors for the thiele_innes parameters
         distribution Aprior;
@@ -197,13 +197,13 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the phases (maybe do T0s instead?).
         distribution phiprior;
         /// Prior for the RV semi-amplitude.
-        distribution a0prior;
+        distribution aprior;
         /// Prior for the arguments of periastron.
-        distribution omegaprior;
+        distribution wprior;
         /// Prior for cos of the inclination.
         distribution cosiprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
 
 
@@ -248,7 +248,7 @@ class RVHGPMConditionalPrior:public DNest4::ConditionalPrior
         /// Prior for the inclination (in radians).
         distribution iprior;
         /// Prior for the longitude of ascending node.
-        distribution Omegaprior;
+        distribution Wprior;
         
         /// Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

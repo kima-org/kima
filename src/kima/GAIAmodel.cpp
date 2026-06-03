@@ -64,20 +64,20 @@ void GAIAmodel::set_known_object(size_t n)
     n_known_object = n;
 
     KO_Pprior.resize(n);
-    KO_a0prior.resize(n);
+    KO_aprior.resize(n);
     KO_eprior.resize(n);
     KO_phiprior.resize(n);
-    KO_omegaprior.resize(n);
+    KO_wprior.resize(n);
     KO_cosiprior.resize(n);
-    KO_Omegaprior.resize(n);
+    KO_Wprior.resize(n);
 
     KO_P.resize(n);
-    KO_a0.resize(n);
+    KO_a.resize(n);
     KO_e.resize(n);
     KO_phi.resize(n);
-    KO_omega.resize(n);
+    KO_w.resize(n);
     KO_cosi.resize(n);
-    KO_Omega.resize(n);
+    KO_W.resize(n);
 }
 
 /* set default priors if the user didn't change them */
@@ -134,8 +134,8 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
-            if (!KO_Pprior[i] || !KO_a0prior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_omegaprior[i] || !KO_cosiprior[i] || !KO_Omegaprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_omegaprior, KO_cosiprior, KO_Omegaprior)");
+            if (!KO_Pprior[i] || !KO_aprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_Wprior[i] || !KO_cosiprior[i] || !KO_Wprior[i])
+                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_phiprior, KO_eprior, KO_aprior, KO_wprior, KO_cosiprior, KO_Wprior)");
         }
     }
 
@@ -184,12 +184,12 @@ void GAIAmodel::from_prior(RNG& rng)
 
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
-            KO_a0[i] = KO_a0prior[i]->generate(rng);
+            KO_a[i] = KO_aprior[i]->generate(rng);
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
-            KO_omega[i] = KO_omegaprior[i]->generate(rng);
+            KO_w[i] = KO_wprior[i]->generate(rng);
             KO_cosi[i] = KO_cosiprior[i]->generate(rng);
-            KO_Omega[i] = KO_Omegaprior[i]->generate(rng);
+            KO_W[i] = KO_Wprior[i]->generate(rng);
         }
     }
 
@@ -312,10 +312,10 @@ void GAIAmodel::remove_known_object()
     for(int j=0; j<n_known_object; j++)
     {
         
-        A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        A = KO_a[j]*(cos(KO_w[j]) * cos(KO_W[j]) - sin(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
+        B = KO_a[j]*(cos(KO_w[j]) * sin(KO_W[j]) + sin(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
+        F = -KO_a[j]*(sin(KO_w[j]) * cos(KO_W[j]) + cos(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
+        G = -KO_a[j]*(sin(KO_w[j]) * sin(KO_W[j]) - cos(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<N; i++)
@@ -331,10 +331,10 @@ void GAIAmodel::add_known_object()
     double A, B, F, G, X, Y;
     for(int j=0; j<n_known_object; j++)
     {
-        A = KO_a0[j]*(cos(KO_omega[j]) * cos(KO_Omega[j]) - sin(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        B = KO_a0[j]*(cos(KO_omega[j]) * sin(KO_Omega[j]) + sin(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
-        F = -KO_a0[j]*(sin(KO_omega[j]) * cos(KO_Omega[j]) + cos(KO_omega[j]) * sin(KO_Omega[j]) * KO_cosi[j]);
-        G = -KO_a0[j]*(sin(KO_omega[j]) * sin(KO_Omega[j]) - cos(KO_omega[j]) * cos(KO_Omega[j]) * KO_cosi[j]);
+        A = KO_a[j]*(cos(KO_w[j]) * cos(KO_W[j]) - sin(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
+        B = KO_a[j]*(cos(KO_w[j]) * sin(KO_W[j]) + sin(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
+        F = -KO_a[j]*(sin(KO_w[j]) * cos(KO_W[j]) + cos(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
+        G = -KO_a[j]*(sin(KO_w[j]) * sin(KO_W[j]) - cos(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
         for(size_t i=0; i<N; i++)
@@ -379,12 +379,12 @@ double GAIAmodel::perturb(RNG& rng)
 
             for (int i=0; i<n_known_object; i++){
                 KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_a0prior[i]->perturb(KO_a0[i], rng);
+                KO_aprior[i]->perturb(KO_a[i], rng);
                 KO_eprior[i]->perturb(KO_e[i], rng);
                 KO_phiprior[i]->perturb(KO_phi[i], rng);
-                KO_omegaprior[i]->perturb(KO_omega[i], rng);
+                KO_wprior[i]->perturb(KO_w[i], rng);
                 KO_cosiprior[i]->perturb(KO_cosi[i], rng);
-                KO_Omegaprior[i]->perturb(KO_Omega[i], rng);
+                KO_Wprior[i]->perturb(KO_W[i], rng);
             }
 
             add_known_object();
@@ -553,10 +553,10 @@ void GAIAmodel::print(std::ostream& out) const
         for (auto P: KO_P) out << P << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e) out << e << "\t";
-        for (auto a: KO_a0) out << a << "\t";
-        for (auto w: KO_omega) out << w << "\t";
+        for (auto a: KO_a) out << a << "\t";
+        for (auto w: KO_w) out << w << "\t";
         for (auto cosi: KO_cosi) out << cosi << "\t";
-        for (auto Om: KO_Omega) out << Om << "\t";
+        for (auto Om: KO_W) out << Om << "\t";
     }
 
     planets.print(out);
@@ -611,7 +611,7 @@ string GAIAmodel::description() const
         printi(n_known_object, "KO_P");
         printi(n_known_object, "KO_phi");
         printi(n_known_object, "KO_ecc");
-        printi(n_known_object, "KO_a0");
+        printi(n_known_object, "KO_a");
         printi(n_known_object, "KO_w");
         printi(n_known_object, "KO_cosi");
         printi(n_known_object, "KO_W");
@@ -635,7 +635,7 @@ string GAIAmodel::description() const
         }
         else
         {
-            printi(maxpl, "a0");
+            printi(maxpl, "a");
             printi(maxpl, "w");
             printi(maxpl, "cosi");
             printi(maxpl, "W");
@@ -724,10 +724,10 @@ void GAIAmodel::save_setup() {
         }
         else
         {
-            fout << "a0prior: " << *conditional->a0prior << endl;
-            fout << "omegaprior: " << *conditional->omegaprior << endl;
+            fout << "aprior: " << *conditional->aprior << endl;
+            fout << "wprior: " << *conditional->wprior << endl;
             fout << "cosiprior: " << *conditional->cosiprior << endl;
-            fout << "Omegaprior: " << *conditional->Omegaprior << endl;
+            fout << "Wprior: " << *conditional->Wprior << endl;
         }
     }
 
@@ -743,12 +743,12 @@ void GAIAmodel::save_setup() {
         fout << endl << "[priors.known_object]" << endl;
         for(int i=0; i<n_known_object; i++){
             fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-            fout << "aprior_" << i << ": " << *KO_a0prior[i] << endl;
+            fout << "aprior_" << i << ": " << *KO_aprior[i] << endl;
             fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-            fout << "wprior_" << i << ": " << *KO_omegaprior[i] << endl;
+            fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
             fout << "cosiprior_" << i << ": " << *KO_cosiprior[i] << endl;
-            fout << "Omprior_" << i << ": " << *KO_Omegaprior[i] << endl;
+            fout << "Wprior_" << i << ": " << *KO_Wprior[i] << endl;
         }
     }
 
@@ -899,17 +899,17 @@ NB_MODULE(GAIAmodel, m) {
                      [](GAIAmodel &m) { return m.KO_Pprior; },
                      [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
                      "Prior for KO orbital period(s)")
-        .def_prop_rw("KO_a0prior",
-                     [](GAIAmodel &m) { return m.KO_a0prior; },
-                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_a0prior = vd; },
+        .def_prop_rw("KO_aprior",
+                     [](GAIAmodel &m) { return m.KO_aprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_aprior = vd; },
                      "Prior for KO photocentre semi-major-axis(es)")
         .def_prop_rw("KO_eprior",
                      [](GAIAmodel &m) { return m.KO_eprior; },
                      [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
                      "Prior for KO eccentricity(ies)")
-        .def_prop_rw("KO_omegaprior",
-                     [](GAIAmodel &m) { return m.KO_omegaprior; },
-                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_omegaprior = vd; },
+        .def_prop_rw("KO_wprior",
+                     [](GAIAmodel &m) { return m.KO_wprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_wprior = vd; },
                      "Prior for KO argument(s) of periastron")
         .def_prop_rw("KO_phiprior",
                      [](GAIAmodel &m) { return m.KO_phiprior; },
@@ -919,9 +919,9 @@ NB_MODULE(GAIAmodel, m) {
                      [](GAIAmodel &m) { return m.KO_cosiprior; },
                      [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_cosiprior = vd; },
                      "Prior for cosine of KO inclination(s)")
-        .def_prop_rw("KO_Omegaprior",
-                     [](GAIAmodel &m) { return m.KO_Omegaprior; },
-                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_Omegaprior = vd; },
+        .def_prop_rw("KO_Wprior",
+                     [](GAIAmodel &m) { return m.KO_Wprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_Wprior = vd; },
                      "Prior for KO longitude(s) of ascending node")
 
 

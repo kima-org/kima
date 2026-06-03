@@ -36,7 +36,7 @@ def GAIA_free(run=False, load=False, **kwargs):
 
     model.conditional.eprior = Kumaraswamy(0.867, 3.03)
     model.conditional.Pprior = LogUniform(100.0, 10000.0)
-    model.conditional.a0prior = ModifiedLogUniform(0.1, 100.0)
+    model.conditional.aprior = ModifiedLogUniform(0.1, 100.0)
     model.conditional.cosiprior = Uniform(-1, 1)
 
     model.da_prior = Gaussian(4.2, 0.4)

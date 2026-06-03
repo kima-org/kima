@@ -300,7 +300,7 @@ class posterior_holder:
             raise ValueError(f'`units` must be one of {allowed}')
         units = units or 'mjup'
         if GAIA:
-            m = get_planet_mass_GAIA(self.P, self.a0, self.plx, star_mass, full_output=True)[-1]
+            m = get_planet_mass_GAIA(self.P, self.a, self.plx, star_mass, full_output=True)[-1]
         else:
             m = get_planet_mass(self.P, self.K, self.e, star_mass, full_output=True)[-1]
         if units.lower() in ('me', 'mearth', 'earth'):
@@ -311,10 +311,10 @@ class posterior_holder:
         """ planet semi-major axis [AU] """
         if GAIA:
             try:
-                return self.a0/self.plx
+                return self.a/self.plx
             except ValueError:
                 plx_new = self.plx[:, np.newaxis].copy()
-                return self.a0/plx_new
+                return self.a/plx_new
         else:
             return get_planet_semimajor_axis(self.P, self.K, star_mass,
                                          full_output=True)[-1]
@@ -1107,7 +1107,7 @@ class KimaResults:
                     self.indices[f'planets.{p}'] = slice(istart, iend)
                     istart += self.max_components
             else:
-                for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a0', 'w', 'cosi', 'W')):
+                for j, p in zip(range(self.n_dimensions), ('P', 'φ', 'e', 'a', 'w', 'cosi', 'W')):
                     iend = istart + self.max_components
                     self.indices[f'planets.{p}'] = slice(istart, iend)
                     istart += self.max_components
@@ -2091,15 +2091,15 @@ class KimaResults:
                     self._priors.G = self.priors['Gprior']
                 else:
                     #a0s 
-                    s = self.indices['planets.a0']
-                    self.posteriors.a0 = self.posterior_sample[:, s]
-                    self._priors.a0 = self.priors['a0prior']
+                    s = self.indices['planets.a']
+                    self.posteriors.a = self.posterior_sample[:, s]
+                    self._priors.a = self.priors['aprior']
 
                     # omegas
                     s = self.indices['planets.w']
                     w = self.posteriors.w = self.posteriors.ω = self.posterior_sample[:, s]
                     self.posteriors.w_deg = self.posteriors.ω_deg = np.rad2deg(w)
-                    self._priors.w = self.priors['omegaprior']
+                    self._priors.w = self.priors['wprior']
 
                     # cosi
                     s = self.indices['planets.cosi']
@@ -2111,11 +2111,11 @@ class KimaResults:
                     s = self.indices['planets.W']
                     W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                    self._priors.W = self.priors['Omegaprior']
+                    self._priors.W = self.priors['Wprior']
 
                 if self.model is MODELS.RVGAIAmodel:
                     _Kfroma0 = np.vectorize(Kfroma0)
-                    self.posteriors.K = _Kfroma0(self.posteriors.P, self.posteriors.a0,
+                    self.posteriors.K = _Kfroma0(self.posteriors.P, self.posteriors.a,
                                                 self.posteriors.e, self.posteriors.cosi,
                                                 self.posteriors.plx.reshape(-1, 1))
 
@@ -2163,7 +2163,7 @@ class KimaResults:
                     s = self.indices['planets.W']
                     W = self.posteriors.W = self.posteriors.Ω = self.posterior_sample[:, s]
                     self.posteriors.W_deg = self.posteriors.Ω_deg = np.rad2deg(W)
-                    self._priors.W = self.priors['Omegaprior']
+                    self._priors.W = self.priors['Wprior']
 
 
         if self.KO:
@@ -2189,7 +2189,7 @@ class KimaResults:
             elif self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
                 self.posteriors.KO.φ = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
                 self.posteriors.KO.e = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
-                self.posteriors.KO.a0 = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                self.posteriors.KO.a = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
                 self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
                 self.posteriors.KO.cosi = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
                 self.posteriors.KO.W = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
@@ -2597,7 +2597,7 @@ class KimaResults:
                 if self.thiele_innes:
                     pars = ['P', 'phi', 'ecc', 'A', 'B', 'F', 'G']
                 else:
-                    pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
+                    pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
             elif self.model is MODELS.RVHGPMmodel:
                 pars = ['P', 'K', 'M0', 'e', 'w', 'i', 'W']
             else:
@@ -2662,7 +2662,7 @@ class KimaResults:
             print('orbital parameters: ', end='')
             extra_n = 0
             if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
-                pars = ['P', 'phi', 'ecc', 'a0', 'w', 'cosi', 'W']
+                pars = ['P', 'phi', 'ecc', 'a', 'w', 'cosi', 'W']
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
                     pars = ['P', 'K', 'q', 'M0', 'e', 'w', 'wdot','cosi']
@@ -2948,7 +2948,7 @@ class KimaResults:
             # known_object ? 
             # For BINARIESmodel and double_lined especially, need to deal with
             # the extra parameters in those models and using the correct Keplerian
-            # also for the RVGAIA model, converting a0 into K
+            # also for the RVGAIA model, converting a into K
             pj = 0
             if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
@@ -2965,10 +2965,10 @@ class KimaResults:
                     if self.model is MODELS.RVGAIAmodel:
                         phi = pars[j + 1 * self.nKO]
                         ecc = pars[j + 2 * self.nKO]
-                        a0 = pars[j + 3 * self.nKO]
+                        a = pars[j + 3 * self.nKO]
                         w = pars[j + 4 * self.nKO]
                         cosi = pars[j + 5 * self.nKO]
-                        K = Kfroma0(P,a0,ecc,cosi,plx)
+                        K = Kfroma0(P,a,ecc,cosi,plx)
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     elif self.model is MODELS.BINARIESmodel:
                         K = pars[j + 1 * self.nKO]
@@ -3060,10 +3060,10 @@ class KimaResults:
                 if self.model is MODELS.RVGAIAmodel:
                     phi = pars[j + 1 * self.max_components]
                     ecc = pars[j + 2 * self.max_components]
-                    a0 = pars[j + 3 * self.max_components]
+                    a = pars[j + 3 * self.max_components]
                     w = pars[j + 4 * self.max_components]
                     cosi = pars[j + 5 * self.max_components]
-                    K = Kfroma0(P,a0,ecc,cosi,plx)
+                    K = Kfroma0(P,a,ecc,cosi,plx)
                 else:
                     K = pars[j + 1 * self.max_components]
                     phi = pars[j + 2 * self.max_components]
@@ -3294,10 +3294,10 @@ class KimaResults:
                 elif self.model is MODELS.RVGAIAmodel:
                     phi = pars[j + 1 * self.nKO]
                     ecc = pars[j + 2 * self.nKO]
-                    a0 = pars[j + 3 * self.nKO]
+                    a = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
                     cosi = pars[j + 5 * self.nKO]
-                    K = Kfroma0(P,a0,ecc,cosi,plx)
+                    K = Kfroma0(P,a,ecc,cosi,plx)
                 else:
                     K = pars[j + 1 * self.nKO]
                     phi = pars[j + 2 * self.nKO]
@@ -3380,10 +3380,10 @@ class KimaResults:
                 phi = pars[j + 1 * self.max_components]
                 # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                 ecc = pars[j + 2 * self.max_components]
-                a0 = pars[j + 3 * self.max_components]
+                a = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 cosi = pars[j + 5 * self.max_components]
-                K = Kfroma0(P,a0,ecc,cosi,plx)
+                K = Kfroma0(P,a,ecc,cosi,plx)
             else:
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]

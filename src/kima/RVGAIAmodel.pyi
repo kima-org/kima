@@ -3,12 +3,12 @@ import kima.distributions
 from _typeshed import Incomplete
 
 class RVGAIAConditionalPrior:
-    Omegaprior: kima.distributions.Distribution
+    Wprior: kima.distributions.Distribution
     Pprior: kima.distributions.Distribution
     a0prior: kima.distributions.Distribution
     cosiprior: kima.distributions.Distribution
     eprior: kima.distributions.Distribution
-    omegaprior: kima.distributions.Distribution
+    wprior: kima.distributions.Distribution
     phiprior: kima.distributions.Distribution
     def __init__(self) -> None: ...
 
@@ -17,12 +17,12 @@ class RVGAIAmodel:
     DEC: float
     J_GAIA_prior: kima.distributions.Distribution
     J_RV_prior: kima.distributions.Distribution
-    KO_Omegaprior: list[kima.distributions.Distribution]
+    KO_Wprior: list[kima.distributions.Distribution]
     KO_Pprior: list[kima.distributions.Distribution]
     KO_a0prior: list[kima.distributions.Distribution]
     KO_cosiprior: list[kima.distributions.Distribution]
     KO_eprior: list[kima.distributions.Distribution]
-    KO_omegaprior: list[kima.distributions.Distribution]
+    KO_wprior: list[kima.distributions.Distribution]
     KO_phiprior: list[kima.distributions.Distribution]
     RA: float
     conditional: Incomplete

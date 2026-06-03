@@ -7,12 +7,12 @@ class GAIAConditionalPrior:
     Bprior: kima.distributions.Distribution
     Fprior: kima.distributions.Distribution
     Gprior: kima.distributions.Distribution
-    Omegaprior: kima.distributions.Distribution
+    Wprior: kima.distributions.Distribution
     Pprior: kima.distributions.Distribution
     a0prior: kima.distributions.Distribution
     cosiprior: kima.distributions.Distribution
     eprior: kima.distributions.Distribution
-    omegaprior: kima.distributions.Distribution
+    wprior: kima.distributions.Distribution
     phiprior: kima.distributions.Distribution
     thiele_innes: bool
     def __init__(self) -> None: ...
@@ -20,12 +20,12 @@ class GAIAConditionalPrior:
 class GAIAmodel:
     DEC: float
     Jprior: kima.distributions.Distribution
-    KO_Omegaprior: list[kima.distributions.Distribution]
+    KO_Wprior: list[kima.distributions.Distribution]
     KO_Pprior: list[kima.distributions.Distribution]
     KO_a0prior: list[kima.distributions.Distribution]
     KO_cosiprior: list[kima.distributions.Distribution]
     KO_eprior: list[kima.distributions.Distribution]
-    KO_omegaprior: list[kima.distributions.Distribution]
+    KO_wprior: list[kima.distributions.Distribution]
     KO_phiprior: list[kima.distributions.Distribution]
     RA: float
     conditional: Incomplete
