@@ -2089,6 +2089,14 @@ class KimaResults:
                     s = self.indices['planets.G']
                     self.posteriors.G = self.posterior_sample[:,s]
                     self._priors.G = self.priors['Gprior']
+
+                    def Campbell_a(A,B,F,G):
+                        u = (A**2 + B**2 + F**2 + G**2)/2
+                        v = A*G - B*F
+                        a = (u + ((u+v)*(u-v))**(0.5))**(0.5)
+                        return a
+                    
+                    self.posteriors.a = Campbell_a(self.posteriors.A,self.posteriors.B,self.posteriors.F,self.posteriors.G)
                 else:
                     #a0s 
                     s = self.indices['planets.a']

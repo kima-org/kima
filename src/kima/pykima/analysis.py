@@ -1117,6 +1117,73 @@ def reorder_P5(res, replace=False, until_detected=True,
 
     return new_posterior
 
+def reorder_P5_ast(res, replace=False, until_detected=True,
+               sort_maximum_likelihood_by_a=True):
+    from itertools import permutations
+    from copy import deepcopy
+    from tqdm import tqdm
+    from warnings import warn
+    warn('this function does not change res.posterior_sample even if replace=True')
+
+    # make a copy of the posterior samples
+    new_posterior = deepcopy(res.posteriors)
+    fields = ('e', 'w', 'φ',
+              'i', 'i_deg', 'W', 'W_deg', 'Ω', 'Ω_deg', 'cosi', 'A','B','F','G')
+    # the maximum likelihood sample will serve as reference
+    p = res.maximum_likelihood_sample(printit=False)
+
+    if sort_maximum_likelihood_by_a:
+        sorta = np.argsort(p[res.indices['planets.a']])[::-1]
+        p[res.indices['planets.P']] = p[res.indices['planets.P']][sorta]
+        p[res.indices['planets.a']] = p[res.indices['planets.a']][sorta]
+        p[res.indices['planets.e']] = p[res.indices['planets.e']][sorta]
+        p[res.indices['planets.w']] = p[res.indices['planets.w']][sorta]
+        p[res.indices['planets.W']] = p[res.indices['planets.W']][sorta]
+        p[res.indices['planets.φ']] = p[res.indices['planets.φ']][sorta]
+        p[res.indices['planets.cosi']] = p[res.indices['planets.cosi']][sorta]
+
+
+    res.print_sample(p)
+
+    # covariance estimation...
+    logL = res.posterior_lnlike[:, 1]
+    errorP = new_posterior.P[logL > np.percentile(logL, 84)].std(axis=0)
+    errora = new_posterior.a[logL > np.percentile(logL, 84)].std(axis=0)
+
+    # do reordering for all planets or until detected
+    maximum = np_bayes_factor_threshold(res) if until_detected else res.npmax - 1
+
+    for j in range(maximum):
+        # all possible permutations of the columns after the jth
+        perms = list(map(np.array, permutations(range(j, res.npmax))))
+        # reference period and semi-amplitude
+        refP = p[res.indices['planets.P']][j]
+        refa = p[res.indices['planets.a']][j]
+        # for each sample
+        for i, (sP, sa) in enumerate(tqdm(zip(new_posterior.P, new_posterior.a), total=res.ESS)):
+            sP = sP[j:]
+            sa = sa[j:]
+            dist = [
+                np.hypot(
+                    (sP[perm - j] - refP)[0] / errorP[j],
+                    (sa[perm - j] - refa)[0] / errora[j]
+                )
+                for perm in perms
+            ]
+            perm = perms[np.argmin(np.abs(dist))]
+            new_posterior.P[i, j:] = sP[perm - j]
+            new_posterior.a[i, j:] = sa[perm - j]
+            for field in fields:
+                try:
+                    arr = getattr(new_posterior, field)
+                    arr[i, j:] = arr[i, j:][perm - j]
+                except AttributeError:
+                    pass
+    if replace:
+        res.posteriors = new_posterior
+
+    return new_posterior
+
 
 def sort_planet_samples(res, byP=True, replace=False):
     # here we sort the planet_samples array by the orbital period

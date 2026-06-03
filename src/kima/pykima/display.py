@@ -26,6 +26,7 @@ except ImportError:
 dty = 1/365.25
 dty2 = dty**2
 dty3 = dty**3
+twopi = 2 * np.pi
 
 
 def make_plots(res, options, save_plots=False):
@@ -3623,7 +3624,6 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     except ImportError:
         raise ImportError('pystrometry is required for astrometry phase plots')
 
-    twopi = 2 * np.pi
     from ..kepler import brandt_solver
 
     def ellip_rectang(t, P, e, Tper):
@@ -4181,10 +4181,10 @@ def hist_bary(res, show_prior=False):
     return fig, axs
 
 
-def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=5000,
+def plot_random_samples(res, ncurves=50, Np=None, samples=None, tt=None, toplike=70, over=0.1, ntt=5000,
                         subtract_offsets=False, clip_curves_to_data=False,
                         show_vsys=False, show_gp=True, isolate_known_object=True, isolate_transiting_planet=True,
-                        isolate_apodized_keplerians=True, include_jitters_in_points=False, 
+                        isolate_apodized_keplerians=True, include_jitters_in_points=False, colormap='plasma',
                         include_jitters_in_predict=True, full_plot=False, show_outliers=False, **kwargs):
     """
     Display the RV data together with curves from the posterior predictive. 
@@ -4232,6 +4232,13 @@ def plot_random_samples(res, ncurves=50, samples=None, tt=None, over=0.1, ntt=50
         fig (matplotlib.figure.Figure):
             The figure with the plot
     """
+    if res.model is MODELS.GAIAmodel:
+        plot_random_samples_astrometry(res, Np ,ncurves, samples, toplike, isolate_known_object,
+                                    include_jitters_in_points, full_plot, colormap)
+        return
+    elif res.model is MODELS.RVGAIAmodel:
+        plot_random_samples_astrometry(res, Np ,ncurves, samples, toplike, isolate_known_object,
+                                    include_jitters_in_points, full_plot, colormap)
 
     SB2 = res.model is MODELS.BINARIESmodel and res.double_lined
 
@@ -4460,7 +4467,6 @@ def plot_random_samples_multiseries(res, ncurves=50, samples=None, over=0.1, ntt
     """
     full_plot = kwargs.pop('full_plot', False)
     rhk = res.model is MODELS.RVFWHMRHKmodel
-
 
     if samples is None:
         samples = res.posterior_sample
@@ -4883,6 +4889,274 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
                 #                        single_planet=-k)
                 ax.plot(tt, flux - y_offset, color=f'C{j}', alpha=alpha)
 
+    if res.save_plots:
+        filename = 'kima-showresults-fig6.png'
+        print('saving in', filename)
+        fig.savefig(filename)
+
+    if res.return_figs:
+        return fig
+
+def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70, isolate_known_object=True,
+                                    include_jitters_in_points=False, full_plot=False, colormap='plasma', **kwargs):
+    print('Astrometry orbit plot depends on the subtraction of the paralactic motion, therefore the set of posterior samples shown will not be truly comparable to the data (which is shown with the maximum-likelihood paralactic solution removed)')
+    
+    from ..kepler import brandt_solver
+    from .analysis import reorder_P5_ast
+
+    reorder_P5_ast(res,replace = True)
+
+    def wss(da,dd,par,mua,mud,t,psi,pf,tref):
+        T = t - tref
+        return (da + mua*dty*T)*np.sin(psi) + (dd +mud*dty*T)*np.cos(psi) +par*pf
+    
+    def waccels(accela,acceld,jerka,jerkd,t,psi,tref):
+        T = t - tref
+        return ((1/2)*accela*dty2*T**2 + (1/6)*jerka*dty3*T**3)*np.sin(psi) + ((1/2)*acceld*dty2*T**2 + (1/6)*jerkd*dty3*T**3)*np.cos(psi)
+
+    def wk_orb_TI(P,Tper,e,A,B,F,G,t,psi):
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return (B*X + G*Y)*np.sin(psi) + (A*X + F*Y)*np.cos(psi)
+    
+    def Thiele_Innes(a0, w, W, cosi):
+        A = a0*(np.cos(w)*np.cos(W) - np.sin(w)*np.sin(W)*cosi)
+        B = a0*(np.cos(w)*np.sin(W) + np.sin(w)*np.cos(W)*cosi)
+        F = -a0*(np.sin(w)*np.cos(W) + np.cos(w)*np.sin(W)*cosi)
+        G = -a0*(np.sin(w)*np.sin(W) - np.cos(w)*np.cos(W)*cosi)
+        return A, B, F, G
+
+    def ellip_rectang(t, P, e, Tper):
+        M = twopi * (t - Tper) / P
+        E = brandt_solver(M, e)
+        X = np.cos(E) - e
+        Y = np.sqrt(1-e**2) * np.sin(E)
+        return X, Y
+    
+    def ra_dec_orb_TI(P,Tper,e,A,B,F,G,t):
+        X, Y = ellip_rectang(t, P, e, Tper)
+        return B*X + G*Y, A*X + F*Y
+    
+    def wscanbias(A,theta,k,psi):
+        return A*np.cos(k*(psi-theta))
+
+    if toplike>100 or toplike<0:
+        print('When selecting what percentage of posterior to sample you must select a value 0 < toplike < 100\n Setting the value to 70%')
+        toplike = 70
+
+    t = np.array(res.GAIAdata.t)
+    t2 = t.copy()
+    wobs = np.array(res.GAIAdata.w)
+    ws_err = np.array(res.GAIAdata.wsig)
+    psi = np.array(res.GAIAdata.psi)
+    pf = np.array(res.GAIAdata.pf)
+
+    sample = res.maximum_likelihood_sample(Np=Np)
+
+    if include_jitters_in_points:
+        ws_err = np.hypot(ws_err,sample[res.indices['jitter']][0])
+
+    alpha_errs = ws_err*np.sin(psi)
+    dec_errs = ws_err*np.cos(psi)
+
+    nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
+
+    if nplanets == 0:
+        print('Cannot plot astrometric orbit samples for a set with no orbits, please chose a higher Np')
+        return
+
+    da, dd, mua, mud, par = sample[res.indices['astrometric_solution']]
+    if res.n_accel_params == 4:
+        accela, acceld, jerka, jerkd = sample[res.indices['accel_solution']]
+    elif res.n_accel_params == 2:
+        accela, acceld = sample[res.indices['accel_solution']]
+        jerka, jerkd = 0, 0
+    if res.scan_dep_signal:
+        scan_dep_signal_params = sample[res.indices['scan_dep_signal']]
+
+    # P, phi, e, a, w, cosi, W = sample[res.indices['planets']]
+
+    nrows = {
+        1: 1, 2: 1, 3: 1,
+        4: 2, 5: 2, 6: 2
+    }[nplanets]
+
+    ncols = {
+        1: 1, 2: 2, 3: 3,
+        4: 2, 5: 3, 6: 3
+    }[nplanets]
+
+    fs = [ncols*6,nrows*6]
+
+    fig = plt.figure(tight_layout=True, figsize=fs)
+
+    gs = gridspec.GridSpec(nrows, ncols, figure=fig)
+
+    if nplanets == 1:
+        axs = [fig.add_subplot(gs[0, 0])]
+    elif nplanets == 2:
+        axs = [fig.add_subplot(gs[0, 0]),fig.add_subplot(gs[0, 1])]
+    elif nplanets == 3:
+        axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+    elif nplanets == 4:
+        axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, 0]),
+                fig.add_subplot(gs[1, 1])]
+    elif nplanets == 5:
+        axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]
+    elif nplanets == 6:
+        axs = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+                fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2])]
+    else:
+        raise NotImplementedError
+
+    time_array = np.arange(np.min(t),np.max(t),1.0)
+    
+    wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
+
+    #add accelerations
+    if res.n_accel_params >0:
+        wmodel += waccels(accela, acceld, jerka, jerkd, t, psi, res.M0_epoch)
+    
+    #Get full model
+    for letter in keys:
+        # P, phi, e, a, w, cosi, W, Tper, type, index = params[letter]
+        P = params[letter]['P']
+        phi = params[letter]['φ']
+        e = params[letter]['e']
+        if res.thiele_innes:
+            A = params[letter]['A']
+            B = params[letter]['B']
+            F = params[letter]['F']
+            G = params[letter]['G']
+        else:
+            a = params[letter]['a']
+            w = params[letter]['w']
+            cosi = params[letter]['cosi']
+            W = params[letter]['W']
+            A,B,F,G = Thiele_Innes(a,w,W,cosi)
+        Tper = params[letter]['Tp']
+
+        wmodel += wk_orb_TI(P, Tper, e, A, B, F, G, t, psi)
+    
+    #add scan-angle bias signal
+    if res.scan_dep_signal:
+        for j in range(res.n_scan_dep_comps):
+            Ak = scan_dep_signal_params[j]
+            thetak = scan_dep_signal_params[j+res.n_scan_dep_comps]
+            k = 2*j + 3
+            wmodel += wscanbias(Ak,thetak,k,psi)
+
+    #get residuals
+    wws = wobs - wmodel
+    alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
+
+    for j,letter in enumerate(keys):
+        P = params[letter]['P']
+        phi = params[letter]['φ']
+        e = params[letter]['e']
+        if res.thiele_innes:
+            A = params[letter]['A']
+            B = params[letter]['B']
+            F = params[letter]['F']
+            G = params[letter]['G']
+        else:
+            a = params[letter]['a']
+            w = params[letter]['w']
+            cosi = params[letter]['cosi']
+            W = params[letter]['W']
+            A,B,F,G = Thiele_Innes(a,w,W,cosi) 
+        Tper = params[letter]['Tp']  
+        
+
+        ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
+        ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
+
+        ax = axs[j]
+
+        # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
+        ax.plot(ra2, dec2, color='cornflowerblue', lw=3, zorder=-1)
+        ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
+        cmap = matplotlib.colormaps[colormap]
+        for i in range(len(t)):
+            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
+            ax.plot([ra[i]+alpha_res[i]-alpha_errs[i],ra[i]+alpha_res[i]+alpha_errs[i]],[dec[i]+dec_res[i]-dec_errs[i],dec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+
+        #Add line connecting COM to pericentre
+        ra_per, dec_per = ra_dec_orb_TI(P, Tper, e, A, B, F, G, Tper)
+        ax.scatter(0,0,marker='x',c='grey')
+        ax.plot([0,ra_per],[0,dec_per],c='grey',ls=':')
+
+    if samples is None:
+        samples = res.posterior_sample.copy()
+        samples_provided = False
+    else:
+        samples = np.atleast_2d(samples)
+        samples_provided = True
+
+    mask = samples[:,res.indices['np']]==Np
+
+    if samples.shape[0] == 1:
+        ii = np.zeros(1, dtype=int)
+    elif ncurves == samples.shape[0] or samples_provided:
+        # ii = np.arange(ncurves)
+        ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
+    else:
+        try:
+            # select `ncurves` indices from the 70% highest likelihood samples
+            lnlike = res.posterior_lnlike[:, 1]
+            sorted_lnlike = np.sort(lnlike)[::-1]
+            mask_lnlike = lnlike > np.percentile(sorted_lnlike, toplike)
+            ii = np.random.choice(np.where(mask & mask_lnlike)[0], size=ncurves,
+                                  replace=False)
+        except ValueError:
+            ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
+
+    transparency = max(0.02,1/len(ii))
+    for i in ii:
+        sample = samples[i]
+        nplanets, params, keys = astrometry_phase_plot_logic(res,sample)
+
+        for j,letter in enumerate(keys):
+            P = params[letter]['P']
+            phi = params[letter]['φ']
+            e = params[letter]['e']
+            if res.thiele_innes:
+                A = params[letter]['A']
+                B = params[letter]['B']
+                F = params[letter]['F']
+                G = params[letter]['G']
+            else:
+                a = params[letter]['a']
+                w = params[letter]['w']
+                cosi = params[letter]['cosi']
+                W = params[letter]['W']
+                A,B,F,G = Thiele_Innes(a,w,W,cosi) 
+            Tper = params[letter]['Tp']  
+            
+
+            ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
+            ax = axs[j]
+
+            ax.plot(ra2, dec2, color='k', lw=2, alpha = transparency, zorder=-2)
+    
+    for j in range(nplanets):
+        ax = axs[j]
+        #Make plot square to get good visual on e and inc
+        lowx,highx = ax.get_xlim()
+        lowy,highy = ax.get_ylim()
+        xwidth = highx - lowx
+        ywidth = highy - lowy
+        if xwidth < ywidth:
+            delta = ywidth - xwidth
+            ax.set(xlim = [lowx - delta/2,highx + delta/2])
+        else:
+            delta = xwidth - ywidth
+            ax.set(ylim = [lowy - delta/2,highy + delta/2])
+        ax.xaxis.set_inverted(True)
+
+        ax.set_box_aspect(1)
+        ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Photocentre Orbit '+str(j+1))
+    
     if res.save_plots:
         filename = 'kima-showresults-fig6.png'
         print('saving in', filename)
