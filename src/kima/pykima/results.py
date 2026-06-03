@@ -2448,7 +2448,10 @@ class KimaResults:
                 represent the posterior*.
             optimize (bool, optional):
                 If True, optimize the likelihood, starting from the maximum
-                likelihood sample.
+                likelihood sample. Prior bounds are enforced, but the prior
+                itself is not taken into account in the optimization (only the
+                likelihood is optimized). Note that *Np is not changed* during
+                the optimization.
         """
         if self.sample_info is None and not self._lnlike_available:
             print("log-likelihoods are not available! maximum_likelihood_sample() doing nothing...")
@@ -2468,9 +2471,25 @@ class KimaResults:
             pars = self.sample[ind][ind_maxlike]
 
         if optimize:
-            # TODO: should take into account the prior (bounds)
             from scipy.optimize import minimize
-            res = minimize(lambda p: -self.log_likelihood(p), pars)
+            from .utils import distribution_support
+            priors = self.parameter_priors.copy()
+            bounds = []
+            for i, p in enumerate(priors):
+                # print(self._parameters[i], p)
+                if self._parameters[i] in ('ndim', 'maxNp', 'staleness'):
+                    bounds.append((pars[i], pars[i]))
+                elif i == self.indices['np']:
+                    bounds.append((pars[i], pars[i]))
+                elif p is None:
+                    bounds.append((None, None))
+                else:
+                    mi, ma = distribution_support(p)
+                    mi = None if np.isinf(mi) else mi
+                    ma = None if np.isinf(ma) else ma
+                    bounds.append((mi, ma))
+
+            res = minimize(lambda p: -self.log_likelihood(p), pars, bounds=bounds)
             maxlike = -res.fun
             pars = res.x
 
@@ -2487,8 +2506,7 @@ class KimaResults:
             if Np is not None:
                 print(f'from samples with {Np=} only')
 
-            msg = '-> might not be representative '\
-                  'of the full posterior distribution\n'
+            msg = '-> might not be representative of the full posterior distribution\n'
             print(msg)
 
             self.print_sample(pars)
