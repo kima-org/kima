@@ -4192,6 +4192,8 @@ def plot_random_samples(res, ncurves=50, Np=None, samples=None, tt=None, toplike
     Args:
         ncurves (int, optional):
             Number of posterior predictive curves to show.
+        Np (int optional):
+            If not specifying samples chose what number of planets to include
         samples (array, optional):
             Specific posterior sample(s) to plot.
         tt (array, optional):
@@ -4249,7 +4251,10 @@ def plot_random_samples(res, ncurves=50, Np=None, samples=None, tt=None, toplike
         samples = np.atleast_2d(samples)
         samples_provided = True
 
-    mask = np.ones(samples.shape[0], dtype=bool)
+    if Np==None:
+        mask = np.ones(samples.shape[0], dtype=bool)
+    else:
+        mask = samples[:,res.indices['np']]==Np
 
     t = res.data.t.copy()
     M0_epoch = copy(res.M0_epoch)
@@ -4903,7 +4908,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
     
     from ..kepler import brandt_solver
     from .analysis import reorder_P5_ast
-
     reorder_P5_ast(res,replace = True)
 
     def wss(da,dd,par,mua,mud,t,psi,pf,tref):
@@ -4949,9 +4953,7 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
     ws_err = np.array(res.GAIAdata.wsig)
     psi = np.array(res.GAIAdata.psi)
     pf = np.array(res.GAIAdata.pf)
-
-    sample = res.maximum_likelihood_sample(Np=Np)
-
+    sample = res.maximum_likelihood_sample(Np=Np,printit=False)
     if include_jitters_in_points:
         ws_err = np.hypot(ws_err,sample[res.indices['jitter']][0])
 
@@ -4991,6 +4993,8 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
 
     gs = gridspec.GridSpec(nrows, ncols, figure=fig)
 
+    print('nplanet ',nplanets)
+
     if nplanets == 1:
         axs = [fig.add_subplot(gs[0, 0])]
     elif nplanets == 2:
@@ -5012,7 +5016,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
     time_array = np.arange(np.min(t),np.max(t),1.0)
     
     wmodel = wss(da, dd, par, mua, mud, t, psi, pf, res.M0_epoch)
-
     #add accelerations
     if res.n_accel_params >0:
         wmodel += waccels(accela, acceld, jerka, jerkd, t, psi, res.M0_epoch)
@@ -5049,7 +5052,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
     #get residuals
     wws = wobs - wmodel
     alpha_res, dec_res = wws * np.sin(psi), wws * np.cos(psi)
-
     for j,letter in enumerate(keys):
         P = params[letter]['P']
         phi = params[letter]['φ']
@@ -5067,7 +5069,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
             A,B,F,G = Thiele_Innes(a,w,W,cosi) 
         Tper = params[letter]['Tp']  
         
-
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
         ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
@@ -5093,7 +5094,12 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
         samples = np.atleast_2d(samples)
         samples_provided = True
 
-    mask = samples[:,res.indices['np']]==Np
+    if Np==None:
+        mask = np.ones(samples.shape[0], dtype=bool)
+    else:
+        mask = samples[:,res.indices['np']]==Np
+
+    print('mask test, Np=',Np)
 
     if samples.shape[0] == 1:
         ii = np.zeros(1, dtype=int)
@@ -5107,9 +5113,15 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
             sorted_lnlike = np.sort(lnlike)[::-1]
             mask_lnlike = lnlike > np.percentile(sorted_lnlike, toplike)
             ii = np.random.choice(np.where(mask & mask_lnlike)[0], size=ncurves,
-                                  replace=False)
+                                    replace=False)
         except ValueError:
-            ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
+            try:
+                ii = np.random.choice(np.where(mask)[0], size=ncurves,
+                                    replace=False)
+            except ValueError:
+                print('ncurves is larger than the number of posterior samples with Np = '+str(Np)+'\nUsing all the available posteriors with the correct number of Keplerians...')
+                ii = np.where(mask)[0]
+                # ii = np.random.choice(np.arange(samples.shape[0]), size=ncurves, replace=False)
 
     transparency = max(0.02,1/len(ii))
     for i in ii:
@@ -5135,6 +5147,7 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
             
 
             ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
+
             ax = axs[j]
 
             ax.plot(ra2, dec2, color='k', lw=2, alpha = transparency, zorder=-2)

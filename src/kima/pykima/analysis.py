@@ -1118,12 +1118,12 @@ def reorder_P5(res, replace=False, until_detected=True,
     return new_posterior
 
 def reorder_P5_ast(res, replace=False, until_detected=True,
-               sort_maximum_likelihood_by_a=True):
+               sort_maximum_likelihood_by_a=True, printit=False):
     from itertools import permutations
     from copy import deepcopy
     from tqdm import tqdm
     from warnings import warn
-    warn('this function does not change res.posterior_sample even if replace=True')
+    # warn('this function does not change res.posterior_sample even if replace=True') #I believe it does replace
 
     # make a copy of the posterior samples
     new_posterior = deepcopy(res.posteriors)
@@ -1142,8 +1142,8 @@ def reorder_P5_ast(res, replace=False, until_detected=True,
         p[res.indices['planets.φ']] = p[res.indices['planets.φ']][sorta]
         p[res.indices['planets.cosi']] = p[res.indices['planets.cosi']][sorta]
 
-
-    res.print_sample(p)
+    if printit:
+        res.print_sample(p)
 
     # covariance estimation...
     logL = res.posterior_lnlike[:, 1]
