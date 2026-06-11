@@ -1,4 +1,4 @@
-; 2025-11-24 11:10:37
+; 2026-06-10 11:04:39
 
 [kima]
 model: GAIAmodel
@@ -12,34 +12,34 @@ studentt: false
 
 
 [data]
-file: /Users/thomasbaycroft/Documents/Python_packages/kima/src/kima/examples/gaia/BH3_binnedt2.gaia
+file: /Users/thomasbaycroft/Documents/Python_packages/kima/src/kima/examples/GaiaBH3/Gaia_astrometry_BH3.gaia
 skip: 2
 units: mas
-M0_epoch: 57936.875
+M0_epoch: 57936.875000000000000
 
 [priors.general]
-Jprior: Uniform(0.01; 0.2)
-da_prior: Gaussian(4.2; 0.4)
-dd_prior: Gaussian(2.4; 0.3)
-mua_prior: Gaussian(-0.08; 0.2)
-mud_prior: Gaussian(-0.42; 0.2)
-parallax_prior: Uniform(1.3; 1.9)
+Jprior: ModifiedLogUniform(0.010000000000000; 0.200000000000000)
+da_prior: Gaussian(4.200000000000000; 0.400000000000000)
+dd_prior: Gaussian(2.400000000000000; 0.300000000000000)
+mua_prior: Gaussian(-30.000000000000000; 80.000000000000000)
+mud_prior: Gaussian(150.000000000000000; 80.000000000000000)
+parallax_prior: Uniform(1.300000000000000; 1.900000000000000)
 
 [priors.planets]
-Pprior: LogUniform(10; 4000)
-phiprior: Uniform(0; 6.28319)
-eprior: Kumaraswamy(0.867; 3.03)
-a0prior: ModifiedLogUniform(0.01; 1)
-omegaprior: Uniform(0; 6.28319)
-cosiprior: Uniform(-1; 1)
-Omegaprior: Uniform(0; 3.14159)
+Pprior: LogUniform(10.000000000000000; 4000.000000000000000)
+phiprior: Uniform(0.000000000000000; 6.283185307179586)
+eprior: Kumaraswamy(0.867000000000000; 3.030000000000000)
+aprior: ModifiedLogUniform(0.010000000000000; 1.000000000000000)
+wprior: Uniform(0.000000000000000; 6.283185307179586)
+cosiprior: Uniform(-1.000000000000000; 1.000000000000000)
+Wprior: Uniform(0.000000000000000; 3.141592653589793)
 
 [priors.known_object]
-Pprior_0: Gaussian(4280; 500)
-aprior_0: Gaussian(27.3; 4)
-eprior_0: Gaussian(0.73; 0.04)
-phiprior_0: Uniform(0; 6.28319)
-wprior_0: Gaussian(1.36; 0.05)
-cosiprior_0: Gaussian(-0.35; 0.05)
-Omprior_0: Gaussian(2.38; 0.05)
+Pprior_0: Gaussian(4280.000000000000000; 500.000000000000000)
+aprior_0: Gaussian(27.300000000000001; 4.000000000000000)
+eprior_0: Gaussian(0.730000000000000; 0.040000000000000)
+phiprior_0: Uniform(0.000000000000000; 6.283185307179586)
+wprior_0: Gaussian(1.360000000000000; 0.050000000000000)
+cosiprior_0: Gaussian(-0.350000000000000; 0.050000000000000)
+Wprior_0: Gaussian(2.380000000000000; 0.050000000000000)
 
