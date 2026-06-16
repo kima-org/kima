@@ -3562,8 +3562,6 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
 
     nplanets = int(sample[res.indices['np']])
 
-    
-
     pj = 0
     nKOs = 0
     if res.KO:
@@ -4993,8 +4991,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
 
     gs = gridspec.GridSpec(nrows, ncols, figure=fig)
 
-    print('nplanet ',nplanets)
-
     if nplanets == 1:
         axs = [fig.add_subplot(gs[0, 0])]
     elif nplanets == 2:
@@ -5098,8 +5094,6 @@ def plot_random_samples_astrometry(res, Np ,ncurves=50, samples=None, toplike=70
         mask = np.ones(samples.shape[0], dtype=bool)
     else:
         mask = samples[:,res.indices['np']]==Np
-
-    print('mask test, Np=',Np)
 
     if samples.shape[0] == 1:
         ii = np.zeros(1, dtype=int)
