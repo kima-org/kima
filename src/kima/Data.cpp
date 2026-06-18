@@ -1451,6 +1451,22 @@ Args:
         Name of the instrument
 )D";
 
+auto GAIAdata_DOC = R"D(
+Load astrometric data from a file
+
+Args:
+    filename (str):
+        Name of the file to read
+    units (str):
+        Units of the data ('ms' or 'kms')
+    skip (int):
+        Number of lines to skip at the top of the file
+    max_rows (int):
+        Maximum number of rows to read
+    delimiter (str):
+        Delimiter between columns
+)D";
+
 NB_MODULE(Data, m) {
     // 
     nb::class_<loadtxt<double>>(m, "loadtxt")
@@ -1572,7 +1588,7 @@ NB_MODULE(Data, m) {
         // constructor
         .def(nb::init<const string&, const string&, int, int, const string&>(),
               "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
-              "Load astrometric data from a file")
+              GAIAdata_DOC)
         // properties
         .def_ro("datafile", &GAIAdata::_datafile, "The file name")
         //
