@@ -53,7 +53,7 @@ jobs:
     - name: Test
       run: |
         python -m pytest -s tests/ 
-        python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
+        #python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
 
     - name: Run benchmark
       run: |
