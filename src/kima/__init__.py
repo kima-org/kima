@@ -139,6 +139,37 @@ def _keplerian_wrapper_for_docs():
     """
     pass
 
+def _keplerian_gaia_wrapper_for_docs():
+    """
+    Calculate the Keplerian curve of one planet at times `t`
+
+    Args:
+        t (array):
+            Times at which to calculate the Keplerian function
+        psi (array):
+            Scan angle of the Gaia satellite at time t [rad]
+        A (float):
+            Thiele-innes parameter A [mas]
+        B (float):
+            Thiele-innes parameter B [mas]
+        F (float):
+            Thiele-innes parameter F [mas]
+        G (float):
+            Thiele-innes parameter G [mas]
+        ecc (float):
+            Orbital eccentricity
+        P (float):
+            Orbital period P [days]
+        M0 (float):
+            Mean anomaly at the epoch [rad]
+        M0_epoch (float):
+            Reference epoch for the mean anomaly (M=0 at this time) [days]
+
+    Returns:
+        wk (array):
+            Gaia along-scan 'abscissa' function for a keplerian orbit evaluated
+            at input times `t`
+    """
 
 #from . import spleaf
 from . import distributions
