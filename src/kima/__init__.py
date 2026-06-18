@@ -89,6 +89,7 @@ from .pykima.utils import sounds, maybe_success_sound, maybe_error_sound
 
 # kima.run, and wrapper with sounds
 from .Sampler import run as _run_really
+from ._run_doc import _run_wrapper_for_docs
 
 def run(*args, **kwargs):
     try:
