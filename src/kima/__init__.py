@@ -111,6 +111,35 @@ from .pykima.cli import cli_clean as cleanup
 # sub-packages
 from .kepler import keplerian
 from .postkepler import post_keplerian
+
+# couldn't find a better way to do this...
+def _keplerian_wrapper_for_docs():
+    """
+    Calculate the Keplerian curve of one planet at times `t`
+
+    Args:
+        t (array):
+            Times at which to calculate the Keplerian function
+        P (float):
+            Orbital period [days]
+        K (float):
+            Semi-amplitude
+        ecc (float):
+            Orbital eccentricity
+        w (float):
+            Argument of periastron [rad]
+        M0 (float):
+            Mean anomaly at the epoch [rad]
+        M0_epoch (float):
+            Reference epoch for the mean anomaly (M=0 at this time) [days]
+
+    Returns:
+        v (array):
+            Keplerian function evaluated at input times `t`
+    """
+    pass
+
+
 #from . import spleaf
 from . import distributions
 from . import kmath
