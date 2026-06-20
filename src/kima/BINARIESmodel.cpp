@@ -998,27 +998,27 @@ string BINARIESmodel::description() const
             desc += "beta" + std::to_string(j+1) + sep;
         }
     }
+    
+    auto printi = [&](const size_t n, const string& name )
+    {
+        for(size_t i = 0; i < n; i++) 
+        {
+            desc += name + std::to_string(i + index_from) + sep;
+        }
+    };
 
     if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
+        printi(n_known_object, "KO_P");
+        printi(n_known_object, "KO_K");
         if (double_lined)
         {
-            for(int i=0; i<n_known_object; i++) 
-                desc += "KO_q" + std::to_string(i) + sep;
+            printi(n_known_object, "KO_q");
         }
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_w" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_wdot" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_cosi" + std::to_string(i) + sep;
+        printi(n_known_object, "KO_phi");
+        printi(n_known_object, "KO_ecc");
+        printi(n_known_object, "KO_w");
+        printi(n_known_object, "KO_wdot");
+        printi(n_known_object, "KO_cosi");
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -1027,11 +1027,11 @@ string BINARIESmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+        printi(maxpl, "P");
+        printi(maxpl, "K");
+        printi(maxpl, "phi");
+        printi(maxpl, "ecc");
+        printi(maxpl, "w");
     }
 
     desc += "staleness" + sep;
@@ -1159,6 +1159,7 @@ class BINARIESmodel_publicist : public BINARIESmodel
         using BINARIESmodel::trend;
         using BINARIESmodel::degree;
         using BINARIESmodel::studentt;
+        using BINARIESmodel::index_from;
         using BINARIESmodel::known_object;
         using BINARIESmodel::n_known_object;
         using BINARIESmodel::star_mass;
@@ -1197,6 +1198,9 @@ NB_MODULE(BINARIESmodel, m) {
         //
         .def_rw("studentt", &BINARIESmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        //
+        .def_rw("index_from", &BINARIESmodel_publicist::index_from,
+                "what indexing convention to use for the labelling of keplerians, defaults to 1.")
         //
         .def_rw("known_object", &BINARIESmodel_publicist::known_object,
                 "whether to include (better) known extra Keplerian curve(s), should be true for BINARIESmodel")
