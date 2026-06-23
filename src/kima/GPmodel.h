@@ -38,6 +38,9 @@ class  GPmodel
         bool trend {false};
         /// degree of the polynomial trend
         int degree {0};   
+        
+        /// whether to print parameters indexing at 0 or 1
+        int index_from {0};
 
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;

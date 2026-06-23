@@ -1050,30 +1050,28 @@ string GPmodel::description() const
     if (magnetic_cycle_kernel)
         desc += "eta5" + sep + "eta6" + sep + "eta7" + sep;
 
+    auto printi = [&](const size_t n, const string& name )
+    {
+        for(size_t i = 0; i < n; i++) 
+        {
+            desc += name + std::to_string(i + index_from) + sep;
+        }
+    };
+
     if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_w" + std::to_string(i) + sep;
+        printi(n_known_object, "KO_P");
+        printi(n_known_object, "KO_K");
+        printi(n_known_object, "KO_phi");
+        printi(n_known_object, "KO_ecc");
+        printi(n_known_object, "KO_w");
     }
 
     if(transiting_planet) {
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_P" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_K" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_Tc" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_ecc" + std::to_string(i) + sep;
-        for (int i = 0; i < n_transiting_planet; i++)
-            desc += "TR_w" + std::to_string(i) + sep;
+        printi(n_transiting_planet, "TR_P");
+        printi(n_transiting_planet, "TR_K");
+        printi(n_transiting_planet, "TR_Tc");
+        printi(n_transiting_planet, "TR_ecc");
+        printi(n_transiting_planet, "TR_w");
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -1084,11 +1082,11 @@ string GPmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+        printi(maxpl, "P");
+        printi(maxpl, "K");
+        printi(maxpl, "phi");
+        printi(maxpl, "ecc");
+        printi(maxpl, "w");
     }
 
     desc += "staleness" + sep;
@@ -1273,6 +1271,7 @@ class GPmodel_publicist : public GPmodel
         //
         using GPmodel::trend;
         using GPmodel::degree;
+        using GPmodel::index_from;
         using GPmodel::star_mass;
         using GPmodel::enforce_stability;
         using GPmodel::indicator_correlations;
@@ -1299,7 +1298,11 @@ NB_MODULE(GPmodel, m) {
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &GPmodel_publicist::degree,
                 "degree of the polynomial trend")
-        
+
+        .def_rw("index_from", &GPmodel_publicist::index_from,
+                "indexing convention for labelling Keplerian parameters")
+        //
+
         // KO mode
         .def("set_known_object", &GPmodel::set_known_object)
         .def_prop_ro("known_object", [](GPmodel &m) { return m.get_known_object(); },
