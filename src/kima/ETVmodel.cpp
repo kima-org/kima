@@ -543,7 +543,7 @@ NB_MODULE(ETVmodel, m) {
         .def_rw("studentt", &ETVmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
         //
-        .def_rw("index_from", &GETVmodel_publicist::index_from,
+        .def_rw("index_from", &ETVmodel_publicist::index_from,
                 "what indexing convention to use for the labelling of keplerians, defaults to 1.")
         //
 
