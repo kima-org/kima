@@ -382,17 +382,20 @@ string ETVmodel::description() const
 
     //auto data = get_data();
 
+    auto printi = [&](const size_t n, const string& name )
+    {
+        for(size_t i = 0; i < n; i++) 
+        {
+            desc += name + std::to_string(i + index_from) + sep;
+        }
+    };
+
     if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_w" + std::to_string(i) + sep;
+        printi(n_known_object, "KO_P");
+        printi(n_known_object, "KO_K");
+        printi(n_known_object, "KO_phi");
+        printi(n_known_object, "KO_ecc");
+        printi(n_known_object, "KO_w");
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
@@ -401,11 +404,11 @@ string ETVmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+        printi(maxpl, "P");
+        printi(maxpl, "K");
+        printi(maxpl, "phi");
+        printi(maxpl, "ecc");
+        printi(maxpl, "w");
     }
 
     desc += "staleness" + sep;
@@ -509,6 +512,7 @@ class ETVmodel_publicist : public ETVmodel
         using ETVmodel::data;
         //
         using ETVmodel::studentt;
+        using ETVmodel::index_from;
         using ETVmodel::star_mass;
 };
 
@@ -538,6 +542,10 @@ NB_MODULE(ETVmodel, m) {
 
         .def_rw("studentt", &ETVmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        //
+        .def_rw("index_from", &GETVmodel_publicist::index_from,
+                "what indexing convention to use for the labelling of keplerians, defaults to 1.")
+        //
 
         // KO mode
         .def_prop_ro("known_object", [](ETVmodel &m) { return m.get_known_object(); },

@@ -34,6 +34,9 @@ class KIMA_API ETVmodel
 
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
+
+        /// whether to print parameters indexing at 0 or 1
+        int index_from {1};
         
         double star_mass = 1.0;  // [Msun]
         
