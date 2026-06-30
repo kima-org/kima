@@ -603,7 +603,7 @@ string GAIAmodel::description() const
     {
         for(size_t i = 0; i < n; i++) 
         {
-            desc += name + std::to_string(i + 1) + sep;
+            desc += name + std::to_string(i + index_from) + sep;
         }
     };
 
@@ -776,6 +776,7 @@ class GAIAmodel_publicist : public GAIAmodel
 {
     public:
         using GAIAmodel::studentt;
+        using GAIAmodel::index_from;
         using GAIAmodel::fix;
         using GAIAmodel::npmax;
         using GAIAmodel::data;
@@ -805,6 +806,10 @@ NB_MODULE(GAIAmodel, m) {
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
+        //
+        .def_rw("index_from", &GAIAmodel_publicist::index_from,
+                "what indexing convention to use for the labelling of keplerians, defaults to 1.")
+        //
         .def_rw("thiele_innes", &GAIAmodel_publicist::thiele_innes, 
                 "use the thiele-innes coefficients rather than geometric")
         .def_rw("star_mass", &GAIAmodel_publicist::star_mass,

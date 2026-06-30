@@ -25,6 +25,9 @@ class KIMA_API GAIAmodel
     protected:
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
+
+        /// whether to print parameters indexing at 0 or 1
+        int index_from {1};
         
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
