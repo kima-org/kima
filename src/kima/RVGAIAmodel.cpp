@@ -961,7 +961,7 @@ string RVGAIAmodel::description() const
     {
         for(size_t i = 0; i < n; i++) 
         {
-            desc += name + std::to_string(i + 1) + sep;
+            desc += name + std::to_string(i + index_from) + sep;
         }
     };
 
@@ -1155,6 +1155,7 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
 {
     public:
         using RVGAIAmodel::studentt;
+        using RVGAIAmodel::index_from;
         using RVGAIAmodel::fix;
         using RVGAIAmodel::npmax;
         // using RVGAIAmodel::known_object;
@@ -1197,7 +1198,10 @@ NB_MODULE(RVGAIAmodel, m) {
 
         .def_rw("studentt", &RVGAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
-
+        //
+        .def_rw("index_from", &RVGAIAmodel_publicist::index_from,
+                "what indexing convention to use for the labelling of keplerians, defaults to 1.")
+        //
         // RA + Dec
         .def_rw("RA", &RVGAIAmodel_publicist::RA,
                 "Right Ascension of the target star (degrees)")
