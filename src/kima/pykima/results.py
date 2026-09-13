@@ -3819,6 +3819,8 @@ class KimaResults:
 
     def eval_model_hgpm(self, sample):
         # TODO: this is a draft implementation!
+        # TODO: add all known objects, currently only works for one
+        # TODO: check and merge with the code in display.plot_hgpm
         from ..kepler import keplerian_rvpm
         t_pm = np.array([
             self.pm_data.epoch_ra_hip,
@@ -3846,6 +3848,25 @@ class KimaResults:
                 self.M0_epoch, 
                 sample[self.indices['planets.i']][j],
                 sample[self.indices['planets.W']][j]
+            )
+            model_ra += model[1]
+            model_dec += model[2]
+            model_ra_hg += model[3][0]
+            model_dec_hg += model[3][1]
+
+        if self.KO:
+            KOpars = sample[self.indices['KOpars']]
+            model = keplerian_rvpm(
+                [], t_pm, 
+                sample[self.indices['parallax']], 
+                KOpars[0], # P 
+                KOpars[1], # K
+                KOpars[3], # ecc
+                KOpars[4], # w
+                KOpars[2], # M0
+                self.M0_epoch, 
+                KOpars[5], # i
+                KOpars[6]  # W
             )
             model_ra += model[1]
             model_dec += model[2]
