@@ -4065,7 +4065,7 @@ def hist_astrometric_solution(res, show_prior=False, axs=None, **kwargs):
 
 
 def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
-              include_planets=None, **kwargs):
+              include_planets=None, include_known_object=False, **kwargs):
     if res.model != MODELS.RVHGPMmodel:
         print('Model is not RVHGPMmodel! plot_hgpm() doing nothing...')
         return
@@ -4095,7 +4095,7 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
     # handles, labels = axs[0].get_legend_handles_labels()
     # print(handles)
 
-    for i in np.random.choice(np.arange(res.ESS), size=ncurves, replace=False):
+    for icurve, i in enumerate(np.random.choice(np.arange(res.ESS), size=ncurves, replace=False)):
     # for i in range(res.ESS):
         p = res.posterior_sample[i]
 
@@ -4135,11 +4135,63 @@ def plot_hgpm(res, pm_data, ncurves=50, normalize=False,
             axs[2].axhline(pm_dec_bary, **kw_line)
             axs[0].plot(t_ra - 5e4, pm_ra_bary + model_ra, **kw)
             axs[2].plot(t_dec - 5e4, pm_dec_bary + model_dec, **kw)
-    
+
+
+        if include_known_object and res.KO:
+
+            KO_model_ra = np.zeros_like(t_ra)
+            KO_model_dec = np.zeros_like(t_dec)
+
+            for j in range(res.nKO):
+                
+                koP = p[res.indices['KOpars']][j]
+                koφ = p[res.indices['KOpars']][j + 2 * res.nKO]
+                koe = p[res.indices['KOpars']][j + 3 * res.nKO]
+                kow = p[res.indices['KOpars']][j + 4 * res.nKO]
+                koK = p[res.indices['KOpars']][j + 1 * res.nKO]
+                koi = p[res.indices['KOpars']][j + 5 * res.nKO]
+                koW = p[res.indices['KOpars']][j + 6 * res.nKO]
+
+                model = keplerian_rvpm(
+                    res.data.t, t_pm, 
+                    p[res.indices['parallax']], 
+                    koP, 
+                    koK,
+                    koe,
+                    kow,
+                    koφ,
+                    res.M0_epoch, 
+                    koi,
+                    koW
+                )
+                KO_model_ra += model[1]
+                KO_model_dec += model[2]
+
+
+            kw = dict(color='C0', alpha=0.1 if ncurves > 10 else 1.0, zorder=-1, lw=0.5)
+            label = 'known object' if icurve == 0 else None
+
+            if normalize:
+                axs[0].plot(t_ra - 5e4, KO_model_ra + pm_ra_bary, label=label, **kw)
+                axs[2].plot(t_dec - 5e4, KO_model_dec + pm_dec_bary, **kw)
+            else:
+                axs[0].plot(t_ra - 5e4, pm_ra_bary + KO_model_ra, label=label, **kw)
+                axs[2].plot(t_dec - 5e4, pm_dec_bary + KO_model_dec, **kw)
+
+            
     for ax in axs[::2]:
         ax.set_xlim(-4000, 10_000)
         # ax.set_ylim(-40, 40)
-    
+
+    # add the "known object" label to the legend
+    # alongside the Hipparcos/Gaia labels created in plot_HGPMdata
+    if include_known_object and res.KO and axs[0].get_legend() is not None:
+        leg = axs[0].legend(ncols=3, bbox_to_anchor=(0, 1.11), loc='upper left')
+        # increasing the opacity of the "known object" legend entry so it is more visible
+        for handle, text in zip(leg.legend_handles, leg.get_texts()):
+            if text.get_text() == 'known object':
+                handle.set_alpha(0.5)
+                
     return fig
 
 
@@ -5407,7 +5459,7 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         axs['c'].axis('off')
         axs['d'].axis('off')
     else:
-        res.plot2(ax=axs['p'], alpha=0.6)
+        res.plot2(ax=axs['p'], include_known_object=True, alpha=0.6)
         axs['p'].set(title='', ylabel='posterior', xlabel='')
 
         from .analysis import FIP
@@ -5421,7 +5473,7 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         else:
             kw3 = dict()
 
-        res.plot3(ax1=axs['c'], ax2=axs['d'], **kw3)
+        res.plot3(ax1=axs['c'], ax2=axs['d'], include_known_object=True, **kw3)
 
         if res.ESS < 1000:
             for line in axs['c'].get_lines():

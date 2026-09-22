@@ -1323,6 +1323,9 @@ class KimaResults:
                 n_KOparameters = 7 * self.nKO
             elif self.model is MODELS.RVGAIAmodel:
                 n_KOparameters = 7 * self.nKO
+            elif self.model is MODELS.RVHGPMmodel:
+                # P, K, phi, e, w, i, W
+                n_KOparameters = 7 * self.nKO
             elif self.model is MODELS.BINARIESmodel:
                 if self.double_lined:
                     n_KOparameters = 8 * self.nKO
@@ -1484,6 +1487,9 @@ class KimaResults:
             KO_priors += [self.priors[f'KO_phiprior_{i}'] for i in range(self.nKO)]
             KO_priors += [self.priors[f'KO_eprior_{i}'] for i in range(self.nKO)]
             KO_priors += [self.priors[f'KO_wprior_{i}'] for i in range(self.nKO)]
+            if self.model is MODELS.RVHGPMmodel:
+                KO_priors += [self.priors[f'KO_iprior_{i}'] for i in range(self.nKO)]
+                KO_priors += [self.priors[f'KO_Wprior_{i}'] for i in range(self.nKO)]
             priors[self.indices['KOpars']] = KO_priors
 
         if self.TR:
@@ -2207,6 +2213,13 @@ class KimaResults:
                 self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
                 self.posteriors.KO.cosi = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
                 self.posteriors.KO.W = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
+            elif self.model is MODELS.RVHGPMmodel:
+                self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
+                self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
+                self.posteriors.KO.e = self.KOpars[:, range(3*self.nKO, 4*self.nKO)]
+                self.posteriors.KO.w = self.KOpars[:, range(4*self.nKO, 5*self.nKO)]
+                self.posteriors.KO.i = self.KOpars[:, range(5*self.nKO, 6*self.nKO)]
+                self.posteriors.KO.W = self.posteriors.KO.Ω = self.KOpars[:, range(6*self.nKO, 7*self.nKO)]
             else:
                 self.posteriors.KO.K = self.KOpars[:, range(1*self.nKO, 2*self.nKO)]
                 self.posteriors.KO.φ = self.KOpars[:, range(2*self.nKO, 3*self.nKO)]
@@ -2684,6 +2697,8 @@ class KimaResults:
                 else:
                     pars = ['P', 'K', 'M0', 'e', 'w', 'wdot','cosi']
                     extra_n = 2
+            elif self.model is MODELS.RVHGPMmodel:
+                pars = ('P', 'K', 'M0', 'e', 'w', 'i', 'W')
             else:
                 pars = ('P', 'K', 'M0', 'e', 'w')
             print(((self.n_dimensions + extra_n) * ' {:>10s} ').format(*pars))

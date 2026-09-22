@@ -60,8 +60,8 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
     kwG = dict(fmt='o', ms=4, color='C1')
     kw = dict(fmt='o', ms=4, color='k')
 
-    axs[0].errorbar(data.epoch_ra_hip - 5e4, data.pm_ra_hip, data.sig_hip_ra, **kwH)
-    axs[0].errorbar(data.epoch_ra_gaia - 5e4, data.pm_ra_gaia, data.sig_gaia_ra, **kwG)
+    axs[0].errorbar(data.epoch_ra_hip - 5e4, data.pm_ra_hip, data.sig_hip_ra, label='Hipparcos', **kwH)
+    axs[0].errorbar(data.epoch_ra_gaia - 5e4, data.pm_ra_gaia, data.sig_gaia_ra, label='Gaia', **kwG)
     axs[1].errorbar(0.5, data.pm_ra_hg, data.sig_hg_ra, **kw, mfc="w")
     axs[1].axhline(data.pm_ra_hg, color="k", zorder=-1)
     axs[1].set(yticks=[], xticks=[], xlim=(0, 1))
@@ -85,6 +85,5 @@ def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None,
     # axs[1, 3].axis('off')
 
     if show_legend:
-        axs[0].legend(['Hipparcos', 'Gaia'], ncols=2,
-                      bbox_to_anchor=(0, 1.11), loc='upper left')
+        axs[0].legend(ncols=2, bbox_to_anchor=(0, 1.11), loc='upper left')
     return fig, axs

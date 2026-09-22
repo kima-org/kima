@@ -86,7 +86,7 @@ class KIMA_API RVHGPMmodel
         double pm_ra_bary, pm_dec_bary;
 
         // Parameters for the known object, if set
-        // double KO_P, KO_K, KO_e, KO_phi, KO_w;
+        // double KO_P, KO_K, KO_e, KO_phi, KO_w, KO_i, KO_W;
         std::vector<double> KO_P;
         std::vector<double> KO_K;
         std::vector<double> KO_e;

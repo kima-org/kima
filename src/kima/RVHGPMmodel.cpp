@@ -124,7 +124,7 @@ void RVHGPMmodel::setPriors()  // BUG: should be done by only one thread!
     if (known_object) { 
         for (size_t i = 0; i < n_known_object; i++)
         {
-            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
+            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_iprior[i] || !KO_Wprior[i])
             {
                 std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_iprior, KO_Wprior";
                 std::string msg = "When known_object=true, must set explicit priors for each of " + p;
@@ -362,12 +362,10 @@ void RVHGPMmodel::calculate_mu()
         inc = components[j][5];
         Omega = components[j][6];
 
-        auto [v, pm] = brandt::keplerian_rvpm(data.t, 
-                                              {pm_data.epoch_ra_hip, pm_data.epoch_dec_hip, pm_data.epoch_ra_gaia, pm_data.epoch_dec_gaia},
+        auto [v, pm] = brandt::keplerian_rvpm(data.t, pm_data.get_epochs(),
                                               parallax, 
                                               P, K, ecc, omega, phi, data.M0_epoch, inc, Omega);
-        // std::cout << pm.size() << " : " << pm[0][0] << " " << pm[0][1] << " " << pm[0][2] << " " << pm[0][3] << std::endl;
-        // auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
+
         for (size_t i = 0; i < N; i++)
             mu[i] += v[i];
         
@@ -394,20 +392,41 @@ void RVHGPMmodel::calculate_mu()
 void RVHGPMmodel::remove_known_object()
 {
     for (int j = 0; j < n_known_object; j++) {
-        auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
+        auto [v, pm] = brandt::keplerian_rvpm(data.t, pm_data.get_epochs(), 
+                                              parallax, 
+                                              KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch, KO_i[j], KO_W[j]);
+        
         for (size_t i = 0; i < data.N(); i++) {
             mu[i] -= v[i];
         }
+
+        mu_pm[0] -= pm[0][0]; // pm RA Hipparcos
+        mu_pm[1] -= pm[1][0]; // pm Dec Hipparcos
+        mu_pm[2] -= pm[0][1]; // pm RA Gaia
+        mu_pm[3] -= pm[1][1]; // pm Dec Gaia
+        mu_pm[4] -= pm[2][0]; // pm RA Hipparcos-Gaia
+        mu_pm[5] -= pm[2][1]; // pm Dec Hipparcos-Gaia
     }
 }
 
 void RVHGPMmodel::add_known_object()
 {
     for (int j = 0; j < n_known_object; j++) {
-        auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
+        auto [v, pm] = brandt::keplerian_rvpm(data.t, pm_data.get_epochs(), 
+                                              parallax, 
+                                              KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch, KO_i[j], KO_W[j]);
+        
         for (size_t i = 0; i < data.N(); i++) {
             mu[i] += v[i];
         }
+
+        mu_pm[0] += pm[0][0]; // pm RA Hipparcos
+        mu_pm[1] += pm[1][0]; // pm Dec Hipparcos
+        mu_pm[2] += pm[0][1]; // pm RA Gaia
+        mu_pm[3] += pm[1][1]; // pm Dec Gaia
+        mu_pm[4] += pm[2][0]; // pm RA Hipparcos-Gaia
+        mu_pm[5] += pm[2][1]; // pm Dec Hipparcos-Gaia
+
     }
 }
 
@@ -485,54 +504,6 @@ void RVHGPMmodel::solve_label_switching(RNG& rng)
         std::swap(components[0][4], components[1][4]);
         planets.set_components(components);
     }
-
-//     cout << staleness << endl;
-//     cout << "P: " << components[0][0] << '\t' << components[1][0] << endl;
-//     return;
-
-
-//     auto conditional = planets.get_conditional_prior();
-
-//     // map periods to the hypertriangle
-//     vector<double> store_Pnew(K);
-//     //double x_im1 = 0.0;
-
-//     double P1 = components[0][0];
-//     double x1 = conditional->Pprior->cdf(P1);
-//     double X1 = 1.0 - pow(1.0 - x1, 1.0 / K);
-//     double P2 = components[1][0];
-//     double x2 = conditional->Pprior->cdf(P2);
-//     double X2 = 1.0 - pow(1.0 - x2, 1.0) * (1.0 - X1);
-//     components[0][0] = conditional->Pprior->cdf_inverse(X1);
-//     components[1][0] = conditional->Pprior->cdf_inverse(X2);
-//     // cout << "P1: " << P1 << '\t' << "--> " << X1 << endl;
-//     // cout << "P2: " << P2 << '\t' << "--> " << X2 << endl;
-
-//     // for (size_t i = 0; i < K; i++)
-//     // {
-//     //     double P = components[i][0];
-//     //     double x = conditional->Pprior->cdf(P);
-//     //     double xnew = 1.0 - pow(1 - x, 1.0/(K+1.0-i-1.0)) * (1.0 - x_im1);
-//     //     double Pnew = conditional->Pprior->cdf_inverse(xnew);
-//     //     components[i][0] = Pnew;
-//     //     store_Pnew[i] = Pnew;
-//     //     x_im1 = xnew;
-//     // }
-
-//     // auto indices = argsort(store_Pnew);
-//     // for (size_t i = 0; i < K - 1; i++)
-//     // {
-//     //     if (indices[i] > indices[i+1])
-//     //     {
-//     //         std::swap(components[i][1], components[i+1][1]);
-//     //         std::swap(components[i][2], components[i+1][2]);
-//     //         std::swap(components[i][3], components[i+1][3]);
-//     //         std::swap(components[i][4], components[i+1][4]);
-//     //     }
-//     // }
-
-//     planets.set_components(components);
-//     cout << "out of solve_label_switching" << endl;
 }
 
 int RVHGPMmodel::is_stable() const
@@ -553,7 +524,7 @@ int RVHGPMmodel::is_stable() const
             all_components.resize(components.size() + n_known_object);
             size_t i = 0;
             for (size_t j = components.size(); j < components.size() + n_known_object; j++) {
-                all_components[j] = {KO_P[i], KO_K[i], KO_phi[i], KO_e[i], KO_w[i]};
+                all_components[j] = {KO_P[i], KO_K[i], KO_phi[i], KO_e[i], KO_w[i], KO_i[i], KO_W[i]};
                 i++;
             }
             stable_planets = AMD::AMD_stable(all_components, star_mass);
@@ -568,7 +539,7 @@ int RVHGPMmodel::is_stable() const
         vector<vector<double>> ko_components;
         ko_components.resize(n_known_object);
         for (int j = 0; j < n_known_object; j++) {
-            ko_components[j] = {KO_P[j], KO_K[j], KO_phi[j], KO_e[j], KO_w[j]};
+            ko_components[j] = {KO_P[j], KO_K[j], KO_phi[j], KO_e[j], KO_w[j], KO_i[j], KO_W[j]};
         }
         stable_known_object = AMD::AMD_stable(ko_components, star_mass);
         return stable_known_object;
@@ -1239,6 +1210,8 @@ void RVHGPMmodel::save_setup() {
             fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+            fout << "iprior_" << i << ": " << *KO_iprior[i] << endl;
+            fout << "Wprior_" << i << ": " << *KO_Wprior[i] << endl;
         }
     }
 
@@ -1489,6 +1462,14 @@ NB_MODULE(RVHGPMmodel, m) {
                      [](RVHGPMmodel &m) { return m.KO_phiprior; },
                      [](RVHGPMmodel &m, std::vector<distribution>& vd) { m.KO_phiprior = vd; },
                      "Prior for KO mean anomaly(ies)")
+        .def_prop_rw("KO_iprior",
+                     [](RVHGPMmodel &m) { return m.KO_iprior; },
+                     [](RVHGPMmodel &m, std::vector<distribution>& vd) { m.KO_iprior = vd; },
+                     "Prior for KO inclination")
+        .def_prop_rw("KO_Wprior",
+                     [](RVHGPMmodel &m) { return m.KO_Wprior; },
+                     [](RVHGPMmodel &m, std::vector<distribution>& vd) { m.KO_Wprior = vd; },
+                     "Prior for KO longitude of ascending node")
 
         // transiting planet priors
         // ? should these setters check if transiting_planet is true?
