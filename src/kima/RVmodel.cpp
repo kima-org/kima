@@ -134,7 +134,8 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         {
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
             {
-                std::string msg = "When known_object=true, must set priors for each of KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
+                std::string p = "KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior";
+                std::string msg = "When known_object=true, must set priors for each of " + p;
                 throw std::logic_error(msg);
             }
         }
@@ -146,7 +147,8 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         {
             if (!TR_Pprior[i] || !TR_Kprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i])
             {
-                std::string msg = "When transiting_planet=true, must set priors for each of TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
+                std::string p = "TR_Pprior, TR_Kprior, TR_eprior, TR_Tcprior, TR_wprior";
+                std::string msg = "When transiting_planet=true, must set priors for each of " + p;
                 throw std::logic_error(msg);
             }
         }
