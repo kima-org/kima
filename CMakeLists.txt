@@ -23,6 +23,7 @@ set(LOADTXT_PATH src/vendor/cpp-loadtxt/src)
 set(GCEM_PATH src/vendor/gcem/include)
 set(EIGEN_PATH src/vendor/eigen)
 set(SPLEAF_PATH src/vendor/spleaf/src/spleaf)
+set(HODLR_PATH src/vendor/HODLR)
 
 
 
@@ -48,17 +49,21 @@ add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
 
 # import Python components needed by nanobind
 find_package(Python 3.9
-  REQUIRED COMPONENTS Interpreter Development.Module
-  OPTIONAL_COMPONENTS Development.SABIModule)
+REQUIRED COMPONENTS Interpreter Development.Module
+OPTIONAL_COMPONENTS Development.SABIModule)
 
 # import nanobind
 find_package(nanobind CONFIG REQUIRED)
 
 
+if(WIN32)
+  link_directories(${Python_LIBRARY_DIRS} ${Python_SABI_LIBRARY_DIRS})
+endif()
+
 # add loadtxt path to includes
 set(INCLUDES ${LOADTXT_PATH} ${DNEST4_PATH} ${GCEM_PATH})
 # add Eigen path to includes
-set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH})
+set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH} ${HODLR_PATH})
 # add spleaf path to includes
 set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
@@ -99,20 +104,28 @@ add_library(common_objects OBJECT
 target_compile_features(common_objects PRIVATE cxx_std_17)
 target_include_directories(common_objects PRIVATE ${INCLUDES})
 target_include_directories(common_objects PRIVATE ${NB_DIR}/include)
-target_include_directories(common_objects PRIVATE ${Python_INCLUDE_DIRS})
 
 add_library(conditional OBJECT src/kima/ConditionalPrior.cpp)
 target_compile_features(conditional PRIVATE cxx_std_17)
 target_include_directories(conditional PRIVATE ${INCLUDES})
 target_include_directories(conditional PRIVATE ${NB_DIR}/include)
-target_include_directories(conditional PRIVATE ${Python_INCLUDE_DIRS})
 
 
-add_library(gp_objects OBJECT src/kima/GP.cpp src/kima/bessel-library.cpp)
+add_library(gp_objects OBJECT src/kima/GP.cpp 
+                              src/kima/bessel-library.cpp 
+                              src/kima/arb_hypgeom.cpp
+                              # ${HODLR_PATH}/hodlr.cpp
+                              )
+
 target_compile_features(gp_objects PRIVATE cxx_std_17)
 target_include_directories(gp_objects PRIVATE ${INCLUDES_SPLEAF})
 target_include_directories(gp_objects PRIVATE ${NB_DIR}/include)
-target_include_directories(gp_objects PRIVATE ${Python_INCLUDE_DIRS})
+
+
+foreach(obj common_objects conditional gp_objects)
+  target_link_libraries(${obj} PRIVATE Python::Module)
+endforeach()
+
 
 nanobind_add_module(distributions NB_STATIC NB_DOMAIN kima 
                     src/kima/distributions.cpp
@@ -225,8 +238,10 @@ nanobind_add_module(AMDstability NB_STATIC NB_DOMAIN kima
 target_compile_features(AMDstability PRIVATE cxx_std_17)
 target_include_directories(AMDstability PRIVATE ${INCLUDES})
 
-nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima 
-                    src/kima/GP.cpp src/kima/bessel-library.cpp)
+nanobind_add_module(GP NB_STATIC NB_DOMAIN kima 
+                    src/kima/GP.cpp src/kima/bessel-library.cpp src/kima/arb_hypgeom.cpp
+                    # ${HODLR_PATH}/hodlr.cpp
+                    )
 target_compile_features(GP PRIVATE cxx_std_17)
 
 nanobind_add_module(transits NB_STATIC NB_DOMAIN kima 
