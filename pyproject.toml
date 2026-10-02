@@ -33,6 +33,7 @@ dependencies = [
     "rebound",
     "tinygp",
     "pooch",
+    "tqdm",
     "compress_pickle[lz4]",
 ]
 
