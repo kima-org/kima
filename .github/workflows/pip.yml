@@ -17,17 +17,17 @@ jobs:
       matrix:
         platform: [macos-latest, ubuntu-latest]
         # python-version: ["3.8", "3.9", "3.10", "3.11"]
-        python-version: ["3.11"]
+        python-version: ["3.14"]
         experimental: [false]
         include:
           - platform: windows-latest
-            python-version: "3.11"
+            python-version: "3.14"
             experimental: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -60,7 +60,7 @@ jobs:
         python -m pytest -s tests/test_benchmarks.py --benchmark-json output.json
 
     - name: Download previous benchmark data
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ./cache
         key: ${{ runner.os }}-benchmark
@@ -77,7 +77,7 @@ jobs:
         summary-always: true
         # comment-always: true
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       if: always()
       with:
         name: mpl-results-${{ matrix.platform }}
