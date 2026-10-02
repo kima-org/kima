@@ -23,7 +23,7 @@ set(LOADTXT_PATH src/vendor/cpp-loadtxt/src)
 set(GCEM_PATH src/vendor/gcem/include)
 set(EIGEN_PATH src/vendor/eigen)
 set(SPLEAF_PATH src/vendor/spleaf/src/spleaf)
-set(HODLR_PATH src/vendor/HODLR)
+# set(HODLR_PATH src/vendor/HODLR)
 
 
 
@@ -63,7 +63,7 @@ endif()
 # add loadtxt path to includes
 set(INCLUDES ${LOADTXT_PATH} ${DNEST4_PATH} ${GCEM_PATH})
 # add Eigen path to includes
-set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH} ${HODLR_PATH})
+set(INCLUDES_EIGEN ${INCLUDES} ${EIGEN_PATH})
 # add spleaf path to includes
 set(INCLUDES_SPLEAF ${INCLUDES_EIGEN} ${SPLEAF_PATH})
 
@@ -113,7 +113,7 @@ target_include_directories(conditional PRIVATE ${NB_DIR}/include)
 
 add_library(gp_objects OBJECT src/kima/GP.cpp 
                               src/kima/bessel-library.cpp 
-                              src/kima/arb_hypgeom.cpp
+                              # src/kima/arb_hypgeom.cpp
                               # ${HODLR_PATH}/hodlr.cpp
                               )
 
@@ -239,7 +239,8 @@ target_compile_features(AMDstability PRIVATE cxx_std_17)
 target_include_directories(AMDstability PRIVATE ${INCLUDES})
 
 nanobind_add_module(GP NB_STATIC NB_DOMAIN kima 
-                    src/kima/GP.cpp src/kima/bessel-library.cpp src/kima/arb_hypgeom.cpp
+                    src/kima/GP.cpp src/kima/bessel-library.cpp 
+                    # src/kima/arb_hypgeom.cpp
                     # ${HODLR_PATH}/hodlr.cpp
                     )
 target_compile_features(GP PRIVATE cxx_std_17)
