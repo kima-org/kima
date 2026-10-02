@@ -3826,19 +3826,20 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     time_array2 = np.arange(np.min(t2),np.max(t2),1.0)
     ax = axs[0]
 
-    if res.RA == 0.0 or res.DEC ==0.0:
-        print('RA and/or DEC value is 0.0 in the kima model, parallax plot will not be generated')
-    else:
-        parfra,parfdec = get_parallax_factors(res.RA,res.DEC, time_array2,verbose=False,overwrite=False)
-        parfra_vals,parfdec_vals = get_parallax_factors(res.RA,res.DEC, t2,verbose=False,overwrite=False)
-        a,ap,am,b,bp,bm = wss_dep_errs(alpha_res,dec_res,alpha_errs,dec_errs,da,dd,par,mua,mud,np.array(t2),parfra_vals,parfdec_vals,tref)
-        ax.scatter(a,b,c=np.array(t2),cmap=colormap)
-        cmap = matplotlib.colormaps[colormap]
-        for i in range(len(t2)):
-            colour = cmap((t2[i]-t2[0])/(t2[len(t2)-1]-t2[0]))
-            ax.plot([am[i],ap[i]],[bm[i],bp[i]],c=colour,alpha=0.6)
-        a,b = wss_dep(da,dd,par,mua,mud,time_array2,parfra,parfdec,tref)
-        ax.plot(a,b,c='black',alpha=0.8)
+    parfra, parfdec = get_parallax_factors(res.RA, res.DEC, time_array2)
+    parfra_vals, parfdec_vals = get_parallax_factors(res.RA, res.DEC, t2)
+    a, ap, am, b, bp, bm = wss_dep_errs(
+        alpha_res, dec_res, alpha_errs, dec_errs,
+        da, dd, par, mua, mud, 
+        np.array(t2), parfra_vals, parfdec_vals, tref
+    )
+    ax.scatter(a, b, c=np.array(t2), cmap=colormap)
+    cmap = matplotlib.colormaps[colormap]
+    for i in range(len(t2)):
+        colour = cmap((t2[i] - t2[0]) / (t2[len(t2) - 1] - t2[0]))
+        ax.plot([am[i], ap[i]], [bm[i], bp[i]], c=colour, alpha=0.6)
+    a, b = wss_dep(da, dd, par, mua, mud, time_array2, parfra, parfdec, tref)
+    ax.plot(a, b, c="black", alpha=0.8)
 
     ax.xaxis.set_inverted(True)
     ax.set_box_aspect(1)
@@ -3847,32 +3848,44 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     addind = 0
     #make plot for acceleration solution
 
-    if res.n_accel_params >0:
-        ax = axs[addind +1]
-        addind +=1
+    if res.n_accel_params > 0:
+        ax = axs[addind + 1]
+        addind += 1
 
-        accelra, acceldec = ra_dec_waccels(accela,acceld,jerka,jerkd,t,tref)
+        accelra, acceldec = ra_dec_waccels(accela, acceld, jerka, jerkd, t, tref)
         accelra2, acceldec2 = ra_dec_waccels(accela,acceld,jerka,jerkd,time_array,tref)
 
         ax.plot(accelra2, acceldec2, color='k', lw=2, zorder=-1)
-        ax.scatter(accelra + alpha_res, acceldec + dec_res, c=t, cmap=colormap, alpha=1)
+        ax.scatter(accelra + alpha_res, acceldec + dec_res, c=t, 
+                   cmap=colormap, alpha=1)
         cmap = matplotlib.colormaps[colormap]
         for i in range(len(t)):
-            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
-            ax.plot([accelra[i]+alpha_res[i]-alpha_errs[i],accelra[i]+alpha_res[i]+alpha_errs[i]],[acceldec[i]+dec_res[i]-dec_errs[i],acceldec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+            colour = cmap((t[i] - t[0]) / (t[len(t) - 1] - t[0]))
+            ax.plot(
+                [
+                    accelra[i] + alpha_res[i] - alpha_errs[i],
+                    accelra[i] + alpha_res[i] + alpha_errs[i],
+                ],
+                [
+                    acceldec[i] + dec_res[i] - dec_errs[i],
+                    acceldec[i] + dec_res[i] + dec_errs[i],
+                ],
+                c=colour,
+                alpha=0.6,
+            )
 
-        ax.scatter(0,0,marker='x',c='grey')
-        #Make plot square to get good visual on e and inc
-        lowx,highx = ax.get_xlim()
-        lowy,highy = ax.get_ylim()
+        ax.scatter(0, 0, marker="x", c="grey")
+        # Make plot square to get good visual on e and inc
+        lowx, highx = ax.get_xlim()
+        lowy, highy = ax.get_ylim()
         xwidth = highx - lowx
         ywidth = highy - lowy
         if xwidth < ywidth:
             delta = ywidth - xwidth
-            ax.set(xlim = [lowx - delta/2,highx + delta/2])
+            ax.set(xlim=[lowx - delta / 2, highx + delta / 2])
         else:
             delta = xwidth - ywidth
-            ax.set(ylim = [lowy - delta/2,highy + delta/2])
+            ax.set(ylim=[lowy - delta / 2, highy + delta / 2])
         ax.xaxis.set_inverted(True)
 
         ax.set_box_aspect(1)
@@ -3880,7 +3893,11 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             ifjerk = '+ Jerk'
         else:
             ifjerk = ''
-        ax.set(xlabel=r'$\Delta \alpha\,\cos\delta$ [mas]', ylabel=r'$\Delta \delta$ [mas]',title='Acceleration '+ifjerk)
+        ax.set(
+            xlabel=r"$\Delta \alpha\,\cos\delta$ [mas]",
+            ylabel=r"$\Delta \delta$ [mas]",
+            title="Acceleration " + ifjerk,
+        )
 
     #make individual orbit plots "phased"
 
@@ -3900,20 +3917,30 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
             W = params[letter]['W']
             A,B,F,G = Thiele_Innes(a,w,W,cosi) 
         Tper = params[letter]['Tp']  
-        
 
         ra, dec = ra_dec_orb_TI(P, Tper, e, A, B, F, G, t)
         ra2, dec2 = ra_dec_orb_TI(P, Tper, e, A, B, F, G, time_array)
 
-        ax = axs[j+1+addind]
+        ax = axs[j + 1 + addind]
 
         # ax.scatter(ra, dec, marker='o', c=t, cmap='plasma')
         ax.plot(ra2, dec2, color='k', lw=2, zorder=-1)
         ax.scatter(ra + alpha_res, dec + dec_res, c=t, cmap=colormap, alpha=1)
         cmap = matplotlib.colormaps[colormap]
         for i in range(len(t)):
-            colour = cmap((t[i]-t[0])/(t[len(t)-1]-t[0]))
-            ax.plot([ra[i]+alpha_res[i]-alpha_errs[i],ra[i]+alpha_res[i]+alpha_errs[i]],[dec[i]+dec_res[i]-dec_errs[i],dec[i]+dec_res[i]+dec_errs[i]],c=colour,alpha=0.6)
+            colour = cmap((t[i] - t[0]) / (t[len(t) - 1] - t[0]))
+            ax.plot(
+                [
+                    ra[i] + alpha_res[i] - alpha_errs[i],
+                    ra[i] + alpha_res[i] + alpha_errs[i],
+                ],
+                [
+                    dec[i] + dec_res[i] - dec_errs[i], 
+                    dec[i] + dec_res[i] + dec_errs[i]
+                ],
+                c=colour,
+                alpha=0.6,
+            )
 
         #Add line connecting COM to pericentre
         ra_per, dec_per = ra_dec_orb_TI(P, Tper, e, A, B, F, G, Tper)
