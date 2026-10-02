@@ -48,7 +48,8 @@ add_library(libspleaf STATIC ${SPLEAF_PATH}/libspleaf.c)
 
 # import Python components needed by nanobind
 find_package(Python 3.9
-  REQUIRED COMPONENTS Interpreter Development.Module)
+  REQUIRED COMPONENTS Interpreter Development.Module
+  OPTIONAL_COMPONENTS Development.SABIModule)
 
 # import nanobind
 find_package(nanobind CONFIG REQUIRED)
@@ -84,7 +85,7 @@ set(DISTRIBUTION_UNITS
 # compile the extension modules
 # this will make them available as kima.module
 
-nanobind_add_module(kmath NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(kmath STABLE_ABI NB_STATIC NB_DOMAIN kima 
                     src/kima/kmath.cpp)
 
 add_library(distribution_objects OBJECT ${DISTRIBUTION_UNITS})
@@ -211,15 +212,15 @@ nanobind_add_module(Sampler NB_STATIC NB_DOMAIN kima
                     )
 
 
-nanobind_add_module(kepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(kepler NB_STATIC NB_DOMAIN kima 
                     src/kima/kepler.cpp)
 target_compile_features(kepler PRIVATE cxx_std_17)
 
-nanobind_add_module(postkepler STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(postkepler NB_STATIC NB_DOMAIN kima 
                     src/kima/postkepler.cpp src/kima/kepler.cpp)
 target_compile_features(postkepler PRIVATE cxx_std_17)
 
-nanobind_add_module(AMDstability STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(AMDstability NB_STATIC NB_DOMAIN kima 
                     src/kima/AMDstability.cpp)
 target_compile_features(AMDstability PRIVATE cxx_std_17)
 target_include_directories(AMDstability PRIVATE ${INCLUDES})
@@ -228,7 +229,7 @@ nanobind_add_module(GP STABLE_ABI NB_STATIC NB_DOMAIN kima
                     src/kima/GP.cpp src/kima/bessel-library.cpp)
 target_compile_features(GP PRIVATE cxx_std_17)
 
-nanobind_add_module(transits STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(transits NB_STATIC NB_DOMAIN kima 
                     src/kima/transits.cpp src/kima/kepler.cpp)
 target_compile_features(transits PRIVATE cxx_std_17)
 
