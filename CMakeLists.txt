@@ -90,7 +90,7 @@ set(DISTRIBUTION_UNITS
 # compile the extension modules
 # this will make them available as kima.module
 
-nanobind_add_module(kmath STABLE_ABI NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(kmath NB_STATIC NB_DOMAIN kima 
                     src/kima/kmath.cpp)
 
 add_library(distribution_objects OBJECT ${DISTRIBUTION_UNITS})
