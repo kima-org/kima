@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: deploy-to-pypi
-      url: https://pypi.org/p/kima
+      url: ${{ (github.event_name == 'release' || github.ref == 'refs/heads/main') && 'https://pypi.org/p/kima' || 'https://test.pypi.org/p/kima' }}
     permissions:
       id-token: write
 
@@ -79,8 +79,17 @@ jobs:
       # - name: Check 
       #   run: pipx run twine check final_dist/*.whl --strict
 
-      - name: Publish package distributions to PyPI
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || github.ref == 'refs/heads/main'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: final_dist
-          # repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to TestPyPI
+        if: github.event_name != 'release' && github.ref != 'refs/heads/main'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: final_dist
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
