@@ -2009,3 +2009,51 @@ def hpd_grid(sample, alpha=0.05, bw_method=None, roundto=2):
          y_hpd = y[(x > value[0]) & (x < value[1])]
          modes.append(round(x_hpd[np.argmax(y_hpd)], roundto))
     return hpd, x, y, modes
+def thiele_innes_to_campbell(A, B, F, G, ω_ref=None):
+    """Convert Thiele-Innes to Campbell elements
+
+    By default, Ω is in [0, π] (astrometry-only convention). If ω_ref is given
+    (e.g. ω from the RV fit), the pair (ω, Ω) or (ω+π, Ω+π) closest to it is
+    returned, with Ω now in [0, 2π) (RV convention).
+
+    Args:
+        A, B, F, G (float or array): Thiele-Innes elements [AU or mas]
+    Returns:
+        a, i, Ω, ω: Campbell elements [AU or mas, rad, rad, rad]
+    """
+    π, τ = np.pi, 2 * np.pi
+    hypot, sqrt, arctan2 = np.hypot, np.sqrt, np.arctan2
+    p = 0.5 * hypot(A + G, B - F)
+    q = 0.5 * hypot(A - G, B + F)
+    a = p + q
+    i = 2 * arctan2(sqrt(q), sqrt(p))
+    ωpΩ = arctan2(B - F, A + G)
+    ωmΩ = arctan2(-(B + F), A - G)
+    ω = 0.5 * (ωpΩ + ωmΩ)
+    Ω = 0.5 * (ωpΩ - ωmΩ)
+    neg = Ω < 0
+    ω = np.where(neg, ω + π, ω) % τ
+    Ω = np.where(neg, Ω + π, Ω)
+    if ω_ref is not None:
+        flip = np.abs((ω - ω_ref + π) % τ - π) > π / 2
+        ω = np.where(flip, (ω + π) % τ, ω)
+        Ω = np.where(flip, Ω + π, Ω)
+    return a[()], i[()], Ω[()], ω[()]  # return scalars for scaler inputs
+
+def campbell_to_thiele_innes(a, i, Ω, ω):
+    """ Convert Campbell to Thiele-Innes elements
+
+    Args:
+        a, i, Ω, ω (float or array): Campbell elements [AU or mas, rad, rad, rad]
+    Returns
+        A, B, F, G: Thiele-Innes elements [AU or mas]
+    """
+    cos, sin = np.cos, np.sin
+    cosi = cos(i)
+    cosω, sinω = cos(ω), sin(ω)
+    cosΩ, sinΩ = cos(Ω), sin(Ω)
+    A =  a * (cosω * cosΩ - sinω * sinΩ * cosi)
+    B =  a * (cosω * sinΩ + sinω * cosΩ * cosi)
+    F = -a * (sinω * cosΩ + cosω * sinΩ * cosi)
+    G = -a * (sinω * sinΩ - cosω * cosΩ * cosi)
+    return A[()], B[()], F[()], G[()]  # return scalars for scaler inputs
