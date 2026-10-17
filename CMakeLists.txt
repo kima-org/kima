@@ -77,6 +77,7 @@ set(COMMON_UNITS src/kima/ConditionalPrior.cpp)
 # target_include_directories(common_objects PRIVATE ${Python_INCLUDE_DIRS})
 
 set(DISTRIBUTION_UNITS 
+    src/kima/distributions/Gamma.cpp
     src/kima/distributions/InverseGamma.cpp
     src/kima/distributions/InverseMoment.cpp
     src/kima/distributions/ExponentialRayleighMixture.cpp
