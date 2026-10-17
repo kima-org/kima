@@ -9,6 +9,7 @@ using namespace nb::literals;
 
 #include "DNest4.h"
 
+#include "distributions/Gamma.h"
 #include "distributions/InverseGamma.h"
 #include "distributions/InverseMoment.h"
 #include "distributions/ExponentialRayleighMixture.h"

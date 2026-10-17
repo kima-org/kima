@@ -558,6 +558,26 @@ NB_MODULE(distributions, m)
         );
 
 
+    // Gamma
+    nb::class_<DNest4::Gamma, DNest4::ContinuousDistribution>(m, "Gamma", "Gamma distribution")
+        .def(nb::init<double, double>(), "alpha"_a, "theta"_a, "Inverse gamma distribution")
+        .def_rw("alpha", &DNest4::Gamma::alpha, "Shape parameter α")
+        .def_rw("theta", &DNest4::Gamma::theta, "Scale parameter θ")
+        .def("__repr__", [](const DNest4::Gamma &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::Gamma::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::Gamma::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::Gamma::log_pdf, "x"_a, LOG_PDF_DOC)
+        // for pickling
+        .def("__getstate__",
+             [](const DNest4::Gamma &d) { 
+                return std::make_tuple(d.alpha, d.theta, 0.0, 0.0); 
+        })
+        .def("__setstate__",
+             [](DNest4::Gamma &d, const _state_type &state) {
+                new (&d) DNest4::Gamma(std::get<0>(state), std::get<1>(state));
+            }
+        );
+
     // InverseGamma
     nb::class_<DNest4::InverseGamma, DNest4::ContinuousDistribution>(m, "InverseGamma", "Inverse gamma distribution")
         .def(nb::init<double, double>(), "alpha"_a, "beta"_a, "Inverse gamma distribution")
