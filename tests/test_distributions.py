@@ -79,7 +79,7 @@ def positive(n=1):
 
 
 def test_cdf(loc_scale, number, positive):
-    N = 50
+    N = 100
     loc, scale = loc_scale
     a, b = positive(2)
 
@@ -139,7 +139,7 @@ def test_cdf(loc_scale, number, positive):
 
 
 def test_inverse_cdf(loc_scale, number, positive):
-    N = 50
+    N = 100
     loc, scale = loc_scale
     a, b = positive(2)
 
@@ -182,7 +182,7 @@ def test_inverse_cdf(loc_scale, number, positive):
     # # ...
 
     # truncated distributions
-    a, b = np.sort(number(2))
+    a, b = loc - scale, loc + 2 * scale
     pairs = [
         (truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale), TruncatedGaussian(loc, scale, a, b)),
     ]
@@ -201,7 +201,7 @@ def test_inverse_cdf(loc_scale, number, positive):
 
 
 def test_logpdf(loc_scale, number, positive):
-    N = 50
+    N = 100
     loc, scale = loc_scale
     a, b = positive(2)
 
@@ -236,7 +236,7 @@ def test_logpdf(loc_scale, number, positive):
     # assert_allclose(Kumaraswamy(1, 1).logpdf(1.5), uniform(0, 1).logpdf(1.5))
 
     # TruncatedGaussian
-    a, b = np.sort(number(2))
+    a, b = loc - scale, loc + 3 * scale
     dist1 = truncnorm((a - loc) / scale, (b - loc) / scale, loc=loc, scale=scale)
     for r in dist1.rvs(N):
         assert_allclose(TruncatedGaussian(loc, scale, a, b).logpdf(r), dist1.logpdf(r),
