@@ -162,6 +162,14 @@ def test_inverse_cdf(loc_scale, number, positive):
         for r in np.random.rand(N):
             assert_allclose(dist2.ppf(r), dist1.ppf(r), err_msg=f'{dist1} != {dist2}')
 
+    # Gamma inverse cdf can be tricky in the tails
+    assert np.isfinite(Gamma(a, b).ppf(1e-12))
+    assert np.isfinite(Gamma(a, b).ppf(1e-13))
+    assert np.isfinite(Gamma(a, b).ppf(1e-14))
+    assert np.isfinite(Gamma(a, b).ppf(1.0 - 1e-12))
+    assert np.isfinite(Gamma(a, b).ppf(1.0 - 1e-13))
+    assert np.isfinite(Gamma(a, b).ppf(1.0 - 1e-14))
+
     # infinites
     assert_equal(Gaussian(loc, scale).ppf(0), -np.inf)
     assert_equal(Gaussian(loc, scale).ppf(1), np.inf)
