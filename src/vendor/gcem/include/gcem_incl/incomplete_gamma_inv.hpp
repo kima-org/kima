@@ -155,10 +155,11 @@ noexcept
 template<typename T>
 constexpr
 T
-incomplete_gamma_inv_ratio_val_2(const T value, const T a, const T deriv_1)
+incomplete_gamma_inv_ratio_val_2(const T value, const T a)
 noexcept
 {
-    return( incomplete_gamma_inv_deriv_2(value,a,deriv_1) / deriv_1 );
+    return (a - T(1)) / value - T(1);
+    // return( incomplete_gamma_inv_deriv_2(value,a,deriv_1) / deriv_1 );
 }
 
 template<typename T>
@@ -167,7 +168,8 @@ T
 incomplete_gamma_inv_halley(const T ratio_val_1, const T ratio_val_2)
 noexcept
 {
-    return( ratio_val_1 / max( T(0.8), min( T(1.2), T(1) - T(0.5)*ratio_val_1*ratio_val_2 ) ) );
+    return ratio_val_1 / (T(1) - T(0.5)*ratio_val_1*ratio_val_2);
+    // return( ratio_val_1 / max( T(0.8), min( T(1.2), T(1) - T(0.5)*ratio_val_1*ratio_val_2 ) ) );
 }
 
 template<typename T>
@@ -178,7 +180,7 @@ noexcept
 {
     return incomplete_gamma_inv_decision(value, a, p,
                 incomplete_gamma_inv_halley(incomplete_gamma_inv_ratio_val_1(value,a,p,deriv_1), 
-                incomplete_gamma_inv_ratio_val_2(value,a,deriv_1)),
+                incomplete_gamma_inv_ratio_val_2(value,a)),
                 lg_val, iter_count);
 }
 
@@ -189,13 +191,22 @@ incomplete_gamma_inv_decision(const T value, const T a, const T p, const T direc
 noexcept
 {
     // return( abs(direc) > GCEM_INCML_GAMMA_INV_TOL ? incomplete_gamma_inv_recur(value - direc, a, p, incomplete_gamma_inv_deriv_1(value,a,lg_val), lg_val) : value - direc );
-    return( iter_count <= GCEM_INCML_GAMMA_INV_MAX_ITER ? \
+    const T next_value = value - direc;
+    return (
+        iter_count <= GCEM_INCML_GAMMA_INV_MAX_ITER &&
+        next_value > T(0) &&
+        next_value == next_value
+        )  ?
             // if
-                incomplete_gamma_inv_recur(value-direc,a,p,
-                    incomplete_gamma_inv_deriv_1(value,a,lg_val),
-                    lg_val,iter_count+1) :
+            incomplete_gamma_inv_recur(
+                next_value, a, p,
+                incomplete_gamma_inv_deriv_1(next_value, a, lg_val),
+                lg_val, iter_count+1
+            ) :
             // else 
-                value - direc );
+            next_value > T(0) && next_value == next_value
+                ? next_value
+                : value / T(2);
 }
 
 template<typename T>
