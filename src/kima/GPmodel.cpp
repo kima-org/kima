@@ -407,6 +407,8 @@ void GPmodel::calculate_mu()
 /// @brief Fill the GP covariance matrix
 void GPmodel::calculate_C()
 {
+    const Eigen::Index N = static_cast<Eigen::Index>(data.t.size());
+
     switch (kernel)
     {
     case spleaf_exp:
