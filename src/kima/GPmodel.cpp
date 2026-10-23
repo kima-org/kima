@@ -1283,6 +1283,9 @@ NB_MODULE(GPmodel, m) {
     
         model.def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, GPMODEL_DOC)
         //
+        .def("from_prior", &GPmodel::from_prior)
+        .def("log_likelihood", &GPmodel::log_likelihood)
+        //
         .def_rw("directory", &GPmodel::directory,
                 "directory where the model ran")
         // 
