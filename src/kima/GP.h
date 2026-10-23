@@ -39,10 +39,15 @@ typedef Eigen::Matrix<double, -1, -1, Eigen::RowMajor> MatrixXd_RM;
 
 
 // kernel types
-enum KernelType { qp, per, spleaf_exp, spleaf_matern32, spleaf_sho, spleaf_mep, spleaf_es, spleaf_esp };
+enum KernelType { 
+    qp, per, 
+    spleaf_exp, spleaf_matern32, spleaf_sho, spleaf_mep, spleaf_es, spleaf_esp,
+};
 
-/* Sample from a Gaussian process prior at times t*/
-VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance=1.25e-12);
+/* Sample from a Gaussian process prior at times t */
+VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance=1.25e-12, 
+                unsigned int seed=0);
+
 
 /* The "standard" quasi-periodic kernel, see R&W2006 */
 Eigen::MatrixXd QP(const std::vector<double> &t, 
