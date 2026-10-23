@@ -873,23 +873,15 @@ double GPmodel::log_likelihood() const
     default:
         /** The following code calculates the log likelihood of a GP model */
 
-        // perform the cholesky decomposition of C
-        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-        // get the lower triangular matrix L
-        Eigen::MatrixXd L = cholesky.matrixL();
+            // perform the cholesky decomposition of C
+            Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+            
+            double logDeterminant = 2.0 * cholesky.matrixLLT().diagonal().array().log().sum();
 
-        double logDeterminant = 0.;
-        for (size_t i = 0; i < y.size(); i++)
-            logDeterminant += 2. * log(L(i, i));
-
-        Eigen::VectorXd solution = cholesky.solve(residual);
-
-        // y*solution
-        double exponent = 0.;
-        for (size_t i = 0; i < y.size(); i++)
-            exponent += residual(i) * solution(i);
-
-        logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+            Eigen::VectorXd solution = cholesky.solve(residual);
+            double exponent = residual.dot(solution);
+            
+            logL = -0.5*y.size()*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
         break;
     }
 
@@ -900,7 +892,7 @@ double GPmodel::log_likelihood() const
 
     if(std::isnan(logL) || std::isinf(logL))
     {
-        logL = std::numeric_limits<double>::infinity();
+        logL = - std::numeric_limits<double>::infinity();
     }
     return logL;
 }
