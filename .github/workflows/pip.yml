@@ -56,8 +56,11 @@ jobs:
         #python -m pytest -s tests/ --mpl  --mpl-results-path=tests/baseline --mpl-generate-summary=html
 
     - name: Run benchmark
-      run: |
-        python -m pytest -s tests/test_benchmarks.py --benchmark-json output.json
+      uses: CodSpeedHQ/action@v5
+      with:
+        mode: simulation
+        run: |
+          python -m pytest tests/test_benchmarks.py --codspeed --benchmark-json output.json
 
     - name: Download previous benchmark data
       uses: actions/cache@v5
