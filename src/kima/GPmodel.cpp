@@ -413,13 +413,15 @@ void GPmodel::calculate_C()
     case spleaf_matern32:
     case spleaf_es:
     case spleaf_sho:
-        return; // do nothing
+    case spleaf_esp:
 
     case qp:
-        C = QP(data.t, eta1, eta2, eta3, eta4);
+        // C = QP(data.t, eta1, eta2, eta3, eta4);
+        QP_into(C, data.t.data(), N, eta1, eta2, eta3, eta4);
         break;
     case per:
-        C = PER(data.t, eta1, eta3, eta4);
+        // C = PER(data.t, eta1, eta3, eta4);
+        PER_into(C, data.t.data(), N, eta1, eta3, eta4);
         break;
     default:
         break;

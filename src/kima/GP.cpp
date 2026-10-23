@@ -1,17 +1,68 @@
 #include "GP.h"
 
-VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance)
+Eigen::VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance, unsigned int seed)
 {
     static std::mt19937 gen{ std::random_device{}() };
-    static std::normal_distribution<> dist;
+    if (seed != 0) gen.seed(seed);
+
+    std::normal_distribution<double> dist;
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(K.rows(), K.cols()) * white_noise_variance;
-    Eigen::LLT<Eigen::MatrixXd> cholesky = (K + I).llt();
-    MatrixXd L = cholesky.matrixL();
-    return L * Eigen::VectorXd{ K.cols() }.unaryExpr([&](auto x) { return dist(gen); });
+    MatrixXd L = (K + I).llt().matrixL();
+    Eigen::VectorXd z(K.cols());
+    for (Eigen::Index i = 0; i < z.size(); ++i)
+        z[i] = dist(gen);
+    return L * z;
 }
 
 
-Eigen::MatrixXd QP(std::vector<double> &t, double eta1, double eta2, double eta3, double eta4)
+Eigen::MatrixXd QP(const std::vector<double> &t, double eta1, double eta2, double eta3, double eta4)
+{
+    size_t N = t.size();
+    Eigen::MatrixXd C(N, N);
+    const double a = eta1 * eta1;
+    const double ka = -0.5 / (eta2 * eta2);
+    const double p = M_PI / eta3;
+    const double b = -2.0 / (eta4 * eta4);
+
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = i; j < N; j++)
+        {
+            const double r = t[i] - t[j];
+            const double s = sin(p * r);
+            C(i, j) = a * exp(ka * r * r + b * s * s);
+            C(j, i) = C(i, j);
+        }
+    }
+    return C;
+}
+
+
+void QP_into(Eigen::Ref<Eigen::MatrixXd> C, const double* __restrict t, Eigen::Index N,
+             double eta1, double eta2, double eta3, double eta4)
+{
+    const double a  = eta1 * eta1;
+    const double ka = -0.5 / (eta2 * eta2);
+    const double p  = M_PI / eta3;
+    const double b  = -2.0 / (eta4 * eta4);
+
+    for (Eigen::Index j = 0; j < N; ++j)
+    {
+        double* __restrict col = C.col(j).data();
+        const double tj = t[j];
+        col[j] = a; // in the diagonal, r = 0
+        #pragma omp simd
+        for (Eigen::Index i = j + 1; i < N; ++i) // lower triangle, contiguous
+        {
+            const double r = t[i] - tj;
+            const double s = std::sin(p * r);
+            col[i] = a * std::exp(ka * r * r + b * s * s);
+        }
+    }
+    // calling C.llt() only needs the lower triangle, so the upper triangle is
+    // not filled here
+}
+
 {
     size_t N = t.size();
     Eigen::MatrixXd C(N, N);
@@ -34,7 +85,8 @@ Eigen::MatrixXd QP(std::vector<double> &t, double eta1, double eta2, double eta3
 }
 
 
-Eigen::MatrixXd PER(std::vector<double> &t, double eta1, double eta3, double eta4)
+Eigen::MatrixXd PER(const std::vector<double> &t, 
+                    double eta1, double eta3, double eta4)
 {
     size_t N = t.size();
     Eigen::MatrixXd C(N, N);
@@ -55,6 +107,35 @@ Eigen::MatrixXd PER(std::vector<double> &t, double eta1, double eta3, double eta
     return C;
 }
 
+
+void PER_into(Eigen::Ref<Eigen::MatrixXd> C, const double* __restrict t, Eigen::Index N,
+              double eta1, double eta3, double eta4)
+{
+    const double a  = eta1 * eta1;
+    const double p  = M_PI / eta3;
+    const double b  = -2.0 / (eta4 * eta4);
+
+    for (Eigen::Index j = 0; j < N; ++j)
+    {
+        double* __restrict col = C.col(j).data();
+        const double tj = t[j];
+        col[j] = a; // in the diagonal, r = 0
+        #pragma omp simd
+        for (Eigen::Index i = j + 1; i < N; ++i) // lower triangle, contiguous
+        {
+            const double r = t[i] - tj;
+            const double s = std::sin(p * r);
+            col[i] = a * std::exp(b * s * s);
+        }
+    }
+    // calling C.llt() only needs the lower triangle, so the upper triangle is
+    // not filled here
+}
+
+
+
+// SPLEAF kernels
+///////////////////////////////////////////////////////////////////////////////
 
 void spleaf_ExponentialKernel::operator()(
     const VectorXd &t, const VectorXd &dt, VectorXd &A, MatrixXd_RM &U, MatrixXd_RM &V, MatrixXd_RM &phi)
@@ -508,18 +589,20 @@ double loglike(VectorXd &y, size_t n, size_t r, VectorXl &offsetrow, VectorXl &b
 
 
 NB_MODULE(GP, m) {
-    m.def("sample", &sample, "K"_a, "white_noise_variance"_a = 1.25e-12,
+    m.def("sample", &sample, 
+          "K"_a, "white_noise_variance"_a = 1.25e-12, "seed"_a = 0,
           "Draw samples from the GP prior distribution given a kernel matrix K.");
     m.def("QP", &QP, "t"_a, "η1"_a, "η2"_a, "η3"_a, "η4"_a,
-          "Quasi-periodic kernel ");
-    m.def("PER", &PER);
+          "Quasi-periodic kernel. Returns the covariance matrix at times t, with parameters η1, η2, η3, η4");
+    m.def("PER", &PER, "t"_a, "η1"_a, "η3"_a, "η4"_a,
+          "Periodic kernel (aka Exponential-Sine-Squared). Returns the covariance matrix at times t, with parameters η1, η3, η4");
 
-    nb::enum_<KernelType>(m, "KernelType")
-        .value("qp", KernelType::qp)
-        .value("per", KernelType::per)
-        .value("spleaf_exp", KernelType::spleaf_exp)
-        .value("spleaf_matern32", KernelType::spleaf_matern32)
-        .value("spleaf_sho", KernelType::spleaf_sho)
+    nb::enum_<KernelType>(m, "KernelType", "Selector for GP kernel")
+        .value("qp", KernelType::qp, "Quasi-periodic kernel")
+        .value("per", KernelType::per, "Periodic kernel (aka Exponential-Sine-Squared)")
+        .value("spleaf_exp", KernelType::spleaf_exp, "Exponential kernel, S+LEAF")
+        .value("spleaf_matern32", KernelType::spleaf_matern32, "Matérn 3/2 kernel, S+LEAF")
+        .value("spleaf_sho", KernelType::spleaf_sho, "Simple harmonic oscillator kernel, S+LEAF")
         .value("spleaf_mep", KernelType::spleaf_mep)
         .value("spleaf_es", KernelType::spleaf_es)
         .value("spleaf_esp", KernelType::spleaf_esp)

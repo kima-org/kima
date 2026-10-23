@@ -45,10 +45,18 @@ enum KernelType { qp, per, spleaf_exp, spleaf_matern32, spleaf_sho, spleaf_mep, 
 VectorXd sample(const Eigen::MatrixXd &K, double white_noise_variance=1.25e-12);
 
 /* The "standard" quasi-periodic kernel, see R&W2006 */
-Eigen::MatrixXd QP(std::vector<double> &t, double eta1, double eta2, double eta3, double eta4);
+Eigen::MatrixXd QP(const std::vector<double> &t, 
+                   double eta1, double eta2, double eta3, double eta4);
+
+void QP_into(Eigen::Ref<Eigen::MatrixXd> C, const double* __restrict t, Eigen::Index N,
+             double eta1, double eta2, double eta3, double eta4);
 
 /* The periodic kernel, oringinally created by MacKay, see R&W2006 */
-Eigen::MatrixXd PER(std::vector<double> &t, double eta1, double eta3, double eta4);
+Eigen::MatrixXd PER(const std::vector<double> &t, 
+                    double eta1, double eta3, double eta4);
+
+void PER_into(Eigen::Ref<Eigen::MatrixXd> C, const double* __restrict t, Eigen::Index N,
+              double eta1, double eta3, double eta4);
 
 
 // SPLEAF
