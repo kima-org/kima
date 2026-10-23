@@ -54,6 +54,7 @@ test = [
     "pytest",
     "pytest-mpl",
     "pytest-benchmark",
+    "pytest-codspeed",
 ]
 
 [project.urls]
