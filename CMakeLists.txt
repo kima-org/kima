@@ -239,12 +239,18 @@ nanobind_add_module(AMDstability NB_STATIC NB_DOMAIN kima
 target_compile_features(AMDstability PRIVATE cxx_std_17)
 target_include_directories(AMDstability PRIVATE ${INCLUDES})
 
-nanobind_add_module(GP NB_STATIC NB_DOMAIN kima 
+nanobind_add_module(GP NB_STATIC NOMINSIZE NB_DOMAIN kima 
                     src/kima/GP.cpp src/kima/bessel-library.cpp 
                     # src/kima/arb_hypgeom.cpp
                     # ${HODLR_PATH}/hodlr.cpp
                     )
 target_compile_features(GP PRIVATE cxx_std_17)
+
+if(MSVC)
+  target_compile_options(GP PRIVATE /O2 /arch:AVX2 /fp:fast /openmp:experimental)
+else()
+  target_compile_options(GP PRIVATE -O3 -fno-math-errno -fopenmp-simd)
+endif()
 
 nanobind_add_module(transits NB_STATIC NB_DOMAIN kima 
                     src/kima/transits.cpp src/kima/kepler.cpp)
