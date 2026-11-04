@@ -1049,8 +1049,9 @@ def reorder_P2(res, replace=False, passes=1):
         res.posterior_sample[:, res.indices['planets.e']] = new_posterior.e
         res.posterior_sample[:, res.indices['planets.w']] = new_posterior.w
         res.posterior_sample[:, res.indices['planets.φ']] = new_posterior.φ
-def reorder_P5(res, replace=False, until_detected=True,
-               sort_maximum_likelihood_by_K=True):
+def relabel_posterior(res, replace=False, iterations=1, until_detected=True,
+                      sort_maximum_likelihood_by_K=True,
+                      sort_maximum_likelihood_by_P=False):
     from itertools import permutations
     from copy import deepcopy
     from tqdm import tqdm
@@ -1065,6 +1066,7 @@ def reorder_P5(res, replace=False, until_detected=True,
     p = res.maximum_likelihood_sample(printit=False)
 
     if sort_maximum_likelihood_by_K:
+        print('Sorting maximum likelihood sample by K')
         sortK = np.argsort(p[res.indices['planets.K']])[::-1]
         p[res.indices['planets.P']] = p[res.indices['planets.P']][sortK]
         p[res.indices['planets.K']] = p[res.indices['planets.K']][sortK]
@@ -1076,42 +1078,64 @@ def reorder_P5(res, replace=False, until_detected=True,
             p[res.indices['planets.W']] = p[res.indices['planets.W']][sortK]
             # p[res.indices['planets.Ω']] = p[res.indices['planets.Ω']][sortK]
 
+    if sort_maximum_likelihood_by_P:
+        print('Sorting maximum likelihood sample by P')
+        sortP = np.argsort(p[res.indices['planets.P']])
+        p[res.indices['planets.P']] = p[res.indices['planets.P']][sortP]
+        p[res.indices['planets.K']] = p[res.indices['planets.K']][sortP]
+        p[res.indices['planets.e']] = p[res.indices['planets.e']][sortP]
+        p[res.indices['planets.w']] = p[res.indices['planets.w']][sortP]
+        p[res.indices['planets.φ']] = p[res.indices['planets.φ']][sortP]
+        if res.model is MODELS.RVHGPMmodel:
+            p[res.indices['planets.i']] = p[res.indices['planets.i']][sortP]
+            p[res.indices['planets.W']] = p[res.indices['planets.W']][sortP]
+            # p[res.indices['planets.Ω']] = p[res.indices['planets.Ω']][sortP]
+
     res.print_sample(p)
 
-    # covariance estimation...
     logL = res.posterior_lnlike[:, 1]
-    errorP = new_posterior.P[logL > np.percentile(logL, 84)].std(axis=0)
-    errorK = new_posterior.K[logL > np.percentile(logL, 84)].std(axis=0)
 
     # do reordering for all planets or until detected
     maximum = np_bayes_factor_threshold(res) if until_detected else res.npmax - 1
 
-    for j in range(maximum):
-        # all possible permutations of the columns after the jth
-        perms = list(map(np.array, permutations(range(j, res.npmax))))
-        # reference period and semi-amplitude
-        refP = p[res.indices['planets.P']][j]
-        refK = p[res.indices['planets.K']][j]
-        # for each sample
-        for i, (sP, sK) in enumerate(tqdm(zip(new_posterior.P, new_posterior.K), total=res.ESS)):
-            sP = sP[j:]
-            sK = sK[j:]
-            dist = [
-                np.hypot(
-                    (sP[perm - j] - refP)[0] / errorP[j],
-                    (sK[perm - j] - refK)[0] / errorK[j]
-                )
-                for perm in perms
-            ]
-            perm = perms[np.argmin(np.abs(dist))]
-            new_posterior.P[i, j:] = sP[perm - j]
-            new_posterior.K[i, j:] = sK[perm - j]
-            for field in fields:
-                try:
-                    arr = getattr(new_posterior, field)
-                    arr[i, j:] = arr[i, j:][perm - j]
-                except AttributeError:
-                    pass
+    for k in range(iterations):
+        print(f'iteration {k+1}/{iterations}')
+        # covariance estimation...
+        errorP = new_posterior.P[logL > np.percentile(logL, 84)].std(axis=0)
+        errorK = new_posterior.K[logL > np.percentile(logL, 84)].std(axis=0)
+        # print(errorP)
+        # print(errorK)
+
+        for j in range(maximum):
+            # all possible permutations of the columns after the jth
+            perms = list(map(np.array, permutations(range(j, res.npmax))))
+            # but restricted to the permutations that change the jth column
+            perms = perms[::len(perms) // (res.npmax - j)]
+            # reference period and semi-amplitude
+            refP = p[res.indices['planets.P']][j]
+            refK = p[res.indices['planets.K']][j]
+            # for each sample
+            for i, (sP, sK) in enumerate(tqdm(zip(new_posterior.P, new_posterior.K), total=res.ESS)):
+                sP = sP[j:]
+                sK = sK[j:]
+                dist = [
+                    # distance between sample and reference, normalized by the
+                    # error and only for the jth column (hence the 0 index)
+                    np.hypot(
+                        (sP[perm - j] - refP)[0] / errorP[j],
+                        (sK[perm - j] - refK)[0] / errorK[j]
+                    )
+                    for perm in perms
+                ]
+                perm = perms[np.argmin(np.abs(dist))]
+                new_posterior.P[i, j:] = sP[perm - j]
+                new_posterior.K[i, j:] = sK[perm - j]
+                for field in fields:
+                    try:
+                        arr = getattr(new_posterior, field)
+                        arr[i, j:] = arr[i, j:][perm - j]
+                    except AttributeError:
+                        pass
     if replace:
         res.posteriors = new_posterior
 
