@@ -5409,6 +5409,210 @@ def plot_parameter_samples(res):
     return fig, axs
 
 
+def label_switching_plot(res, posterior=None, ax=None, step=100, fast=True):
+    """ Make a parallel coordinates plot to identify label switching
+
+    Args:
+        res (KimaResults): 
+            results object
+        posterior (np.ndarray, optional): 
+            Posterior samples to use instead of `res.posterior_sample`
+        ax (Axes, optional):
+            Matplotlib axis to plot on
+        step (int, optional):
+            Thinning of the posterior samples. Defaults to 100.
+        fast (bool, optional):
+            If True, use a faster plotting method.
+
+    Returns:
+        _type_: _description_
+    """
+    from cycler import cycler
+    import matplotlib as mpl
+    from matplotlib.collections import LineCollection
+    from .utils import distribution_support
+
+    def check_data(data, labels):
+        nL = len(labels)
+        for i in range(len(data)):
+            nD = len(data[i])
+            assert nD is nL, f"data dimension ({nD}) does not match with labels ({nL})"
+
+    def check_formatting(yattribute, labels):
+        if yattribute:
+            nY = len(yattribute)
+            nL = len(labels)
+            assert nY is nL, f"yattribute dimension ({nY}) does not match with labels ({nL})"
+        else:
+            yattribute = [[]] * len(labels)
+        return yattribute
+
+    def set_ytype(ytype, data):
+        for i in range(len(ytype)):
+            if not ytype[i]:
+                ytype[i] = "categorial" if isinstance(data[0][i], str) else "linear"
+        return ytype
+
+    def set_ylabels(ylabels, data, ytype):
+        for i in range(len(ylabels)): 
+            if not ylabels[i] and ytype[i] in ("categorial", "cat"):
+                ylabel = []
+                for j in range(len(data)):
+                    if data[j][i] not in ylabel:
+                        ylabel.append(data[j][i])
+                ylabel.sort()
+                if len(ylabel) == 1:
+                    ylabel.append("")
+                ylabels[i] = ylabel
+        return ylabels
+
+    def replace_str_values(data, ytype, ylabels):
+        for i in range(len(ytype)):
+            if ytype[i] in ("categorial", "cat"):
+                for j in range(len(data)):
+                    data[j][i] = ylabels[i].index(data[j][i])
+        return np.array(data).transpose()
+
+    def set_ylim(ylim, data):
+        for i in range(len(ylim)):
+            if not ylim[i]:
+                ylim[i] = [np.min(data[i, :]), np.max(data[i, :])]
+                if ylim[i][0] == ylim[i][1]:
+                    ylim[i] = [ylim[i][0] * 0.95, ylim[i][1] * 1.05]
+                if ylim[i] == [0.0, 0.0]:
+                    ylim[i] = [0.0, 1.0]
+        return ylim
+
+    def get_score(data, ylim):
+        ymin = ylim[len(ylim) - 1][0]
+        ymax = ylim[len(ylim) - 1][1]
+        score = (np.copy(data[len(ylim) - 1, :]) - ymin) / (ymax - ymin)
+        return score
+
+    # Rescale data of secondary y-axes to scale of first y-axis
+    def rescale_data(data, ytype, ylim):
+        min0 = ylim[0][0]
+        max0 = ylim[0][1]
+        scale = max0 - min0
+        for i in range(1, len(ylim)):
+            mini = ylim[i][0]
+            maxi = ylim[i][1]
+            if ytype[i] == "log":
+                logmin = np.log10(mini)
+                logmax = np.log10(maxi)
+                span = logmax - logmin
+                data[i, :] = ((np.log10(data[i, :]) - logmin) / span) * scale + min0
+            else:
+                data[i, :] = ((data[i, :] - mini) / (maxi - mini)) * scale + min0
+        return data
+
+    left, bottom, width, height = 0.125, 0.1, 0.75, 0.8
+    labels = ["K [m/s]", "P [days]", "planet label"]
+    ytype = [None, "log", "cat"]
+    ylabels = [None, None, list(range(1, res.npmax + 1))]
+    ylim = [
+        distribution_support(res.priors['Kprior']), 
+        distribution_support(res.priors['Pprior']), 
+        [-0.5, res.npmax - 0.5]
+    ]
+    if res.npmax == 5:
+        cmap = plt.cm.tab20c.resampled(5)
+    elif res.npmax == 2:
+        cmap = plt.cm.tab20b.resampled(2)
+    else:
+        cmap = plt.cm.tab20c.resampled(res.npmax)
+
+    if posterior is None:
+        data = np.c_[
+            res.posteriors.K.T.reshape(-1, 1), 
+            res.posteriors.P.T.reshape(-1, 1), 
+            np.repeat(np.arange(1, res.npmax+1), res.ESS)
+        ].copy()
+    else:
+        data = np.c_[
+            posterior.K.T.reshape(-1, 1), 
+            posterior.P.T.reshape(-1, 1), 
+            np.repeat(np.arange(1, res.npmax+1), res.ESS)
+        ].copy()
+
+    zeros = data[:, 0] == 0
+    data = data[~zeros]
+
+    data = data[::step]
+    
+    if np.ptp(data[:, 0]) > 100:
+        ytype[0] = "log"
+
+    check_data(data, labels)
+    ytype = check_formatting(ytype, labels)
+    ylim = check_formatting(ylim, labels)
+    ylabels = check_formatting(ylabels, labels)
+
+    ytype = set_ytype(ytype, data)
+    ylabels = set_ylabels(ylabels, data, ytype)
+    data = replace_str_values(data, ytype, ylabels)
+    ylim = set_ylim(ylim, data)
+    score = get_score(data, ylim)
+    data = rescale_data(data, ytype, ylim)
+
+    if ax is None:
+        fig = plt.figure(constrained_layout=False)
+        ax0 = fig.add_axes([left, bottom, width, height])
+    else:
+        ax0 = ax
+        fig = ax0.figure
+    axes = [ax0] + [ax0.twinx() for i in range(data.shape[0] - 1)]
+
+    color = cmap(score)
+    if fast:
+        for i, uid in enumerate(np.unique(data[-1])):
+            _mask = data[-1] == uid
+            x = np.arange(data[:, _mask].shape[0])
+            LC = LineCollection([list(zip(x, y)) for y in data[:, _mask].T], 
+                                alpha=0.1, colors=color[_mask], clip_on=False,
+                                zorder=-i)
+            ax0.add_collection(LC)
+    else:
+        ax0.set_prop_cycle(cycler("color", color))
+        ax0.plot(data, alpha=0.1, clip_on=False)
+        for i, line in enumerate(ax0.get_lines()):
+            line.set_zorder(-i)
+
+    ax0.xaxis.tick_top()
+    ax0.xaxis.set_ticks_position("none")
+    ax0.set_xlim([0, data.shape[0] - 1])
+    ax0.set_xticks(range(data.shape[0]))
+    ax0.set_xticklabels(labels)
+
+    for i, ax in enumerate(axes):
+        ax.spines["left"].set_position(("axes", 1 / (len(labels) - 1) * i))
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        
+        ax.yaxis.set_ticks_position("left")
+        ax.set_ylim(ylim[i])
+        if ytype[i] == "log":
+            ax.set_yscale("log")
+        if ytype[i] in ("categorial", "cat"):
+            ax.set_yticks(range(len(ylabels[i])))
+        if ylabels[i]:
+            ax.set_yticklabels(ylabels[i])
+    
+    axes[-1].yaxis.set_ticks_position("right")
+    axes[-1].yaxis.set_tick_params(pad=5)
+        
+    # bar = fig.add_axes([left + width, bottom, 0.02, height])
+    bar = axes[-1].inset_axes([0.97, 0, 0.03, 1])
+    norm = mpl.colors.Normalize(vmin=ylim[i][0], vmax=ylim[i][1])
+    mpl.colorbar.ColorbarBase(bar, cmap=cmap, norm=norm, orientation="vertical")
+    bar.tick_params(size=0)
+    bar.set_yticklabels([])
+
+    return fig
+
+
+
 def interactive_plotter(res):
 
     def on_pick(event):
