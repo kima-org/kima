@@ -1401,84 +1401,152 @@ class KimaResults:
 
     @property
     def parameter_priors(self):
-        """ A list of priors which can be indexed using self.indices """
+        """A list of priors which can be indexed using self.indices"""
         priors = np.full(self.posterior_sample.shape[1], None)
 
+        for i, par in enumerate(self._parameters):
+            if par in ('ndim', 'maxNp', 'staleness'):
+                continue
+
+            if par == 'stellar_jitter':
+                priors[i] = self.priors["stellar_jitter_prior"]
+                continue
+
+            if 'jitter' in par or par == 'extra_sigma':
+                if par == 'jitter_GAIA':
+                    priors[i] = self.priors["J_GAIA_prior"]
+                elif par == 'jitter_RV':
+                    priors[i] = self.priors["J_RV_prior"]
+                else:
+                    priors[i] = self.priors["Jprior"]
+                continue
+
+            if par == 'vsys':
+                priors[i] = self.priors['Cprior']
+                continue
+
+            if par == 'Np':
+                if self.fix:
+                    priors[i] = distributions.Fixed(self.npmax)
+                else:
+                    try:
+                        priors[i] = self.priors["np_prior"]
+                    except KeyError:
+                        priors[i] = discrete_uniform(0, self.npmax + 1)
+                continue
+
+            try:
+                priors[i] = self.priors[f"{par}_prior"]
+            except KeyError:
+                try:
+                    priors[i] = self.priors[f"{par}prior"]
+                except KeyError:
+                    pass
+
+            if 'KO' in par:
+                index = par[-1]
+                prior_name = par.replace(index, f'prior_{int(index) - 1}')
+                prior_name = prior_name.replace('ecc', 'e')
+                priors[i] = self.priors[prior_name]
+                continue
+        
+            if 'TR' in par:
+                index = par[-1]
+                prior_name = par.replace(index, f'prior_{int(index) - 1}')
+                prior_name = prior_name.replace('ecc', 'e')
+                priors[i] = self.priors[prior_name]
+                continue
+
+            if par[-1].isdigit():
+                try:
+                    priors[i] = self.priors[f"{par[:-1]}_prior"]
+                except KeyError:
+                    try:
+                        priors[i] = self.priors[f"{par[:-1]}prior"]
+                    except KeyError:
+                        pass
+            if 'ecc' in par:
+                priors[i] = self.priors["eprior"]
+
+        return priors
         if self.model is MODELS.RVFWHMmodel:
             for i in range(self.n_instruments):
-                priors[i] = self.priors['Jprior']
+                priors[i] = self.priors["Jprior"]
             for i in range(self.n_instruments, 2 * self.n_instruments):
-                priors[i] = self.priors['Jfwhm_prior']
+                priors[i] = self.priors["Jfwhm_prior"]
         else:
-            priors[self.indices['jitter']] = self.priors['Jprior']
+            priors[self.indices["jitter"]] = self.priors["Jprior"]
             if self.model is MODELS.RVmodel and self.multi:
-                priors[0] = self.priors['stellar_jitter_prior']
+                priors[0] = self.priors["stellar_jitter_prior"]
 
         if self.trend:
-            names = ('slope_prior', 'quadr_prior', 'cubic_prior')
+            names = ("slope_prior", "quadr_prior", "cubic_prior")
             trend_priors = [self.priors[n] for n in names if n in self.priors]
-            priors[self.indices['trend']] = trend_priors
-        
+            priors[self.indices["trend"]] = trend_priors
+
         if self.model is MODELS.RVFWHMmodel and self.trend_fwhm:
-            names = ('slope_fwhm_prior', 'quadr_fwhm_prior', 'cubic_fwhm_prior')
+            names = ("slope_fwhm_prior", "quadr_fwhm_prior", "cubic_fwhm_prior")
             trend_priors = [self.priors[n] for n in names if n in self.priors]
-            priors[self.indices['trend_fwhm']] = trend_priors
+            priors[self.indices["trend_fwhm"]] = trend_priors
 
         if self.multi:
             no = self.n_instruments - 1
             if self.model is MODELS.RVFWHMmodel:
-                prior1 = self.priors['offsets_prior']
-                prior2 = self.priors['offsets_fwhm_prior']
+                prior1 = self.priors["offsets_prior"]
+                prior2 = self.priors["offsets_fwhm_prior"]
                 offset_priors = no * [prior1] + no * [prior2]
-                priors[self.indices['inst_offsets']] = np.array(offset_priors)
+                priors[self.indices["inst_offsets"]] = np.array(offset_priors)
             else:
                 for i in range(no):
-                    prior = self.priors[f'individual_offset_prior[{i}]']
-                    priors[self.indices['inst_offsets']][i] = prior
+                    prior = self.priors[f"individual_offset_prior[{i}]"]
+                    priors[self.indices["inst_offsets"]][i] = prior
 
         if self.indicator_correlations:
-            prior = self.priors['beta_prior']
-            priors[self.indices['betas']] = prior
-
+            prior = self.priors["beta_prior"]
+            priors[self.indices["betas"]] = prior
 
         if self.has_gp:
             if self.model in (MODELS.GPmodel, MODELS.SPLEAFmodel):
-                priors[self.indices['GPpars']] = [
-                    self.priors[f'eta{i}_prior'] for i in range(1, 5)
+                priors[self.indices["GPpars"]] = [
+                    self.priors[f"eta{i}_prior"] for i in range(1, 5)
                 ]
             elif self.model is MODELS.RVFWHMmodel:
-                i = self.indices['GPpars_start']
-                priors[i] = self.priors['eta1_prior']
+                i = self.indices["GPpars_start"]
+                priors[i] = self.priors["eta1_prior"]
                 i += 1
-                priors[i] = self.priors['eta1_fwhm_prior']
+                priors[i] = self.priors["eta1_fwhm_prior"]
                 i += 1
                 if self.share_eta2:
-                    priors[i] = self.priors['eta2_prior']
+                    priors[i] = self.priors["eta2_prior"]
                     i += 1
                 else:
-                    priors[i] = self.priors['eta2_prior']
-                    priors[i + 1] = self.priors['eta2_fwhm_prior']
+                    priors[i] = self.priors["eta2_prior"]
+                    priors[i + 1] = self.priors["eta2_fwhm_prior"]
                     i += 2
                 #
                 if self.share_eta3:
-                    priors[i] = self.priors['eta3_prior']
+                    priors[i] = self.priors["eta3_prior"]
                     i += 1
                 else:
-                    priors[i] = self.priors['eta3_prior']
-                    priors[i + 1] = self.priors['eta3_fwhm_prior']
+                    priors[i] = self.priors["eta3_prior"]
+                    priors[i + 1] = self.priors["eta3_fwhm_prior"]
                     i += 2
                 #
                 if self.share_eta4:
-                    priors[i] = self.priors['eta4_prior']
+                    priors[i] = self.priors["eta4_prior"]
                     i += 1
                 else:
-                    priors[i] = self.priors['eta4_prior']
-                    priors[i + 1] = self.priors['eta4_fwhm_prior']
+                    priors[i] = self.priors["eta4_prior"]
+                    priors[i + 1] = self.priors["eta4_fwhm_prior"]
                     i += 2
-            
+
             if self.model is MODELS.SPLEAFmodel:
-                priors[self.indices['GP_alphas']] = [self.priors[f'alpha{i+1}_prior'] for i in range(self.nseries)]
-                priors[self.indices['GP_betas']] = [self.priors[f'beta{i+1}_prior'] for i in range(self.nseries)]
+                priors[self.indices["GP_alphas"]] = [
+                    self.priors[f"alpha{i + 1}_prior"] for i in range(self.nseries)
+                ]
+                priors[self.indices["GP_betas"]] = [
+                    self.priors[f"beta{i + 1}_prior"] for i in range(self.nseries)
+                ]
 
         if self.KO:
             KO_priors = []
@@ -1494,41 +1562,48 @@ class KimaResults:
 
         if self.TR:
             TR_priors = []
-            TR_priors += [self.priors[f'TR_Pprior_{i}'] for i in range(self.nTR)]
-            TR_priors += [self.priors[f'TR_Kprior_{i}'] for i in range(self.nTR)]
-            TR_priors += [self.priors[f'TR_Tcprior_{i}'] for i in range(self.nTR)]
-            TR_priors += [self.priors[f'TR_eprior_{i}'] for i in range(self.nTR)]
-            TR_priors += [self.priors[f'TR_wprior_{i}'] for i in range(self.nTR)]
-            priors[self.indices['TRpars']] = TR_priors
+            TR_priors += [self.priors[f"TR_Pprior_{i}"] for i in range(self.nTR)]
+            TR_priors += [self.priors[f"TR_Kprior_{i}"] for i in range(self.nTR)]
+            TR_priors += [self.priors[f"TR_Tcprior_{i}"] for i in range(self.nTR)]
+            TR_priors += [self.priors[f"TR_eprior_{i}"] for i in range(self.nTR)]
+            TR_priors += [self.priors[f"TR_wprior_{i}"] for i in range(self.nTR)]
+            priors[self.indices["TRpars"]] = TR_priors
 
         if self.fix:
-            priors[self.indices['np']] = distributions.Fixed(self.npmax)
+            priors[self.indices["np"]] = distributions.Fixed(self.npmax)
         else:
             try:
-                priors[self.indices['np']] = self.priors['np_prior']
+                priors[self.indices["np"]] = self.priors["np_prior"]
             except KeyError:
-                priors[self.indices['np']] = discrete_uniform(0, self.npmax + 1)
+                priors[self.indices["np"]] = discrete_uniform(0, self.npmax + 1)
 
         if self.max_components > 0:
             planet_priors = []
             for i in range(self.max_components):
-                planet_priors.append(self.priors['Pprior'])
+                planet_priors.append(self.priors["Pprior"])
             for i in range(self.max_components):
-                planet_priors.append(self.priors['Kprior'])
+                planet_priors.append(self.priors["Kprior"])
             for i in range(self.max_components):
-                planet_priors.append(self.priors['phiprior'])
+                planet_priors.append(self.priors["phiprior"])
             for i in range(self.max_components):
-                planet_priors.append(self.priors['eprior'])
+                planet_priors.append(self.priors["eprior"])
             for i in range(self.max_components):
-                planet_priors.append(self.priors['wprior'])
-            priors[self.indices['planets']] = planet_priors
+                planet_priors.append(self.priors["wprior"])
+            if self.model is MODELS.ApodizedRVmodel:
+                for i in range(self.max_components):
+                    planet_priors.append(self.priors["tauprior"])
+                for i in range(self.max_components):
+                    planet_priors.append(self.priors["t0prior"])
+                for i in range(self.max_components):
+                    planet_priors.append(self.priors["sprior"])
+            priors[self.indices["planets"]] = planet_priors
 
         if self.studentt:
-            priors[self.indices['nu']] = self.priors['nu_prior']
+            priors[self.indices["nu"]] = self.priors["nu_prior"]
 
-        priors[self.indices['vsys']] = self.priors['Cprior']
+        priors[self.indices["vsys"]] = self.priors["Cprior"]
         if self.model is MODELS.RVFWHMmodel:
-            priors[self.indices['cfwhm']] = self.priors['Cfwhm_prior']
+            priors[self.indices["cfwhm"]] = self.priors["Cfwhm_prior"]
 
         return priors
 
