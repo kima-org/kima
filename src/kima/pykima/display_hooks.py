@@ -1,5 +1,6 @@
 from numpy import array, unique
 
+
 def plot_RVData(data, **kwargs):
     """ Simple plot of RV data. **kwargs are passed to plt.errorbar() """
     import matplotlib.pyplot as plt
@@ -11,7 +12,6 @@ def plot_RVData(data, **kwargs):
     if sb2:
         y2 = array(data.y2)
         e2 = array(data.sig2)
-
 
     time_offset = False
     if t[0] > 24e5:
@@ -44,9 +44,34 @@ def plot_RVData(data, **kwargs):
     return fig, ax
 
 
+def plot_GAIAdata(data, **kwargs):
+    import matplotlib.pyplot as plt
+    t = array(data.t)
+    y = array(data.w)
+    e = array(data.wsig)
+
+    time_offset = False
+    if t[0] > 24e5:
+        time_offset = True
+        t -= 24e5
+
+    fig, ax = plt.subplots(1, 1, constrained_layout=True)
+
+    kw = dict(fmt='o', ms=3)
+    kw.update(**kwargs)
+
+    ax.errorbar(t, y, e,  **kw)
+
+    if time_offset:
+        ax.set(xlabel='BJD - 2400000 [days]', ylabel='RV [m/s]')
+    else:
+        ax.set(xlabel='Time [days]', ylabel='along-scan position [mas]')
+    return fig, ax
+
 
 def plot_HGPMdata(data, pm_ra_bary=None, pm_dec_bary=None, 
                   show_legend=True, **kwargs):
+    """ Simple plot of Hipparcos and Gaia proper motion data. """
     import matplotlib.pyplot as plt
     fig, axs = plt.subplots(1, 4, width_ratios=[4, 0.6, 4, 0.6], #height_ratios=[4, 2], 
                             constrained_layout=True, figsize=(7, 3))
