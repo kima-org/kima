@@ -54,6 +54,47 @@ def test_methods(cleanup_after_running, simulated1):
     res.burst_model(res.posterior_sample[0])
 
 
+def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
+    data = kima.GAIAdata(path_to_test_data("target_5_kima.csv"), skip=1)
+    m = kima.GAIAmodel(True, 1, data)
+    kima.run(m, steps=1000)
+
+    res = kima.load_results(m)
+
+    res.log_prior(res.posterior_sample[0])
+    # res.log_likelihood(res.posterior_sample[0])
+    # res.log_posterior(res.posterior_sample[0])
+    # res.maximum_likelihood_sample()
+    # res.map_sample()
+    # res.median_sample()
+    # res.eval_model(res.posterior_sample[0])
+    # res.planet_model(res.posterior_sample[0])
+    # res.full_model(res.posterior_sample[0])
+    # res.stochastic_model(res.posterior_sample[0])
+    # res.burst_model(res.posterior_sample[0])
+
+
+def test_methods_RVGAIAmodel(path_to_test_data, cleanup_after_running):
+    rvdata = kima.RVData(path_to_test_data("target_5_rvs.csv"), skip=1)
+    gdata = kima.GAIAdata(path_to_test_data("target_5_kima.csv"), skip=1)
+    m = kima.RVGAIAmodel(fix=True, npmax=1, GAIAdata=gdata, RVData=rvdata)
+    kima.run(m, steps=2_000)
+
+    res = kima.load_results(m)
+
+    res.log_prior(res.posterior_sample[0])
+    # res.log_likelihood(res.posterior_sample[0])
+    # res.log_posterior(res.posterior_sample[0])
+    # res.maximum_likelihood_sample()
+    # res.map_sample()
+    # res.median_sample()
+    # res.eval_model(res.posterior_sample[0])
+    # res.planet_model(res.posterior_sample[0])
+    # res.full_model(res.posterior_sample[0])
+    # res.stochastic_model(res.posterior_sample[0])
+    # res.burst_model(res.posterior_sample[0])
+
+
 def test_pickling(cleanup_after_running, simulated1):
     m = kima.RVmodel(True, 0, simulated1)
     m.trend = True
