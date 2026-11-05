@@ -64,14 +64,14 @@ def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
     res.log_prior(res.posterior_sample[0])
     # res.log_likelihood(res.posterior_sample[0])
     # res.log_posterior(res.posterior_sample[0])
-    # res.maximum_likelihood_sample()
+    res.maximum_likelihood_sample()
     # res.map_sample()
-    # res.median_sample()
-    # res.eval_model(res.posterior_sample[0])
-    # res.planet_model(res.posterior_sample[0])
-    # res.full_model(res.posterior_sample[0])
-    # res.stochastic_model(res.posterior_sample[0])
-    # res.burst_model(res.posterior_sample[0])
+    res.median_sample()
+    res.eval_model(res.posterior_sample[0])
+    res.planet_model(res.posterior_sample[0])
+    res.full_model(res.posterior_sample[0])
+    res.stochastic_model(res.posterior_sample[0])
+    res.burst_model(res.posterior_sample[0])
 
 
 def test_methods_RVGAIAmodel(path_to_test_data, cleanup_after_running):
