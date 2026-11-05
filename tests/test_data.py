@@ -19,6 +19,8 @@ def test_RVData(path_to_test_data):
     D.M0_epoch = 0.0
     assert_allclose(D.M0_epoch, 0.0)
 
+    assert hasattr(D, 'plot')
+
     # two instruments
     D = kima.RVData([
             path_to_test_data('simulated1.txt'),
@@ -123,3 +125,5 @@ def test_GaiaData(path_to_test_data):
     D = kima.GAIAdata(path_to_test_data('simulated4.txt'))
     assert_equal(D.N, 13)
     assert_allclose(D.psi[0], -1.030560)
+
+    assert hasattr(D, 'plot')
