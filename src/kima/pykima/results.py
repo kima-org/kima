@@ -3011,15 +3011,15 @@ class KimaResults:
             v = np.zeros((self.nseries, t.size))
         elif self.model is MODELS.BINARIESmodel:
             if self.double_lined:
-                v = np.zeros((2,t.size))
+                v = np.zeros((2, t.size))
             else:
                 v = np.zeros_like(t)
                 ONE_D_MODELS.append(MODELS.BINARIESmodel)
         else:
             v = np.zeros_like(t)
 
-        if self.model is MODELS.RVGAIAmodel:
-            da,dd,mua,mud,plx = sample[self.indices['astrometric_solution']]
+        if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
+            da, dd, mua, mud, plx = sample[self.indices["astrometric_solution"]]
 
         if self.model is MODELS.ETVmodel:
             if self.ephemeris >=3:
