@@ -1198,10 +1198,13 @@ HGPMdata::HGPMdata() {};
         chisq = data.chisq;
     };
 
-    vector<double> HGPMdata::get_epochs(size_t n_average) const
+    std::tuple<vector<double>, vector<double>, vector<double>> HGPMdata::get_epochs(size_t n_average) const
     {
         if (n_average == 1) {
-            return {epoch_ra_hip, epoch_dec_hip, epoch_ra_gaia, epoch_dec_gaia};
+            vector<double> epoch_ra = {epoch_ra_hip, epoch_ra_gaia};
+            vector<double> epoch_dec = {epoch_dec_hip, epoch_dec_gaia};
+            vector<double> epoch_all = {epoch_ra_hip, epoch_dec_hip, epoch_ra_gaia, epoch_dec_gaia};
+            return std::make_tuple(epoch_ra, epoch_dec, epoch_all);
         }
         else {
             throw std::runtime_error("n_average must be 1");

@@ -460,8 +460,7 @@ class KIMA_API HGPMdata {
     // chi square value
     double chisq;
 
-    vector<double> get_epochs(size_t n_average=1) const;
-
+    std::tuple<vector<double>, vector<double>, vector<double>> get_epochs(size_t n_average = 1) const;
 };  
 
 class ETVData {
