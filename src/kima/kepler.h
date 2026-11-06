@@ -81,7 +81,8 @@ namespace brandt
                                   const double &K, const double &ecc,
                                   const double &w, const double &M0,
                                   const double &M0_epoch);
-    std::tuple<vec, vec2d> keplerian_rvpm(const std::vector<double> &t_rv, const std::vector<double> &t_pm,
+    std::tuple<vec, vec2d> keplerian_rvpm(const std::vector<double> &t_rv, 
+                                          const std::tuple<vec, vec, vec> &t_pm,
                                           const double &parallax,
                                           const double &P, const double &K, const double &ecc,
                                           const double &w, const double &M0, const double &M0_epoch,
