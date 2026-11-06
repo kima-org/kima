@@ -3206,6 +3206,13 @@ class KimaResults:
                 v += C.reshape(-1, 1)
             else:
                 v += sample[self.indices['vsys']]
+
+        elif self.model is MODELS.GAIAmodel:
+            Δt = t - self.M0_epoch
+            daytoyear = 1 / 365.25
+            v += plx * self.data.pf
+            v += (da + mua * daytoyear * Δt) * np.sin(self.data.psi) + (dd + mud * daytoyear * Δt) * np.cos(self.data.psi)
+
         elif self.model != MODELS.ETVmodel:
             v += sample[self.indices['vsys']]
 
