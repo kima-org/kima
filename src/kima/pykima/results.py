@@ -3900,14 +3900,21 @@ class KimaResults:
         # TODO: add all known objects, currently only works for one
         # TODO: check and merge with the code in display.plot_hgpm
         from ..kepler import keplerian_rvpm
-        t_pm = np.array([
-            self.pm_data.epoch_ra_hip,
-            self.pm_data.epoch_dec_hip,
-            self.pm_data.epoch_ra_gaia,
-            self.pm_data.epoch_dec_gaia
+        # t_pm = np.array([
+        #     self.pm_data.epoch_ra_hip,
+        #     self.pm_data.epoch_dec_hip,
+        #     self.pm_data.epoch_ra_gaia,
+        #     self.pm_data.epoch_dec_gaia
+        # ])
+        # t_ra = t_pm[0::2]
+        # t_dec = t_pm[1::2]
+        t_ra = np.array([self.pm_data.epoch_ra_hip, self.pm_data.epoch_ra_gaia])
+        t_dec = np.array([self.pm_data.epoch_dec_hip, self.pm_data.epoch_dec_gaia])
+        t_pm_all = np.array([
+            self.pm_data.epoch_ra_hip, self.pm_data.epoch_dec_hip,
+            self.pm_data.epoch_ra_gaia, self.pm_data.epoch_dec_gaia,
         ])
-        t_ra = t_pm[0::2]
-        t_dec = t_pm[1::2]
+        t_pm = (t_ra, t_dec, t_pm_all)
 
         model_ra = np.zeros_like(t_ra)
         model_dec = np.zeros_like(t_dec)
