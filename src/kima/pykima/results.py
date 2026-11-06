@@ -3001,7 +3001,10 @@ class KimaResults:
                 t = self.data.t.copy()
             data_t = True
 
-        ONE_D_MODELS = [MODELS.RVmodel, MODELS.GPmodel, MODELS.RVHGPMmodel, MODELS.RVGAIAmodel, MODELS.ETVmodel]
+        ONE_D_MODELS = [
+            MODELS.RVmodel, MODELS.GPmodel, MODELS.GAIAmodel,
+            MODELS.RVHGPMmodel, MODELS.RVGAIAmodel, MODELS.ETVmodel
+        ]
 
         if self.model is MODELS.RVFWHMmodel:
             v = np.zeros((2, t.size))
