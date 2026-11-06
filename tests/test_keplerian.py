@@ -1,12 +1,9 @@
-from matplotlib import pyplot as plt
-import pytest
 import numpy as np
+import pytest
+
 
 def test_import():
-    from kima import keplerian
-    from kima import kepler
-    from kima import postkepler
-    from kima import post_keplerian
+    from kima import kepler, keplerian, post_keplerian, postkepler
 
 def test_keplerian_is_array():
     from kima import keplerian
@@ -49,9 +46,12 @@ def test_keplerian_is_array():
     from kima.kepler import keplerian_rvpm
 
     t_rv = np.linspace(0, 1, 10)
-    t_pm = np.array([0,0,1,1])
-    parallax,P, K, ecc, w, M0, M0_epoch, inc, W = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, np.pi/2, 0.0
-    v,pmra,pmdec,pmhg = keplerian_rvpm(t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, W)
+    t_pm = (np.array([0, 1, 2, 3]), np.array([0, 1]), np.array([0, 0, 1, 1]))
+    parallax, P, K, ecc, w, M0, M0_epoch, inc, W = \
+        1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, np.pi/2, 0.0
+    v, pmra, pmdec, pmhg = keplerian_rvpm(
+        t_rv, t_pm, parallax, P, K, ecc, w, M0, M0_epoch, inc, W
+    )
     assert isinstance(v, np.ndarray)
     assert isinstance(pmra, np.ndarray)
     assert isinstance(pmdec, np.ndarray)
