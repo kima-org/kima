@@ -1031,7 +1031,7 @@ void RVGAIAmodel::save_setup() {
 
     fout << "[GAIAdata]" << endl;
     fout << "file: " << GAIA_data._datafile << endl;
-    fout << "units" << GAIA_data._units << endl;
+    fout << "units: " << GAIA_data._units << endl;
     fout << "skip: " << GAIA_data._skip << endl;
     
     fout << "[RVdata]" << endl;
