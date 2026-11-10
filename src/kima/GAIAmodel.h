@@ -81,6 +81,15 @@ class KIMA_API GAIAmodel
         std::vector<double> KO_cosi;
         std::vector<double> KO_W;
 
+        // Parameters for the transiting planet, if set
+        std::vector<double> TR_P;
+        std::vector<double> TR_a;
+        std::vector<double> TR_e;
+        std::vector<double> TR_Tc;
+        std::vector<double> TR_w;
+        std::vector<double> TR_cosi;
+        std::vector<double> TR_W;
+
         // The signal
         std::vector<double> mu;// = the astrometric model
                             //std::vector<double>(GaiaData::get_instance().N());
@@ -88,6 +97,8 @@ class KIMA_API GAIAmodel
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
+        void add_transiting_planet();
+        void remove_transiting_planet();
         
 
         unsigned int staleness;
@@ -140,6 +151,9 @@ class KIMA_API GAIAmodel
         distribution mud_prior;
         distribution plx_prior;
         
+        
+        /* KO mode! */
+        
         bool known_object {false};
         bool get_known_object() { return known_object; }
 
@@ -156,7 +170,28 @@ class KIMA_API GAIAmodel
         std::vector<distribution> KO_wprior;
         std::vector<distribution> KO_cosiprior;
         std::vector<distribution> KO_Wprior;        
-        
+
+
+        /* Transiting planets! */
+
+        /// include extra Keplerian curve(s) for transiting planet(s)?
+        bool transiting_planet {false};
+        bool get_transiting_planet() { return transiting_planet; }
+
+        /// how many transiting planets
+        size_t n_transiting_planet {0};
+        size_t get_n_transiting_planet() { return n_transiting_planet; }
+
+        void set_transiting_planet(size_t transiting_planet);
+
+        std::vector<distribution> TR_Pprior;
+        std::vector<distribution> TR_aprior;
+        std::vector<distribution> TR_eprior;
+        std::vector<distribution> TR_Tcprior;
+        std::vector<distribution> TR_wprior;
+        std::vector<distribution> TR_cosiprior;
+        std::vector<distribution> TR_Wprior;
+
 
         GAIAConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();

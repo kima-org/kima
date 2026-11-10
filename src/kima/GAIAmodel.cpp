@@ -80,6 +80,30 @@ void GAIAmodel::set_known_object(size_t n)
     KO_W.resize(n);
 }
 
+void GAIAmodel::set_transiting_planet(size_t n)
+{
+    transiting_planet = true;
+    n_transiting_planet = n;
+    // planet_perturb_prob = 0.5;
+    // jitKO_perturb_prob = 0.3;
+
+    TR_Pprior.resize(n);
+    TR_aprior.resize(n);
+    TR_eprior.resize(n);
+    TR_Tcprior.resize(n);
+    TR_wprior.resize(n);
+    TR_cosiprior.resize(n);
+    TR_Wprior.resize(n);
+
+    TR_P.resize(n);
+    TR_a.resize(n);
+    TR_e.resize(n);
+    TR_Tc.resize(n);
+    TR_w.resize(n);
+    TR_cosi.resize(n);
+    TR_W.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 
 void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
@@ -130,12 +154,27 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
                 jerkd_prior = make_prior<Gaussian>(0.0,10);
         }
     }
-        
+
     if (known_object) { // KO mode!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_aprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_Wprior[i] || !KO_cosiprior[i] || !KO_Wprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_phiprior, KO_eprior, KO_aprior, KO_wprior, KO_cosiprior, KO_Wprior)");
+            {
+                std::string p = "KO_Pprior, KO_aprior, KO_eprior, KO_phiprior, KO_wprior, KO_cosiprior, KO_Wprior";
+                std::string msg = "When known_object=true, must set priors for each of " + p;
+                throw std::logic_error(msg);
+            }
+        }
+    }
+
+    if (transiting_planet) {
+        for (size_t i = 0; i < n_transiting_planet; i++) {
+            if (!TR_Pprior[i] || !TR_aprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i] || !TR_cosiprior[i] || !TR_Wprior[i])
+            {
+                std::string p = "TR_Pprior, TR_aprior, TR_eprior, TR_Tcprior, TR_wprior, TR_cosiprior, TR_Wprior";
+                std::string msg = "When transiting_planet=true, must set priors for each of " + p;
+                throw std::logic_error(msg);
+            }
         }
     }
 
@@ -193,6 +232,19 @@ void GAIAmodel::from_prior(RNG& rng)
         }
     }
 
+    if (transiting_planet) {
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            TR_P[i] = TR_Pprior[i]->generate(rng);
+            TR_a[i] = TR_aprior[i]->generate(rng);
+            TR_e[i] = TR_eprior[i]->generate(rng);
+            TR_Tc[i] = TR_Tcprior[i]->generate(rng);
+            TR_w[i] = TR_wprior[i]->generate(rng);
+            TR_cosi[i] = TR_cosiprior[i]->generate(rng);
+            TR_W[i] = TR_Wprior[i]->generate(rng);
+        }
+    }
+
     if (studentt)
         nu = nu_prior->generate(rng);
 
@@ -246,12 +298,8 @@ void GAIAmodel::calculate_mu()
             add_known_object();
         }
 
-        if (scan_dep_signal) {
-            for (int j=0; j<n_scan_dep_components; j++){
-                for(size_t i=0; i<mu.size(); i++){
-                    mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
-                }
-            }
+        if (transiting_planet) {
+            add_transiting_planet();
         }
     }
     else // just updating (adding) planets
@@ -308,17 +356,15 @@ void GAIAmodel::remove_known_object()
     size_t N = data.N();
     double wk, ti, Tp;
     double A, B, F, G, X, Y;
-    // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
-        
         A = KO_a[j]*(cos(KO_w[j]) * cos(KO_W[j]) - sin(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
         B = KO_a[j]*(cos(KO_w[j]) * sin(KO_W[j]) + sin(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
         F = -KO_a[j]*(sin(KO_w[j]) * cos(KO_W[j]) + cos(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
         G = -KO_a[j]*(sin(KO_w[j]) * sin(KO_W[j]) - cos(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
             mu[i] -= wk[i];
     }
 }
@@ -329,7 +375,7 @@ void GAIAmodel::add_known_object()
     size_t N = data.N();
     double wk, ti, Tp;
     double A, B, F, G, X, Y;
-    for(int j=0; j<n_known_object; j++)
+    for (int j = 0; j < n_known_object; j++)
     {
         A = KO_a[j]*(cos(KO_w[j]) * cos(KO_W[j]) - sin(KO_w[j]) * sin(KO_W[j]) * KO_cosi[j]);
         B = KO_a[j]*(cos(KO_w[j]) * sin(KO_W[j]) + sin(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
@@ -337,10 +383,66 @@ void GAIAmodel::add_known_object()
         G = -KO_a[j]*(sin(KO_w[j]) * sin(KO_W[j]) - cos(KO_w[j]) * cos(KO_W[j]) * KO_cosi[j]);
         
         auto wk = brandt::keplerian_gaia(data.t,data.psi, A, B, F, G, KO_e[j], KO_P[j], KO_phi[j], data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
             mu[i] += wk[i];
     }
 }
+
+
+void GAIAmodel::remove_transiting_planet()
+{
+    size_t N = data.N();
+    const double twopi = 2.0 * M_PI;
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double w = TR_w[j], e = TR_e[j], P = TR_P[j], Tc = TR_Tc[j];
+
+        double A = TR_a[j]*(cos(TR_w[j]) * cos(TR_W[j]) - sin(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double B = TR_a[j]*(cos(TR_w[j]) * sin(TR_W[j]) + sin(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        double F = -TR_a[j]*(sin(TR_w[j]) * cos(TR_W[j]) + cos(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double G = -TR_a[j]*(sin(TR_w[j]) * sin(TR_W[j]) - cos(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        
+        // Tc -> phi
+        double f_c = M_PI / 2.0 - w;
+        double E_c = 2.0 * atan2(sqrt(1.0 - e) * sin(f_c/2.0),
+                                 sqrt(1.0 + e) * cos(f_c/2.0));
+        double M_c = E_c - e * sin(E_c);
+        double phi = M_c + twopi * (data.M0_epoch - Tc) / P;
+        phi = fmod(phi, twopi);
+        if (phi < 0) phi += twopi;
+
+        auto wk = brandt::keplerian_gaia(data.t, data.psi, A, B, F, G, e, P, phi, data.M0_epoch);
+        for (size_t i = 0; i < N; i++)
+            mu[i] -= wk[i];
+    }
+}
+
+void GAIAmodel::add_transiting_planet()
+{
+    size_t N = data.N();
+    const double twopi = 2.0 * M_PI;
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double w = TR_w[j], e = TR_e[j], P = TR_P[j], Tc = TR_Tc[j];
+
+        double A = TR_a[j]*(cos(TR_w[j]) * cos(TR_W[j]) - sin(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double B = TR_a[j]*(cos(TR_w[j]) * sin(TR_W[j]) + sin(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        double F = -TR_a[j]*(sin(TR_w[j]) * cos(TR_W[j]) + cos(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double G = -TR_a[j]*(sin(TR_w[j]) * sin(TR_W[j]) - cos(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        
+        // Tc -> phi
+        double f_c = M_PI / 2.0 - w;
+        double E_c = 2.0 * atan2(sqrt(1.0 - e) * sin(f_c/2.0),
+                                 sqrt(1.0 + e) * cos(f_c/2.0));
+        double M_c = E_c - e * sin(E_c);
+        double phi = M_c + twopi * (data.M0_epoch - Tc) / P;
+        phi = fmod(phi, twopi);
+        if (phi < 0) phi += twopi;
+
+        auto wk = brandt::keplerian_gaia(data.t, data.psi, A, B, F, G, e, P, phi, data.M0_epoch);
+        for (size_t i = 0; i < N; i++)
+            mu[i] += wk[i];
+    }
+}
+
 
 double GAIAmodel::perturb(RNG& rng)
 {
@@ -378,71 +480,65 @@ double GAIAmodel::perturb(RNG& rng)
             remove_known_object();
 
             for (int i=0; i<n_known_object; i++){
-                KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_aprior[i]->perturb(KO_a[i], rng);
-                KO_eprior[i]->perturb(KO_e[i], rng);
-                KO_phiprior[i]->perturb(KO_phi[i], rng);
-                KO_wprior[i]->perturb(KO_w[i], rng);
-                KO_cosiprior[i]->perturb(KO_cosi[i], rng);
-                KO_Wprior[i]->perturb(KO_W[i], rng);
+                logH += KO_Pprior[i]->perturb(KO_P[i], rng);
+                logH += KO_aprior[i]->perturb(KO_a[i], rng);
+                logH += KO_eprior[i]->perturb(KO_e[i], rng);
+                logH += KO_phiprior[i]->perturb(KO_phi[i], rng);
+                logH += KO_wprior[i]->perturb(KO_w[i], rng);
+                logH += KO_cosiprior[i]->perturb(KO_cosi[i], rng);
+                logH += KO_Wprior[i]->perturb(KO_W[i], rng);
             }
 
             add_known_object();
         }
 
-        if (scan_dep_signal) {
-            for (int j=0; j<n_scan_dep_components; j++){
-                for(size_t i=0; i<mu.size(); i++){
-                    mu[i] -= Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
-                }
-                Ak_prior[j]->perturb(Ak[j], rng);
-                thetak_prior[j]->perturb(thetak[j], rng);
-                for(size_t i=0; i<mu.size(); i++){
-                    mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
-                }
+        if (transiting_planet)
+        {
+            remove_transiting_planet();
+
+            for (int i = 0; i < n_transiting_planet; i++)
+            {
+                logH += TR_Pprior[i]->perturb(TR_P[i], rng);
+                logH += TR_aprior[i]->perturb(TR_a[i], rng);
+                logH += TR_eprior[i]->perturb(TR_e[i], rng);
+                logH += TR_Tcprior[i]->perturb(TR_Tc[i], rng);
+                logH += TR_wprior[i]->perturb(TR_w[i], rng);
+                logH += TR_cosiprior[i]->perturb(TR_cosi[i], rng);
+                logH += TR_Wprior[i]->perturb(TR_W[i], rng);
             }
+
+            add_transiting_planet();
         }
-        
+
     }
     else //perturb baseline solution
     {
-        //subtract 5-parameter solution
-        for(size_t i=0; i<mu.size(); i++)
-        {
-            mu[i] += - (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) - (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) - plx*data.pf[i];
-            if (acceleration){
-                mu[i] += - (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) - (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
-                if (jerk){
-                    mu[i] += - (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) - (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
-                }
-            }
-        }
         // propose new parameters
-        da_prior->perturb(da, rng);
-        dd_prior->perturb(dd, rng);
-        mua_prior->perturb(mua, rng);
-        mud_prior->perturb(mud, rng);
-        plx_prior->perturb(plx, rng);
-        if (acceleration){
-            accela_prior->perturb(accela, rng);
-            acceld_prior->perturb(acceld, rng);
-            if (jerk){
-                jerka_prior->perturb(jerka, rng);
-                jerkd_prior->perturb(jerkd, rng);
+        logH += da_prior->perturb(da, rng);
+        logH += dd_prior->perturb(dd, rng);
+        logH += mua_prior->perturb(mua, rng);
+        logH += mud_prior->perturb(mud, rng);
+        logH += plx_prior->perturb(plx, rng);
+
+        if (acceleration)
+        {
+            logH += accela_prior->perturb(accela, rng);
+            logH += acceld_prior->perturb(acceld, rng);
+            if (jerk)
+            {
+                logH += jerka_prior->perturb(jerka, rng);
+                logH += jerkd_prior->perturb(jerkd, rng);
             }
         }
 
-        //add 5-parameter solution back in
-        for(size_t i=0; i<mu.size(); i++)
-        {
-            mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];;
-            if (acceleration){
-                mu[i] += (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) + (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
-                if (jerk){
-                    mu[i] += (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) + (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
-                }
+        if (scan_dep_signal) {
+            for (int j = 0; j < n_scan_dep_components; j++)
+            {
+                logH += Ak_prior[j]->perturb(Ak[j], rng);
+                logH += thetak_prior[j]->perturb(thetak[j], rng);
             }
         }
+
     }
 
 
@@ -559,6 +655,16 @@ void GAIAmodel::print(std::ostream& out) const
         for (auto Om: KO_W) out << Om << "\t";
     }
 
+    if(transiting_planet){
+        for (auto P: TR_P)   out << P  << "\t";
+        for (auto a: TR_a)   out << a  << "\t";
+        for (auto Tc: TR_Tc) out << Tc << "\t";
+        for (auto e: TR_e)   out << e  << "\t";
+        for (auto w: TR_w)   out << w  << "\t";
+        for (auto cosi: TR_cosi) out << cosi << "\t";
+        for (auto Om: TR_W) out << Om << "\t";
+    }
+
     planets.print(out);
 
     out << ' ' << staleness << ' ';
@@ -617,6 +723,16 @@ string GAIAmodel::description() const
         printi(n_known_object, "KO_W");
     }
 
+    if(transiting_planet) {
+        printi(n_transiting_planet, "TR_P");
+        printi(n_transiting_planet, "TR_a");
+        printi(n_transiting_planet, "TR_Tc");
+        printi(n_transiting_planet, "TR_ecc");
+        printi(n_transiting_planet, "TR_w");
+        printi(n_transiting_planet, "TR_cosi");
+        printi(n_transiting_planet, "TR_W");
+    }
+
     desc += "ndim" + sep + "maxNp" + sep;
 
     desc += "Np" + sep;
@@ -667,6 +783,9 @@ void GAIAmodel::save_setup() {
 
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
+    fout << "transiting_planet: " << transiting_planet << endl;
+    fout << "n_transiting_planet: " << n_transiting_planet << endl;
+
     fout << "studentt: " << studentt << endl;
     fout << endl;
 
@@ -749,6 +868,20 @@ void GAIAmodel::save_setup() {
             fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
             fout << "cosiprior_" << i << ": " << *KO_cosiprior[i] << endl;
             fout << "Wprior_" << i << ": " << *KO_Wprior[i] << endl;
+        }
+    }
+
+    if (transiting_planet) {
+        fout << endl << "[priors.transiting_planet]" << endl;
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            fout << "Pprior_" << i << ": " << *TR_Pprior[i] << endl;
+            fout << "aprior_" << i << ": " << *TR_aprior[i] << endl;
+            fout << "eprior_" << i << ": " << *TR_eprior[i] << endl;
+            fout << "Tcprior_" << i << ": " << *TR_Tcprior[i] << endl;
+            fout << "wprior_" << i << ": " << *TR_wprior[i] << endl;
+            fout << "cosiprior_" << i << ": " << *TR_cosiprior[i] << endl;
+            fout << "Wprior_" << i << ": " << *TR_Wprior[i] << endl;
         }
     }
 
@@ -842,6 +975,13 @@ NB_MODULE(GAIAmodel, m) {
                      "whether the model includes (better) known extra Keplerian curve(s)")
         .def_prop_ro("n_known_object", [](GAIAmodel &m) { return m.get_n_known_object(); },
                      "how many known objects")
+
+        // transiting planets
+        .def("set_transiting_planet", &GAIAmodel::set_transiting_planet)
+        .def_prop_ro("transiting_planet", [](GAIAmodel &m) { return m.get_transiting_planet(); },
+                     "whether the model includes transiting planet(s)")
+        .def_prop_ro("n_transiting_planet", [](GAIAmodel &m) { return m.get_n_transiting_planet(); },
+                     "how many transiting planets")
 
 
         // priors
