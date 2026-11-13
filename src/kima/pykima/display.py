@@ -5646,8 +5646,13 @@ def interactive_plotter(res):
     fig.canvas.callbacks.connect('pick_event', on_pick)
 
 
-def report(res, hexbin=False, diagnostic=False, **kwargs):
+def report(res, hexbin=False, diagnostic=False, show_prior=False,
+           show_phase_plots=False, **kwargs):
+    from inspect import signature
     from .utils import distribution_support
+
+    if res.model in (MODELS.GAIAmodel, ):
+        return report_gaia_model(res, **kwargs)
 
     short_instruments = [
         i.replace('ESPRESSO', 'E').replace('HARPS', 'H').replace('CORALIE', 'C')
@@ -5661,6 +5666,9 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         ["d", "d", "d", "e"],
     ]
 
+    if show_phase_plots:
+        layout.append(['ph1', 'ph2', 'ph3', 'ph4'])
+
     if diagnostic:
         layout.append(['d1', 'd2', 'd3', 'd4'])
 
@@ -5668,8 +5676,11 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         # 'aaab\npppt\nccco\nddde', 
         figsize=(8.3, 11.7), constrained_layout=True)
 
-    res.plot_random_samples(ax=axs['a'], ncurves=20,
-                            clip_curves_to_data=True)
+    kw = {}
+    if res.model in (MODELS.RVFWHMmodel,):
+        kw['just_rvs'] = True
+
+    res.plot_random_samples(ax=axs['a'], ncurves=20, clip_curves_to_data=True, **kw)
     axs['a'].set(title='')
     axs['a'].legend(ncol=np.ceil(res.n_instruments / 2), fontsize=8,
                     loc='lower right', bbox_to_anchor=(1.0, 1.0))
@@ -5690,7 +5701,12 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         axs['c'].axis('off')
         axs['d'].axis('off')
     else:
-        res.plot2(ax=axs['p'], include_known_object=True, alpha=0.6)
+        possible_kwargs = list(signature(res.plot2).parameters.keys())
+        possible_kwargs.remove('kwargs')
+        kw2 = {k: v for k, v in kwargs.items() if k in possible_kwargs}
+
+        res.plot2(ax=axs['p'], alpha=0.6, show_eta3=res.has_gp, **kw2,
+                  show_prior=show_prior)
         axs['p'].set(title='', ylabel='posterior', xlabel='')
 
         from .analysis import FIP
@@ -5704,7 +5720,12 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         else:
             kw3 = dict()
 
-        res.plot3(ax1=axs['c'], ax2=axs['d'], include_known_object=True, **kw3)
+        possible_kwargs = list(signature(res.plot2).parameters.keys())
+        possible_kwargs.remove('kwargs')
+        kw = {k: v for k, v in kwargs.items() if k in possible_kwargs}
+        kw.update(kw3)
+
+        res.plot3(ax1=axs['c'], ax2=axs['d'], **kw)
 
         if res.ESS < 1000:
             for line in axs['c'].get_lines():
@@ -5718,21 +5739,36 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         # axs['c'].set_ylim(distribution_support(res.priors['Kprior']))
         axs['d'].set_ylim(0, 1)
 
+    violin_kw = {'showmedians': True, 'showextrema': False, 'vert': False}
+    if show_prior:
+        violin_kw['side'] = 'high'
+    violin_prior_kw = violin_kw | {'showmedians': False, 'side': 'low'}
+
     # vsys, offsets violin plots
     if res.n_instruments > 1:
-        axs['o'].violinplot(res.posteriors.offset, showmedians=True,
-                            showextrema=False, vert=False)
+        sorted_indices = np.argsort(short_instruments[:-1])
+        axs['o'].violinplot(res.posteriors.offset[:, sorted_indices], **violin_kw)
+
+        if show_prior:
+            prior_samples = [
+                distribution_rvs(res.priors[f'individual_offset_prior[{i}]'], res.ESS) 
+                for i in sorted_indices
+            ]
+            
+            vio = axs['o'].violinplot(prior_samples, facecolor='k', **violin_prior_kw)
+            for pc in vio['bodies']:
+                pc.set_alpha(0.2)
+
         axs['o'].xaxis.minorticks_on()
         axs['o'].set_xlabel('offsets [m/s]')
         axs['o'].yaxis.tick_right()
         axs['o'].set_yticks(range(1, res.n_instruments))
-        axs["o"].set_title(f"relative to {short_instruments[-1]}", loc="left",
-                        fontsize=10)
-        labels = short_instruments[:-1]
+        axs["o"].set_title(f"relative to {short_instruments[-1]}", loc="left", fontsize=10)
+        labels = sorted(short_instruments[:-1])
         axs['o'].set_yticklabels(labels)
         estimates = [percentile68_ranges_latex(o) for o in res.posteriors.offset.T]
         xlim = axs['o'].get_xlim()
-        axs['o'].margins(x=0.4, tight=False)
+        axs['o'].margins(x=0.3, tight=False)
         axs['o'].set_xlim(xlim[0], None)
         xlim = axs['o'].get_xlim()
         for i, est in enumerate(estimates):
@@ -5742,19 +5778,29 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         axs['o'].axis('off')
 
     # jitter violin plots
-    _i = 1 if res.n_instruments > 1 else 0
-    axs['e'].violinplot(res.jitter[:, _i:], showmedians=True,
-                        showextrema=False, vert=False)
+    sorted_indices = np.argsort(short_instruments)
+    _i = 1 if res.model in (MODELS.RVmodel,) else 0
+    axs['e'].violinplot(res.jitter[:, _i:][:, sorted_indices], **violin_kw)
+
+    if show_prior:
+        prior_samples = distribution_rvs(res.priors['Jprior'], res.ESS)
+        vio = axs['e'].violinplot(prior_samples, facecolor='k', **violin_prior_kw)
+        for pc in vio['bodies']:
+            pc.set_alpha(0.2)
+
     axs['e'].xaxis.minorticks_on()
     axs['e'].set_xlabel('jitter [m/s]')
     axs['e'].yaxis.tick_right()
     axs['e'].set_yticks(range(1, len(res.instruments) + 1))
-    labels = short_instruments
+    labels = sorted(short_instruments)
     axs['e'].set_yticklabels(labels)
-    estimates = [percentile68_ranges_latex(j) for j in res.jitter[:, _i:].T]
+    estimates = [
+        percentile68_ranges_latex(j) 
+        for j in res.jitter[:, _i:][:, sorted_indices].T
+    ]
 
     xlim = axs['e'].get_xlim()
-    axs['e'].margins(x=0.4, tight=False)
+    axs['e'].margins(x=0.3, tight=False)
     axs['e'].set_xlim(xlim[0], None)
     xlim = axs['e'].get_xlim()
 
@@ -5779,6 +5825,14 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
         axs['t'].text(0, y, 'student-t: True'); y -= 1
     axs['t'].set(ylim=(y-1, 1))
 
+    if show_phase_plots:
+        Np = np_bayes_factor_threshold(res)
+        p = res.maximum_likelihood_sample(Np=Np)
+        _fig = res.phase_plot(p, phase_axs=(axs['ph1'], axs['ph2'], axs['ph3'], axs['ph4']))
+        plt.close(_fig)
+        for i in range(Np, 4):
+            axs[f'ph{i+1}'].axis('off')
+
     if diagnostic:
         from .classic import plot_diagnostic_1, plot_diagnostic_2
         plot_diagnostic_1(res.sample_info, ax=axs['d1'])
@@ -5795,5 +5849,132 @@ def report(res, hexbin=False, diagnostic=False, **kwargs):
 
 
     return fig, axs
+
+def report_gaia_model(res, truth=None, **kwargs):
+    from .analysis import astrometry
+
+    layout = [
+        ["a", "a", "a", "a", "b", "b"],
+        ["p", "p", "p", "p", "t", "t"],
+        ["p", "p", "p", "p", "j", "j"],
+        ["c", "c", "c", "c", "o","o"],
+        ["dadd", "dadd", "mua", "mud", "plx", "plx"],
+    ]
+
+    fig, axs = plt.subplot_mosaic(layout,
+        # 'aaab\npppt\nccco\nddde', 
+        figsize=(8.3, 11.7), constrained_layout=True)
+
+
+    if 'title' in kwargs:
+        axs['a'].set_title(kwargs['title'], loc='left')
+
+    t = np.array(res.data.t)
+    # tt = np.linspace(t.min(), t.max(), 1000)
+    wobs = np.array(res.data.w)
+    psi = np.array(res.data.psi)
+    pf = np.array(res.data.pf)
+
+    sample = res.posterior_sample[0].copy()
+    da, dd, mua, mud, plx = sample[res.indices['astrometric_solution']]
+    P, phi, e, a0, w, cosi, W = sample[res.indices['planets']]
+    Tper = res.M0_epoch - P * phi / 2 / np.pi
+
+    wmodel = astrometry.wss(da, dd, mua, mud, plx, t, psi, pf, res.M0_epoch)
+    wmodel_orb = wmodel + astrometry.wk_orb(P, Tper, e, cosi, W, w, a0, t, psi)
+    wws = wobs - wmodel_orb
+    # ra, dec = astrometry.ra_dec_orb(P, Tper, e, cosi, W, w, a0, t)
+    # ra2, dec2 = astrometry.ra_dec_orb(P, Tper, e, cosi, W, w, a0, tt)
+
+
+    axs['a'].errorbar(res.data.t, wws, res.data.wsig, fmt='o', ms=2)
+
+    if res.fix:
+        axs['b'].axis('off')
+    else:
+        res.plot1(ax=axs['b'], show_ESS=False, verbose=False)
+        axs['b'].set(ylabel='posterior', title='', yticks=[])
+        _axb = axs['b'].twiny()
+        _axb.set(xlim=axs['b'].get_xlim(),
+                 xticks=axs['b'].get_xticks()[:-1] + 0.5)
+        _axb.set_xticklabels(res.ratios.round(1).astype(str),
+                             fontsize=10, rotation=45, ha='left')
+
+    if res.max_components == 0 and not res.KO and not res.TR:
+        axs['p'].axis('off')
+        axs['c'].axis('off')
+        axs['d'].axis('off')
+    else:
+        mark_periods = truth['P_d'] if truth else None
+        res.plot2(ax=axs['p'], alpha=0.6, show_prior=True, mark_periods=mark_periods)
+        axs['p'].set(title='', ylabel='posterior', xlabel='')
+
+
+    axs['c'].semilogx(res.posteriors.P, res.posteriors.e, '.k', ms=1)
+    axs['c'].sharex(axs['p'])
+    axs['c'].set(xlabel='orbital period [days]', ylabel='e', ylim=(0, 1))
+    if truth:
+        axs['c'].axvline(truth['P_d'], color='r', zorder=-1, alpha=0.6)
+        axs['c'].axhline(truth['e'], color='r', zorder=-1, alpha=0.6)
+
+    # TEXT axis
+    axs['t'].axis('off')
+    y = 0
+    # axs['t'].text(0, y, f'name: {res.star}'); y -= 1
+    axs['t'].text(0, y, str(res.model).replace('MODELS.', '')); y -= 1
+    axs['t'].text(0, y, f'logZ: {res.evidence:.2f}'); y -= 1
+    axs['t'].text(0, y, f'logL max: {res.maximum_likelihood():.2f}'); y -= 1
+    axs['t'].text(0, y, f'ESS: {res.ESS}'); y -= 1
+    axs['t'].text(0, y, f'fix: {res.fix}, $N_{{p, max}}: {res.npmax}$'); y -= 1
+    # if res.KO:
+    #     axs['t'].text(0, y, 'KO: True'); y -= 1
+    # if res.TR:
+    #     axs['t'].text(0, y, 'TR: True'); y -= 1
+    # if res.trend:
+    #     axs['t'].text(0, y, f'trend: True, degree: {res.trend_degree}'); y -= 1
+    # if res.studentt:
+    #     axs['t'].text(0, y, 'student-t: True'); y -= 1
+    axs['t'].set(ylim=(y-1, 1))
+
+    if np_bayes_factor_threshold(res) > 0:
+        p = res.maximum_likelihood_sample()
+        astrometry_phase_plot(res, p, axs['o'], colorbar_position='right')
+        fig.axes[-1].set_yticks([])
+        # fig.delaxes(fig.axes[-1])
+        # plt.colorbar(axs['o'].get_children()[0], location='top')
+    else:
+        axs['o'].axis('off')
+
+
+    axs['j'].hist(res.posteriors.jitter, density=True, bins='doane',
+                  histtype='step', alpha=0.8)
+    axs['j'].set(ylabel='posterior', xlabel='jitter [mas]', yticks=[],
+                 xlim=(0, None))
+
+    kw = dict(showmedians=True, showextrema=False, points=30)
+    axs['dadd'].violinplot([res.posteriors.da, res.posteriors.dd], **kw)
+    axs['mua'].violinplot(res.posteriors.mua, **kw)
+    axs['mud'].violinplot(res.posteriors.mud, **kw)
+    axs['plx'].violinplot(res.posteriors.plx, **kw)
+
+    if truth is not None:
+        axs['dadd'].hlines(truth['alpha_mas'], 0.6, 1.4, color='r')
+        axs['dadd'].hlines(truth['delta_mas'], 1.6, 2.4, color='r')
+        axs['mua'].axhline(truth['mu_alpha_mas_yr'] / 365.25, color='r')
+        axs['mud'].axhline(truth['mu_delta_mas_yr'] / 365.25, color='r')
+        axs['plx'].axhline(truth['parallax_mas'], color='r')
+
+    # hist_astrometric_solution(
+    #     res, show_prior=False, show_legend=False,
+    #     axs=[axs['da'], axs['dd'], axs['mua'], axs['mud'], axs['plx']],
+    # )
+    # for ax in (axs['dadd'], axs['mua'], axs['mud'], axs['plx']):
+    axs['dadd'].set(ylabel='posterior', xlabel='[mas]', xticks=[1, 2], 
+                    xticklabels=['$d_a$', '$d_d$'])
+    axs['mua'].set(xticks=[1], xticklabels=[r'$\mu_a$'], xlabel='[mas/yr]')
+    # axs['mud'].yaxis.tick_right()
+    axs['mud'].set(xticks=[1], xticklabels=[r'$\mu_d$'], xlabel='[mas/yr]')
+    axs['plx'].set(xticks=[1], xticklabels=[r'$\pi$'], xlabel='[mas]')
+
 
     return fig, axs
