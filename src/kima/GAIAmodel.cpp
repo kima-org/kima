@@ -950,6 +950,7 @@ NB_MODULE(GAIAmodel, m) {
 
     nb::class_<GAIAmodel>(m, "GAIAmodel")
         .def(nb::init<bool&, int&, GAIAdata&>(), "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, GAIAdata&, bool&>(), "fix"_a, "npmax"_a, "data"_a, "thiele_innes"_a, GAIAMODEL_DOC)
         //
         .def_rw("fix", &GAIAmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")

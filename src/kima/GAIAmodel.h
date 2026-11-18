@@ -109,6 +109,13 @@ class KIMA_API GAIAmodel
         GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
+        GAIAmodel(bool fix, int npmax, GAIAdata& data, bool thiele_innes) : data(data), fix(fix), npmax(npmax), thiele_innes(thiele_innes) {
+            initialize_from_data(data);
+            if (thiele_innes) {
+                auto conditional = planets.get_conditional_prior();
+                conditional->use_thiele_innes();
+            }
+        };
 
         void initialize_from_data(GAIAdata& data);
 
