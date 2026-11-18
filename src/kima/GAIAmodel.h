@@ -91,10 +91,10 @@ class KIMA_API GAIAmodel
         std::vector<double> TR_W;
 
         // The signal
-        std::vector<double> mu;// = the astrometric model
-                            //std::vector<double>(GaiaData::get_instance().N());
+        std::vector<double> mu, mu_bkg;
                             
         void calculate_mu();
+        void calculate_mu_bkg();
         void add_known_object();
         void remove_known_object();
         void add_transiting_planet();

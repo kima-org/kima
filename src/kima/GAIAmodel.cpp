@@ -15,11 +15,11 @@ const double daytoyear3 = 1/(365.25*365.25*365.25);
 
 
 void GAIAmodel::initialize_from_data(GAIAdata& data)
-{   
+{
     // resize GAIA model vector
     mu.resize(data.N());
-    
-    
+    mu_bkg.resize(data.N());
+
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
     
@@ -33,11 +33,13 @@ void GAIAmodel::set_baseline_model(size_t n)
         acceleration = false;
         jerk = false;
     }
-    else if (n==7){
+    else if (n == 7)
+    {
         acceleration = true;
         jerk = false;
     }
-    else if (n==9){
+    else if (n == 9)
+    {
         acceleration = true;
         jerk = true;
     }
@@ -107,51 +109,53 @@ void GAIAmodel::set_transiting_planet(size_t n)
 /* set default priors if the user didn't change them */
 
 void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
-{   
+{
     if (thiele_innes)
     {
         auto conditional = planets.get_conditional_prior();
         conditional->use_thiele_innes();
     }
-     
+
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(0.01,10.);
+        Jprior = make_prior<ModifiedLogUniform>(0.01, 10.);
 
     if (scan_dep_signal)
     {
         for (int i = 0; i < n_scan_dep_components; i++)
         {
             if (!Ak_prior[i])
-                Ak_prior[i] = make_prior<ModifiedLogUniform>(0.05,10.);
+                Ak_prior[i] = make_prior<ModifiedLogUniform>(0.05, 10);
             if (!thetak_prior[i])
-                thetak_prior[i] = make_prior<Uniform>(0,2.*M_PI/(i*2 + 3));
+                thetak_prior[i] = make_prior<Uniform>(0, 2. * M_PI / (i * 2 + 3));
         }
     }
     // Alter default offset prior if there is an acceleration
     double dp = 0;
     if (acceleration)
         dp = 2;
-    
+
     if (!da_prior)
-        da_prior = make_prior<Gaussian>(0.0,pow(10,dp));
+        da_prior = make_prior<Gaussian>(0.0, pow(10, dp));
     if (!dd_prior)
-        dd_prior = make_prior<Gaussian>(0.0,pow(10,dp));
+        dd_prior = make_prior<Gaussian>(0.0, pow(10, dp));
     if (!mua_prior)
-        mua_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mua_prior = make_prior<Gaussian>(0.0, pow(10, 2));
     if (!mud_prior)
-        mud_prior = make_prior<Gaussian>(0.0,pow(10,2));
+        mud_prior = make_prior<Gaussian>(0.0, pow(10, 2));
     if (!plx_prior)
-        plx_prior = make_prior<LogUniform>(1.,100.);
-    if (acceleration) {
+        plx_prior = make_prior<LogUniform>(1., 100.);
+    if (acceleration)
+    {
         if (!accela_prior)
-            accela_prior = make_prior<Gaussian>(0.0,2);
+            accela_prior = make_prior<Gaussian>(0.0, 2);
         if (!acceld_prior)
-            acceld_prior = make_prior<Gaussian>(0.0,2);
-        if (jerk) {
+            acceld_prior = make_prior<Gaussian>(0.0, 2);
+        if (jerk)
+        {
             if (!jerka_prior)
-                jerka_prior = make_prior<Gaussian>(0.0,10);
+                jerka_prior = make_prior<Gaussian>(0.0, 10);
             if (!jerkd_prior)
-                jerkd_prior = make_prior<Gaussian>(0.0,10);
+                jerkd_prior = make_prior<Gaussian>(0.0, 10);
         }
     }
 
@@ -258,12 +262,8 @@ void GAIAmodel::from_prior(RNG& rng)
 */
 void GAIAmodel::calculate_mu()
 {
-
     // Get the epochs from the data
     size_t N = data.N();
-//     const vector<double>& t = data.get_t();
-//     const vector<double>& psi = data.get_psi();
-//     const vector<double>& pf = data.get_pf();
 
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
@@ -279,20 +279,8 @@ void GAIAmodel::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), 0.);
-        
         staleness = 0;
-        
-        for(size_t i=0; i<mu.size(); i++)
-        {
-            mu[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];
-            if (acceleration){
-                mu[i] += (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) + (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
-                if (jerk){
-                    mu[i] += (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) + (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
-                }
-            }
-        }
+        mu.assign(mu.size(), 0.);
 
         if (known_object) { // KO mode!
             add_known_object();
@@ -350,6 +338,35 @@ void GAIAmodel::calculate_mu()
 
 }
 
+void GAIAmodel::calculate_mu_bkg()
+{
+    size_t N = data.N();
+
+    mu_bkg.assign(mu_bkg.size(), 0.0);
+
+    for (size_t i = 0; i < mu_bkg.size(); i++)
+    {
+        mu_bkg[i] += (da + mua * daytoyear * (data.t[i]-data.M0_epoch)) * sin(data.psi[i]) + (dd + mud * daytoyear * (data.t[i]-data.M0_epoch)) * cos(data.psi[i]) + plx*data.pf[i];
+        if (acceleration)
+        {
+            mu_bkg[i] += (accela * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * sin(data.psi[i]) + (acceld * daytoyear2 * pow((data.t[i]-data.M0_epoch),2) / 2) * cos(data.psi[i]);
+            if (jerk)
+            {
+                mu_bkg[i] += (jerka * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * sin(data.psi[i]) + (jerkd * daytoyear3 * pow((data.t[i]-data.M0_epoch),3) / 6) * cos(data.psi[i]);
+            }
+        }
+    }
+
+    if (scan_dep_signal) {
+        for (int j=0; j<n_scan_dep_components; j++){
+            for(size_t i=0; i<mu.size(); i++){
+                mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
+            }
+        }
+    }
+
+
+}
 
 void GAIAmodel::remove_known_object()
 {
@@ -468,11 +485,11 @@ double GAIAmodel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.2 + prob_add) // perturb jitter(s) + known_object
     {
-        
-        Jprior->perturb(jitter, rng);
-        
+
+        logH += Jprior->perturb(jitter, rng);
+
         if (studentt)
-            nu_prior->perturb(nu, rng);
+            logH += nu_prior->perturb(nu, rng);
 
 
         if (known_object)
@@ -539,6 +556,7 @@ double GAIAmodel::perturb(RNG& rng)
             }
         }
 
+        calculate_mu_bkg();
     }
 
 
@@ -577,11 +595,11 @@ double GAIAmodel::log_likelihood() const
         // in the case of a t-Student model
         double var;
         double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
         {
-            var = wsig[i]*wsig[i] +jit*jit;
+            var = wsig[i] * wsig[i] + jitter * jitter;
 
-            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(w[i] - mu[i], 2)/var/nu);
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(w[i] - mu[i] - mu_bkg[i], 2)/var/nu);
         }
 
     }
@@ -590,14 +608,14 @@ double GAIAmodel::log_likelihood() const
         // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
         double var;
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
         {
-            var = wsig[i]*wsig[i] + jit*jit;
+            var = wsig[i] * wsig[i] + jitter * jitter;
 
-            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(w[i] - mu[i], 2)/var);
+            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(w[i] - mu[i] - mu_bkg[i], 2)/var);
         }
     }
-    
+
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
@@ -621,7 +639,7 @@ void GAIAmodel::print(std::ostream& out) const
 
 
     out.precision(24);
-    
+
     out << da << '\t';
     out << dd << '\t';
     out << mua << '\t';
@@ -636,7 +654,7 @@ void GAIAmodel::print(std::ostream& out) const
             out << jerkd << '\t';
         }
     }
-    
+
     out.precision(8);
 
     //auto data = get_data();
@@ -688,10 +706,12 @@ string GAIAmodel::description() const
     desc += "mud" + sep;
     desc += "parallax" + sep;
 
-    if (acceleration){
+    if (acceleration)
+    {
         desc += "accela" + sep;
         desc += "acceld" + sep;
-        if (jerk){
+        if (jerk)
+        {
             desc += "jerka" + sep;
             desc += "jerkd" + sep;
         }
@@ -707,7 +727,7 @@ string GAIAmodel::description() const
 
     auto printi = [&](const size_t n, const string& name )
     {
-        for(size_t i = 0; i < n; i++) 
+        for(size_t i = 0; i < n; i++)
         {
             desc += name + std::to_string(i + index_from) + sep;
         }
