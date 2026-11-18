@@ -90,6 +90,31 @@ void RVGAIAmodel::set_known_object(size_t n)
     // KO_Mints.resize(n);
 }
 
+
+void RVGAIAmodel::set_transiting_planet(size_t n)
+{
+    transiting_planet = true;
+    n_transiting_planet = n;
+    // planet_perturb_prob = 0.5;
+    // jitKO_perturb_prob = 0.3;
+
+    TR_Pprior.resize(n);
+    TR_aprior.resize(n);
+    TR_eprior.resize(n);
+    TR_Tcprior.resize(n);
+    TR_wprior.resize(n);
+    TR_cosiprior.resize(n);
+    TR_Wprior.resize(n);
+
+    TR_P.resize(n);
+    TR_a.resize(n);
+    TR_e.resize(n);
+    TR_Tc.resize(n);
+    TR_w.resize(n);
+    TR_cosi.resize(n);
+    TR_W.resize(n);
+}
+
 /* set default priors if the user didn't change them */
 
 void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
@@ -163,7 +188,22 @@ void RVGAIAmodel::setPriors()  // BUG: should be done by only one thread!
         // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_aprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_cosiprior[i] || !KO_Wprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_phiprior, KO_eprior, KO_aprior, KO_wprior, KO_cosiprior, KO_Wprior)");
+            {
+                std::string p = "KO_Pprior, KO_aprior, KO_eprior, KO_phiprior, KO_wprior, KO_cosiprior, KO_Wprior";
+                std::string msg = "When known_object=true, must set priors for each of " + p;
+                throw std::logic_error(msg);
+            }
+        }
+    }
+
+    if (transiting_planet) {
+        for (size_t i = 0; i < n_transiting_planet; i++) {
+            if (!TR_Pprior[i] || !TR_aprior[i] || !TR_eprior[i] || !TR_Tcprior[i] || !TR_wprior[i] || !TR_cosiprior[i] || !TR_Wprior[i])
+            {
+                std::string p = "TR_Pprior, TR_aprior, TR_eprior, TR_Tcprior, TR_wprior, TR_cosiprior, TR_Wprior";
+                std::string msg = "When transiting_planet=true, must set priors for each of " + p;
+                throw std::logic_error(msg);
+            }
         }
     }
 
@@ -251,6 +291,19 @@ void RVGAIAmodel::from_prior(RNG& rng)
         }
     }
 
+    if (transiting_planet) {
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            TR_P[i] = TR_Pprior[i]->generate(rng);
+            TR_a[i] = TR_aprior[i]->generate(rng);
+            TR_e[i] = TR_eprior[i]->generate(rng);
+            TR_Tc[i] = TR_Tcprior[i]->generate(rng);
+            TR_w[i] = TR_wprior[i]->generate(rng);
+            TR_cosi[i] = TR_cosiprior[i]->generate(rng);
+            TR_W[i] = TR_Wprior[i]->generate(rng);
+        }
+    }
+
     // get_interior_masses();
 
     if (studentt)
@@ -264,7 +317,7 @@ void RVGAIAmodel::from_prior(RNG& rng)
 }
 
 /**
- * @brief Calculate the full ET model
+ * @brief Calculate the full model
  * 
 */
 void RVGAIAmodel::calculate_mu()
@@ -348,6 +401,10 @@ void RVGAIAmodel::calculate_mu()
                     mu_GAIA[i] += Ak[j] * cos((j*2 + 3)*(GAIA_data.psi[i] - thetak[j]));
                 }
             }
+        }
+
+        if (transiting_planet) {
+            add_transiting_planet();
         }
     }
     else // just updating (adding) planets
@@ -518,6 +575,72 @@ void RVGAIAmodel::add_known_object()
     }
 }
 
+void RVGAIAmodel::remove_transiting_planet()
+{
+    const double twopi = 2.0 * M_PI;
+    double K;
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double w = TR_w[j], e = TR_e[j], P = TR_P[j], Tc = TR_Tc[j];
+
+        double A = TR_a[j]*(cos(TR_w[j]) * cos(TR_W[j]) - sin(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double B = TR_a[j]*(cos(TR_w[j]) * sin(TR_W[j]) + sin(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        double F = -TR_a[j]*(sin(TR_w[j]) * cos(TR_W[j]) + cos(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double G = -TR_a[j]*(sin(TR_w[j]) * sin(TR_W[j]) - cos(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        
+        // Tc -> phi
+        double f_c = M_PI / 2.0 - w;
+        double E_c = 2.0 * atan2(sqrt(1.0 - e) * sin(f_c/2.0),
+                                 sqrt(1.0 + e) * cos(f_c/2.0));
+        double M_c = E_c - e * sin(E_c);
+        double phi = M_c + twopi * (GAIA_data.M0_epoch - Tc) / P;
+        phi = fmod(phi, twopi);
+        if (phi < 0) phi += twopi;
+
+        K = MassConv::KfromSemiPhot(P,TR_a[j],e,TR_cosi[j],plx);
+
+        auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, e, P, phi, GAIA_data.M0_epoch);
+        for (size_t i = 0; i < GAIA_data.N(); i++)
+            mu_GAIA[i] -= wk[i];
+
+        auto v = brandt::keplerian(RV_data.t, P, K, e, w, phi, GAIA_data.M0_epoch);
+        for (size_t i = 0; i < RV_data.N(); i++)
+            mu_RV[i] -= v[i];
+    }
+}
+
+void RVGAIAmodel::add_transiting_planet()
+{
+    const double twopi = 2.0 * M_PI;
+    double K;
+    for (int j = 0; j < n_transiting_planet; j++) {
+        double w = TR_w[j], e = TR_e[j], P = TR_P[j], Tc = TR_Tc[j];
+
+        double A = TR_a[j]*(cos(TR_w[j]) * cos(TR_W[j]) - sin(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double B = TR_a[j]*(cos(TR_w[j]) * sin(TR_W[j]) + sin(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        double F = -TR_a[j]*(sin(TR_w[j]) * cos(TR_W[j]) + cos(TR_w[j]) * sin(TR_W[j]) * TR_cosi[j]);
+        double G = -TR_a[j]*(sin(TR_w[j]) * sin(TR_W[j]) - cos(TR_w[j]) * cos(TR_W[j]) * TR_cosi[j]);
+        
+        // Tc -> phi
+        double f_c = M_PI / 2.0 - w;
+        double E_c = 2.0 * atan2(sqrt(1.0 - e) * sin(f_c/2.0),
+                                 sqrt(1.0 + e) * cos(f_c/2.0));
+        double M_c = E_c - e * sin(E_c);
+        double phi = M_c + twopi * (GAIA_data.M0_epoch - Tc) / P;
+        phi = fmod(phi, twopi);
+        if (phi < 0) phi += twopi;
+
+        K = MassConv::KfromSemiPhot(P,TR_a[j],e,TR_cosi[j],plx);
+
+        auto wk = brandt::keplerian_gaia(GAIA_data.t, GAIA_data.psi, A, B, F, G, e, P, phi, GAIA_data.M0_epoch);
+        for (size_t i = 0; i < GAIA_data.N(); i++)
+            mu_GAIA[i] += wk[i];
+
+        auto v = brandt::keplerian(RV_data.t, P, K, e, w, phi, GAIA_data.M0_epoch);
+        for (size_t i = 0; i < RV_data.N(); i++)
+            mu_RV[i] += v[i];
+    }
+}
+
 double RVGAIAmodel::perturb(RNG& rng)
 {
     #if TIMING
@@ -579,6 +702,24 @@ double RVGAIAmodel::perturb(RNG& rng)
 
             add_known_object();
 
+        }
+
+        if (transiting_planet)
+        {
+            remove_transiting_planet();
+
+            for (int i = 0; i < n_transiting_planet; i++)
+            {
+                logH += TR_Pprior[i]->perturb(TR_P[i], rng);
+                logH += TR_aprior[i]->perturb(TR_a[i], rng);
+                logH += TR_eprior[i]->perturb(TR_e[i], rng);
+                logH += TR_Tcprior[i]->perturb(TR_Tc[i], rng);
+                logH += TR_wprior[i]->perturb(TR_w[i], rng);
+                logH += TR_cosiprior[i]->perturb(TR_cosi[i], rng);
+                logH += TR_Wprior[i]->perturb(TR_W[i], rng);
+            }
+
+            add_transiting_planet();
         }
 
         if (scan_dep_signal) {
@@ -883,6 +1024,16 @@ void RVGAIAmodel::print(std::ostream& out) const
         for (auto Om: KO_W) out << Om << "\t";
     }
 
+    if(transiting_planet){
+        for (auto P: TR_P)   out << P  << "\t";
+        for (auto a: TR_a)   out << a  << "\t";
+        for (auto Tc: TR_Tc) out << Tc << "\t";
+        for (auto e: TR_e)   out << e  << "\t";
+        for (auto w: TR_w)   out << w  << "\t";
+        for (auto cosi: TR_cosi) out << cosi << "\t";
+        for (auto Om: TR_W) out << Om << "\t";
+    }
+
     planets.print(out);
 
     out << ' ' << staleness << ' ';
@@ -974,6 +1125,16 @@ string RVGAIAmodel::description() const
         printi(n_known_object, "KO_cosi");
         printi(n_known_object, "KO_W");
     }
+    
+    if(transiting_planet) {
+        printi(n_transiting_planet, "TR_P");
+        printi(n_transiting_planet, "TR_a");
+        printi(n_transiting_planet, "TR_Tc");
+        printi(n_transiting_planet, "TR_ecc");
+        printi(n_transiting_planet, "TR_w");
+        printi(n_transiting_planet, "TR_cosi");
+        printi(n_transiting_planet, "TR_W");
+    }
 
     desc += "ndim" + sep + "maxNp" + sep;
 
@@ -1024,6 +1185,9 @@ void RVGAIAmodel::save_setup() {
     fout << "multi_instrument: " << RV_data._multi << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
+    fout << "transiting_planet: " << transiting_planet << endl;
+    fout << "n_transiting_planet: " << n_transiting_planet << endl;
+
     fout << "studentt: " << studentt << endl;
     fout << endl;
 
@@ -1126,6 +1290,20 @@ void RVGAIAmodel::save_setup() {
         }
     }
 
+    if (transiting_planet) {
+        fout << endl << "[priors.transiting_planet]" << endl;
+        for (int i = 0; i < n_transiting_planet; i++)
+        {
+            fout << "Pprior_" << i << ": " << *TR_Pprior[i] << endl;
+            fout << "aprior_" << i << ": " << *TR_aprior[i] << endl;
+            fout << "eprior_" << i << ": " << *TR_eprior[i] << endl;
+            fout << "Tcprior_" << i << ": " << *TR_Tcprior[i] << endl;
+            fout << "wprior_" << i << ": " << *TR_wprior[i] << endl;
+            fout << "cosiprior_" << i << ": " << *TR_cosiprior[i] << endl;
+            fout << "Wprior_" << i << ": " << *TR_Wprior[i] << endl;
+        }
+    }
+
     fout << endl;
     fout.close();
 }
@@ -1214,6 +1392,14 @@ NB_MODULE(RVGAIAmodel, m) {
                      "whether the model includes (better) known extra Keplerian curve(s)")
         .def_prop_ro("n_known_object", [](RVGAIAmodel &m) { return m.get_n_known_object(); },
                      "how many known objects")
+
+        // transiting planets
+        .def("set_transiting_planet", &RVGAIAmodel::set_transiting_planet)
+        .def_prop_ro("transiting_planet", [](RVGAIAmodel &m) { return m.get_transiting_planet(); },
+                     "whether the model includes transiting planet(s)")
+        .def_prop_ro("n_transiting_planet", [](RVGAIAmodel &m) { return m.get_n_transiting_planet(); },
+                     "how many transiting planets")
+
         
         //
         .def_rw("indicator_correlations", &RVGAIAmodel_publicist::indicator_correlations, 
@@ -1354,6 +1540,37 @@ NB_MODULE(RVGAIAmodel, m) {
         .def_prop_rw("KO_Wprior",
                      [](RVGAIAmodel &m) { return m.KO_Wprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Wprior = vd; },
+                     "Prior for KO longitude(s) of ascending node")
+
+        // Transiting planet priors
+        // ? should these setters check if known_object is true?
+        .def_prop_rw("TR_Pprior",
+                     [](RVGAIAmodel &m) { return m.TR_Pprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Pprior = vd; },
+                     "Prior for KO orbital period(s)")
+        .def_prop_rw("TR_aprior",
+                     [](RVGAIAmodel &m) { return m.TR_aprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_aprior = vd; },
+                     "Prior for KO mass(es) (M_sun)")
+        .def_prop_rw("TR_eprior",
+                     [](RVGAIAmodel &m) { return m.TR_eprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_eprior = vd; },
+                     "Prior for KO eccentricity(ies)")
+        .def_prop_rw("TR_wprior",
+                     [](RVGAIAmodel &m) { return m.TR_wprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_wprior = vd; },
+                     "Prior for KO argument(s) of periastron")
+        .def_prop_rw("TR_Tcprior",
+                     [](RVGAIAmodel &m) { return m.TR_Tcprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
+                     "Prior for KO mean anomaly(ies)")
+        .def_prop_rw("TR_cosiprior",
+                     [](RVGAIAmodel &m) { return m.TR_cosiprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_cosiprior = vd; },
+                     "Prior for cosine of KO inclination(s)")
+        .def_prop_rw("TR_Wprior",
+                     [](RVGAIAmodel &m) { return m.TR_Wprior; },
+                     [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Wprior = vd; },
                      "Prior for KO longitude(s) of ascending node")
 
         // conditional object
