@@ -253,6 +253,7 @@ void GAIAmodel::from_prior(RNG& rng)
         nu = nu_prior->generate(rng);
 
     calculate_mu();
+    calculate_mu_bkg();
 
 }
 
