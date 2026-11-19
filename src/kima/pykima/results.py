@@ -551,6 +551,13 @@ class KimaResults:
         self.evidence = self.logZ = evidence
         self.information = self.KL = H
 
+        #Index labelling (for if using from 0 instead of default from 1)
+        #not yet implemented in all models, so for now catch errors !!!better to eventually include in all models
+        try:
+            self.index_from = model.index_from
+        except:
+            self.index_from = 1
+
         with SimpleTimer() as timer:
             self.posterior_sample = np.atleast_2d(read_big_file("posterior_sample.txt"))
         if self._debug:
@@ -1345,7 +1352,7 @@ class KimaResults:
         if self.TR:
             if self.model is MODELS.TRANSITmodel:
                 n_TRparameters = 6 * self.nTR
-            elif self.model in [MODELS.GAIAmodel,MODELS.RVGAIAmodel]:
+            elif self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
                 n_TRparameters = 7 * self.nTR
             else:
                 n_TRparameters = 5 * self.nTR
@@ -1447,14 +1454,14 @@ class KimaResults:
 
             if 'KO' in par:
                 index = par[-1]
-                prior_name = par.replace(index, f'prior_{int(index) - 1}')
+                prior_name = par.replace(index, f'prior_{int(index) - self.index_from}')
                 prior_name = prior_name.replace('ecc', 'e')
                 priors[i] = self.priors[prior_name]
                 continue
         
             if 'TR' in par:
                 index = par[-1]
-                prior_name = par.replace(index, f'prior_{int(index) - 1}')
+                prior_name = par.replace(index, f'prior_{int(index) - self.index_from}')
                 prior_name = prior_name.replace('ecc', 'e')
                 priors[i] = self.priors[prior_name]
                 continue
@@ -2802,7 +2809,10 @@ class KimaResults:
             print('number of transiting planets: ', self.nTR)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'Tc', 'e', 'w')
+            if self.model (GAIAmodel, MODELS.RVGAIAmodel):
+                pars = ('P','a','Tc','e','w','cosi','W')
+            else:
+                pars = ('P', 'K', 'Tc', 'e', 'w')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nTR):

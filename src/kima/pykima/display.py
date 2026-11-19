@@ -4030,7 +4030,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
 
 def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
-    if res.model != MODELS.GAIAmodel:
+    if res.model not in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
         print('Model is not GAIAmodel! '
               'corner_astrometric_solution() doing nothing...')
         return
@@ -4066,7 +4066,7 @@ def corner_astrometric_solution(res, star_mass=1.0, adda=False, **kwargs):
     return fig
 
 def hist_astrometric_solution(res, show_prior=False, axs=None, **kwargs):
-    if res.model != MODELS.GAIAmodel:
+    if res.model not in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
         print('Model is not GAIAmodel! hist_astrometric_solution() doing nothing...')
         return
     
