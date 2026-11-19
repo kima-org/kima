@@ -2925,7 +2925,7 @@ def phase_plot_logic(res, sample, sort_by_decreasing_K=False, sort_by_increasing
             tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
             tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
             f = np.pi/2 - w
-            E = 2.0 * np.arctan(np.tan(f/2.0) * np.sqrt((1.0 - e) / (1.0 + e)))
+            E = 2.0 * np.arctan2(np.sqrt(1.0 - e) * np.sin(f/2.0), np.sqrt(1.0 + e) * np.cos(f/2.0))
             tr[k]['φ'] = φ = E - e * np.sin(E)
             # tr[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['type'] = 'TR'
@@ -3583,6 +3583,26 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
             pj += 1
     else:
         params = {}
+    nTRs=0
+    if res.TR:
+        nTRs = res.nTR
+        tr = {letters[i]: {} for i in range(nTRs)}
+        for i, k in enumerate(tr.keys()):
+            tr[k]['P'] = P = sample[res.indices['TRpars']][i]
+            tr[k]['a'] = a = sample[res.indices['TRpars']][i + res.nTR]
+            tr[k]['Tc'] = Tc = sample[res.indices['TRpars']][i + 2 * res.nTR]
+            tr[k]['e'] = e = sample[res.indices['TRpars']][i + 3 * res.nTR]
+            tr[k]['w'] = w = sample[res.indices['TRpars']][i + 4 * res.nTR]
+            tr[k]['cosi'] = cosi = sample[res.indices['TRpars']][i + 5 * res.nTR]
+            tr[k]['W'] = W = sample[res.indices['TRpars']][i + 6 * res.nTR]
+            f = np.pi/2 - w
+            E = 2.0 * np.arctan2(np.sqrt(1.0 - e) * np.sin(f/2.0), np.sqrt(1.0 + e) * np.cos(f/2.0))
+            tr[k]['φ'] = φ = E - e * np.sin(E)
+            # tr[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
+            tr[k]['type'] = 'TR'
+            tr[k]['index'] = -pj - 1
+            pj += 1
+        params.update(tr)
         
 
     planets = {letters[i]: {} for i in range(nKOs, nplanets)}
@@ -3779,7 +3799,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         P = params[letter]['P']
         phi = params[letter]['φ']
         e = params[letter]['e']
-        if res.thiele_innes:
+        if res.thiele_innes and params[letter]['type'] == 'planet':
             A = params[letter]['A']
             B = params[letter]['B']
             F = params[letter]['F']
@@ -3913,7 +3933,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         P = params[letter]['P']
         phi = params[letter]['φ']
         e = params[letter]['e']
-        if res.thiele_innes:
+        if res.thiele_innes and params[letter]['type'] == 'planet':
             A = params[letter]['A']
             B = params[letter]['B']
             F = params[letter]['F']
