@@ -1345,6 +1345,8 @@ class KimaResults:
         if self.TR:
             if self.model is MODELS.TRANSITmodel:
                 n_TRparameters = 6 * self.nTR
+            elif self.model in [MODELS.GAIAmodel,MODELS.RVGAIAmodel]:
+                n_TRparameters = 7 * self.nTR
             else:
                 n_TRparameters = 5 * self.nTR
             start = self._current_column
@@ -2308,16 +2310,26 @@ class KimaResults:
             self._priors.TR = prior_holder()
             self.posteriors.TR.__doc__ = self._priors.TR.__doc__ = ("Transiting planet parameters")
             self.posteriors.TR.P = self.TRpars[:, range(0 * self.nTR, 1 * self.nTR)]
-            self.posteriors.TR.K = self.TRpars[:, range(1 * self.nTR, 2 * self.nTR)]
             self.posteriors.TR.Tc = self.TRpars[:, range(2 * self.nTR, 3 * self.nTR)]
             self.posteriors.TR.e = self.TRpars[:, range(3 * self.nTR, 4 * self.nTR)]
             self.posteriors.TR.w = self.TRpars[:, range(4 * self.nTR, 5 * self.nTR)]
+            if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                self.posteriors.TR.a = self.TRpars[:, range(1 * self.nTR, 2 * self.nTR)]
+                self.posteriors.TR.cosi = self.TRpars[:, range(5 * self.nTR, 6 * self.nTR)]
+                self.posteriors.TR.W = self.TRpars[:, range(6 * self.nTR, 7 * self.nTR)]
+            else:
+                self.posteriors.TR.K = self.TRpars[:, range(1 * self.nTR, 2 * self.nTR)]
             for i in range(self.nTR):
                 setattr(self._priors.TR, f'P{i}', self.priors[f'TR_Pprior_{i}'])
-                setattr(self._priors.TR, f'K{i}', self.priors[f'TR_Kprior_{i}'])
                 setattr(self._priors.TR, f'e{i}', self.priors[f'TR_eprior_{i}'])
                 setattr(self._priors.TR, f'w{i}', self.priors[f'TR_wprior_{i}'])
                 setattr(self._priors.TR, f'Tc{i}', self.priors[f'TR_Tcprior_{i}'])
+                if self.model in (MODELS.GAIAmodel,MODELS.RVGAIAmodel):
+                    setattr(self._priors.TR, f'a{i}', self.priors[f'TR_aprior_{i}'])
+                    setattr(self._priors.TR, f'cosi{i}', self.priors[f'TR_cosiprior_{i}'])
+                    setattr(self._priors.TR, f'W{i}', self.priors[f'TR_Wprior_{i}'])
+                else:
+                    setattr(self._priors.TR, f'K{i}', self.priors[f'TR_Kprior_{i}'])
 
 
         # # times of inferior conjunction (transit, if the planet transits)
