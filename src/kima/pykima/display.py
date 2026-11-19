@@ -3826,8 +3826,14 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     time_array2 = np.arange(np.min(t2),np.max(t2),1.0)
     ax = axs[0]
 
-    parfra, parfdec = get_parallax_factors(res.RA, res.DEC, time_array2)
-    parfra_vals, parfdec_vals = get_parallax_factors(res.RA, res.DEC, t2)
+    if res.RA == 0.0 and res.DEC==0.0:
+        parfra_vals, parfdec_vals = pf*np.sin(psi), pf*np.cos(psi)
+        plot_parallax_line = False
+        print('RA and DEC values set to 0.0 in kima, parallax motion panel will not show a model')
+    else:
+        parfra, parfdec = get_parallax_factors(res.RA, res.DEC, time_array2)
+        parfra_vals, parfdec_vals = get_parallax_factors(res.RA, res.DEC, t2)
+        plot_parallax_line = True
     a, ap, am, b, bp, bm = wss_dep_errs(
         alpha_res, dec_res, alpha_errs, dec_errs,
         da, dd, par, mua, mud, 
@@ -3838,8 +3844,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
     for i in range(len(t2)):
         colour = cmap((t2[i] - t2[0]) / (t2[len(t2) - 1] - t2[0]))
         ax.plot([am[i], ap[i]], [bm[i], bp[i]], c=colour, alpha=0.6)
-    a, b = wss_dep(da, dd, par, mua, mud, time_array2, parfra, parfdec, tref)
-    ax.plot(a, b, c="black", alpha=0.8)
+
+    if plot_parallax_line:
+        a, b = wss_dep(da, dd, par, mua, mud, time_array2, parfra, parfdec, tref)
+        ax.plot(a, b, c="black", alpha=0.8)
 
     ax.xaxis.set_inverted(True)
     ax.set_box_aspect(1)
