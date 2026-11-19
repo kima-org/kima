@@ -1091,6 +1091,37 @@ NB_MODULE(GAIAmodel, m) {
                      [](GAIAmodel &m, std::vector<distribution>& vd) { m.KO_Wprior = vd; },
                      "Prior for KO longitude(s) of ascending node")
 
+        // Transiting planet priors
+        // ? should these setters check if TR is true?
+        .def_prop_rw("TR_Pprior",
+                     [](GAIAmodel &m) { return m.TR_Pprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_Pprior = vd; },
+                     "Prior for TR orbital period(s)")
+        .def_prop_rw("TR_aprior",
+                     [](GAIAmodel &m) { return m.TR_aprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_aprior = vd; },
+                     "Prior for TR photocentre semi-major axis(es) (mas)")
+        .def_prop_rw("TR_eprior",
+                     [](GAIAmodel &m) { return m.TR_eprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_eprior = vd; },
+                     "Prior for TR eccentricity(ies)")
+        .def_prop_rw("TR_wprior",
+                     [](GAIAmodel &m) { return m.TR_wprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_wprior = vd; },
+                     "Prior for TR argument(s) of periastron")
+        .def_prop_rw("TR_Tcprior",
+                     [](GAIAmodel &m) { return m.TR_Tcprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
+                     "Prior for TR mean anomaly(ies)")
+        .def_prop_rw("TR_cosiprior",
+                     [](GAIAmodel &m) { return m.TR_cosiprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_cosiprior = vd; },
+                     "Prior for cosine of TR inclination(s)")
+        .def_prop_rw("TR_Wprior",
+                     [](GAIAmodel &m) { return m.TR_Wprior; },
+                     [](GAIAmodel &m, std::vector<distribution>& vd) { m.TR_Wprior = vd; },
+                     "Prior for TR longitude(s) of ascending node")
+
 
         // conditional object
         .def_prop_rw("conditional",

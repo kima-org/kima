@@ -1543,35 +1543,35 @@ NB_MODULE(RVGAIAmodel, m) {
                      "Prior for KO longitude(s) of ascending node")
 
         // Transiting planet priors
-        // ? should these setters check if known_object is true?
+        // ? should these setters check if TR is true?
         .def_prop_rw("TR_Pprior",
                      [](RVGAIAmodel &m) { return m.TR_Pprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Pprior = vd; },
-                     "Prior for KO orbital period(s)")
+                     "Prior for TR orbital period(s)")
         .def_prop_rw("TR_aprior",
                      [](RVGAIAmodel &m) { return m.TR_aprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_aprior = vd; },
-                     "Prior for KO mass(es) (M_sun)")
+                     "Prior for TR photocentre semi-major axis(es) (mas)")
         .def_prop_rw("TR_eprior",
                      [](RVGAIAmodel &m) { return m.TR_eprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_eprior = vd; },
-                     "Prior for KO eccentricity(ies)")
+                     "Prior for TR eccentricity(ies)")
         .def_prop_rw("TR_wprior",
                      [](RVGAIAmodel &m) { return m.TR_wprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_wprior = vd; },
-                     "Prior for KO argument(s) of periastron")
+                     "Prior for TR argument(s) of periastron")
         .def_prop_rw("TR_Tcprior",
                      [](RVGAIAmodel &m) { return m.TR_Tcprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Tcprior = vd; },
-                     "Prior for KO mean anomaly(ies)")
+                     "Prior for TR mean anomaly(ies)")
         .def_prop_rw("TR_cosiprior",
                      [](RVGAIAmodel &m) { return m.TR_cosiprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_cosiprior = vd; },
-                     "Prior for cosine of KO inclination(s)")
+                     "Prior for cosine of TR inclination(s)")
         .def_prop_rw("TR_Wprior",
                      [](RVGAIAmodel &m) { return m.TR_Wprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.TR_Wprior = vd; },
-                     "Prior for KO longitude(s) of ascending node")
+                     "Prior for TR longitude(s) of ascending node")
 
         // conditional object
         .def_prop_rw("conditional",
