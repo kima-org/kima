@@ -736,6 +736,88 @@ def set_gaussian_prior_astrometric_baseline(model, data, sig_mu=0.1, sig_plx=0.1
 
 
 
+def get_prior_from_nss(source_id: int, thiele_innes: bool = True):
+    """
+    Get priors from the Gaia non-single star (NSS) solution for a given source
+
+    Args:
+        source_id (int): 
+            Gaia source id
+        thiele_innes (bool, optional): 
+            Whether to get priors for the Thiele-Innes parameters (instead of
+            the geometric parameters). Because the NSS catalog only provides the
+            Thiele-Innes parameters, if this is False we do a conversion to the
+            geometric elements with random sampling.
+
+    Raises:
+        ImportError: If package `pagaia` is not installed
+
+    Returns:
+        dict: 
+            Dictionary with names and priors for the `GAIAmodel` or `RVGAIAmodel`
+    """
+    try:
+        import pagaia.nss
+    except ImportError:
+        raise ImportError('this function requires pagaia; install with `pip install pagaia`')
+
+    from kima import distributions
+    nss = getattr(pagaia.nss, f'DR3_{source_id}')
+
+    # don't bother with a truncated prior if more than 10 sigma away from 0
+    if nss['period'] / nss['period_error'] > 10:  
+        Pprior = distributions.Gaussian(nss['period'], nss['period_error'])
+    else:
+        Pprior = distributions.TruncatedGaussian(nss['period'], nss['period_error'], 0, np.inf)
+
+    eprior = distributions.TruncatedGaussian(nss['eccentricity'], nss['eccentricity_error'], 0, 1)
+
+    if thiele_innes:
+        Aprior = distributions.Gaussian(nss['a_thiele_innes'], nss['a_thiele_innes_error'])
+        Bprior = distributions.Gaussian(nss['b_thiele_innes'], nss['b_thiele_innes_error'])
+        Fprior = distributions.Gaussian(nss['f_thiele_innes'], nss['f_thiele_innes_error'])
+        Gprior = distributions.Gaussian(nss['g_thiele_innes'], nss['g_thiele_innes_error'])
+
+        return {
+            'Aprior': Aprior, 'Bprior': Bprior, 
+            'Fprior': Fprior, 'Gprior': Gprior,
+            'eprior': eprior, 'Pprior': Pprior,
+        }
+    else:
+        from scipy.stats import norm
+        from .analysis import thiele_innes_to_campbell
+        N = 10_000
+        A = norm.rvs(nss['a_thiele_innes'], nss['a_thiele_innes_error'], size=N)
+        B = norm.rvs(nss['b_thiele_innes'], nss['b_thiele_innes_error'], size=N)
+        F = norm.rvs(nss['f_thiele_innes'], nss['f_thiele_innes_error'], size=N)
+        G = norm.rvs(nss['g_thiele_innes'], nss['g_thiele_innes_error'], size=N)
+        a, i, ω, Ω = thiele_innes_to_campbell(A, B, F, G)
+        aprior = distributions.Gaussian(a.mean(), a.std())
+        cosiprior = distributions.Gaussian(np.cos(i).mean(), np.cos(i).std())
+        wprior = distributions.Gaussian(ω.mean(), ω.std())
+        Wprior = distributions.Gaussian(Ω.mean(), Ω.std())
+
+        return {
+            'aprior': aprior, 'cosiprior': cosiprior, 
+            'wprior': wprior, 'Wprior': Wprior,
+            'eprior': eprior, 'Pprior': Pprior,
+        }
+
+
+def set_prior_from_nss(model, source_id: int):
+    from kima import GAIAmodel, RVGAIAmodel
+    if not isinstance(model, (GAIAmodel, RVGAIAmodel)):
+        raise TypeError('model must be either `GAIAmodel` or `RVGAIAmodel`')
+
+    thiele_innes = model.thiele_innes if isinstance(model, GAIAmodel) else False
+
+    priors = get_prior_from_nss(source_id, thiele_innes)
+    names = list(priors.keys())
+    print('setting', ', '.join(names))
+    for k, prior in priors.items():
+        setattr(model.conditional, k, prior)
+
+
 def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, lower_limit=1.0):
     from kima.distributions import GaussianMixture
     periods = [T0_2 - T0_1]
