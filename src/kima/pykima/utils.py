@@ -625,6 +625,16 @@ def get_gaussian_prior_vsys(data, use_ptp=True, use_std=False, use_value=None):
         raise ValueError('either `use_ptp` or `use_std` should be True')
 
 
+def set_gaussian_prior_vsys(model, data, use_ptp=True, use_std=False, use_value=None):
+    """
+    Set an informative Gaussian prior for the systemic velocity using the data.
+    Calls `get_gaussian_prior_vsys` and sets `Cprior`.
+    """
+    prior = get_gaussian_prior_vsys(data, use_ptp, use_std, use_value)
+    print('setting Cprior')
+    model.Cprior = prior
+
+
 def get_gaussian_priors_individual_offsets(data, use_ptp=True, use_std=False, use_value=None):
     """
     Get a informative Gaussian priors for the between-instrument offsets using
@@ -706,6 +716,24 @@ def get_gaussian_prior_astrometric_baseline(data, sig_mu=0.1, sig_plx=0.1):
     mud_prior = Gaussian(mud, sig_mu)
     parallax_prior = Gaussian(plx, sig_plx)
     return [da_prior, dd_prior, mua_prior, mud_prior, parallax_prior]
+
+
+def set_gaussian_prior_astrometric_baseline(model, data, sig_mu=0.1, sig_plx=0.1):
+    """
+    Set informative Gaussian priors for the five parameters of the astrometric
+    baseline model (positions, proper motions, parallax) using the data.
+
+    Calls `get_gaussian_prior_astrometric_baseline` and sets `da_prior`,
+    `dd_prior`, `mua_prior`, `mud_prior`, and `parallax_prior`.
+    """
+    baseline_priors = get_gaussian_prior_astrometric_baseline(
+        data, sig_mu=sig_mu, sig_plx=sig_plx
+    )
+    priors = ('da_prior', 'dd_prior', 'mua_prior', 'mud_prior', 'parallax_prior')
+    print('setting', ', '.join(priors))
+    for i, p in enumerate(priors):
+        setattr(model, p, baseline_priors[i])
+
 
 
 def get_prior_monotransits(T0_1, T0_2, T0_1_err=0.1, T0_2_err=0.1, lower_limit=1.0):
