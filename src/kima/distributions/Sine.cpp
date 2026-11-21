@@ -10,8 +10,10 @@ Sine::Sine() {}
 
 double Sine::cdf(double x) const
 {
-    if (x < 0.0 || x > M_PI)
+    if (x < 0.0)
         return 0.0;
+    if (x > M_PI)
+        return 1.0;
     return 0.5 * (1.0 - cos(x));
 }
 
@@ -24,7 +26,7 @@ double Sine::cdf_inverse(double x) const
 
 double Sine::log_pdf(double x) const
 {
-    if (x <= 0.0)
+    if (x <= 0.0 || x > M_PI)
         return -std::numeric_limits<double>::infinity();
     return log(sin(x)) - log2;
 }

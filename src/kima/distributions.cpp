@@ -652,8 +652,9 @@ NB_MODULE(distributions, m)
         .def("logpdf", [](const DNest4::BivariateGaussian &d, double x, double y){ return d.log_pdf(x, y); }, "x"_a, "y"_a, LOG_PDF_DOC);
 
     // Sine
-    nb::class_<DNest4::Sine, DNest4::ContinuousDistribution>(m, "Sine", "docs")
-        .def(nb::init<>(), "A Sine distribution with support in [0, pi]")
+    nb::class_<DNest4::Sine, DNest4::ContinuousDistribution>(m, "Sine",
+        "The sine distribution (also called Gilbert's sine distribution) with support in [0, pi]")
+        .def(nb::init<>(), "")
         .def("__repr__", [](const DNest4::Sine &d){ std::ostringstream out; d.print(out); return out.str(); })
         .def("cdf", &DNest4::Sine::cdf, "x"_a, CDF_DOC)
         .def("ppf", &DNest4::Sine::cdf_inverse, "q"_a, PPF_DOC)
