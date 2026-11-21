@@ -16,7 +16,7 @@ class ContinuousDistribution
 
     public:
         double generate(RNG& rng) const;
-        double perturb(double& x, RNG& rng) const;
+        virtual double perturb(double& x, RNG& rng) const;
 
         virtual void setpars(double) {};
         virtual void setpars(double, double) {};
