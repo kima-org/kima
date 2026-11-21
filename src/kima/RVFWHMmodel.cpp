@@ -59,7 +59,7 @@ void RVFWHMmodel::set_transiting_planet(size_t n)
 /// set default priors if the user didn't change them
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto defaults = DefaultPriors(data);
+    auto defaults = DefaultPriors(data, true);
 
     // systemic velocity
     if (!Cprior)

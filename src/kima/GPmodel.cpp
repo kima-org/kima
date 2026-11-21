@@ -76,7 +76,7 @@ void GPmodel::eta2_larger_eta3(double factor) {
 
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto defaults = DefaultPriors(data);
+    auto defaults = DefaultPriors(data, true);
 
     beta_prior = defaults.get("beta_prior");
 

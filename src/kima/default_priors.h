@@ -26,7 +26,7 @@ class DefaultPriors
     
     public:
         DefaultPriors() = delete;
-        DefaultPriors(const RVData &data);
+        DefaultPriors(const RVData &data, bool gp = false);
         distribution get(std::string name);
         void print();
     

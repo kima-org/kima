@@ -1,6 +1,6 @@
 #include "default_priors.h"
 
-DefaultPriors::DefaultPriors(const RVData &data) : data(data)
+DefaultPriors::DefaultPriors(const RVData &data, bool gp) : data(data)
 {
     default_mapping.insert({
         // 
@@ -35,19 +35,23 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
         // for astrometry models
         {"iprior", make_prior<DNest4::Sine>()},
         {"Ωprior", make_prior<DNest4::UniformAngle>()},
-        // 
-        // GP hyperparameters
-        {"eta1_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_max_RV_span() )},
-        // another possibility?
-        // {"eta1_prior", make_prior<DNest4::HalfGaussian>( data.get_max_RV_span() )},
-        {"eta2_prior", make_prior<DNest4::LogUniform>(1, data.get_timespan())},
-        {"eta3_prior", make_prior<DNest4::Uniform>(10, 40)},
-        {"eta4_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
     });
+    
+    if (gp) {
+        default_mapping.insert({
+            // GP hyperparameters
+            {"eta1_prior", make_prior<DNest4::LogUniform>( 0.1, data.get_max_RV_span() )},
+            // another possibility?
+            // {"eta1_prior", make_prior<DNest4::HalfGaussian>( data.get_max_RV_span() )},
+            {"eta2_prior", make_prior<DNest4::LogUniform>(1, data.get_timespan())},
+            {"eta3_prior", make_prior<DNest4::Uniform>(10, 40)},
+            {"eta4_prior", make_prior<DNest4::Uniform>(0.2, 5.0)},
+        });
+    }
 
     // some default priors depend on data having (at least) one indicator
 
-    if (data.number_indicators > 0)
+    if (data.number_indicators > 0 && gp)
     {
         default_mapping.insert({
             // 
@@ -72,7 +76,7 @@ DefaultPriors::DefaultPriors(const RVData &data) : data(data)
         });
     }
 
-    if (data.number_indicators > 2)
+    if (data.number_indicators > 2 && gp)
     {
         default_mapping.insert({
             // 
