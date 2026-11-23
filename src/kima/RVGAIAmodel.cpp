@@ -1516,11 +1516,11 @@ NB_MODULE(RVGAIAmodel, m) {
         .def_prop_rw("KO_Pprior",
                      [](RVGAIAmodel &m) { return m.KO_Pprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_Pprior = vd; },
-                     "Prior for KO orbital period(s)")
+                     "Prior for KO orbital period(s) (days)")
         .def_prop_rw("KO_aprior",
                      [](RVGAIAmodel &m) { return m.KO_aprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_aprior = vd; },
-                     "Prior for KO mass(es) (M_sun)")
+                     "Prior for KO photocentre semi-major axis(es) (mas)")
         .def_prop_rw("KO_eprior",
                      [](RVGAIAmodel &m) { return m.KO_eprior; },
                      [](RVGAIAmodel &m, std::vector<distribution>& vd) { m.KO_eprior = vd; },
