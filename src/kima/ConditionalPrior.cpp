@@ -851,7 +851,7 @@ void bind_GAIAConditionalPrior(nb::module_ &m) {
         .def(nb::init<>())
 //         .def("use_thiele_innes", []() { return GAIAConditionalPrior::use_thiele_innes(); });
         .def_rw("thiele_innes", &GAIAConditionalPrior::thiele_innes,
-                "use a Student-t distribution for the likelihood (instead of Gaussian)")
+                "use the thiele-innes paramaterisation instead of the geometric one")
         .def_prop_rw("Pprior",
             [](GAIAConditionalPrior &c) { return c.Pprior; },
             [](GAIAConditionalPrior &c, distribution &d) { c.Pprior = d; },
