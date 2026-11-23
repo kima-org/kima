@@ -7,6 +7,7 @@ using namespace nijenhuis;
 using namespace brandt;
 
 #define TIMING false
+#define DEBUG false
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 const double daytoyear = 1/365.25;
@@ -22,8 +23,11 @@ void GAIAmodel::initialize_from_data(GAIAdata& data)
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
-    
     conditional->set_default_priors(data);
+
+    #if DEBUG
+    std::cout << std::endl << "initialize_from_data done" << std::endl;
+    #endif
 }
 
 void GAIAmodel::set_baseline_model(size_t n)
@@ -185,6 +189,10 @@ void GAIAmodel::setPriors()  // BUG: should be done by only one thread!
     if (studentt)
         nu_prior = make_prior<LogUniform>(2, 1000);
 
+    #if DEBUG
+    std::cout << std::endl << "setPriors done" << std::endl;
+    #endif
+
 }
 
 
@@ -196,7 +204,7 @@ void GAIAmodel::from_prior(RNG& rng)
 
     planets.from_prior(rng);
     planets.consolidate_diff();
-    
+
     jitter = Jprior->generate(rng);
 
     if (scan_dep_signal)
@@ -206,7 +214,7 @@ void GAIAmodel::from_prior(RNG& rng)
             thetak[i] = thetak_prior[i]->generate(rng);
         }
     }
-    
+
     da = da_prior->generate(rng);
     dd = dd_prior->generate(rng);
     mua = mua_prior->generate(rng);
@@ -222,9 +230,8 @@ void GAIAmodel::from_prior(RNG& rng)
         }
     }
 
-    
-    if (known_object) { // KO mode!
 
+    if (known_object) { // KO mode!
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
             KO_a[i] = KO_aprior[i]->generate(rng);
@@ -255,11 +262,15 @@ void GAIAmodel::from_prior(RNG& rng)
     calculate_mu();
     calculate_mu_bkg();
 
+    #if DEBUG
+    std::cout << std::endl << "from_prior done" << std::endl;
+    #endif
+
 }
 
 /**
- * @brief Calculate the full ET model
- * 
+ * @brief Calculate the model
+ *
 */
 void GAIAmodel::calculate_mu()
 {
@@ -302,7 +313,7 @@ void GAIAmodel::calculate_mu()
 
     double P, a0, phi, ecc, omega, Omega, cosi;
     double A, B, F, G; // X, Y;
-    for(size_t j=0; j<components.size(); j++)
+    for (size_t j = 0; j < components.size(); j++)
     {
         P = components[j][0];
         phi = components[j][1];
@@ -320,15 +331,19 @@ void GAIAmodel::calculate_mu()
             omega = components[j][4];
             cosi = components[j][5];
             Omega = components[j][6];
-            
-            A = a0*(cos(omega) * cos(Omega) - sin(omega) * sin(Omega) * cosi);
-            B = a0*(cos(omega) * sin(Omega) + sin(omega) * cos(Omega) * cosi);
-            F = -a0*(sin(omega) * cos(Omega) + cos(omega) * sin(Omega) * cosi);
-            G = -a0*(sin(omega) * sin(Omega) - cos(omega) * cos(Omega) * cosi);
+
+            double sin_omega, cos_omega;
+            sincos(omega, &sin_omega, &cos_omega);
+            double sin_Omega, cos_Omega;
+            sincos(Omega, &sin_Omega, &cos_Omega);
+            A = a0*(cos_omega * cos_Omega - sin_omega * sin_Omega * cosi);
+            B = a0*(cos_omega * sin_Omega + sin_omega * cos_Omega * cosi);
+            F = -a0*(sin_omega * cos_Omega + cos_omega * sin_Omega * cosi);
+            G = -a0*(sin_omega * sin_Omega - cos_omega * cos_Omega * cosi);
         }
-        
+
         auto wk = brandt::keplerian_gaia(data.t, data.psi, A, B, F, G, ecc, P, phi, data.M0_epoch);
-        for(size_t i=0; i<N; i++)
+        for (size_t i = 0; i < N; i++)
             mu[i] += wk[i];
     }
 
@@ -467,7 +482,6 @@ double GAIAmodel::perturb(RNG& rng)
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
-    
 
     double logH = 0.;
     double prob_add = 0;
@@ -573,7 +587,7 @@ double GAIAmodel::perturb(RNG& rng)
 
 /**
  * Calculate the log-likelihood for the current values of the parameters.
- * 
+ *
  * @return double the log-likelihood
 */
 double GAIAmodel::log_likelihood() const
@@ -588,11 +602,9 @@ double GAIAmodel::log_likelihood() const
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
-    
-    double jit = jitter;
 
     if (studentt){
-        // The following code calculates the log likelihood 
+        // The following code calculates the log likelihood
         // in the case of a t-Student model
         double var;
         double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
@@ -787,7 +799,7 @@ string GAIAmodel::description() const
 
 /**
  * Save the options of the current model in a INI file.
- * 
+ *
 */
 void GAIAmodel::save_setup() {
     std::fstream fout("kima_model_setup.txt", std::ios::out);
@@ -913,9 +925,11 @@ void GAIAmodel::save_setup() {
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 auto GAIAMODEL_DOC = R"D(
-Analysis of Gaia epoch astrometry. Implements a sum-of-Keplerians model where the number of Keplerians can be free.
-This model assumes white, uncorrelated noise. Known objects are given priors for geometric elements, free planet search 
-has the choice of geometric or Thiele-Innes elements. An option to fit for a scan-angle dependent signal is included.
+Analysis of Gaia epoch astrometry. Implements a sum-of-Keplerians model where 
+the number of Keplerians can be free. This model assumes white, uncorrelated 
+noise. Known objects are given priors for geometric elements, free planet search
+has the choice of geometric or Thiele-Innes elements. An option to fit for a 
+scan-angle dependent signal is included.
 
 Args:
     fix (bool, default=True):
@@ -924,6 +938,24 @@ Args:
         maximum number of Keplerians
     data (GAIAdata):
         the astrometric data
+)D";
+
+auto GAIAMODEL_DOC2 = R"D(
+Analysis of Gaia epoch astrometry. Implements a sum-of-Keplerians model where 
+the number of Keplerians can be free. This model assumes white, uncorrelated 
+noise. Known objects are given priors for geometric elements, free planet search
+has the choice of geometric or Thiele-Innes elements. An option to fit for a 
+scan-angle dependent signal is included.
+
+Args:
+    fix (bool, default=True):
+        whether the number of Keplerians should be fixed
+    npmax (int, default=0):
+        maximum number of Keplerians
+    data (GAIAdata):
+        the astrometric data
+    thiele_innes (bool):
+        Initialize model with Thiele-Innes parameterisation
 )D";
 
 class GAIAmodel_publicist : public GAIAmodel
@@ -949,15 +981,17 @@ NB_MODULE(GAIAmodel, m) {
     bind_GAIAConditionalPrior(m);
 
     nb::class_<GAIAmodel>(m, "GAIAmodel")
-        .def(nb::init<bool&, int&, GAIAdata&>(), "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
-        .def(nb::init<bool&, int&, GAIAdata&, bool&>(), "fix"_a, "npmax"_a, "data"_a, "thiele_innes"_a, GAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, GAIAdata&>(), 
+             "fix"_a, "npmax"_a, "data"_a, GAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, GAIAdata&, bool&>(), 
+             "fix"_a, "npmax"_a, "data"_a, "thiele_innes"_a, GAIAMODEL_DOC2)
         //
         .def_rw("fix", &GAIAmodel_publicist::fix,
                 "whether the number of Keplerians is fixed")
         .def_rw("npmax", &GAIAmodel_publicist::npmax,
                 "maximum number of Keplerians")
         .def_ro("data", &GAIAmodel_publicist::data,
-                "the data")
+                "the astrometric data")
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
@@ -975,7 +1009,7 @@ NB_MODULE(GAIAmodel, m) {
                 "Declination of the target star (degrees)")
 
         .def("set_scan_dep_signal", &GAIAmodel::set_scan_dep_signal,
-                "set whether the model includes a model for potential scan-angle dependent signals")
+             "set whether the model includes a model for potential scan-angle dependent signals")
         .def_prop_ro("scan_dep_signal", [](GAIAmodel &m) { return m.get_scan_dep_signal(); },
                      "whether the model includes a model for potential scan-angle dependent signals that could bias towards certain frequencies")
         .def_prop_ro("n_scan_dep_components", [](GAIAmodel &m) { return m.get_n_scan_dep_components(); },
@@ -1058,7 +1092,7 @@ NB_MODULE(GAIAmodel, m) {
         .def_prop_rw("jerkd_prior",
             [](GAIAmodel &m) { return m.jerkd_prior; },
             [](GAIAmodel &m, distribution &d) { m.jerkd_prior = d; },
-            "Prior for the proper-jerk in declination (mas/yr^3)")    
+            "Prior for the proper-jerk in declination (mas/yr^3)")
 
         // known object priors
         // ? should these setters check if known_object is true?
