@@ -2032,8 +2032,8 @@ class KimaResults:
 
         if self.studentt:
             if self.model is MODELS.RVGAIAmodel:
-                self.posteriors.nu_RV = self.posterior_sample[:, self.indices["nu"]]
-                self.posteriors.nu_GAIA = self.posterior_sample[:, self.indices["nu"]]
+                self.posteriors.nu_RV = self.posterior_sample[:, self.indices["nu_RV"]]
+                self.posteriors.nu_GAIA = self.posterior_sample[:, self.indices["nu_GAIA"]]
                 self._priors.nu_RV = self.priors["nu_RV_prior"]
                 self._priors.nu_GAIA = self.priors["nu_GAIA_prior"]
             else:
