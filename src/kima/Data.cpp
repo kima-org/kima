@@ -1397,8 +1397,12 @@ ETVData::ETVData() {};
 
 /*****************************************************************************/
 
-// class RVData_publicist : public RVData
-// {
+
+// the types of objects in the RVdata state (for pickling)
+using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
+
+
+
 auto RVdata_DOC1 = R"D(
 Load RV data from a list of files.
 
