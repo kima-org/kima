@@ -1399,18 +1399,7 @@ ETVData::ETVData() {};
 
 // class RVData_publicist : public RVData
 // {
-//     public:
-//         using RVData::_datafile;
-//         using RVData::_datafiles;
-//         using RVData::_units;
-//         using RVData::_skip;
-//         using RVData::_multi;
-// };
-
-
-// the types of objects in the RVData state (for pickling)
-using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
-auto RVData_DOC1 = R"D(
+auto RVdata_DOC1 = R"D(
 Load RV data from a list of files.
 
 Args:
@@ -1430,7 +1419,7 @@ Args:
         Whether the data is for a double-lined binary
 )D";
 
-auto RVData_DOC2 = R"D(
+auto RVdata_DOC2 = R"D(
 Load RV data from a file.
 
 Args:
@@ -1451,7 +1440,7 @@ Args:
 )D";
 
 
-auto RVData_DOC3 = R"D(
+auto RVdata_DOC3 = R"D(
 Load RV data from arrays for a single instrument.
 
 Args:
@@ -1469,7 +1458,7 @@ Args:
         Name of the instrument
 )D";
 
-auto RVData_DOC4 = R"D(
+auto RVdata_DOC4 = R"D(
 Load RV data from arrays for multiple instruments.
 
 Args:
@@ -1516,96 +1505,97 @@ NB_MODULE(Data, m) {
         .def("__call__", &loadtxt<double>::operator());
 
     // 
-    nb::class_<RVData>(m, "RVData", "Load and store RV data")
+    nb::class_<RVdata>(m, "RVdata", "Load and store RV data")
         // constructors
         .def(nb::init<const vector<string>&, const string&, int, int, const string&, const vector<string>&, bool>(),
              "filenames"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
-             RVData_DOC1)
+             RVdata_DOC1)
         //
         .def(nb::init<const string&, const string&, int, int, bool, const string&, const vector<string>&, bool>(),
              "filename"_a,  "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "multi"_a=false, "delimiter"_a=" \t,", "indicators"_a=vector<string>(), "double_lined"_a=false,
-             RVData_DOC2)
+             RVdata_DOC2)
         //
         .def(nb::init<const vector<double>, const vector<double>, const vector<double>, const vector<vector<double>>, const string&,  const string&>(),
              "t"_a, "y"_a, "sig"_a, "indicators"_a=vector<vector<double>>(), "units"_a="ms", "instrument"_a="",
-             RVData_DOC3)
+             RVdata_DOC3)
         //
         .def(nb::init<const vector<vector<double>>, const vector<vector<double>>, const vector<vector<double>>, const vector<vector<vector<double>>>, const string&,  const vector<string>&>(),
              "t"_a, "y"_a, "sig"_a, "indicators"_a=vector<vector<vector<double>>>(), "units"_a="ms", "instruments"_a=vector<string>(),
-             RVData_DOC4)
+             RVdata_DOC4)
 
 
         // properties
-        .def_ro("datafile", &RVData::_datafile, "The file name")
-        .def_ro("datafiles", &RVData::_datafiles, "The list of file names")
+        .def_ro("datafile", &RVdata::_datafile, "The file name")
+        .def_ro("datafiles", &RVdata::_datafiles, "The list of file names")
         // 
-        .def_prop_ro("t", [](RVData &d) { return d.get_t(); }, "The times of observations")
-        .def_prop_ro("y", [](RVData &d) { return d.get_y(); }, "The observed radial velocities")
-        .def_prop_ro("sig", [](RVData &d) { return d.get_sig(); }, "The observed RV uncertainties")
-        .def_prop_ro("y2", [](RVData &d) { return d.get_y2(); }, "The observed secondary radial velocities (double-lined binary)")
-        .def_prop_ro("sig2", [](RVData &d) { return d.get_sig2(); }, "The observed secondary RV uncertainties (double-lined binary)")
-        .def_prop_ro("obsi", [](RVData &d) { return d.get_obsi(); }, "The instrument identifier")
-        .def_prop_ro("N", [](RVData &d) { return d.N(); }, "Total number of observations")
-        .def_prop_ro("actind", [](RVData &d) { return d.get_actind(); }, "Activity indicators")
-        .def_prop_ro("normalized_actind", [](RVData &d) { return d.get_normalized_actind(); }, 
+        .def_prop_ro("t", [](RVdata &d) { return d.get_t(); }, "The times of observations")
+        .def_prop_ro("y", [](RVdata &d) { return d.get_y(); }, "The observed radial velocities")
+        .def_prop_ro("sig", [](RVdata &d) { return d.get_sig(); }, "The observed RV uncertainties")
+        .def_prop_ro("y2", [](RVdata &d) { return d.get_y2(); }, "The observed secondary radial velocities (double-lined binary)")
+        .def_prop_ro("sig2", [](RVdata &d) { return d.get_sig2(); }, "The observed secondary RV uncertainties (double-lined binary)")
+        .def_prop_ro("obsi", [](RVdata &d) { return d.get_obsi(); }, "The instrument identifier")
+        .def_prop_ro("N", [](RVdata &d) { return d.N(); }, "Total number of observations")
+        .def_prop_ro("actind", [](RVdata &d) { return d.get_actind(); }, "Activity indicators")
+        .def_prop_ro("normalized_actind", [](RVdata &d) { return d.get_normalized_actind(); }, 
                      "Activity indicators normalized to [0,1]")
         //
-        .def_ro("units", &RVData::_units, "Units of the RVs and uncertainties")
-        .def_ro("multi", &RVData::_multi, "Data comes from multiple instruments")
-        .def_ro("skip", &RVData::_skip, "Lines skipped when reading data")
-        .def_rw("instrument", &RVData::_instrument, "instrument name")
-        .def_rw("instruments", &RVData::_instruments, "instrument names")
-        .def_rw("indicator_names", &RVData::_indicator_names, "names of activity indicators")
+        .def_ro("units", &RVdata::_units, "Units of the RVs and uncertainties")
+        .def_ro("multi", &RVdata::_multi, "Data comes from multiple instruments")
+        .def_ro("skip", &RVdata::_skip, "Lines skipped when reading data")
+        .def_rw("instrument", &RVdata::_instrument, "instrument name")
+        .def_rw("instruments", &RVdata::_instruments, "instrument names")
+        .def_rw("indicator_names", &RVdata::_indicator_names, "names of activity indicators")
         //
-        .def_rw("M0_epoch", &RVData::M0_epoch, "reference epoch for the mean anomaly")
-        .def_rw("trend_epoch", &RVData::trend_epoch, "reference epoch for the trend")
-        .def_rw("double_lined", &RVData::sb2, "if the data is for a double-lined binary")
+        .def_rw("M0_epoch", &RVdata::M0_epoch, "reference epoch for the mean anomaly")
+        .def_rw("trend_epoch", &RVdata::trend_epoch, "reference epoch for the trend")
+        .def_rw("double_lined", &RVdata::sb2, "if the data is for a double-lined binary")
 
-        // to un/pickle RVData
-        .def("__getstate__", [](const RVData &d)
+        // to un/pickle RVdata
+        .def("__getstate__", [](const RVdata &d)
             {
                 return std::make_tuple(d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
             })
-        .def("__setstate__", [](RVData &d, const _state_type &state)
+        .def("__setstate__", [](RVdata &d, const _state_type &state)
             {
                 bool _multi = std::get<5>(state);
                 if (_multi) {
-                    new (&d) RVData(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
+                    new (&d) RVdata(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
                     //              filenames,          units,              skip   
                 } else {
-                    new (&d) RVData(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, _multi, " ", std::get<4>(state));
+                    new (&d) RVdata(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, _multi, " ", std::get<4>(state));
                     //              filename,           units,              skip   
                 }
             })
         //
 
-        .def("get_t_min", &RVData::get_t_min, "Get the minimum time")
-        .def("get_t_max", &RVData::get_t_max, "Get the maximum time")
-        .def("get_timespan", &RVData::get_timespan, "Get the timespan")
-        .def("get_t_middle", &RVData::get_t_middle, "Get the middle time")
+        .def("get_t_min", &RVdata::get_t_min, "Get the minimum time")
+        .def("get_t_max", &RVdata::get_t_max, "Get the maximum time")
+        .def("get_timespan", &RVdata::get_timespan, "Get the timespan")
+        .def("get_t_middle", &RVdata::get_t_middle, "Get the middle time")
         // 
-        .def("get_RV_min", &RVData::get_RV_min, "Get the minimum RV")
-        .def("get_RV_max", &RVData::get_RV_max, "Get the maximum RV")
-        .def("get_RV_span", &RVData::get_RV_span, "Get the RV span")
-        .def("get_max_RV_span", &RVData::get_max_RV_span, "Get the maximum RV span of individual instruments")
-        .def("get_RV_mean", &RVData::get_RV_mean, "Get the mean RV")
-        .def("get_RV_var", &RVData::get_RV_var, "Get the variance of RVs")
-        .def("get_RV_std", &RVData::get_RV_std, "Get the standard deviation of RVs")
+        .def("get_RV_min", &RVdata::get_RV_min, "Get the minimum RV")
+        .def("get_RV_max", &RVdata::get_RV_max, "Get the maximum RV")
+        .def("get_RV_span", &RVdata::get_RV_span, "Get the RV span")
+        .def("get_max_RV_span", &RVdata::get_max_RV_span, "Get the maximum RV span of individual instruments")
+        .def("get_RV_mean", &RVdata::get_RV_mean, "Get the mean RV")
+        .def("get_RV_var", &RVdata::get_RV_var, "Get the variance of RVs")
+        .def("get_RV_std", &RVdata::get_RV_std, "Get the standard deviation of RVs")
         // 
-        .def("get_actind_min", &RVData::get_actind_min, "Get the minimum value of activity indicator i")
-        .def("get_actind_max", &RVData::get_actind_max, "Get the maximum value of activity indicator i")
-        .def("get_actind_span", &RVData::get_actind_span, "Get the span of activity indicator i")
-        .def("get_actind_mean", &RVData::get_actind_mean, "Get the mean of activity indicator i")
-        .def("get_actind_var", &RVData::get_actind_var, "Get the variance of activity indicator i")
-        .def("get_actind_std", &RVData::get_actind_std, "Get the standard deviation of activity indicator i")
+        .def("get_actind_min", &RVdata::get_actind_min, "Get the minimum value of activity indicator i")
+        .def("get_actind_max", &RVdata::get_actind_max, "Get the maximum value of activity indicator i")
+        .def("get_actind_span", &RVdata::get_actind_span, "Get the span of activity indicator i")
+        .def("get_actind_mean", &RVdata::get_actind_mean, "Get the mean of activity indicator i")
+        .def("get_actind_var", &RVdata::get_actind_var, "Get the variance of activity indicator i")
+        .def("get_actind_std", &RVdata::get_actind_std, "Get the standard deviation of activity indicator i")
         // 
-        .def("topslope", &RVData::topslope, "Get the maximum slope allowed by the data")
-        .def("get_trend_magnitude", &RVData::get_trend_magnitude, "degree"_a, "i"_a = -1, 
+        .def("topslope", &RVdata::topslope, "Get the maximum slope allowed by the data")
+        .def("get_trend_magnitude", &RVdata::get_trend_magnitude, "degree"_a, "i"_a = -1, 
              "Order of magnitude for trend coefficient (of `degree`) given the data")
-        .def("get_unique_t", &RVData::get_unique_t, "Get the unique times")
-        .def("_inverse_time_indices", &RVData::_inverse_time_indices, "");
+        .def("get_unique_t", &RVdata::get_unique_t, "Get the unique times")
+        .def("_inverse_time_indices", &RVdata::_inverse_time_indices, "");
 
     // 
+    nb::class_<RVData, RVdata>(m, "RVData", "Deprecated alias of RVdata");
 
     nb::class_<PHOTdata>(m, "PHOTdata", "docs")
         // constructor
