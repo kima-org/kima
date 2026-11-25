@@ -2,7 +2,7 @@
 # ruff: noqa
 
 __all__ = [
-    'RVData', 'PHOTdata', 'GAIAdata', 'ETVData', 'HGPMdata',
+    'RVdata', 'PHOTdata', 'GAIAdata', 'ETVData', 'HGPMdata',
     'RVmodel', 'GPmodel', 'RVFWHMmodel', 'TRANSITmodel', 'OutlierRVmodel', 
     'BINARIESmodel', 'GAIAmodel', 'RVGAIAmodel',
     'MODELS',
