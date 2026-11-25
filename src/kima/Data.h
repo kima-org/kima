@@ -172,9 +172,9 @@ class KIMA_API RVdata {
     double get_t_middle() const { return get_t_min() + 0.5 * get_timespan(); }
 
     /// Get the mininum RV
-    double get_RV_min() const { return *min_element(y.begin(), y.end()); }
+    double get_RV_min() const;
     /// Get the maximum RV
-    double get_RV_max() const { return *max_element(y.begin(), y.end()); }
+    double get_RV_max() const;
     /// Get the RV span (peak-to-peak)
     double get_RV_span() const { return get_RV_max() - get_RV_min(); };
     /// Get the maximum RV span

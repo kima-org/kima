@@ -1,7 +1,7 @@
 from numpy import array, unique
 
 
-def plot_RVData(data, **kwargs):
+def plot_RVdata(data, **kwargs):
     """ Simple plot of RV data. **kwargs are passed to plt.errorbar() """
     import matplotlib.pyplot as plt
     t = array(data.t)
@@ -18,7 +18,11 @@ def plot_RVData(data, **kwargs):
         time_offset = True
         t -= 24e5
 
-    fig, ax = plt.subplots(1, 1, constrained_layout=True)
+    ax = kwargs.pop('ax', None)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, constrained_layout=True)
+    else:
+        fig = ax.figure
 
     kw = dict(fmt='o', ms=3)
     kw.update(**kwargs)

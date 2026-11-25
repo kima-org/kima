@@ -158,7 +158,7 @@ RVdata::RVdata(const vector<vector<double>> _t,
     {
         if (_t.size() != indicators[i].size()) 
         {
-            string msg = "RVData: data arrays must have the same size size(t) != size(indicators[" + to_string(i) + "])";
+            string msg = "RVdata: data arrays must have the same size size(t) != size(indicators[" + to_string(i) + "])";
             throw invalid_argument(msg);
         }
     }
@@ -750,20 +750,53 @@ void RVdata::load_multi(vector<string> filenames, const string units, int skip, 
     normalize_actind();
 }
 
-
-double RVData::get_RV_mean() const
-{
-    double sum = accumulate(begin(y), end(y), 0.0);
-    return sum / y.size();
+inline bool NaNless_min(const double &a, const double &b) {
+    if (std::isnan(b)) return true;  // NaN is greater than *any* non-NaN value
+    if (std::isnan(a)) return false; // *any* non-NaN value is less than NaN
+    return (a < b);
 }
 
-double RVData::get_RV_var() const
+inline bool NaNless_max(const double &a, const double &b) {
+    if (std::isnan(b)) return false; // NaN is less than *any* non-NaN value
+    if (std::isnan(a)) return true;  // *any* non-NaN value is greater than NaN
+    return (a < b);
+}
+
+double RVdata::get_RV_min() const
 {
-    double sum = accumulate(begin(y), end(y), 0.0);
-    double mean = sum / y.size();
-    double accum = 0.0;
-    for_each(begin(y), end(y), [&](const double d) { accum += (d - mean) * (d - mean); });
-    return accum / (y.size() - 1);
+    return *min_element(y.begin(), y.end(), NaNless_min);
+}
+
+double RVdata::get_RV_max() const {
+    return *max_element(y.begin(), y.end(), NaNless_max);
+}
+
+double RVdata::get_RV_mean() const
+{
+    // normal mean
+    // double sum = std::accumulate(begin(y), end(y), 0.0);
+
+    // nan mean
+    double sum = std::accumulate(begin(y), end(y), 0.0,
+                                 [](double acc, double other) { return std::isnan(other) ? acc : acc + other; });
+
+    size_t n = std::count_if(begin(y), end(y), [](double d) { return !std::isnan(d); });
+
+    return sum / n;
+}
+
+double RVdata::get_RV_var() const
+{
+    double mean = get_RV_mean();
+
+    double accum = std::accumulate(begin(y), end(y), 0.0,
+                                  [mean](double acc, double other) {
+                                    return std::isnan(other) ? acc : acc + (other - mean) * (other - mean);
+                                  });
+
+    size_t n = std::count_if(begin(y), end(y), [](double d) { return !std::isnan(d); });
+
+    return accum / (n - 1);
 }
 
 /**

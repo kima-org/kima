@@ -21,7 +21,7 @@ from enum import Enum
 
 from .pykima.utils import chdir
 
-from .Data import RVData, PHOTdata, GAIAdata, ETVData
+from .Data import RVdata, PHOTdata, GAIAdata, ETVData
 from .Data import HGPMdata as HGPMdata_original
 
 from .RVmodel import RVmodel
@@ -61,8 +61,11 @@ MODELS = Enum('MODELS', {m.__name__: m.__name__ for m in __models__})
 
 
 # add plot method to data classes
-from .pykima.display_hooks import plot_RVData, plot_GAIAdata, plot_HGPMdata
-RVData.plot = plot_RVData
+from .pykima.display_hooks import plot_RVdata, plot_GAIAdata, plot_HGPMdata
+
+# with SimpleTimer('display.plot*Data'):
+
+RVdata.plot = plot_RVdata
 GAIAdata.plot = plot_GAIAdata
 
 class HGPMdata(HGPMdata_original):
