@@ -72,7 +72,7 @@ class KIMA_API BINARIESmodel
         bool use_binary_longitude {false};
 
 
-        RVData data;
+        RVdata data;
     private:
         
 
@@ -130,11 +130,11 @@ class KIMA_API BINARIESmodel
     public:
         
         BINARIESmodel() {};
-        BINARIESmodel(bool fix, int npmax, RVData& data) : data(data), fix(fix), npmax(npmax) {
+        BINARIESmodel(bool fix, int npmax, RVdata& data) : data(data), fix(fix), npmax(npmax) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
 
         // priors for parameters *not* belonging to the planets
