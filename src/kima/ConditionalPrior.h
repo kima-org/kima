@@ -29,7 +29,7 @@ class KeplerianConditionalPrior : public DNest4::ConditionalPrior
     public:
         KeplerianConditionalPrior();
 
-        void set_default_priors(const RVData &data);
+        void set_default_priors(const RVdata &data);
 
         // priors for all planet parameters
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -185,7 +185,7 @@ class RVGAIAConditionalPrior:public DNest4::ConditionalPrior
      public:
         RVGAIAConditionalPrior();
 
-        void set_default_priors(const GAIAdata&, RVData&);
+        void set_default_priors(const GAIAdata&, RVdata&);
         
         // priors for all planet parameters
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -230,7 +230,7 @@ class RVHGPMConditionalPrior:public DNest4::ConditionalPrior
      public:
         RVHGPMConditionalPrior();
         
-        void set_default_priors(const RVData &rv_data);
+        void set_default_priors(const RVdata &rv_data);
         
         // priors for all planet parameters
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
@@ -322,7 +322,7 @@ class ApodizedKeplerianConditionalPrior : public DNest4::ConditionalPrior
     public:
         ApodizedKeplerianConditionalPrior();
 
-        void set_default_priors(const RVData &data);
+        void set_default_priors(const RVdata &data);
 
         // priors for all planet parameters
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
