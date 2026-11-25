@@ -44,7 +44,7 @@ T swap_endian(T u)
 
 
 /// @brief Load data from a single filename
-RVData::RVData(const string& filename, const string& units, int skip, int max_rows, bool multi,
+RVdata::RVdata(const string& filename, const string& units, int skip, int max_rows, bool multi,
                const string& delimiter, const vector<string>& indicators, bool double_lined)
 {
     if (double_lined)
@@ -148,11 +148,11 @@ RVdata::RVdata(const vector<vector<double>> _t,
     medians.clear();
 
     if (_t.size() != _y.size()) 
-        throw invalid_argument("RVData: data arrays must have the same size size(t) != size(y)");
+        throw invalid_argument("RVdata: data arrays must have the same size size(t) != size(y)");
     if (_t.size() != _sig.size()) 
-        throw invalid_argument("RVData: data arrays must have the same size size(t) != size(sig)");
+        throw invalid_argument("RVdata: data arrays must have the same size size(t) != size(sig)");
     if (_t.size() != instruments.size()) 
-        throw invalid_argument("RVData: data and instruments must have the same size size(t) != size(instruments)");
+        throw invalid_argument("RVdata: data and instruments must have the same size size(t) != size(instruments)");
     
     for (size_t i = 0; i < indicators.size(); i++)
     {
