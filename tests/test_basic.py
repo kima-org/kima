@@ -12,7 +12,7 @@ import kima
 
 def test_extensions_exist():
     kima.distributions
-    kima.RVData, kima.HGPMdata, kima.GAIAdata
+    kima.RVdata, kima.HGPMdata, kima.GAIAdata
     kima.RVmodel, kima.GPmodel
     kima.BINARIESmodel, kima.GAIAmodel, kima.RVGAIAmodel
     kima.RVFWHMmodel
@@ -20,49 +20,49 @@ def test_extensions_exist():
 
 
 def test_simple_api(path_to_test_data):
-    D = kima.RVData(path_to_test_data("simulated1.txt"))
+    D = kima.RVdata(path_to_test_data("simulated1.txt"))
     # print(D.N)
     m = kima.RVmodel(True, 0, D)
     m.trend = True
     m.degree = 2
 
 
-def test_RVData_reductions():
+def test_RVdata_reductions():
     pass
 
 
 def test_RVmodel(path_to_test_data):
-    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    data = kima.RVdata(path_to_test_data("simulated1.txt"))
     m = kima.RVmodel(True, 0, data)
 
 
 def test_GPmodel(path_to_test_data):
-    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    data = kima.RVdata(path_to_test_data("simulated1.txt"))
     m = kima.GPmodel(True, 0, data)
 
 
 def test_RVFWHMmodel(path_to_test_data):
     # should fail because it doesn't read 4th and 5th column
     with pytest.raises(RuntimeError):
-        data = kima.RVData(path_to_test_data("simulated1.txt"))
+        data = kima.RVdata(path_to_test_data("simulated1.txt"))
         m = kima.RVFWHMmodel(True, 0, data)
 
     # this one should work
-    data = kima.RVData(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
+    data = kima.RVdata(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
     m = kima.RVFWHMmodel(True, 0, data)
 
 
 def test_BINARIESmodel(path_to_test_data):
-    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    data = kima.RVdata(path_to_test_data("simulated1.txt"))
     m = kima.BINARIESmodel(True, 0, data)
 
     # should fail because it doesn't read 4th and 5th column
     with pytest.raises(RuntimeError):
-        data = kima.RVData(path_to_test_data("simulated1.txt"), double_lined=True)
+        data = kima.RVdata(path_to_test_data("simulated1.txt"), double_lined=True)
         m = kima.BINARIESmodel(True, 0, data)
 
     # this one should work
-    data = kima.RVData(path_to_test_data("simulated2.txt"), double_lined=True)
+    data = kima.RVdata(path_to_test_data("simulated2.txt"), double_lined=True)
     m = kima.BINARIESmodel(True, 0, data)
 
 
@@ -78,12 +78,12 @@ def test_GAIAmodel(path_to_test_data):
 
 def test_RVGAIAmodel(path_to_test_data):
     D1 = kima.GAIAdata(path_to_test_data("simulated4.txt"))
-    D2 = kima.RVData(path_to_test_data("simulated1.txt"))
+    D2 = kima.RVdata(path_to_test_data("simulated1.txt"))
     m = kima.RVGAIAmodel(True, 0, D1, D2)
 
 
 def test_run(cleanup_after_running, path_to_test_data):
-    data = kima.RVData(path_to_test_data("simulated1.txt"))
+    data = kima.RVdata(path_to_test_data("simulated1.txt"))
 
     m = kima.RVmodel(True, 0, data)
     kima.run(m, steps=1)
@@ -91,7 +91,7 @@ def test_run(cleanup_after_running, path_to_test_data):
     m = kima.GPmodel(True, 0, data)
     kima.run(m, steps=1)
 
-    data = kima.RVData(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
+    data = kima.RVdata(path_to_test_data("simulated2.txt"), indicators=["i", "j"])
     m = kima.RVFWHMmodel(True, 0, data)
     kima.run(m, steps=1)
 

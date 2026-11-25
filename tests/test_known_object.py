@@ -2,12 +2,12 @@ import pytest
 from common import cleanup_after_running, path_to_test_data
 
 import kima
-from kima import RVData, RVmodel
+from kima import RVdata, RVmodel
 from kima.distributions import Uniform
 
 
 def test_get_KO(path_to_test_data):
-    D = RVData(path_to_test_data('simulated1.txt'))
+    D = RVdata(path_to_test_data('simulated1.txt'))
     m = RVmodel(True, 0, D)
     
     assert not m.known_object, 'm.known_object should be False'
@@ -15,7 +15,7 @@ def test_get_KO(path_to_test_data):
     assert len(m.KO_Pprior) == 0, 'm.KO_Pprior should be empty'
 
 def test_set_KO(cleanup_after_running, path_to_test_data):
-    D = RVData(path_to_test_data('simulated1.txt'))
+    D = RVdata(path_to_test_data('simulated1.txt'))
     m = RVmodel(True, 0, D)
 
     m.set_known_object(2)

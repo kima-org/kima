@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 import numpy as np
 import kima
-from kima import RVData, GAIAdata, RVmodel, BINARIESmodel, GAIAmodel
+from kima import GAIAdata, GAIAmodel
 from kima.pykima.utils import chdir
 from kima.distributions import Uniform, Gaussian, ModifiedLogUniform, Kumaraswamy, LogUniform, Fixed
 

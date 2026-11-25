@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 import numpy as np
 import kima
-from kima import RVData, GAIAdata, GAIAmodel, RVGAIAmodel
+from kima import RVdata, GAIAdata, GAIAmodel, RVGAIAmodel
 from kima.pykima.utils import chdir
 from kima.distributions import Uniform, Gaussian, ModifiedLogUniform, Kumaraswamy, LogUniform, Fixed
 
@@ -26,10 +26,10 @@ def RVGAIA(run=False, load=False, **kwargs):
     Gdata.M0_epoch = 57936.875
 
     RV_data_file = (here.parent / "Gaia_RVs_BH3.rdb").as_posix()
-    Vdata = RVData(RV_data_file, skip=2, units="kms")
+    Vdata = RVdata(RV_data_file, skip=2, units="kms")
 
     # create the model
-    model = RVGAIAmodel(fix=False, npmax=2, GAIAdata=Gdata, RVData=Vdata)
+    model = RVGAIAmodel(fix=False, npmax=2, GAIAdata=Gdata, RVdata=Vdata)
 
     model.Cprior = Uniform(-400_000, -300_000)
     model.J_GAIA_prior = ModifiedLogUniform(0.01, 0.2)
