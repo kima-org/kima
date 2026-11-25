@@ -84,7 +84,8 @@ set(DISTRIBUTION_UNITS
     src/kima/distributions/GaussianMixture.cpp
     src/kima/distributions/BivariateGaussian.cpp
     src/kima/distributions/PowerLaw.cpp
-    src/kima/distributions/Sine.cpp)
+    src/kima/distributions/Sine.cpp
+    src/kima/distributions/SpikeAndSlab.cpp)
 
 # set(COMMON_UNITS ${COMMON_UNITS} ${DISTRIBUTION_UNITS})
 
