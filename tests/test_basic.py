@@ -80,6 +80,7 @@ def test_RVGAIAmodel(path_to_test_data):
     D1 = kima.GAIAdata(path_to_test_data("simulated4.txt"))
     D2 = kima.RVdata(path_to_test_data("simulated1.txt"))
     m = kima.RVGAIAmodel(True, 0, D1, D2)
+    m = kima.RVGAIAmodel(True, 0, D2, D1)
 
 
 def test_run(cleanup_after_running, path_to_test_data):

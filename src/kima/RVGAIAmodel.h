@@ -56,8 +56,8 @@ class KIMA_API RVGAIAmodel
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
         
-        GAIAdata GAIA_data;
         RVdata RV_data;
+        GAIAdata GAIA_data;
     
     private:
     
@@ -138,12 +138,12 @@ class KIMA_API RVGAIAmodel
 
     public:
         RVGAIAmodel() {};
-        RVGAIAmodel(bool fix, int npmax, GAIAdata& GAIA_data, RVdata& RV_data) 
-        : GAIA_data(GAIA_data), RV_data(RV_data), fix(fix), npmax(npmax) {
-            initialize_from_data(GAIA_data, RV_data);
+        RVGAIAmodel(bool fix, int npmax, RVdata& RV_data, GAIAdata& GAIA_data)
+        : RV_data(RV_data), GAIA_data(GAIA_data), fix(fix), npmax(npmax) {
+            initialize_from_data(RV_data, GAIA_data);
         };
 
-        void initialize_from_data(GAIAdata& GAIAdata, RVdata& RVdata);
+        void initialize_from_data(RVdata& RVdata, GAIAdata& GAIAdata);
         
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;

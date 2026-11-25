@@ -16,7 +16,7 @@ const double daytoyear3 = 1/(365.25*365.25*365.25);
 const double yeartoday = 365.25;
 
 
-void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVdata& RV_data)
+void RVGAIAmodel::initialize_from_data(RVdata& RV_data, GAIAdata& GAIA_data)
 {   
     offsets.resize(RV_data.number_instruments - 1);
     jitters.resize(RV_data.number_instruments);
@@ -1311,18 +1311,20 @@ void RVGAIAmodel::save_setup() {
 using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
 
 auto RVGAIAMODEL_DOC = R"D(
-Combined analysis of Gaia epoch astrometry and radial velocity timeseries. Implements a sum-of-Keplerians model where the number of Keplerians can be free.
-This model assumes white, uncorrelated noise. Both the central star and potential planets are to be given Mass priors in Solar-Mass.
+Combined analysis of Gaia epoch astrometry and radial velocity timeseries. 
+Implements a sum-of-Keplerians model where the number of Keplerians can be free.
+This model assumes white, uncorrelated noise. Both the central star and 
+potential planets are to be given Mass priors in Solar-Mass.
 
 Args:
     fix (bool, default=True):
         whether the number of Keplerians should be fixed
     npmax (int, default=0):
         maximum number of Keplerians
-    GAIAdata (GAIAdata):
-        the astrometric data
     RVdata (RVdata):
         the radial velocity data
+    GAIAdata (GAIAdata):
+        the astrometric data
 )D";
 
 class RVGAIAmodel_publicist : public RVGAIAmodel
@@ -1350,7 +1352,14 @@ NB_MODULE(RVGAIAmodel, m) {
     bind_RVGAIAConditionalPrior(m);
 
     nb::class_<RVGAIAmodel>(m, "RVGAIAmodel")
-        .def(nb::init<bool&, int&, GAIAdata&, RVdata&>(), "fix"_a, "npmax"_a, "GAIAdata"_a, "RVdata"_a, RVGAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&, GAIAdata&>(), 
+             "fix"_a, "npmax"_a, "RVdata"_a, "GAIAdata"_a, RVGAIAMODEL_DOC)
+        .def("__init__", 
+             [](RVGAIAmodel* self, bool fix, int npmax, GAIAdata& GAIA_data, RVdata& RV_data)
+             {
+                new (self) RVGAIAmodel(fix, npmax, RV_data, GAIA_data);
+             },
+             "fix"_a, "npmax"_a, "GAIA_data"_a, "RV_data"_a, RVGAIAMODEL_DOC)
         //
         .def_rw("directory", &RVGAIAmodel::directory,
                 "directory where the model ran")
