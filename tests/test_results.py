@@ -75,9 +75,9 @@ def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
 
 
 def test_methods_RVGAIAmodel(path_to_test_data, cleanup_after_running):
-    rvdata = kima.RVData(path_to_test_data("target_5_rvs.csv"), skip=1)
+    rvdata = kima.RVdata(path_to_test_data("target_5_rvs.csv"), skip=1)
     gdata = kima.GAIAdata(path_to_test_data("target_5_kima.csv"), skip=1)
-    m = kima.RVGAIAmodel(fix=True, npmax=1, GAIAdata=gdata, RVData=rvdata)
+    m = kima.RVGAIAmodel(fix=True, npmax=1, GAIAdata=gdata, RVdata=rvdata)
     kima.run(m, steps=2_000)
 
     res = kima.load_results(m)
@@ -147,7 +147,7 @@ def test_moved_datafile(path_to_test_data):
         shutil.copy(path_to_test_data('simulated1.txt'), tmpdir)
         with chdir(tmpdir):
             # build the model
-            m = kima.RVmodel(True, 0, kima.RVData('simulated1.txt'))
+            m = kima.RVmodel(True, 0, kima.RVdata('simulated1.txt'))
             # run it
             kima.run(m, steps=100)
             # remove the datafile
@@ -201,7 +201,7 @@ def test_out_of_order(cleanup_after_running):
     vrad = [np.random.normal(0, 1, size=t.shape) for t in times]
     err = [0.1 * np.ones_like(t) for t in times]
     instruments = ['A', 'B', 'D', 'C']
-    data = kima.RVData(times, vrad, err, instruments=instruments)
+    data = kima.RVdata(times, vrad, err, instruments=instruments)
     model = kima.RVmodel(fix=True, npmax=1, data=data)
     kima.run(model, steps=500)
     res = kima.load_results(model)

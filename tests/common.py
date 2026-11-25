@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
-from kima import RVData, keplerian
+from kima import RVdata, keplerian
 
 import pytest
 
@@ -19,8 +19,8 @@ def path_to_test_data():
 
 @pytest.fixture
 def simulated1(path_to_test_data):
-    from kima import RVData
-    return RVData(path_to_test_data('simulated1.txt'))
+    from kima import RVdata
+    return RVdata(path_to_test_data('simulated1.txt'))
 
 
 def create_data(plot=False, include=(1, 2, 4, 6), seed=24):
