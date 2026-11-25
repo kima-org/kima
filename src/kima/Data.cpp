@@ -58,7 +58,7 @@ RVData::RVData(const string& filename, const string& units, int skip, int max_ro
 }
 
 /// @brief Load data from a list of filenames
-RVData::RVData(const vector<string>& filenames, const string& units, int skip, int max_rows, 
+RVdata::RVdata(const vector<string>& filenames, const string& units, int skip, int max_rows, 
                const string& delimiter, const vector<string>& indicators, bool double_lined)
 {
     if (double_lined)
@@ -67,7 +67,7 @@ RVData::RVData(const vector<string>& filenames, const string& units, int skip, i
 }
 
 /// @brief Load data from vectors directly
-RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<double> _sig,
+RVdata::RVdata(const vector<double> _t, const vector<double> _y, const vector<double> _sig,
                const vector<vector<double>> indicators,
                const string& units, const string& instrument)
 : t(_t), y(_y), sig(_sig)
@@ -131,7 +131,7 @@ RVData::RVData(const vector<double> _t, const vector<double> _y, const vector<do
 }
 
 /// @brief Load data from vectors directly, for multiple instruments
-RVData::RVData(const vector<vector<double>> _t, 
+RVdata::RVdata(const vector<vector<double>> _t, 
                const vector<vector<double>> _y, 
                const vector<vector<double>> _sig,
                const vector<vector<vector<double>>> indicators,
@@ -288,17 +288,17 @@ RVData::RVData(const vector<vector<double>> _t,
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
  */
-void RVData::load(const string filename, const string units, int skip, int max_rows,
+void RVdata::load(const string filename, const string units, int skip, int max_rows,
                   const string delimiter, const vector<string>& indicators)
 {
     if (filename.empty()) {
-        std::string msg = "kima: RVData: no filename provided";
+        std::string msg = "kima: RVdata: no filename provided";
         throw std::invalid_argument(msg);
         // exit(1);
     }
 
     if (filename.size() == 1) {
-        std::string msg = "kima: RVData: filename with one character is probably an error";
+        std::string msg = "kima: RVdata: filename with one character is probably an error";
         throw std::runtime_error(msg);
     }
 
@@ -309,7 +309,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
                     .delimiters(delimiter)();
 
     if (data.size() < 3) {
-        std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+        std::string msg = "kima: RVdata: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
         throw std::runtime_error(msg);
     }
     
@@ -329,7 +329,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     if (sb2)
     {
         if (data.size() < 5) {
-            std::string msg = "kima: RVData: sb2 is true but file (" + filename + ") contains less than 5 columns!";
+            std::string msg = "kima: RVdata: sb2 is true but file (" + filename + ") contains less than 5 columns!";
             throw std::runtime_error(msg);
         }
         y2 = data[3];
@@ -342,7 +342,7 @@ void RVData::load(const string filename, const string units, int skip, int max_r
     indicator_correlations = number_indicators > 0;
 
     if (data.size() < 3 + number_indicators + nempty) {
-        std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
+        std::string msg = "kima: RVdata: file (" + filename + ") contains too few columns!";
         throw std::runtime_error(msg);
     }
 
@@ -417,17 +417,17 @@ void RVData::load(const string filename, const string units, int skip, int max_r
  * @param units      units of the RVs and errors, either "kms" or "ms"
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  */
-void RVData::load_multi(const string filename, const string units, int skip, int max_rows,
+void RVdata::load_multi(const string filename, const string units, int skip, int max_rows,
                         const string delimiter, const vector<string> &indicators)
 {
     if (filename.empty()) {
-        std::string msg = "kima: RVData: no filename provided";
+        std::string msg = "kima: RVdata: no filename provided";
         throw std::invalid_argument(msg);
         // exit(1);
     }
 
     if (filename.size() == 1) {
-        std::string msg = "kima: RVData: filename with one character is probably an error";
+        std::string msg = "kima: RVdata: filename with one character is probably an error";
         throw std::runtime_error(msg);
     }
 
@@ -438,7 +438,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
                     .delimiters(delimiter)();
 
     if (data.size() < 4) {
-        std::string msg = "kima: RVData: file (" + filename + ") contains less than 4 columns! (multi=true)";
+        std::string msg = "kima: RVdata: file (" + filename + ") contains less than 4 columns! (multi=true)";
         throw std::runtime_error(msg);
     }
 
@@ -470,7 +470,7 @@ void RVData::load_multi(const string filename, const string units, int skip, int
     indicator_correlations = number_indicators > 0;
 
     if (data.size() < 3 + number_indicators + nempty) {
-        std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
+        std::string msg = "kima: RVdata: file (" + filename + ") contains too few columns!";
         throw std::runtime_error(msg);
     }
 
@@ -573,11 +573,11 @@ void RVData::load_multi(const string filename, const string units, int skip, int
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
  */
-void RVData::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
+void RVdata::load_multi(vector<string> filenames, const string units, int skip, int max_rows,
                         const string delimiter, const vector<string>& indicators)
 {
     if (filenames.empty()) {
-        std::string msg = "kima: RVData: no filenames provided";
+        std::string msg = "kima: RVdata: no filenames provided";
         throw std::invalid_argument(msg);
     }
 
@@ -614,12 +614,12 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip, 
                         .delimiters(delimiter)();
 
         if (data.size() < 3) {
-            std::string msg = "kima: RVData: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
+            std::string msg = "kima: RVdata: file (" + filename + ") contains less than 3 columns! (is skip correct?)";
             throw std::runtime_error(msg);
         }
 
         if (data.size() < 3 + number_indicators + nempty) {
-            std::string msg = "kima: RVData: file (" + filename + ") contains too few columns!";
+            std::string msg = "kima: RVdata: file (" + filename + ") contains too few columns!";
             throw std::runtime_error(msg);
         }
 
@@ -774,7 +774,7 @@ double RVData::get_RV_var() const
  * instruments, the function returns the maximum of this peak-to-peak ratio of
  * all individual instruments.
  */
-double RVData::topslope() const
+double RVdata::topslope() const
 {
     if (_multi) {
         double slope = 0.0;
@@ -807,7 +807,7 @@ double RVData::topslope() const
  * This is different from get_RV_span only in the case of multiple instruments:
  * it returns the maximum of the spans of each instrument's RVs.
  */
-double RVData::get_max_RV_span() const
+double RVdata::get_max_RV_span() const
 {
     // for multiple instruments, calculate individual RV spans and return
     // the largest one
@@ -834,7 +834,7 @@ double RVData::get_max_RV_span() const
     }
 }
 
-double RVData::get_adjusted_RV_var() const
+double RVdata::get_adjusted_RV_var() const
 {
     int ni;
     double sum, mean;
@@ -869,7 +869,7 @@ double RVData::get_adjusted_RV_var() const
  * `degree` supported by the data. It calculates the order of magnitude of
  *    RVspan / timespan^degree
  */
-int RVData::get_trend_magnitude(int degree, int i) const
+int RVdata::get_trend_magnitude(int degree, int i) const
 {
     if (i == -1)
         return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
@@ -879,7 +879,7 @@ int RVData::get_trend_magnitude(int degree, int i) const
     }
 }
 
-double RVData::get_actind_min(size_t i) const
+double RVdata::get_actind_min(size_t i) const
 {
     auto NaNless = []( const auto &a, const auto &b )
     {
@@ -890,7 +890,7 @@ double RVData::get_actind_min(size_t i) const
     return *min_element(actind.at(i).begin(), actind.at(i).end(), NaNless);
 }
 
-double RVData::get_actind_max(size_t i) const
+double RVdata::get_actind_max(size_t i) const
 {
     auto NaNless = []( const auto &a, const auto &b )
     {
@@ -901,7 +901,7 @@ double RVData::get_actind_max(size_t i) const
     return *max_element(actind.at(i).begin(), actind.at(i).end(), NaNless);
 }
 
-double RVData::get_actind_mean(size_t i) const
+double RVdata::get_actind_mean(size_t i) const
 {
     auto ind = actind[i];
 
@@ -912,7 +912,7 @@ double RVData::get_actind_mean(size_t i) const
     return sum / n;
 }
 
-double RVData::get_actind_var(size_t i) const
+double RVdata::get_actind_var(size_t i) const
 {
     auto ind = actind[i];
 
@@ -932,7 +932,7 @@ double RVData::get_actind_var(size_t i) const
 
 // normalize activity indicators from 0 to 1
 // by subtracting the minimum value and dividing by the range
-void RVData::normalize_actind()
+void RVdata::normalize_actind()
 {
     if (actind.size() == 0) return;
 
@@ -946,7 +946,7 @@ void RVData::normalize_actind()
     }
 }
 
-ostream& operator<<(ostream& os, const RVData& d)
+ostream& operator<<(ostream& os, const RVdata& d)
 {
     os << "RV data from file " << d._datafile << " with " << d.N() << " points";
     return os;

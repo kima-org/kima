@@ -57,7 +57,7 @@ template <typename T>
 T swap_endian(T u);
 
 
-class KIMA_API RVData {
+class KIMA_API RVdata {
 
   friend class RVmodel;
   friend class GPmodel;
@@ -88,29 +88,29 @@ class KIMA_API RVData {
     vector<double> _unique_times;
     vector<int> _inverse_indices;
 
-    RVData() {};
+    RVdata() {};
 
     // read data from a list of files
-    RVData(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0,
+    RVdata(const vector<string>& filenames, const string& units="ms", int skip=0, int max_rows=0,
            const string& delimiter=" \t,", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from a single file
-    RVData(const string& filename, const string& units="ms", int skip=0, int max_rows=0, bool multi=false,
+    RVdata(const string& filename, const string& units="ms", int skip=0, int max_rows=0, bool multi=false,
            const string& delimiter=" \t,", const vector<string>& indicators=vector<string>(), bool double_lined=false);
 
     // read data from arrays
-    RVData(const vector<double> t, const vector<double> y, const vector<double> sig,
+    RVdata(const vector<double> t, const vector<double> y, const vector<double> sig,
            const vector<vector<double>> indicators=vector<vector<double>>(),
            const string& units="ms", const string& instrument="");
     
     // read data from arrays for multiple instruments
-    RVData(const vector<vector<double>> t, 
+    RVdata(const vector<vector<double>> t, 
            const vector<vector<double>> y, 
            const vector<vector<double>> sig,
            const vector<vector<vector<double>>> indicators=vector<vector<vector<double>>>(),
            const string& units="ms", const vector<string>& instruments={});
 
-    friend ostream& operator<<(ostream& os, const RVData& d);
+    friend ostream& operator<<(ostream& os, const RVdata& d);
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip=0, int max_rows=0,
@@ -264,6 +264,12 @@ class KIMA_API RVData {
 };
 
 
+// legacy wrapper for backwards compatibility
+class KIMA_API RVData : public RVdata {
+  public:
+    using RVdata::RVdata; // inherit constructors
+    RVData() = default;
+};
 
 
 class KIMA_API PHOTdata {
