@@ -243,23 +243,16 @@ void TRANSITConditionalPrior::print(std::ostream& out) const
 
 GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
 {
-    
-    if (!Pprior)
-        Pprior = make_shared<LogUniform>(10., 1e4);
-    if (!eprior)
-        eprior = make_shared<Uniform>(0, 1);
-    if (!phiprior)
-        phiprior = make_shared<Uniform>(0, 2*M_PI);
-    if(thiele_innes)
+    if (!Pprior) Pprior = make_shared<LogUniform>(10., 1e4);
+    if (!phiprior) phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!eprior) eprior = make_shared<Uniform>(0, 1);
+
+    if (thiele_innes)
     {
-        if (!Aprior)
-            Aprior = make_shared<Gaussian>(0, 0.5);
-        if (!Bprior)
-            Bprior = make_shared<Gaussian>(0, 0.5);
-        if (!Fprior)
-            Fprior = make_shared<Gaussian>(0, 0.5);
-        if (!Gprior)
-            Gprior = make_shared<Gaussian>(0, 0.5);
+        if (!Aprior) Aprior = make_shared<Gaussian>(0, 0.5);
+        if (!Bprior) Bprior = make_shared<Gaussian>(0, 0.5);
+        if (!Fprior) Fprior = make_shared<Gaussian>(0, 0.5);
+        if (!Gprior) Gprior = make_shared<Gaussian>(0, 0.5);
     }
     else
     {
@@ -272,8 +265,6 @@ GAIAConditionalPrior::GAIAConditionalPrior():thiele_innes(false)
         if (!Wprior)
             Wprior = make_shared<Uniform>(0, M_PI);
     }
-    
-    
 }
 
 void GAIAConditionalPrior::set_default_priors(const GAIAdata &data)
@@ -316,22 +307,22 @@ double GAIAConditionalPrior::log_pdf(const std::vector<double>& vec) const
     if(thiele_innes)
     {
         return Pprior->log_pdf(vec[0]) + 
-                phiprior->log_pdf(vec[1]) + 
-                eprior->log_pdf(vec[2]) + 
-                Aprior->log_pdf(vec[3]) + 
-                Bprior->log_pdf(vec[4]) +
-                Fprior->log_pdf(vec[5]) + 
-                Gprior->log_pdf(vec[6]);
+               phiprior->log_pdf(vec[1]) + 
+               eprior->log_pdf(vec[2]) + 
+               Aprior->log_pdf(vec[3]) + 
+               Bprior->log_pdf(vec[4]) +
+               Fprior->log_pdf(vec[5]) + 
+               Gprior->log_pdf(vec[6]);
     }
     else
     {
         return Pprior->log_pdf(vec[0]) + 
-                phiprior->log_pdf(vec[1]) + 
-                eprior->log_pdf(vec[2]) + 
-                aprior->log_pdf(vec[3]) + 
-                wprior->log_pdf(vec[4]) +
-                cosiprior->log_pdf(vec[5]) + 
-                Wprior->log_pdf(vec[6]);
+               phiprior->log_pdf(vec[1]) + 
+               eprior->log_pdf(vec[2]) + 
+               aprior->log_pdf(vec[3]) + 
+               wprior->log_pdf(vec[4]) +
+               cosiprior->log_pdf(vec[5]) + 
+               Wprior->log_pdf(vec[6]);
     }
 }
 
