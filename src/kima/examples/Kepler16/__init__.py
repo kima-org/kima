@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import kima
-from kima import RVData, RVmodel, BINARIESmodel
+from kima import RVdata, RVmodel, BINARIESmodel
 from kima.pykima.utils import chdir
 from kima.distributions import Uniform, Gaussian, ModifiedLogUniform
 
@@ -20,7 +20,7 @@ def Kepler16(run=False, **kwargs):
         **kwargs: keyword arguments passed directly to `kima.run`
     """
     # load the right data file
-    data = RVData([os.path.join(here, 'Kepler16.rdb')],skip=2,units='kms')
+    data = RVdata([os.path.join(here, 'Kepler16.rdb')],skip=2,units='kms')
     # create the model
     model = BINARIESmodel(fix=False, npmax=3, data=data)
     

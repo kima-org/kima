@@ -3,7 +3,7 @@ import os
 import numpy as np
 import kima
 from kima.pykima.utils import chdir
-from kima import RVData, BINARIESmodel
+from kima import RVdata, BINARIESmodel
 from kima.distributions import (
     Uniform,
     UniformAngle,
@@ -30,7 +30,7 @@ def TIC172900988(run=False, load=False, **kwargs):
             **kwargs: keyword arguments passed directly to `kima.run`
     """
 
-    data = RVData(
+    data = RVdata(
         os.path.join(here, "SOPHIE.rv"), units="kms", skip=2, double_lined=True
     )
 

@@ -1,6 +1,6 @@
 import os
 import kima
-from kima import RVData, RVmodel
+from kima import RVdata, RVmodel
 from kima.pykima.utils import get_gaussian_prior_vsys, get_gaussian_priors_individual_offsets
 from kima.pykima.utils import chdir
 
@@ -8,16 +8,25 @@ __all__ = ['multi_instruments']
 
 here = os.path.dirname(__file__) # cwd
 
-HD106252_ELODIE = RVData(os.path.join(here, 'HD106252_ELODIE.txt'))
-HD106252_HET = RVData(os.path.join(here, 'HD106252_HET.txt'))
-HD106252_HJS = RVData(os.path.join(here, 'HD106252_HJS.txt'))
-HD106252_Lick = RVData(os.path.join(here, 'HD106252_Lick.txt'))
-HD106252_combined = RVData([
-    os.path.join(here, 'HD106252_ELODIE.txt'),
+HD106252_ELODIE = RVdata(os.path.join(here, 'HD106252_ELODIE.txt'))
+HD106252_ELODIE.instruments = ['ELODIE']
+
+HD106252_HET = RVdata(os.path.join(here, 'HD106252_HET.txt'))
+HD106252_HET.instruments = ['HET']
+
+HD106252_HJS = RVdata(os.path.join(here, 'HD106252_HJS.txt'))
+HD106252_HJS.instruments = ['HJS']
+
+HD106252_Lick = RVdata(os.path.join(here, 'HD106252_Lick.txt'))
+HD106252_Lick.instruments = ['Lick']
+
+HD106252_combined = RVdata([
     os.path.join(here, 'HD106252_HET.txt'),
     os.path.join(here, 'HD106252_HJS.txt'),
     os.path.join(here, 'HD106252_Lick.txt'),
+    os.path.join(here, 'HD106252_ELODIE.txt'),
 ])
+HD106252_combined.instruments = ['HET', 'HJS', 'Lick', 'ELODIE']
 
 def multi_instruments(run=False, load=False, informative_priors=False, **kwargs):
     """

@@ -1,6 +1,6 @@
 import os
 import kima
-from kima import RVData, RVmodel, BINARIESmodel
+from kima import RVdata, RVmodel
 from kima.pykima.utils import chdir
 
 __all__ = ['_51Peg']
@@ -19,7 +19,7 @@ def _51Peg(run=False, load=False, **kwargs):
         **kwargs: keyword arguments passed directly to `kima.run`
     """
     # load the right data file
-    data = RVData(os.path.join(here, '51Peg.rv'))
+    data = RVdata(os.path.join(here, '51Peg.rv'))
     # create the model
     model = RVmodel(fix=False, npmax=1, data=data)
 

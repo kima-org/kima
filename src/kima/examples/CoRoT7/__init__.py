@@ -1,6 +1,6 @@
 import os
 import kima
-from kima import RVData, GPmodel
+from kima import RVdata, GPmodel, GP
 from kima.distributions import Kumaraswamy, LogUniform
 from kima.pykima.utils import chdir
 
@@ -19,7 +19,7 @@ def CoRoT7(run=False, load=False, **kwargs):
         **kwargs: keyword arguments passed directly to `kima.run`
     """
     # load the right data file
-    data = RVData(os.path.join(here, 'corot7.txt'), skip=2)
+    data = RVdata(os.path.join(here, 'corot7.txt'), skip=2)
     # create the model
     model = GPmodel(fix=True, npmax=2, data=data)
     

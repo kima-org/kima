@@ -1,6 +1,6 @@
 import os
 import kima
-from kima import RVData, RVmodel
+from kima import RVdata, RVmodel
 from kima import distributions
 from kima.pykima.utils import chdir
 
@@ -19,7 +19,7 @@ def BL2009(run=False, load=False, which=1, **kwargs):
     """
     # load the right data file
     file = os.path.join(here, f'BL2009_dataset{which}.rv')
-    data = RVData(file)
+    data = RVdata(file)
 
     # create the model
     model = RVmodel(fix=False, npmax=which, data=data)
