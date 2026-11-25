@@ -49,7 +49,7 @@ class  OutlierRVmodel
         /// whether to enforce AMD-stability
         bool enforce_stability = false;
 
-        RVData data;
+        RVdata data;
 
     private:
         DNest4::RJObject<KeplerianConditionalPrior> planets =
@@ -96,11 +96,11 @@ class  OutlierRVmodel
 
     public:
         OutlierRVmodel() {};
-        OutlierRVmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        OutlierRVmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
