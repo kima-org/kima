@@ -53,7 +53,7 @@ KeplerianConditionalPrior::KeplerianConditionalPrior():hyperpriors(false)
 
 void KeplerianConditionalPrior::set_default_priors(const RVdata &data)
 {
-    auto defaults = DefaultPriors(data);
+    auto defaults = DefaultPriors(data, false);
     if (!Pprior) Pprior = defaults.get("Pprior");
     if (!Kprior) Kprior = defaults.get("Kprior");
     if (!eprior) eprior = defaults.get("eprior");
