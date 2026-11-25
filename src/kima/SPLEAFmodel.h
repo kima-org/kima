@@ -34,7 +34,7 @@ class SPLEAFmodel
         /// Maximum number of planets (by default 1)
         int npmax {1};
 
-        RVData data;
+        RVdata data;
 
         /// Whether the model is for multiple timeseries (or just RVs)
         bool multi_series {false};
@@ -110,13 +110,13 @@ class SPLEAFmodel
 
     public:
         SPLEAFmodel() {};
-        SPLEAFmodel(bool fix, int npmax, RVData& data)
+        SPLEAFmodel(bool fix, int npmax, RVdata& data)
             : data(data), fix(fix), npmax(npmax)
         {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets

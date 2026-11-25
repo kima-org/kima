@@ -55,7 +55,7 @@ class KIMA_API ApodizedRVmodel
         bool jitter_propto_indicator = false;
         int jitter_propto_indicator_index = 0;
 
-        RVData data;
+        RVdata data;
 
     private:
 
@@ -134,11 +134,11 @@ class KIMA_API ApodizedRVmodel
 
     public:
         ApodizedRVmodel() {};
-        ApodizedRVmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        ApodizedRVmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
