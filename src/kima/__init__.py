@@ -17,6 +17,7 @@ except PackageNotFoundError:
     __version__ = None
 
 import sys
+import warnings
 from enum import Enum
 
 from .pykima.utils import chdir
