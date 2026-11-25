@@ -58,7 +58,7 @@ class  RVFWHMRHKmodel
         /// Whether to include a periodic GP kernel for the magnetic cycle
         bool magnetic_cycle_kernel {false};
 
-        RVData data;
+        RVdata data;
 
     private:
         Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
@@ -126,11 +126,11 @@ class  RVFWHMRHKmodel
 
     public:
         RVFWHMRHKmodel() {};
-        RVFWHMRHKmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        RVFWHMRHKmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
