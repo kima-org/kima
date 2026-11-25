@@ -27,7 +27,7 @@ class Fixed:public ContinuousDistribution
             return out;
         }
         // this special class reimplements perturb to save some work
-        double perturb(double& x, RNG& rng) const;
+        double perturb(double& x, RNG& rng) const override;
 };
 
 } // namespace DNest4
