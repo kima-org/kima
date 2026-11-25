@@ -57,7 +57,7 @@ class  RVFWHMmodel
         /// Whether $\eta_4$ is shared between RVs and FWHM
         bool share_eta4 {true};
 
-        RVData data;
+        RVdata data;
 
     private:
         Eigen::VectorXd sig_copy;  // copy of RV uncertainties for the GP covariance
@@ -117,11 +117,11 @@ class  RVFWHMmodel
 
     public:
         RVFWHMmodel() {};
-        RVFWHMmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        RVFWHMmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         // getter and setter for trend
         bool get_trend() const { return trend; };

@@ -54,7 +54,7 @@ class KIMA_API RVmodel
         /// Whether to optimize Keplerian calculation when several times are repeated
         bool optimize_equal_times = false;
 
-        RVData data;
+        RVdata data;
 
     private:
 

@@ -53,7 +53,7 @@ class  GPmodel
         /// whether to consider a (periodic) GP kernel for a magnetic cycle
         bool magnetic_cycle_kernel = false;
 
-        RVData data;
+        RVdata data;
 
     private:
         Eigen::VectorXd v_t, v_dt;  // store t and dt for SPLEAF kernels
@@ -120,11 +120,11 @@ class  GPmodel
 
     public:
         GPmodel() {};
-        GPmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        GPmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
@@ -217,7 +217,7 @@ class  GPmodel
         void eta2_larger_eta3(double factor=1.0);
 
         // /// @brief an alias for RVData::get_instance()
-        // static RVData& get_data() { return RVData::get_instance(); }
+        // static RVdata& get_data() { return RVdata::get_instance(); }
 
         KeplerianConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
