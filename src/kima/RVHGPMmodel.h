@@ -57,7 +57,7 @@ class KIMA_API RVHGPMmodel
 
         bool marginalise_barycenter = false;
 
-        RVData data;
+        RVdata data;
         HGPMdata pm_data;
 
     private:
@@ -152,11 +152,11 @@ class KIMA_API RVHGPMmodel
 
     public:
         RVHGPMmodel() {};
-        RVHGPMmodel(bool fix, int npmax, RVData& data, HGPMdata& pm_data) : fix(fix), npmax(npmax), data(data), pm_data(pm_data) {
+        RVHGPMmodel(bool fix, int npmax, RVdata& data, HGPMdata& pm_data) : fix(fix), npmax(npmax), data(data), pm_data(pm_data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
         // priors for parameters *not* belonging to the planets
