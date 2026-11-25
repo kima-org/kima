@@ -135,11 +135,11 @@ class KIMA_API RVmodel
 
     public:
         RVmodel() {};
-        RVmodel(bool fix, int npmax, RVData& data) : fix(fix), npmax(npmax), data(data) {
+        RVmodel(bool fix, int npmax, RVdata& data) : fix(fix), npmax(npmax), data(data) {
             initialize_from_data(data);
         };
 
-        void initialize_from_data(RVData& data);
+        void initialize_from_data(RVdata& data);
 
         vector<double> reconstruct_unique_times(vector<double>& v);
 

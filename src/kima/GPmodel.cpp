@@ -7,7 +7,7 @@ using namespace Eigen;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void GPmodel::initialize_from_data(RVData& data)
+void GPmodel::initialize_from_data(RVdata& data)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
@@ -1254,7 +1254,7 @@ Args:
         whether the number of Keplerians should be fixed
     npmax (int):
         maximum number of Keplerians
-    data (RVData):
+    data (RVdata):
         the RV data
 )D";
 
@@ -1277,7 +1277,7 @@ class GPmodel_publicist : public GPmodel
 NB_MODULE(GPmodel, m) {
     nb::class_<GPmodel> model(m, "GPmodel");
     
-        model.def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, GPMODEL_DOC)
+        model.def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, GPMODEL_DOC)
         //
         .def("from_prior", &GPmodel::from_prior)
         .def("log_likelihood", &GPmodel::log_likelihood)

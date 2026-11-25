@@ -5,7 +5,7 @@
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void OutlierRVmodel::initialize_from_data(RVData& data)
+void OutlierRVmodel::initialize_from_data(RVdata& data)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
@@ -756,7 +756,7 @@ This model assumes white, uncorrelated noise.
 Args:
     fix (bool, default=True): whether the number of Keplerians should be fixed
     npmax (int, default=0): maximum number of Keplerians
-    data (RVData): the RV data
+    data (RVdata): the RV data
 )D";
 
 class OutlierRVmodel_publicist : public OutlierRVmodel
@@ -778,7 +778,7 @@ class OutlierRVmodel_publicist : public OutlierRVmodel
 
 NB_MODULE(OutlierRVmodel, m) {
     nb::class_<OutlierRVmodel>(m, "OutlierRVmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, OutlierRVMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, OutlierRVMODEL_DOC)
         //
         .def_rw("fix", &OutlierRVmodel_publicist::fix, "whether the number of Keplerians is fixed")
         .def_rw("npmax", &OutlierRVmodel_publicist::npmax, "maximum number of Keplerians")

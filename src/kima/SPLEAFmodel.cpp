@@ -6,7 +6,7 @@
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void SPLEAFmodel::initialize_from_data(RVData& data)
+void SPLEAFmodel::initialize_from_data(RVdata& data)
 {
     // if (data.number_instruments > 1) {
     //     std::string msg = "SPLEAFmodel currently only supports one instrument";
@@ -1308,7 +1308,7 @@ class SPLEAFmodel_publicist : public SPLEAFmodel {
 
 NB_MODULE(SPLEAFmodel, m) {
     nb::class_<SPLEAFmodel>(m, "SPLEAFmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a)
+        .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a)
         //
         .def_rw("directory", &SPLEAFmodel::directory,
                 "directory where the model ran")

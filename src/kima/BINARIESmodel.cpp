@@ -11,7 +11,7 @@ using namespace postKep;
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
-void BINARIESmodel::initialize_from_data(RVData& data)
+void BINARIESmodel::initialize_from_data(RVdata& data)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
@@ -1146,7 +1146,7 @@ precession as a free parameter and accounts for GR and Tidal effects on the radi
 Args:
     fix (bool, default=True): whether the number of Keplerians should be fixed
     npmax (int, default=0): maximum number of Keplerians
-    data (RVData): the RV data
+    data (RVdata): the RV data
 )D";
 
 class BINARIESmodel_publicist : public BINARIESmodel
@@ -1178,7 +1178,7 @@ class BINARIESmodel_publicist : public BINARIESmodel
 
 NB_MODULE(BINARIESmodel, m) {
     nb::class_<BINARIESmodel>(m, "BINARIESmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, BINARIESMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, BINARIESMODEL_DOC)
         //
 
         .def_rw("directory", &BINARIESmodel::directory,

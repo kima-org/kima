@@ -6,7 +6,7 @@
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void RVmodel::initialize_from_data(RVData& data)
+void RVmodel::initialize_from_data(RVdata& data)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
@@ -1103,7 +1103,7 @@ Args:
         whether the number of Keplerians should be fixed
     npmax (int):
         maximum number of Keplerians
-    data (RVData):
+    data (RVdata):
         the RV data
 )D";
 
@@ -1131,7 +1131,7 @@ NB_MODULE(RVmodel, m) {
     bind_KeplerianConditionalPrior(m);
 
     nb::class_<RVmodel>(m, "RVmodel", "")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
         //
         .def_rw("directory", &RVmodel::directory,
                 "directory where the model ran")

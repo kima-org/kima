@@ -16,7 +16,7 @@ const double daytoyear3 = 1/(365.25*365.25*365.25);
 const double yeartoday = 365.25;
 
 
-void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVData& RV_data)
+void RVGAIAmodel::initialize_from_data(GAIAdata& GAIA_data, RVdata& RV_data)
 {   
     offsets.resize(RV_data.number_instruments - 1);
     jitters.resize(RV_data.number_instruments);
@@ -1321,7 +1321,7 @@ Args:
         maximum number of Keplerians
     GAIAdata (GAIAdata):
         the astrometric data
-    RVdata (RVData):
+    RVdata (RVdata):
         the radial velocity data
 )D";
 
@@ -1350,7 +1350,7 @@ NB_MODULE(RVGAIAmodel, m) {
     bind_RVGAIAConditionalPrior(m);
 
     nb::class_<RVGAIAmodel>(m, "RVGAIAmodel")
-        .def(nb::init<bool&, int&, GAIAdata&, RVData&>(), "fix"_a, "npmax"_a, "GAIAdata"_a, "RVData"_a, RVGAIAMODEL_DOC)
+        .def(nb::init<bool&, int&, GAIAdata&, RVdata&>(), "fix"_a, "npmax"_a, "GAIAdata"_a, "RVdata"_a, RVGAIAMODEL_DOC)
         //
         .def_rw("directory", &RVGAIAmodel::directory,
                 "directory where the model ran")

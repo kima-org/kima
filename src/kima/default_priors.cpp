@@ -1,6 +1,6 @@
 #include "default_priors.h"
 
-DefaultPriors::DefaultPriors(const RVData &data, bool gp) : data(data)
+DefaultPriors::DefaultPriors(const RVdata &data, bool gp) : data(data)
 {
     default_mapping.insert({
         // 
@@ -124,7 +124,7 @@ void DefaultPriors::print()
 
 NB_MODULE(default_priors, m) {
      nb::class_<DefaultPriors>(m, "DefaultPriors", "")
-        .def(nb::init<const RVData&>(), "data"_a, "Create default priors")
+        .def(nb::init<const RVdata&, bool>(), "data"_a, "gp"_a = true, "Create default priors")
         .def("get", &DefaultPriors::get)
         .def("print", &DefaultPriors::print);
 }

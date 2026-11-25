@@ -6,7 +6,7 @@
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void RVHGPMmodel::initialize_from_data(RVData& data)
+void RVHGPMmodel::initialize_from_data(RVdata& data)
 {
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
@@ -1261,7 +1261,7 @@ Args:
         whether the number of Keplerians should be fixed
     npmax (int):
         maximum number of Keplerians
-    data (RVData):
+    data (RVdata):
         the RV data
     pm_data (HGPMdata):
         the Hipparcos-Gaia proper motion data
@@ -1293,7 +1293,7 @@ NB_MODULE(RVHGPMmodel, m) {
     bind_RVHGPMConditionalPrior(m);
 
     nb::class_<RVHGPMmodel>(m, "RVHGPMmodel", "")
-        .def(nb::init<bool&, int&, RVData&, HGPMdata&>(), "fix"_a, "npmax"_a, "data"_a, "pm_data"_a, RVHGPMMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&, HGPMdata&>(), "fix"_a, "npmax"_a, "data"_a, "pm_data"_a, RVHGPMMODEL_DOC)
         //
         .def_rw("directory", &RVHGPMmodel::directory,
                 "directory where the model ran")

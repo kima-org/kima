@@ -7,7 +7,7 @@ using namespace Eigen;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-void RVFWHMRHKmodel::initialize_from_data(RVData& data)
+void RVFWHMRHKmodel::initialize_from_data(RVdata& data)
 {
     if (data.actind.size() < 4) // need at least two activity indicator (the FWHM and R'HK)
     {
@@ -1506,7 +1506,7 @@ auto RVFWHMRHKMODEL_DOC = R"D(
             whether the number of Keplerians should be fixed
         npmax (int):
             maximum number of Keplerians
-        data (RVData):
+        data (RVdata):
             the RV data
     )D";
 
@@ -1530,7 +1530,7 @@ class RVFWHMRHKmodel_publicist : public RVFWHMRHKmodel
 
 NB_MODULE(RVFWHMRHKmodel, m) {
     nb::class_<RVFWHMRHKmodel>(m, "RVFWHMRHKmodel")
-        .def(nb::init<bool&, int&, RVData&>(), "fix"_a, "npmax"_a, "data"_a, RVFWHMRHKMODEL_DOC)
+        .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, RVFWHMRHKMODEL_DOC)
         //
         .def_rw("directory", &RVFWHMRHKmodel::directory,
                 "directory where the model ran")

@@ -21,12 +21,12 @@ using namespace nb::literals;
 class DefaultPriors
 {
     protected:
-        const RVData &data;
+        const RVdata &data;
         std::unordered_map<std::string, distribution> default_mapping;
     
     public:
         DefaultPriors() = delete;
-        DefaultPriors(const RVData &data, bool gp = false);
+        DefaultPriors(const RVdata &data, bool gp = false);
         distribution get(std::string name);
         void print();
     

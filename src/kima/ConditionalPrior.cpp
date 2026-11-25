@@ -51,7 +51,7 @@ KeplerianConditionalPrior::KeplerianConditionalPrior():hyperpriors(false)
     //     wprior = make_shared<Uniform>(0, 2*M_PI);
 }
 
-void KeplerianConditionalPrior::set_default_priors(const RVData &data)
+void KeplerianConditionalPrior::set_default_priors(const RVdata &data)
 {
     auto defaults = DefaultPriors(data);
     if (!Pprior) Pprior = defaults.get("Pprior");
@@ -411,7 +411,7 @@ RVGAIAConditionalPrior::RVGAIAConditionalPrior()
     
 }
 
-void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIA_data, RVData &RV_data)
+void RVGAIAConditionalPrior::set_default_priors(const GAIAdata &GAIA_data, RVdata &RV_data)
 {
     double tmin1, tmin2, tmax1, tmax2;
     tmin1 = RV_data.get_t_min();
@@ -558,7 +558,7 @@ ApodizedKeplerianConditionalPrior::ApodizedKeplerianConditionalPrior():hyperprio
 {
 }
 
-void ApodizedKeplerianConditionalPrior::set_default_priors(const RVData &data)
+void ApodizedKeplerianConditionalPrior::set_default_priors(const RVdata &data)
 {
     auto defaults = DefaultPriors(data);
     if (!Pprior) Pprior = defaults.get("Pprior");
@@ -693,7 +693,7 @@ void ApodizedKeplerianConditionalPrior::print(std::ostream& out) const
 RVHGPMConditionalPrior::RVHGPMConditionalPrior()
 {}
 
-void RVHGPMConditionalPrior::set_default_priors(const RVData &rv_data)
+void RVHGPMConditionalPrior::set_default_priors(const RVdata &rv_data)
 {
     auto defaults = DefaultPriors(rv_data);
     if (!Pprior) Pprior = defaults.get("Pprior");
