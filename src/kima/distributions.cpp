@@ -665,4 +665,17 @@ NB_MODULE(distributions, m)
         .def("__setstate__",
              [](DNest4::Sine &d, const _state_type &state) { new (&d) DNest4::Sine(); });
 
+    // SpikeAndSlab
+    nb::class_<DNest4::SpikeAndSlab, DNest4::ContinuousDistribution>(m, "SpikeAndSlab", "docs")
+        .def(nb::init<double, std::shared_ptr<DNest4::ContinuousDistribution>>(), "A SpikeAndSlab distribution")
+        .def("__repr__", [](const DNest4::SpikeAndSlab &d){ std::ostringstream out; d.print(out); return out.str(); })
+        .def("cdf", &DNest4::SpikeAndSlab::cdf, "x"_a, CDF_DOC)
+        .def("ppf", &DNest4::SpikeAndSlab::cdf_inverse, "q"_a, PPF_DOC)
+        .def("logpdf", &DNest4::SpikeAndSlab::log_pdf, "x"_a, LOG_PDF_DOC);
+        // // for pickling
+        // .def("__getstate__",
+        //      [](const DNest4::SpikeAndSlab &d) { return std::make_tuple(0.0, 0.0, 0.0, 0.0); })
+        // .def("__setstate__",
+        //      [](DNest4::SpikeAndSlab &d, const _state_type &state) { new (&d) DNest4::SpikeAndSlab(); });
+
 }

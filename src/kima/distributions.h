@@ -4,6 +4,7 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/stl/shared_ptr.h>
 namespace nb = nanobind;
 using namespace nb::literals;
 
@@ -17,6 +18,7 @@ using namespace nb::literals;
 #include "distributions/BivariateGaussian.h"
 #include "distributions/PowerLaw.h"
 #include "distributions/Sine.h"
+#include "distributions/SpikeAndSlab.h"
 
 // the types of objects in the distributions state (for pickling)
 using _state_type = std::tuple<double, double, double, double>;
