@@ -6,7 +6,7 @@ import tempfile
 from matplotlib import pyplot as plt
 
 import kima
-from kima import RVData, RVmodel
+from kima import RVdata, RVmodel
 from kima.pykima.utils import chdir
 
 def cli_run():
@@ -79,7 +79,7 @@ def cli_run():
             print(f'Writing data files and running kima in {tmpdir}')
             files = s.save(directory=tmpdir)
             files = [os.path.join(tmpdir, f) for f in files]
-            data = RVData(files, skip=2)
+            data = RVdata(files, skip=2)
             model = RVmodel(fix=args.fix, npmax=args.npmax, data=data)
             model.directory = tmpdir
             with chdir(model.directory):
