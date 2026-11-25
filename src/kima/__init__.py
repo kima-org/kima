@@ -68,6 +68,13 @@ from .pykima.display_hooks import plot_RVdata, plot_GAIAdata, plot_HGPMdata
 RVdata.plot = plot_RVdata
 GAIAdata.plot = plot_GAIAdata
 
+def __getattr__(name):
+    if name == "RVData":
+        warnings.warn("RVData is deprecated and may be removed in the future, "
+                      "use RVdata instead (lowercase d)", DeprecationWarning, stacklevel=2)
+        return RVdata
+    raise AttributeError(name)
+
 class HGPMdata(HGPMdata_original):
     __doc__ = HGPMdata_original.__doc__
     def __init__(self, *args, **kwargs):

@@ -127,3 +127,8 @@ def test_GaiaData(path_to_test_data):
     assert_allclose(D.psi[0], -1.030560)
 
     assert hasattr(D, 'plot')
+
+
+def test_deprecation():
+    with pytest.deprecated_call():
+        from kima import RVData
