@@ -1103,7 +1103,7 @@ string RVGAIAmodel::description() const
     //auto data = get_data();
     if (scan_dep_signal){
         for (int i=0; i<n_scan_dep_components; i++)
-            desc += "A"+std::to_string(i*2 + 3) + sep;
+            desc += "Amp"+std::to_string(i*2 + 3) + sep;
         for (int i=0; i<n_scan_dep_components; i++)
             desc += "theta"+std::to_string(i*2 + 3) + sep;
     }
