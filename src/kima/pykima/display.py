@@ -3637,10 +3637,6 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
 
 
 def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plasma',include_jitter=False):
-    try:
-        from pystrometry.pystrometry import get_parallax_factors
-    except ImportError:
-        raise ImportError('pystrometry is required for astrometry phase plots')
 
     from ..kepler import brandt_solver
 
@@ -3851,6 +3847,10 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
         plot_parallax_line = False
         print('RA and DEC values set to 0.0 in kima, parallax motion panel will not show a model')
     else:
+        try:
+            from pystrometry.pystrometry import get_parallax_factors
+        except ImportError:
+            raise ImportError('pystrometry is required for astrometry phase plots')
         parfra, parfdec = get_parallax_factors(res.RA, res.DEC, time_array2)
         parfra_vals, parfdec_vals = get_parallax_factors(res.RA, res.DEC, t2)
         plot_parallax_line = True
