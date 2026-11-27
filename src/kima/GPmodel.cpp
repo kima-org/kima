@@ -1329,7 +1329,7 @@ NB_MODULE(GPmodel, m) {
         .def_prop_rw("individual_offset_prior",
             [](GPmodel &m) { return m.individual_offset_prior; },
             [](GPmodel &m, std::vector<distribution>& vd) { m.individual_offset_prior = vd; },
-            "Common prior for the between-instrument offsets")
+            "Individual priors for the between-instrument offsets")
 
         .def_prop_rw("beta_prior",
             [](GPmodel &m) { return m.beta_prior; },
