@@ -440,6 +440,7 @@ void GPmodel::calculate_C()
     else
     {
         C.diagonal().array() += sig_copy.array().square() + jitter * jitter;
+    }
 }
 
 void GPmodel::remove_known_object()
