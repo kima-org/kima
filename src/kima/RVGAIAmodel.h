@@ -272,7 +272,7 @@ class KIMA_API RVGAIAmodel
         double log_likelihood() const;
         
         /// @brief Get the log-likelihood for a set of parameters
-        double RVGAIAmodel::get_log_likelihood(std::vector<double>);
+        double get_log_likelihood(std::vector<double>);
 
         // Print parameters to stream
         void print(std::ostream& out) const;
