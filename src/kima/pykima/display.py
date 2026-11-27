@@ -3587,6 +3587,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
     if res.TR:
         nTRs = res.nTR
         tr = {letters[i]: {} for i in range(nTRs)}
+        nplanets += res.nTR
         for i, k in enumerate(tr.keys()):
             tr[k]['P'] = P = sample[res.indices['TRpars']][i]
             tr[k]['a'] = a = sample[res.indices['TRpars']][i + res.nTR]
