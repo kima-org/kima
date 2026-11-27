@@ -376,7 +376,7 @@ void GAIAmodel::calculate_mu_bkg()
     if (scan_dep_signal) {
         for (int j=0; j<n_scan_dep_components; j++){
             for(size_t i=0; i<mu.size(); i++){
-                mu[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
+                mu_bkg[i] += Ak[j] * cos((j*2 + 3)*(data.psi[i] - thetak[j]));
             }
         }
     }
@@ -1052,11 +1052,11 @@ NB_MODULE(GAIAmodel, m) {
         .def_prop_rw("Ak_prior",
             [](GAIAmodel &m) { return m.Ak_prior; },
             [](GAIAmodel &m, std::vector<distribution>& vd) { m.Ak_prior = vd; },
-            "Prior for the amplitudes of scan-angle dependent signals")
+            "Priors for the amplitudes of scan-angle dependent signals")
         .def_prop_rw("thetak_prior",
             [](GAIAmodel &m) { return m.thetak_prior; },
             [](GAIAmodel &m, std::vector<distribution>& vd) { m.thetak_prior = vd; },
-            "Prior for the phase of scan-angle dependent signals")
+            "Priors for the phase of scan-angle dependent signals")
         .def_prop_rw("da_prior",
             [](GAIAmodel &m) { return m.da_prior; },
             [](GAIAmodel &m, distribution &d) { m.da_prior = d; },
