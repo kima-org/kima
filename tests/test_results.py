@@ -32,7 +32,6 @@ def test_attributes(cleanup_after_running, simulated1):
     res.posteriors
     res.parameter_priors
 
-
 def test_methods(cleanup_after_running, simulated1):
     m = kima.RVmodel(True, 0, simulated1)
     m.trend = True
@@ -40,19 +39,52 @@ def test_methods(cleanup_after_running, simulated1):
     kima.run(m, steps=100)
 
     res = kima.load_results(m)
+    res.to_parquet
+    res.save_pickle
 
-    logL = res.log_likelihood(res.posterior_sample[0])
+
+def test_methods_RVmodel(cleanup_after_running, simulated1):
+    m = kima.RVmodel(True, 0, simulated1)
+    m.trend = True
+    m.degree = 2
+    kima.run(m, steps=100)
+
+    res = kima.load_results(m)
+    sample = res.posterior_sample[0]
+    logL = res.log_likelihood(sample)
     np.testing.assert_allclose(logL, res.posterior_lnlike[0][1])
-    res.log_prior(res.posterior_sample[0])
-    res.log_posterior(res.posterior_sample[0])
+    res.log_prior(sample)
+    res.log_posterior(sample)
     res.maximum_likelihood_sample()
     res.map_sample()
     res.median_sample()
-    res.eval_model(res.posterior_sample[0])
-    res.planet_model(res.posterior_sample[0])
-    res.full_model(res.posterior_sample[0])
-    res.stochastic_model(res.posterior_sample[0])
-    res.burst_model(res.posterior_sample[0])
+    res.eval_model(sample)
+    res.planet_model(sample)
+    res.full_model(sample)
+    res.stochastic_model(sample)
+    res.burst_model(sample)
+
+def test_methods_GPmodel(cleanup_after_running, simulated1):
+    m = kima.GPmodel(True, 0, simulated1)
+    m.trend = True
+    m.degree = 2
+    kima.run(m, steps=100)
+
+    res = kima.load_results(m)
+    print({k:v for k,v in zip(res._parameters, res.parameter_priors)})
+    sample = res.posterior_sample[0]
+    res.log_prior(sample)
+    res.log_likelihood(sample)
+    res.log_posterior(sample)
+    res.maximum_likelihood_sample()
+    res.map_sample()
+    res.median_sample()
+    res.eval_model(sample)
+    res.planet_model(sample)
+    res.full_model(sample)
+    res.stochastic_model(sample)
+    res.burst_model(sample)
+
 
 
 def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
@@ -62,18 +94,19 @@ def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
 
     res = kima.load_results(m)
 
-    logL = res.log_likelihood(res.posterior_sample[0])
+    sample = res.posterior_sample[0]
+    logL = res.log_likelihood(sample)
     np.testing.assert_allclose(logL, res.posterior_lnlike[0][1])
-    res.log_prior(res.posterior_sample[0])
-    res.log_posterior(res.posterior_sample[0])
+    res.log_prior(sample)
+    res.log_posterior(sample)
     res.maximum_likelihood_sample()
     # res.map_sample()
     res.median_sample()
-    res.eval_model(res.posterior_sample[0])
-    res.planet_model(res.posterior_sample[0])
-    res.full_model(res.posterior_sample[0])
-    res.stochastic_model(res.posterior_sample[0])
-    res.burst_model(res.posterior_sample[0])
+    res.eval_model(sample)
+    res.planet_model(sample)
+    res.full_model(sample)
+    res.stochastic_model(sample)
+    res.burst_model(sample)
 
 
 def test_methods_RVGAIAmodel(path_to_test_data, cleanup_after_running):
