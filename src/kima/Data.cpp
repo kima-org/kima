@@ -1052,7 +1052,7 @@ void PHOTdata::load(const string filename, int skip, const string delimiter)
     }
 
     if (filename.size() == 1) {
-        std::string msg = "kima: RVData: filename with one character is probably an error";
+        std::string msg = "kima: PHOTdata: filename with one character is probably an error";
         throw std::runtime_error(msg);
     }
 
