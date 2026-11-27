@@ -20,6 +20,10 @@ class Gaussian:public ContinuousDistribution
 
         Gaussian(double center=0.0, double width=1.0);
 
+        std::tuple<double, double, double, double> getpars() const override {
+            return std::make_tuple(center, width, 0.0, 0.0);
+        };
+
         double cdf(double x) const override;
         double cdf_inverse(double p) const override;
         double log_pdf(double x) const override;

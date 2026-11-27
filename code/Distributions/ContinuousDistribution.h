@@ -2,6 +2,7 @@
 #define DNest4_Distribution
 
 #include <iostream>
+#include <tuple>
 #include "../RNG.h"
 
 namespace DNest4
@@ -20,6 +21,9 @@ class ContinuousDistribution
 
         virtual void setpars(double) {};
         virtual void setpars(double, double) {};
+        virtual std::tuple<double, double, double, double> getpars() const {
+            return std::make_tuple(0.0, 0.0, 0.0, 0.0);
+        };
 
         virtual double cdf(double x) const = 0;
         virtual double cdf_inverse(double x) const = 0;
