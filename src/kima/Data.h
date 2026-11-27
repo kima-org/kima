@@ -386,8 +386,8 @@ class KIMA_API GAIAdata {
     int _skip;
 
     GAIAdata();
-    GAIAdata(const string& filename, const string& units="mas", int skip=0, int max_rows=0, 
-            const string& delimiter=" \t,")
+    GAIAdata(const string& filename, const string& units="mas", int skip=0, 
+             int max_rows=0, const string& delimiter=" \t,")
     {
       load(filename, units, skip, max_rows, delimiter);
     }

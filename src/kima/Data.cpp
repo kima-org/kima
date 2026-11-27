@@ -1144,8 +1144,8 @@ GAIAdata::GAIAdata() {};
       * ```
       *
       * @param filename   the name of the file
-      * @param units      units of the positions and errors, either "mas" or "muas"(?)
-      * @param skip       number of lines to skip in the beginning of the file (default = 2)
+      * @param units      units of the positions and errors, must be "mas"
+      * @param skip       number of lines to skip in the beginning of the file (default = 0)
       */
 
     void GAIAdata::load(const string filename, const string units, int skip, int max_rows,
@@ -1552,7 +1552,7 @@ Args:
     filename (str):
         Name of the file to read
     units (str):
-        Units of the data ('ms' or 'kms')
+        Units of the data (must be 'mas')
     skip (int):
         Number of lines to skip at the top of the file
     max_rows (int):
@@ -1672,8 +1672,8 @@ NB_MODULE(Data, m) {
     nb::class_<GAIAdata>(m, "GAIAdata", "Load and store Gaia astrometric data")
         // constructor
         .def(nb::init<const string&, const string&, int, int, const string&>(),
-              "filename"_a, "units"_a="ms", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
-              GAIAdata_DOC)
+             "filename"_a, "units"_a="mas", "skip"_a=0, "max_rows"_a=0, "delimiter"_a=" \t,",
+             GAIAdata_DOC)
         // properties
         .def_ro("datafile", &GAIAdata::_datafile, "The file name")
         //
@@ -1686,6 +1686,8 @@ NB_MODULE(Data, m) {
         //
         .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly")
         //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
+        .def_ro("units", &GAIAdata::_units, "Units of the Gaia data and uncertainties")
+
         // to un/pickle GAIAdata
         .def("__getstate__", [](const GAIAdata &d) { return d.get_state(); })
         .def("__setstate__", [](GAIAdata &d, const GAIAdata::State &s) {
