@@ -963,16 +963,12 @@ class GAIAmodel_publicist : public GAIAmodel
     public:
         using GAIAmodel::studentt;
         using GAIAmodel::index_from;
-        using GAIAmodel::fix;
-        using GAIAmodel::npmax;
-        using GAIAmodel::data;
         using GAIAmodel::star_mass;
         using GAIAmodel::RA;
         using GAIAmodel::DEC;
 //         using GAIAmodel::enforce_stability;
 //         using GAIAmodel::known_object;
 //         using GAIAmodel::n_known_object;
-        using GAIAmodel::thiele_innes;
 };
 
 
@@ -986,12 +982,9 @@ NB_MODULE(GAIAmodel, m) {
         .def(nb::init<bool&, int&, GAIAdata&, bool&>(), 
              "fix"_a, "npmax"_a, "data"_a, "thiele_innes"_a, GAIAMODEL_DOC2)
         //
-        .def_rw("fix", &GAIAmodel_publicist::fix,
-                "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &GAIAmodel_publicist::npmax,
-                "maximum number of Keplerians")
-        .def_ro("data", &GAIAmodel_publicist::data,
-                "the astrometric data")
+        .def_rw("fix", &GAIAmodel::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &GAIAmodel::npmax, "maximum number of Keplerians")
+        .def_ro("data", &GAIAmodel::data, "the Gaia epoch astrometry dataset")
 
         .def_rw("studentt", &GAIAmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
@@ -999,7 +992,7 @@ NB_MODULE(GAIAmodel, m) {
         .def_rw("index_from", &GAIAmodel_publicist::index_from,
                 "what indexing convention to use for the labelling of keplerians, defaults to 1.")
         //
-        .def_rw("thiele_innes", &GAIAmodel_publicist::thiele_innes, 
+        .def_rw("thiele_innes", &GAIAmodel::thiele_innes, 
                 "use the thiele-innes coefficients rather than geometric")
         .def_rw("star_mass", &GAIAmodel_publicist::star_mass,
                 "the mass of the central star (Msun)")
@@ -1038,6 +1031,22 @@ NB_MODULE(GAIAmodel, m) {
                      "whether the model includes transiting planet(s)")
         .def_prop_ro("n_transiting_planet", [](GAIAmodel &m) { return m.get_n_transiting_planet(); },
                      "how many transiting planets")
+
+        // to un/pickle GAIAmodel
+        .def("__getstate__", [](const GAIAmodel &m) 
+             {
+                return std::make_tuple(m.fix, m.npmax, m.data, m.thiele_innes); 
+             })
+        .def("__setstate__", 
+             [](GAIAmodel &m, const std::tuple<bool, int, GAIAdata&, bool> &state)
+             {
+                new (&m) GAIAmodel(
+                    std::get<0>(state), // fix
+                    std::get<1>(state), // npmax
+                    std::get<2>(state), // data
+                    std::get<3>(state)  // thiele_innes
+                );
+             })
 
 
         // priors

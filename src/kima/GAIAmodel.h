@@ -22,20 +22,23 @@ using namespace nb::literals;
 
 class KIMA_API GAIAmodel
 {
+    public:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+        /// The Gaia dataset
+        GAIAdata data;
+
+        /// Whether to use thiele_innes parametrisation
+        bool thiele_innes {false};
+
     protected:
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
 
         /// whether to print parameters indexing at 0 or 1
         int index_from {1};
-        
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
-        
-        ///Whether to use thiele_innes parametrisation
-        bool thiele_innes {false};
         
         /// stellar mass (in units of Msun)
         double star_mass = 1.0;
@@ -44,9 +47,7 @@ class KIMA_API GAIAmodel
         double RA = 0.0;
         double DEC = 0.0;
         
-        GAIAdata data;
     private:
-        
 
         DNest4::RJObject<GAIAConditionalPrior> planets =
             DNest4::RJObject<GAIAConditionalPrior>(7, npmax, fix, GAIAConditionalPrior());
@@ -106,10 +107,10 @@ class KIMA_API GAIAmodel
 
     public:
         GAIAmodel() {};
-        GAIAmodel(bool fix, int npmax, GAIAdata& data) : data(data), fix(fix), npmax(npmax) {
+        GAIAmodel(bool fix, int npmax, GAIAdata& data) : fix(fix), npmax(npmax), data(data), thiele_innes(false) {
             initialize_from_data(data);
         };
-        GAIAmodel(bool fix, int npmax, GAIAdata& data, bool thiele_innes) : data(data), fix(fix), npmax(npmax), thiele_innes(thiele_innes) {
+        GAIAmodel(bool fix, int npmax, GAIAdata& data, bool thiele_innes) : fix(fix), npmax(npmax), data(data), thiele_innes(thiele_innes) {
             initialize_from_data(data);
             if (thiele_innes) {
                 auto conditional = planets.get_conditional_prior();
