@@ -3587,6 +3587,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
     if res.TR:
         nTRs = res.nTR
         tr = {letters[i]: {} for i in range(nTRs)}
+        nplanets += res.nTR
         for i, k in enumerate(tr.keys()):
             tr[k]['P'] = P = sample[res.indices['TRpars']][i]
             tr[k]['a'] = a = sample[res.indices['TRpars']][i + res.nTR]
@@ -3598,7 +3599,7 @@ def astrometry_phase_plot_logic(res, sample, sort_by_decreasing_a=False, sort_by
             f = np.pi/2 - w
             E = 2.0 * np.arctan2(np.sqrt(1.0 - e) * np.sin(f/2.0), np.sqrt(1.0 + e) * np.cos(f/2.0))
             tr[k]['φ'] = φ = E - e * np.sin(E)
-            # tr[k]['Tp'] = M0_epoch - (P * φ) / (2*np.pi)
+            tr[k]['Tp'] = res.M0_epoch - (P * φ) / (2*np.pi)
             tr[k]['type'] = 'TR'
             tr[k]['index'] = -pj - 1
             pj += 1
@@ -3640,6 +3641,7 @@ def astrometry_phase_plot(res, sample, dates='jd', date_sub=None, colormap='plas
 
     from ..kepler import brandt_solver
 
+    #It would make sense to stop using Tper, since it is being used to calculate M and Tper is being calculated from phi, but M and phi are the same so we can skip the middle-man
     def ellip_rectang(t, P, e, Tper):
         M = twopi * (t - Tper) / P
         E = brandt_solver(M, e)
