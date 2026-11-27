@@ -8,6 +8,12 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::initialize_from_data(RVdata& data)
 {
+    #if DEBUG
+    std::cout << std::endl << "initialize_from_data started" << std::endl;
+    std::cout << "data.number_instruments:" << data.number_instruments << std::endl;
+    std::cout << "data.number_indicators:" << data.number_indicators << std::endl;
+    #endif
+
     offsets.resize(data.number_instruments - 1);
     jitters.resize(data.number_instruments);
     betas.resize(data.number_indicators);
@@ -15,10 +21,15 @@ void RVmodel::initialize_from_data(RVdata& data)
 
     // resize RV model vector
     mu.resize(data.N());
+    mu_bkg.resize(data.N());
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
     conditional->set_default_priors(data);
+    
+    #if DEBUG
+    std::cout << std::endl << "initialize_from_data done" << std::endl;
+    #endif
 }
 
 
@@ -95,6 +106,14 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     if (!Cprior) 
         Cprior = defaults.get("Cprior");
 
+    if (marginalise_C) {
+        if (typeid(*Cprior) != typeid(Gaussian)) {
+            std::string msg = "Cprior must be Gaussian when marginalising C";
+            // msg = msg + typeid(*Cprior).name();
+            throw std::runtime_error(msg);
+        }
+    }
+
     if (!Jprior)
         Jprior = defaults.get("Jprior");
 
@@ -167,7 +186,11 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     if (studentt && !nu_prior)
-            nu_prior = defaults.get("nu_prior");
+        nu_prior = defaults.get("nu_prior");
+    
+    if (studentt && marginalise_C) {
+        std::cerr << "Warning: marginalise_C for student-t likelihood is an approximation!" << std::endl;
+    }
 
     #if DEBUG
     std::cout << std::endl << "setPriors done" << std::endl;
@@ -185,7 +208,10 @@ void RVmodel::from_prior(RNG& rng)
     planets.from_prior(rng);
     planets.consolidate_diff();
 
-    background = Cprior->generate(rng);
+    if (marginalise_C)
+        background = 0.0;
+    else
+        background = Cprior->generate(rng);
 
     if(data._multi)
     {
@@ -255,6 +281,7 @@ void RVmodel::from_prior(RNG& rng)
         nu = nu_prior->generate(rng);
 
     calculate_mu();
+    calculate_mu_bkg();
 
     #if DEBUG
     std::cout << std::endl << "from_prior done" << std::endl;
@@ -283,39 +310,39 @@ void RVmodel::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), background);
         staleness = 0;
-        if(trend)
-        {
-            double tmid = data.trend_epoch;
-            for(size_t i=0; i<N; i++)
-            {
-                mu[i] += slope * (data.t[i] - tmid) +
-                         quadr * pow(data.t[i] - tmid, 2) +
-                         cubic * pow(data.t[i] - tmid, 3);
-            }
-        }
+        mu.assign(mu.size(), 0.0);
+        // if(trend)
+        // {
+        //     double tmid = data.trend_epoch;
+        //     for(size_t i=0; i<N; i++)
+        //     {
+        //         mu[i] += slope * (data.t[i] - tmid) +
+        //                  quadr * pow(data.t[i] - tmid, 2) +
+        //                  cubic * pow(data.t[i] - tmid, 3);
+        //     }
+        // }
 
-        if(data._multi)
-        {
-            for(size_t j=0; j<offsets.size(); j++)
-            {
-                for(size_t i=0; i<N; i++)
-                {
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-        }
+        // if(data._multi)
+        // {
+        //     for(size_t j=0; j<offsets.size(); j++)
+        //     {
+        //         for(size_t i=0; i<N; i++)
+        //         {
+        //             if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
+        //         }
+        //     }
+        // }
 
-        if(indicator_correlations)
-        {
-            for (size_t j = 0; j < data.number_indicators; j++)
-            {
-                double mean = data.get_actind_mean(j);
-                for (size_t i = 0; i < N; i++)
-                    mu[i] += betas[j] * (data.actind[j][i] - mean);
-            }
-        }
+        // if(indicator_correlations)
+        // {
+        //     for (size_t j = 0; j < data.number_indicators; j++)
+        //     {
+        //         double mean = data.get_actind_mean(j);
+        //         for (size_t i = 0; i < N; i++)
+        //             mu[i] += betas[j] * (data.actind[j][i] - mean);
+        //     }
+        // }
 
         if (known_object) { // KO mode!
             add_known_object();
@@ -367,6 +394,9 @@ void RVmodel::calculate_mu()
             mu[i] += v[i];
     }
 
+    #if DEBUG
+    std::cout << std::endl << "calculate_mu done" << std::endl;
+    #endif
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -602,31 +632,10 @@ double RVmodel::perturb(RNG& rng)
     }
     else
     {
-        for (size_t i = 0; i < mu.size(); i++)
-        {
-            mu[i] -= background;
-            if(trend) {
-                mu[i] -= slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
-            }
-            if(data._multi) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                }
-            }
-
-            if(indicator_correlations) {
-                for (size_t j = 0; j < data.number_indicators; j++)
-                {
-                    double mean = data.get_actind_mean(j);
-                    mu[i] -= betas[j] * (actind[j][i] - mean);
-                }
-            }
+        if (!marginalise_C) {
+            // propose new vsys
+            logH += Cprior->perturb(background, rng);
         }
-
-        // propose new vsys
-        logH += Cprior->perturb(background, rng);
 
         // propose new instrument offsets
         if (data._multi)
@@ -652,37 +661,15 @@ double RVmodel::perturb(RNG& rng)
             }
         }
 
-        for (size_t i = 0; i < mu.size(); i++)
-        {
-            mu[i] += background;
-            if(trend) {
-                mu[i] += slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
-            }
-            if(data._multi) {
-                for(size_t j=0; j<offsets.size(); j++){
-                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                }
-            }
-
-            if (indicator_correlations)
-            {
-                for (size_t j = 0; j < data.number_indicators; j++)
-                {
-                    double mean = data.get_actind_mean(j);
-                    mu[i] += betas[j] * (actind[j][i] - mean);
-                }
-            }
-        }
+        calculate_mu_bkg();
     }
 
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Perturb took ";
-    cout << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
-    cout << " μs" << std::endl;
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() * 1e-6;
+    cout << " ms" << std::endl;
     #endif
 
     #if DEBUG
@@ -692,6 +679,44 @@ double RVmodel::perturb(RNG& rng)
     return logH;
 }
 
+void RVmodel::calculate_mu_bkg()
+{
+    size_t N = data.N();
+    auto actind = data.get_actind();
+    double tmid = data.trend_epoch;
+
+    if (marginalise_C) {
+        mu_bkg.assign(mu_bkg.size(), 0.0);
+    }
+    else {
+        mu_bkg.assign(mu_bkg.size(), background);
+    }
+
+    for (size_t i = 0; i < N; i++)
+    {
+        if(trend) {
+            mu_bkg[i] += slope * (data.t[i] - tmid) + 
+                         quadr * pow(data.t[i] - tmid, 2) +
+                         cubic * pow(data.t[i] - tmid, 3);
+        }
+        if(data._multi) {
+            for(size_t j=0; j<offsets.size(); j++){
+                if (data.obsi[i] == j+1) { mu_bkg[i] += offsets[j]; }
+            }
+        }
+
+        if (indicator_correlations)
+        {
+            for (size_t j = 0; j < data.number_indicators; j++)
+            {
+                double mean = data.get_actind_mean(j);
+                mu_bkg[i] += betas[j] * (actind[j][i] - mean);
+            }
+        }
+    }
+
+}
+
 /**
  * Calculate the log-likelihood for the current values of the parameters.
  * 
@@ -699,7 +724,7 @@ double RVmodel::perturb(RNG& rng)
 */
 double RVmodel::log_likelihood() const
 {
-    size_t N = data.N();
+    const size_t N = data.N();
     const auto& y = data.get_y();
     const auto& sig = data.get_sig();
     const auto& obsi = data.get_obsi();
@@ -721,48 +746,59 @@ double RVmodel::log_likelihood() const
     if (studentt){
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
-        double var, jit;
-        // constant which only depends on nu
-        double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
-        for(size_t i=0; i<N; i++)
-        {
-            if(data._multi) 
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
-            }
-            else
-            {
-                var = sig[i]*sig[i] + jitter*jitter;
-            }
-
-            if (jitter_propto_indicator)
-                var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
-
-            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+        if (marginalise_C) {
+            logL = marginalised_log_likelihood_StudentT();
         }
-
+        else {
+            double var, jit;
+            // constant which only depends on nu
+            double c_nu = std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu) - 0.5*log(M_PI*nu);
+            for(size_t i=0; i<N; i++)
+            {
+                if(data._multi) 
+                {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
+                }
+                else
+                {
+                    var = sig[i]*sig[i] + jitter*jitter;
+                }
+                
+                if (jitter_propto_indicator)
+                var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
+                
+                double resid_squared = pow(y[i] - mu[i] - mu_bkg[i], 2);
+                logL += c_nu - 0.5*log(var) - 0.5*(nu + 1) * log(1 + resid_squared / var / nu);
+            }
+        }
     }
 
-    else{
+    else {
         // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
-        double var, jit;
-        for(size_t i=0; i<N; i++)
-        {
-            if(data._multi)
+        if (marginalise_C) {
+            logL = marginalised_log_likelihood_Gaussian();
+        }
+        else {
+            double var, jit;
+            for (size_t i = 0; i < N; i++)
             {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
-            }
-            else {
-                var = sig[i]*sig[i] + jitter*jitter;
-            }
-
-            if (jitter_propto_indicator)
+                if(data._multi)
+                {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
+                }
+                else {
+                    var = sig[i]*sig[i] + jitter*jitter;
+                }
+                
+                if (jitter_propto_indicator)
                 var += pow(jitter_propto_indicator_slope * normalized_actind[jitter_propto_indicator_index][i], 2);
-
-            logL += - halflog2pi - 0.5*log(var) - 0.5*(pow(y[i] - mu[i], 2)/var);
+                
+                double resid_squared = pow(y[i] - mu[i] - mu_bkg[i], 2);
+                logL += - halflog2pi - 0.5*log(var) - 0.5*(resid_squared / var);
+            }
         }
     }
 
@@ -773,17 +809,173 @@ double RVmodel::log_likelihood() const
 
     if(std::isnan(logL) || std::isinf(logL))
     {
-        logL = std::numeric_limits<double>::infinity();
+        logL = - std::numeric_limits<double>::infinity();
     }
 
     #if DEBUG
-    std::cout << std::endl << "log_likelihood finished" << std::endl;
+    std::cout << std::endl << "log_likelihood finished";
+    std::cout << "--> logL: " << logL << std::endl;
     #endif
 
-    // cout << "--> logL: " << logL << endl;
     return logL;
 }
 
+double RVmodel::marginalised_log_likelihood_StudentT() const
+{
+    const size_t N = data.N();
+    const auto& y = data.get_y();
+    const auto& sig = data.get_sig();
+    const auto& obsi = data.get_obsi();
+
+    const auto [Cprior_mean, Cprior_sigma, _1, _2] = Cprior->getpars();
+
+    const double inv_Cprior_var = 1.0 / (Cprior_sigma * Cprior_sigma);
+    const double nu_plus_1 = nu + 1.0;
+    const double c_nu = std::lgamma(0.5 * nu_plus_1) 
+                      - std::lgamma(0.5 * nu) 
+                      - 0.5 * std::log(M_PI * nu);
+
+    std::vector<double> d(N);       // Unshifted residuals (y - mu - mu_bkg)
+    std::vector<double> var(N);     // Variance per data point
+    std::vector<double> nu_var(N);  // nu * var per data point
+
+    double weighted_sum_d = 0.0;
+    double sum_weights = 0.0;
+
+    if (data._multi) {
+        double stellar_jitter_sq = stellar_jitter * stellar_jitter;
+        for (size_t i = 0; i < N; ++i) {
+            double jit = jitters[obsi[i] - 1];
+            var[i] = sig[i] * sig[i] + jit * jit + stellar_jitter_sq;
+            nu_var[i] = nu * var[i];
+            d[i] = y[i] - mu[i] - mu_bkg[i];
+
+            double w = 1.0 / var[i];
+            weighted_sum_d += d[i] * w;
+            sum_weights += w;
+        }
+    } else {
+        double const_jitter_sq = jitter * jitter;
+        for (size_t i = 0; i < N; ++i) {
+            var[i] = sig[i] * sig[i] + const_jitter_sq;
+            nu_var[i] = nu * var[i];
+            d[i] = y[i] - mu[i] - mu_bkg[i];
+
+            double w = 1.0 / var[i];
+            weighted_sum_d += d[i] * w;
+            sum_weights += w;
+        }
+    }
+
+    // initial Guess for C
+    double gamma = (weighted_sum_d + Cprior_mean * inv_Cprior_var) / (sum_weights + inv_Cprior_var);
+
+    // Newton-Raphson solver to find C_hat
+    const size_t MAX_ITER = 10;
+    const double TOL = 1e-7;
+
+    double g_prime = 0.0;
+    double g_double_prime = 0.0;
+
+    for (size_t iter = 0; iter < MAX_ITER; ++iter) {
+        // prior derivatives
+        g_prime = -(gamma - Cprior_mean) * inv_Cprior_var;
+        g_double_prime = -inv_Cprior_var;
+
+        // likelihood derivatives
+        for (size_t i = 0; i < N; ++i) {
+            double r = d[i] - gamma;
+            double r2 = r * r;
+            double D = nu_var[i] + r2;
+            g_prime += nu_plus_1 * r / D;
+            g_double_prime += nu_plus_1 * (r2 - nu_var[i]) / (D * D);
+        }
+
+        // Newton step: C_new = C - g' / g''
+        double step = g_prime / g_double_prime;
+        gamma -= step;
+
+        if (std::abs(step) < TOL) {
+            break;
+        }
+    }
+
+    // log prior at C_hat
+    double g_hat = -0.5 * std::log(2.0 * M_PI) 
+                   - std::log(Cprior_sigma) 
+                   - 0.5 * (gamma - Cprior_mean) * (gamma - Cprior_mean) * inv_Cprior_var;
+
+    // log Likelihood at C_hat
+    for (size_t i = 0; i < N; ++i) {
+        double r = d[i] - gamma;
+        double r2 = r * r;
+        g_hat += c_nu - 0.5 * std::log(var[i]) - 0.5 * nu_plus_1 * std::log(1.0 + r2 / nu_var[i]);
+    }
+
+    // Laplace approximation
+    double H = -g_double_prime; // curvature at peak
+    double logL_marg = g_hat + 0.5 * std::log(2.0 * M_PI) - 0.5 * std::log(H);
+
+    return logL_marg;
+}
+
+double RVmodel::marginalised_log_likelihood_Gaussian() const
+{
+    const size_t N = data.N();
+    const auto& y = data.get_y();
+    const auto& sig = data.get_sig();
+    const auto& obsi = data.get_obsi();
+
+    auto [Cprior_mean, Cprior_sigma, _1, _2] = Cprior->getpars();
+
+    double chi0 = 0.0;
+    double logdetC = 0.0;
+    double S0 = 0.0;
+    double S1 = 0.0;
+    double var, jit;
+
+    for (size_t i = 0; i < N; ++i)
+    {
+        if(data._multi)
+        {
+            jit = jitters[obsi[i] - 1];
+            var = sig[i]*sig[i] + jit*jit + stellar_jitter*stellar_jitter;
+        }
+        else {
+            var = sig[i]*sig[i] + jitter*jitter;
+        }
+
+        double invvar = 1.0 / var;
+
+        double resid = y[i] - mu[i] - mu_bkg[i] - Cprior_mean;
+
+        chi0 += resid * resid * invvar;
+        logdetC += std::log(var);
+
+        S0 += invvar;
+        S1 += resid * invvar;
+    }
+
+    double A = 1.0 / (Cprior_sigma * Cprior_sigma) + S0;
+
+    // q^T A^{-1} q
+    double qAinvq = S1 * S1 / A;
+
+    // log |Lambda| for the 1D prior
+    double logdetLambda = 2.0 * std::log(Cprior_sigma);
+
+    double logL =
+        -0.5 * (
+            static_cast<double>(N) * std::log(2.0 * M_PI)
+            + logdetC
+            + logdetLambda
+            + std::log(A)
+            + chi0
+            - qAinvq
+        );
+
+    return logL;
+}
 
 void RVmodel::print(std::ostream& out) const
 {
@@ -860,6 +1052,10 @@ void RVmodel::print(std::ostream& out) const
         out << nu << '\t';
 
     out << background;
+
+    #if DEBUG
+    std::cout << std::endl << "print finished" << std::endl;
+    #endif
 }
 
 
@@ -1119,6 +1315,7 @@ class RVmodel_publicist : public RVmodel
         using RVmodel::jitter_propto_indicator;
         using RVmodel::jitter_propto_indicator_index;
         using RVmodel::optimize_equal_times;
+        using RVmodel::marginalise_C;
 };
 
 
@@ -1186,6 +1383,9 @@ NB_MODULE(RVmodel, m) {
                 "docs")
 
         .def_rw("optimize_equal_times", &RVmodel_publicist::optimize_equal_times, "docs")
+
+        .def_rw("marginalise_C", &RVmodel_publicist::marginalise_C, 
+                "Analytically marginalise the systemic velocity")
 
         // to un/pickle RVmodel
         .def("__getstate__", [](const RVmodel &m) { return std::make_tuple(m.fix, m.npmax, m.data); })

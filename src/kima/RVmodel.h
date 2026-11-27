@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <typeinfo>
 #include "DNest4.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
@@ -57,6 +58,8 @@ class KIMA_API RVmodel
         /// Whether to optimize Keplerian calculation when several times are repeated
         bool optimize_equal_times = false;
 
+        /// Whether to marginalise over the systemic velocity
+        bool marginalise_C = false;
 
     private:
 
@@ -102,11 +105,10 @@ class KIMA_API RVmodel
         std::vector<double> AK_t0;
 
         // The signal
-        std::vector<double> mu;
-        double planet_perturb_prob = 0.75;
-        double jitKO_perturb_prob = 0.5;
+        std::vector<double> mu, mu_bkg;
 
         void calculate_mu();
+        void calculate_mu_bkg();
         void add_known_object();
         void remove_known_object();
         void add_transiting_planet();
@@ -277,6 +279,14 @@ class KIMA_API RVmodel
 
         /// @brief log-likelihood function
         double log_likelihood() const;
+
+        /// @brief log-likelihood function after marginalising the systemic velocity
+        double marginalised_log_likelihood_Gaussian() const;
+
+        /// @brief log-likelihood function after marginalising the systemic velocity
+        double marginalised_log_likelihood_StudentT() const;
+
+        /// @brief Get the log-likelihood for a set of parameters
 
         // Print parameters to stream
         void print(std::ostream& out) const;
