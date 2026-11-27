@@ -894,8 +894,8 @@ double RVdata::get_max_RV_span() const
                     obsy.push_back(y[i]);
                 }
             }
-            const auto min = min_element(obsy.begin(), obsy.end());
-            const auto max = max_element(obsy.begin(), obsy.end());
+            const auto min = min_element(obsy.begin(), obsy.end(), NaNless_min);
+            const auto max = max_element(obsy.begin(), obsy.end(), NaNless_max);
             double this_obs_span = *max - *min;
             if (this_obs_span > span) span = this_obs_span;
         }
