@@ -61,6 +61,11 @@ class KIMA_API RVmodel
         /// Whether to marginalise over the systemic velocity
         bool marginalise_C = false;
 
+        /// probability of perturbing anything involving the Keplerians
+        double planet_perturb_prob = 0.75;
+        /// among the remaining moves, probability of the jitter/companions move
+        /// (otherwise vsys/offsets/trend/betas)
+        double jitKO_perturb_prob = 0.5;
     private:
 
         DNest4::RJObject<KeplerianConditionalPrior> planets =
