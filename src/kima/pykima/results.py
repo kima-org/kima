@@ -545,6 +545,7 @@ class KimaResults:
                 raise ValueError('Something went wrong reading the posterior samples. Try again')
 
         self.model = MODELS(model.__class__.__name__)
+        self.kmodel = model
 
         self.fix = model.fix
         self.npmax = model.npmax
@@ -2440,8 +2441,12 @@ class KimaResults:
         return np.sum(logp)
 
     def log_likelihood(self, sample, separate_instruments=False):
-        if self.model != MODELS.RVmodel:
-            raise NotImplementedError('only implemented for RVmodel')
+        try:
+            return self.kmodel.get_log_likelihood(sample)
+        except Exception as e: # TODO: deal with actual exception
+            print(e)
+            pass
+
         if self.multi:
             stellar_jitter = sample[self.indices['jitter']][0]
             jitter = sample[self.indices['jitter']][self.data.obs]
