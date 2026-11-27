@@ -750,6 +750,44 @@ void RVdata::load_multi(vector<string> filenames, const string units, int skip, 
     normalize_actind();
 }
 
+
+RVdataState RVdata::get_state() const {
+    return std::make_tuple(t, y, sig, y2, sig2, obsi, actind,
+                           _indicator_names, _instruments, _instrument,
+                           _units, _multi, sb2, number_instruments,
+                           M0_epoch, trend_epoch, medians,
+                           _datafile, _datafiles, _skip);
+}
+
+void RVdata::set_state(const RVdataState& s) {
+    t = std::get<0>(s);   y = std::get<1>(s);   sig = std::get<2>(s);
+    y2 = std::get<3>(s);  sig2 = std::get<4>(s);
+    obsi = std::get<5>(s);
+    actind = std::get<6>(s);
+    _indicator_names = std::get<7>(s);
+    _instruments = std::get<8>(s);
+    _instrument = std::get<9>(s);
+    _units = std::get<10>(s);
+    _multi = std::get<11>(s);
+    sb2 = std::get<12>(s);
+    number_instruments = std::get<13>(s);
+    M0_epoch = std::get<14>(s);
+    trend_epoch = std::get<15>(s);
+    medians = std::get<16>(s);
+    _datafile = std::get<17>(s);
+    _datafiles = std::get<18>(s);
+    _skip = std::get<19>(s);
+
+    number_indicators = static_cast<int>(actind.size());
+    indicator_correlations = number_indicators > 0;
+
+    // derived caches: recompute instead of storing
+    normalized_actind = actind;
+    normalize_actind();
+    _unique_times.clear();
+    _inverse_indices.clear();
+}
+
 inline bool NaNless_min(const double &a, const double &b) {
     if (std::isnan(b)) return true;  // NaN is greater than *any* non-NaN value
     if (std::isnan(a)) return false; // *any* non-NaN value is less than NaN
@@ -1398,9 +1436,6 @@ ETVData::ETVData() {};
 /*****************************************************************************/
 
 
-// the types of objects in the RVdata state (for pickling)
-using _state_type = std::tuple<std::string, std::vector<std::string>, std::string, int, std::vector<std::string>, bool>;
-
 
 
 auto RVdata_DOC1 = R"D(
@@ -1555,21 +1590,11 @@ NB_MODULE(Data, m) {
         .def_rw("double_lined", &RVdata::sb2, "if the data is for a double-lined binary")
 
         // to un/pickle RVdata
-        .def("__getstate__", [](const RVdata &d)
-            {
-                return std::make_tuple(d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
-            })
-        .def("__setstate__", [](RVdata &d, const _state_type &state)
-            {
-                bool _multi = std::get<5>(state);
-                if (_multi) {
-                    new (&d) RVdata(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
-                    //              filenames,          units,              skip   
-                } else {
-                    new (&d) RVdata(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, _multi, " ", std::get<4>(state));
-                    //              filename,           units,              skip   
-                }
-            })
+        .def("__getstate__", [](const RVdata &d) { return d.get_state(); })
+        .def("__setstate__", [](RVdata &d, const RVdataState &s) {
+            new (&d) RVdata(); // empty object
+            d.set_state(s);
+        })
         //
 
         .def("get_t_min", &RVdata::get_t_min, "Get the minimum time")

@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <tuple>
 #include <exception>
 #include <filesystem>
 #include <climits>
@@ -55,6 +56,30 @@ T read_value(std::ifstream &file);
 
 template <typename T>
 T swap_endian(T u);
+
+// state for RVdata: everything needed to rebuild the object exactly
+using RVdataState = std::tuple<
+    std::vector<double>,               // 0 t
+    std::vector<double>,               // 1 y
+    std::vector<double>,               // 2 sig
+    std::vector<double>,               // 3 y2
+    std::vector<double>,               // 4 sig2
+    std::vector<int>,                  // 5 obsi
+    std::vector<std::vector<double>>,  // 6 actind (raw)
+    std::vector<std::string>,          // 7 indicator_names
+    std::vector<std::string>,          // 8 instruments
+    std::string,                       // 9 instrument
+    std::string,                       // 10 units  (but internal data are always in m/s)
+    bool,                              // 11 multi
+    bool,                              // 12 sb2
+    int,                               // 13 number_instruments
+    double,                            // 14 M0_epoch
+    double,                            // 15 trend_epoch
+    std::vector<double>,               // 16 medians
+    std::string,                       // 17 datafile   (provenance only)
+    std::vector<std::string>,          // 18 datafiles  (provenance only)
+    int                                // 19 skip       (provenance only)
+>;
 
 
 class KIMA_API RVdata {
@@ -123,6 +148,9 @@ class KIMA_API RVdata {
     // to read data from more than one file, more than one instrument
     void load_multi(vector<string> filenames, const string units, int skip=0, int max_rows=0,
                     const string delimiter=" \t,", const vector<string>& indicators=vector<string>());
+
+    RVdataState get_state() const;
+    void set_state(const RVdataState& s); // restores without file IO
 
     bool indicator_correlations;
     int number_indicators;
