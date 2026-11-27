@@ -117,17 +117,19 @@ def test_methods_RVGAIAmodel(path_to_test_data, cleanup_after_running):
 
     res = kima.load_results(m)
 
-    res.log_prior(res.posterior_sample[0])
-    # res.log_likelihood(res.posterior_sample[0])
-    # res.log_posterior(res.posterior_sample[0])
+    sample = res.posterior_sample[0]
+    logL = res.log_likelihood(sample)
+    np.testing.assert_allclose(logL, res.posterior_lnlike[0][1])
+    res.log_prior(sample)
+    res.log_posterior(sample)
     # res.maximum_likelihood_sample()
     # res.map_sample()
     # res.median_sample()
-    # res.eval_model(res.posterior_sample[0])
-    # res.planet_model(res.posterior_sample[0])
-    # res.full_model(res.posterior_sample[0])
-    # res.stochastic_model(res.posterior_sample[0])
-    # res.burst_model(res.posterior_sample[0])
+    # res.eval_model(sample)
+    # res.planet_model(sample)
+    # res.full_model(sample)
+    # res.stochastic_model(sample)
+    # res.burst_model(sample)
 
 
 def test_pickling(cleanup_after_running, simulated1):
