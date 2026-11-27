@@ -1195,6 +1195,33 @@ GAIAdata::GAIAdata() {};
 
     }
                     
+    GAIAdata::State GAIAdata::get_state() const
+    {
+        return std::make_tuple(1, t, w, wsig, psi, pf,
+                               _units, M0_epoch, _datafile, _skip);
+    }
+
+    void GAIAdata::set_state(const State& s)
+    {
+        if (std::get<0>(s) != 1)
+            throw std::runtime_error("GAIAdata: unsupported pickle version");
+
+        t    = std::get<1>(s);
+        w    = std::get<2>(s);
+        wsig = std::get<3>(s);
+        psi  = std::get<4>(s);
+        pf   = std::get<5>(s);
+
+        // all vectors must have the same length
+        const size_t n = t.size();
+        if (w.size() != n || wsig.size() != n || psi.size() != n || pf.size() != n)
+            throw std::runtime_error("GAIAdata: corrupted pickle state (inconsistent array sizes)");
+
+        _units    = std::get<6>(s);
+        M0_epoch  = std::get<7>(s);
+        _datafile = std::get<8>(s);
+        _skip     = std::get<9>(s);
+    }
 
 /*****************************************************************************/
 
@@ -1659,8 +1686,13 @@ NB_MODULE(Data, m) {
         //
         .def_rw("M0_epoch", &GAIAdata::M0_epoch, "reference epoch for the mean anomaly")
         //.def("load", &GAIAdata::load, "filename"_a, "units"_a, "skip"_a, "max_rows"_a, "delimiter"_a)
-        .def_ro("units", &GAIAdata::_units, "Units of the Gaia data and uncertainties");
-    
+        // to un/pickle GAIAdata
+        .def("__getstate__", [](const GAIAdata &d) { return d.get_state(); })
+        .def("__setstate__", [](GAIAdata &d, const GAIAdata::State &s) {
+            new (&d) GAIAdata(); // empty object
+            d.set_state(s);
+        });
+
     // 
 
     nb::class_<HGPMdata>(m, "HGPMdata", "Load and store Hipparcos-Gaia proper motion data")

@@ -402,9 +402,23 @@ class KIMA_API GAIAdata {
     /// docs for M0_epoch
     double M0_epoch;
 
-    // to deprecate a function (C++14), put
-    // [[deprecated("Replaced by bar, which has an improved interface")]]
-    // before the definition
+
+    /// State used for pickling (self-contained, no file access needed)
+    using State = std::tuple<
+        int,                       // 0 version
+        std::vector<double>,       // 1 t
+        std::vector<double>,       // 2 w
+        std::vector<double>,       // 3 wsig
+        std::vector<double>,       // 4 psi
+        std::vector<double>,       // 5 pf
+        std::string,               // 6 units
+        double,                    // 7 M0_epoch
+        std::string,               // 8 datafile (provenance only)
+        int                        // 9 skip     (provenance only)
+    >;
+
+    State get_state() const;
+    void set_state(const State& s);
 
 
     // /// Check if the data was read correctly and all vectors are the right size
