@@ -1194,23 +1194,13 @@ NB_MODULE(RVmodel, m) {
 
         .def_rw("optimize_equal_times", &RVmodel_publicist::optimize_equal_times, "docs")
 
-        // // to un/pickle RVmodel
-        // .def("__getstate__", [](const RVmodel &m)
-        //     {
-        //         return std::make_tuple(m.fix, m.d._datafile, d._datafiles, d._units, d._skip, d._indicator_names, d._multi);
-        //     })
-        // .def("__setstate__", [](RVmodel &d, const _state_type &state)
-        //     {
-        //         bool _multi = std::get<5>(state);
-        //         if (_multi) {
-        //             new (&d) RVmodel(std::get<1>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
-        //             //              filename,           units,              skip   
-        //         } else {
-        //             new (&d) RVmodel(std::get<0>(state), std::get<2>(state), std::get<3>(state), 0, " ", std::get<4>(state));
-        //             //              filenames,          units,              skip   
-        //         }
-        //     })
-        // //
+        // to un/pickle RVmodel
+        .def("__getstate__", [](const RVmodel &m) { return std::make_tuple(m.fix, m.npmax, m.data); })
+        .def("__setstate__", 
+             [](RVmodel &m, const std::tuple<bool, int, RVdata&> &state)
+             {
+                new (&m) RVmodel(std::get<0>(state), std::get<1>(state), std::get<2>(state));
+             })
 
 
         // priors

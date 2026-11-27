@@ -24,12 +24,15 @@ using namespace nb::literals;
 
 class KIMA_API RVmodel
 {
-    protected:
+    public:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
-
         /// Maximum number of planets (by default 1)
         int npmax {1};
+        /// RV dataset
+        RVdata data;
+
+    protected:
 
         /// whether the model includes a polynomial trend
         bool trend {false};
@@ -54,7 +57,6 @@ class KIMA_API RVmodel
         /// Whether to optimize Keplerian calculation when several times are repeated
         bool optimize_equal_times = false;
 
-        RVdata data;
 
     private:
 
