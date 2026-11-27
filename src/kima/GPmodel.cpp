@@ -1285,12 +1285,9 @@ NB_MODULE(GPmodel, m) {
         .def_rw("directory", &GPmodel::directory,
                 "directory where the model ran")
         // 
-        .def_rw("fix", &GPmodel_publicist::fix,
-                "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &GPmodel_publicist::npmax,
-                "maximum number of Keplerians")
-        .def_ro("data", &GPmodel_publicist::data,
-                "the data")
+        .def_rw("fix", &GPmodel::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &GPmodel::npmax, "maximum number of Keplerians")
+        .def_ro("data", &GPmodel::data, "RV dataset")
         //
 
         .def_rw("trend", &GPmodel_publicist::trend,
@@ -1334,6 +1331,14 @@ NB_MODULE(GPmodel, m) {
         //
         .def_rw("indicator_correlations", &GPmodel_publicist::indicator_correlations, 
                 "include in the model linear correlations with indicators")
+
+        // to un/pickle GPmodel
+        .def("__getstate__", [](const GPmodel &m) { return std::make_tuple(m.fix, m.npmax, m.data); })
+        .def("__setstate__", 
+             [](GPmodel &m, const std::tuple<bool, int, RVdata&> &state)
+             {
+                new (&m) GPmodel(std::get<0>(state), std::get<1>(state), std::get<2>(state));
+             })
 
         // priors
         .def_prop_rw("Cprior",

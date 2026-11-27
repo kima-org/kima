@@ -27,13 +27,15 @@ using namespace nb::literals;
 
 class  GPmodel
 {
-    protected:
+    public:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
-
         /// Maximum number of planets (by default 1)
         int npmax {1};
+        /// RV dataset
+        RVdata data;
 
+    protected:
         /// whether the model includes a polynomial trend
         bool trend {false};
         /// degree of the polynomial trend
@@ -53,7 +55,6 @@ class  GPmodel
         /// whether to consider a (periodic) GP kernel for a magnetic cycle
         bool magnetic_cycle_kernel = false;
 
-        RVdata data;
 
     private:
         Eigen::VectorXd v_t, v_dt;  // store t and dt for SPLEAF kernels
