@@ -949,6 +949,122 @@ double RVGAIAmodel::log_likelihood() const
     return logL;
 }
 
+double RVGAIAmodel::get_log_likelihood(std::vector<double> parameters)
+{
+    size_t k = 0;
+
+    jitter_GAIA = parameters[k++];
+
+    if (RV_data._multi)
+    {
+        for (int j = 0; j < jitters.size(); j++)
+            jitters[j] = parameters[k++];
+    }
+    else
+        jitter_RV = parameters[k++];
+
+    if(trend)
+    {
+        if (degree >= 1) slope = parameters[k++];
+        if (degree >= 2) quadr = parameters[k++];
+        if (degree == 3) cubic = parameters[k++];
+    }
+    
+    if (RV_data._multi){
+        for (size_t j = 0; j < offsets.size(); j++)
+        {
+            offsets[j] = parameters[k++];
+        }
+    }
+
+    if(indicator_correlations){
+        for (int j = 0; j < RV_data.number_indicators; j++)
+        {
+            betas[j] = parameters[k++];
+        }
+    }
+
+
+    da = parameters[k++];
+    dd = parameters[k++];
+    mua = parameters[k++];
+    mud = parameters[k++];
+    plx = parameters[k++];
+
+    if (acceleration){
+        accela = parameters[k++];
+        acceld = parameters[k++];
+        if (jerk){
+            jerka = parameters[k++];
+            jerkd = parameters[k++];
+        }
+    }
+
+    if (scan_dep_signal){
+        for (auto &A: Ak)          A = parameters[k++];
+        for (auto &theta: thetak)  theta = parameters[k++];
+    }
+
+    if(known_object){ // KO mode!
+        remove_known_object();
+        for (auto &P: KO_P)        P = parameters[k++];
+        for (auto &phi: KO_phi)    phi = parameters[k++];
+        for (auto &e: KO_e)        e = parameters[k++];
+        for (auto &a: KO_a)        a = parameters[k++];
+        for (auto &w: KO_w)        w = parameters[k++];
+        for (auto &cosi: KO_cosi)  cosi = parameters[k++];
+        for (auto &Om: KO_W)       Om = parameters[k++];
+        add_known_object();
+    }
+
+    if(transiting_planet){
+        remove_transiting_planet();
+        for (auto &P: TR_P)        P = parameters[k++];
+        for (auto &a: TR_a)        a = parameters[k++];
+        for (auto &Tc: TR_Tc)      Tc = parameters[k++];
+        for (auto &e: TR_e)        e = parameters[k++];
+        for (auto &w: TR_w)        w = parameters[k++];
+        for (auto &cosi: TR_cosi)  cosi = parameters[k++];
+        for (auto &Om: TR_W)       Om = parameters[k++];
+        add_transiting_planet();
+    }
+
+    k++; // n_dimensions
+    const size_t n_dimensions = 7;
+
+    k++; // npmax
+    size_t np = (size_t) parameters[k++];
+
+    std::vector<std::vector<double>> components(np);
+    for (size_t i = 0; i < components.size(); i++)
+        components[i].reserve(n_dimensions);
+
+    for (size_t j = 0; j < n_dimensions; j++)
+    {
+        for (size_t i = 0; i < components.size(); i++)
+            components[i].push_back(parameters[k++]);
+
+        for (size_t i = components.size(); i < npmax; i++)
+            k++; // the "turned-off" Keplerian components
+	}
+    planets.set_components(components);
+
+    k++; // staleness
+
+    if (studentt) {
+        nu_GAIA = parameters[k++];
+        nu_RV = parameters[k++];
+    }
+
+    background = parameters[k++];
+
+    calculate_mu();
+    // calculate_mu_bkg();
+
+    return log_likelihood();
+
+}
+
 
 void RVGAIAmodel::print(std::ostream& out) const
 {
@@ -1332,8 +1448,6 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
     public:
         using RVGAIAmodel::studentt;
         using RVGAIAmodel::index_from;
-        using RVGAIAmodel::fix;
-        using RVGAIAmodel::npmax;
         // using RVGAIAmodel::known_object;
         // using RVGAIAmodel::n_known_object;
         using RVGAIAmodel::star_mass;
@@ -1342,8 +1456,6 @@ class RVGAIAmodel_publicist : public RVGAIAmodel
         using RVGAIAmodel::trend;
         using RVGAIAmodel::degree;
         using RVGAIAmodel::indicator_correlations;
-        using RVGAIAmodel::GAIA_data;
-        using RVGAIAmodel::RV_data;
 };
 
 
@@ -1361,17 +1473,14 @@ NB_MODULE(RVGAIAmodel, m) {
              },
              "fix"_a, "npmax"_a, "GAIA_data"_a, "RV_data"_a, RVGAIAMODEL_DOC)
         //
-        .def_rw("directory", &RVGAIAmodel::directory,
-                "directory where the model ran")
+        .def("get_log_likelihood", &RVGAIAmodel::get_log_likelihood)
         // 
-        .def_rw("fix", &RVGAIAmodel_publicist::fix,
-                "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &RVGAIAmodel_publicist::npmax,
-                "maximum number of Keplerians")
-        .def_ro("GAIAdata", &RVGAIAmodel_publicist::GAIA_data,
-                "the data")
-        .def_ro("RVdata", &RVGAIAmodel_publicist::RV_data,
-                "the data")
+        .def_rw("directory", &RVGAIAmodel::directory, "directory where the model ran")
+        // 
+        .def_rw("fix", &RVGAIAmodel::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &RVGAIAmodel::npmax, "maximum number of Keplerians")
+        .def_ro("RVdata", &RVGAIAmodel::RV_data, "RV dataset")
+        .def_ro("GAIAdata", &RVGAIAmodel::GAIA_data, "Gaia epoch astrometry dataset")
                 
         //
         .def_rw("trend", &RVGAIAmodel_publicist::trend,
@@ -1425,6 +1534,22 @@ NB_MODULE(RVGAIAmodel, m) {
                 "set the number of parameters for the baseline astrometric solution, either 5 (the default astrometric solution), 7, or 9 (which include acceleration and jerk terms)")
         .def_prop_ro("n_baseline_params", [](RVGAIAmodel &m) { return m.get_n_baseline_params(); },
                 "how many baseline astrometric parameters are included the model")
+
+        // to un/pickle RVGAIAmodel
+        .def("__getstate__", [](const RVGAIAmodel &m) 
+             {
+                return std::make_tuple(m.fix, m.npmax, m.RV_data, m.GAIA_data); 
+             })
+        .def("__setstate__", 
+             [](RVGAIAmodel &m, const std::tuple<bool, int, RVdata&, GAIAdata&> &state)
+             {
+                new (&m) RVGAIAmodel(
+                    std::get<0>(state), // fix
+                    std::get<1>(state), // npmax
+                    std::get<2>(state), // RVdata
+                    std::get<3>(state)  // GAIAdata
+                );
+             })
 
 
         // priors

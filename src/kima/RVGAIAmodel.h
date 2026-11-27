@@ -23,13 +23,18 @@ using namespace nb::literals;
 
 class KIMA_API RVGAIAmodel
 {
-    protected:
-    
+    public:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
         /// Maximum number of planets (by default 1)
         int npmax {1};
-        
+        /// RV dataset 
+        RVdata RV_data;
+        /// Gaia dataset
+        GAIAdata GAIA_data;
+
+    protected:
+    
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
 
@@ -56,8 +61,6 @@ class KIMA_API RVGAIAmodel
         /// include in the model linear correlations with indicators
         bool indicator_correlations = false;
         
-        RVdata RV_data;
-        GAIAdata GAIA_data;
     
     private:
     
@@ -139,7 +142,7 @@ class KIMA_API RVGAIAmodel
     public:
         RVGAIAmodel() {};
         RVGAIAmodel(bool fix, int npmax, RVdata& RV_data, GAIAdata& GAIA_data)
-        : RV_data(RV_data), GAIA_data(GAIA_data), fix(fix), npmax(npmax) {
+        : fix(fix), npmax(npmax), RV_data(RV_data), GAIA_data(GAIA_data) {
             initialize_from_data(RV_data, GAIA_data);
         };
 
@@ -267,6 +270,9 @@ class KIMA_API RVGAIAmodel
 
         /// @brief log-likelihood function
         double log_likelihood() const;
+        
+        /// @brief Get the log-likelihood for a set of parameters
+        double RVGAIAmodel::get_log_likelihood(std::vector<double>);
 
         // Print parameters to stream
         void print(std::ostream& out) const;
