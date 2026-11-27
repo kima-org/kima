@@ -4054,6 +4054,25 @@ class KimaResults:
 
         return x_samples
 
+    def sample_vsys_postprocess(self):
+        if not getattr(self, 'marginalise_C', False):
+            return
+
+        Cprior_mean = self.priors['Cprior'].loc
+        Cprior_sigma = self.priors['Cprior'].scale
+        model = np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
+        residuals = self.data.y - model - Cprior_mean
+        var = self.jitter[:, self.data.obs]**2 + self.data.e**2
+        invvar = 1.0 / var
+        A = 1.0 / Cprior_sigma**2 + np.sum(invvar, axis=1)
+        S1 = np.sum(residuals * invvar, axis=1)
+        vsys_mean = Cprior_mean + S1 / A
+        vsys_sigma = 1.0 / np.sqrt(A)
+        rng = np.random.default_rng()
+        vsys_samples = vsys_mean + vsys_sigma * rng.normal(size=len(vsys_mean))
+        self.posterior_sample[:, self.indices['vsys']] = vsys_samples
+        return vsys_samples
+
 
     def individual_logZ(self):
         """
