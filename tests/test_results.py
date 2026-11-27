@@ -41,8 +41,9 @@ def test_methods(cleanup_after_running, simulated1):
 
     res = kima.load_results(m)
 
+    logL = res.log_likelihood(res.posterior_sample[0])
+    np.testing.assert_allclose(logL, res.posterior_lnlike[0][1])
     res.log_prior(res.posterior_sample[0])
-    res.log_likelihood(res.posterior_sample[0])
     res.log_posterior(res.posterior_sample[0])
     res.maximum_likelihood_sample()
     res.map_sample()
@@ -61,9 +62,10 @@ def test_methods_GAIAmodel(path_to_test_data, cleanup_after_running):
 
     res = kima.load_results(m)
 
+    logL = res.log_likelihood(res.posterior_sample[0])
+    np.testing.assert_allclose(logL, res.posterior_lnlike[0][1])
     res.log_prior(res.posterior_sample[0])
-    # res.log_likelihood(res.posterior_sample[0])
-    # res.log_posterior(res.posterior_sample[0])
+    res.log_posterior(res.posterior_sample[0])
     res.maximum_likelihood_sample()
     # res.map_sample()
     res.median_sample()
