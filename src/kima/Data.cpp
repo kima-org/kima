@@ -62,8 +62,11 @@ RVdata::RVdata(const vector<string>& filenames, const string& units, int skip, i
                const string& delimiter, const vector<string>& indicators, bool double_lined)
 {
     if (double_lined)
-        sb2=true;
-    load_multi(filenames, units, skip, max_rows, delimiter, indicators);
+        sb2 = true;
+    if (filenames.size() == 1)
+        load(filenames[0], units, skip, max_rows, delimiter, indicators);
+    else
+        load_multi(filenames, units, skip, max_rows, delimiter, indicators);
 }
 
 /// @brief Load data from vectors directly
