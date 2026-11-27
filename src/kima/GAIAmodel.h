@@ -223,6 +223,9 @@ class KIMA_API GAIAmodel
         /// @brief log-likelihood function
         double log_likelihood() const;
 
+        /// @brief Get the log-likelihood for a set of parameters
+        double get_log_likelihood(std::vector<double>);
+
         // Print parameters to stream
         void print(std::ostream& out) const;
 

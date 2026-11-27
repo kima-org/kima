@@ -642,6 +642,89 @@ double GAIAmodel::log_likelihood() const
 }
 
 
+double GAIAmodel::get_log_likelihood(std::vector<double> parameters)
+{
+    size_t k = 0;
+
+    jitter = parameters[k++];
+
+    da = parameters[k++];
+    dd = parameters[k++];
+    mua = parameters[k++];
+    mud = parameters[k++];
+    plx = parameters[k++];
+
+    if (acceleration){
+        accela = parameters[k++];
+        acceld = parameters[k++];
+        if (jerk){
+            jerka = parameters[k++];
+            jerkd = parameters[k++];
+        }
+    }
+
+    if (scan_dep_signal){
+        for (auto &A: Ak)          A = parameters[k++];
+        for (auto &theta: thetak)  theta = parameters[k++];
+    }
+
+    if(known_object){ // KO mode!
+        remove_known_object();
+        for (auto &P: KO_P)        P = parameters[k++];
+        for (auto &phi: KO_phi)    phi = parameters[k++];
+        for (auto &e: KO_e)        e = parameters[k++];
+        for (auto &a: KO_a)        a = parameters[k++];
+        for (auto &w: KO_w)        w = parameters[k++];
+        for (auto &cosi: KO_cosi)  cosi = parameters[k++];
+        for (auto &Om: KO_W)       Om = parameters[k++];
+        add_known_object();
+    }
+
+    if(transiting_planet){
+        remove_transiting_planet();
+        for (auto &P: TR_P)        P = parameters[k++];
+        for (auto &a: TR_a)        a = parameters[k++];
+        for (auto &Tc: TR_Tc)      Tc = parameters[k++];
+        for (auto &e: TR_e)        e = parameters[k++];
+        for (auto &w: TR_w)        w = parameters[k++];
+        for (auto &cosi: TR_cosi)  cosi = parameters[k++];
+        for (auto &Om: TR_W)       Om = parameters[k++];
+        add_transiting_planet();
+    }
+
+    k++; // n_dimensions
+    size_t n_dimensions = 7;
+
+    k++; // npmax
+    size_t np = (size_t) parameters[k++];
+
+    std::vector<std::vector<double>> components(np);
+    for (size_t i = 0; i < components.size(); i++)
+        components[i].reserve(n_dimensions);
+
+    for (size_t j = 0; j < n_dimensions; j++)
+    {
+        for (size_t i = 0; i < components.size(); i++)
+            components[i].push_back(parameters[k++]);
+
+        for (size_t i = components.size(); i < npmax; i++)
+            k++; // the "turned-off" Keplerian components
+	}
+    planets.set_components(components);
+
+    k++; // staleness
+
+    if (studentt)
+        nu = parameters[k++];
+
+    calculate_mu();
+    calculate_mu_bkg();
+
+    return log_likelihood();
+
+}
+
+
 void GAIAmodel::print(std::ostream& out) const
 {
     // output precision
@@ -982,6 +1065,8 @@ NB_MODULE(GAIAmodel, m) {
         .def(nb::init<bool&, int&, GAIAdata&, bool&>(), 
              "fix"_a, "npmax"_a, "data"_a, "thiele_innes"_a, GAIAMODEL_DOC2)
         //
+        .def("get_log_likelihood", &GAIAmodel::get_log_likelihood)
+        // 
         .def_rw("fix", &GAIAmodel::fix, "whether the number of Keplerians is fixed")
         .def_rw("npmax", &GAIAmodel::npmax, "maximum number of Keplerians")
         .def_ro("data", &GAIAmodel::data, "the Gaia epoch astrometry dataset")
