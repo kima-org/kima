@@ -212,7 +212,7 @@ void GPmodel::from_prior(RNG& rng)
     }
     else
     {
-        extra_sigma = Jprior->generate(rng);
+        jitter = Jprior->generate(rng);
     }
 
 
@@ -439,51 +439,7 @@ void GPmodel::calculate_C()
     }
     else
     {
-        C.diagonal().array() += sig_copy.array().square() + extra_sigma * extra_sigma;
-    }
-
-    // size_t N = data.N();
-
-    // #if TIMING
-    // auto begin = std::chrono::high_resolution_clock::now();  // start timing
-    // #endif
-
-    // /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
-    // for(size_t i=0; i<N; i++)
-    // {
-    //     for(size_t j=i; j<N; j++)
-    //     {
-    //         double r = data.t[i] - data.t[j];
-    //         C(i, j) = eta1*eta1 * exp(-0.5*pow(r/eta2, 2) - 2.0*pow(sin(M_PI*r/eta3)/eta4, 2));
-    //         if (magnetic_cycle_kernel)
-    //             C(i, j) += eta5*eta5 * exp(- 2.0*pow(sin(M_PI*r/eta6)/eta7, 2));
-
-    //         if(i==j)
-    //         {
-    //             double sig = data.sig[i];
-    //             if (data._multi)
-    //             {
-    //                 double jit = jitters[data.obsi[i]-1];
-    //                 C(i, j) += sig*sig + jit*jit;
-    //             }
-    //             else
-    //             {
-    //                 C(i, j) += sig*sig + extra_sigma*extra_sigma;
-    //             }
-    //         }
-    //         else
-    //         {
-    //             C(j, i) = C(i, j);
-    //         }
-    //     }
-    // }
-
-    // #if TIMING
-    // auto end = std::chrono::high_resolution_clock::now();
-    // cout << "GP build matrix: ";
-    // cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-    // cout << " ns" << "\t"; // << std::endl;
-    // #endif
+        C.diagonal().array() += sig_copy.array().square() + jitter * jitter;
 }
 
 void GPmodel::remove_known_object()
@@ -684,7 +640,7 @@ double GPmodel::perturb(RNG& rng)
         }
         else
         {
-            Jprior->perturb(extra_sigma, rng);
+            Jprior->perturb(jitter, rng);
         }
 
         calculate_C(); // recalculate covariance matrix
@@ -843,7 +799,7 @@ double GPmodel::log_likelihood() const
     }
     else
     {
-        diagonal.array() += extra_sigma * extra_sigma;
+        diagonal.array() += jitter * jitter;
     }
 
     switch (kernel)
@@ -910,11 +866,11 @@ void GPmodel::print(std::ostream& out) const
 
     if (data._multi)
     {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
+        for (int j = 0; j < jitters.size(); j++)
+            out << jitters[j] << '\t';
     }
     else
-        out<<extra_sigma<<'\t';
+        out << jitter << '\t';
 
     if(trend)
     {
@@ -924,10 +880,12 @@ void GPmodel::print(std::ostream& out) const
         if (degree == 3) out << cubic << '\t';
         out.precision(8);
     }
-        
-    if (data._multi){
-        for(int j=0; j<offsets.size(); j++){
-            out<<offsets[j]<<'\t';
+
+    if (data._multi)
+    {
+        for (int j = 0; j < offsets.size(); j++)
+        {
+            out << offsets[j] << '\t';
         }
     }
 
@@ -998,7 +956,7 @@ string GPmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma" + sep;
+        desc += "jitter" + sep;
 
     if(trend)
     {
