@@ -857,6 +857,127 @@ double GPmodel::log_likelihood() const
     return logL;
 }
 
+double GPmodel::get_log_likelihood(std::vector<double> parameters)
+{
+    size_t k = 0;
+
+    if (data._multi)
+    {
+        for (int j = 0; j < jitters.size(); j++)
+            jitters[j] = parameters[k++];
+    }
+    else
+        jitter = parameters[k++];
+
+
+    if(trend)
+    {
+        if (degree >= 1) slope = parameters[k++];
+        if (degree >= 2) quadr = parameters[k++];
+        if (degree == 3) cubic = parameters[k++];
+    }
+    
+    if (data._multi){
+        for (size_t j = 0; j < offsets.size(); j++)
+        {
+            offsets[j] = parameters[k++];
+        }
+    }
+
+    if(indicator_correlations){
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            betas[j] = parameters[k++];
+        }
+    }
+    
+    switch (kernel)
+    {
+        case qp:
+        case spleaf_esp:
+            eta1 = parameters[k++];
+            eta2 = parameters[k++];
+            eta3 = parameters[k++];
+            eta4 = parameters[k++];
+            break;
+        case per:
+            eta1 = parameters[k++];
+            eta3 = parameters[k++];
+            eta4 = parameters[k++];
+            break;
+        case spleaf_exp:
+        case spleaf_matern32:
+        case spleaf_es:
+            eta1 = parameters[k++];
+            eta2 = parameters[k++];
+            break;
+        case spleaf_sho:
+            eta1 = parameters[k++];
+            eta3 = parameters[k++];
+            Q = parameters[k++];
+            break;
+        default:
+            break;
+    }
+
+    if (magnetic_cycle_kernel)
+    {
+        eta5 = parameters[k++];
+        eta6 = parameters[k++];
+        eta7 = parameters[k++];
+    }
+
+    if(known_object){ // KO mode!
+        remove_known_object();
+        for (auto &P: KO_P)     P = parameters[k++];
+        for (auto &K: KO_K)     K = parameters[k++];
+        for (auto &phi: KO_phi) phi = parameters[k++];
+        for (auto &e: KO_e)     e = parameters[k++];
+        for (auto &w: KO_w)     w = parameters[k++];
+        add_known_object();
+    }
+
+    if(transiting_planet){
+        remove_transiting_planet();
+        for (auto &P: TR_P)   P = parameters[k++];
+        for (auto &K: TR_K)   K = parameters[k++];
+        for (auto &Tc: TR_Tc) Tc = parameters[k++];
+        for (auto &e: TR_e)   e = parameters[k++];
+        for (auto &w: TR_w)   w = parameters[k++];
+        add_transiting_planet();
+    }
+
+    k++; // n_dimensions
+    const size_t n_dimensions = 5;
+
+    k++; // npmax
+    size_t np = (size_t) parameters[k++];
+
+    std::vector<std::vector<double>> components(np);
+    for (size_t i = 0; i < components.size(); i++)
+        components[i].reserve(n_dimensions);
+
+    for (size_t j = 0; j < n_dimensions; j++)
+    {
+        for (size_t i = 0; i < components.size(); i++)
+            components[i].push_back(parameters[k++]);
+
+        for (size_t i = components.size(); i < npmax; i++)
+            k++; // the "turned-off" Keplerian components
+	}
+    planets.set_components(components);
+
+    k++; // staleness
+
+    background = parameters[k++];
+
+    calculate_C();
+    calculate_mu();
+
+    return log_likelihood();
+
+}
+
 
 void GPmodel::print(std::ostream& out) const
 {
@@ -1237,6 +1358,8 @@ NB_MODULE(GPmodel, m) {
     
         model.def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, GPMODEL_DOC)
         //
+        .def("get_log_likelihood", &GPmodel::get_log_likelihood)
+        // 
         .def("from_prior", &GPmodel::from_prior)
         .def("log_likelihood", &GPmodel::log_likelihood)
         //
