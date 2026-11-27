@@ -1110,10 +1110,6 @@ Args:
 class RVmodel_publicist : public RVmodel
 {
     public:
-        using RVmodel::fix;
-        using RVmodel::npmax;
-        using RVmodel::data;
-        //
         using RVmodel::trend;
         using RVmodel::degree;
         using RVmodel::studentt;
@@ -1136,12 +1132,9 @@ NB_MODULE(RVmodel, m) {
         .def_rw("directory", &RVmodel::directory,
                 "directory where the model ran")
         // 
-        .def_rw("fix", &RVmodel_publicist::fix,
-                "whether the number of Keplerians is fixed")
-        .def_rw("npmax", &RVmodel_publicist::npmax,
-                "maximum number of Keplerians")
-        .def_ro("data", &RVmodel_publicist::data,
-                "the data")
+        .def_rw("fix", &RVmodel::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &RVmodel::npmax, "maximum number of Keplerians")
+        .def_ro("data", &RVmodel::data, "the RV dataset")
 
         //
         .def_rw("trend", &RVmodel_publicist::trend,
