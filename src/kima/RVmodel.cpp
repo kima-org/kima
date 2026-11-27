@@ -977,6 +977,111 @@ double RVmodel::marginalised_log_likelihood_Gaussian() const
     return logL;
 }
 
+double RVmodel::get_log_likelihood(std::vector<double> parameters)
+{
+    size_t k = 0;
+
+    if (data._multi)
+    {
+        stellar_jitter = parameters[k++];
+        for (int j = 0; j < jitters.size(); j++)
+            jitters[j] = parameters[k++];
+    }
+    else
+        jitter = parameters[k++];
+
+    if (jitter_propto_indicator)
+        jitter_propto_indicator_slope = parameters[k++];
+
+    if(trend)
+    {
+        if (degree >= 1) slope = parameters[k++];
+        if (degree >= 2) quadr = parameters[k++];
+        if (degree == 3) cubic = parameters[k++];
+    }
+    
+    if (data._multi){
+        for (size_t j = 0; j < offsets.size(); j++)
+        {
+            offsets[j] = parameters[k++];
+        }
+    }
+
+    if(indicator_correlations){
+        for (int j = 0; j < data.number_indicators; j++)
+        {
+            betas[j] = parameters[k++];
+        }
+    }
+    
+    if(known_object){ // KO mode!
+        remove_known_object();
+        for (auto &P: KO_P)     P = parameters[k++];
+        for (auto &K: KO_K)     K = parameters[k++];
+        for (auto &phi: KO_phi) phi = parameters[k++];
+        for (auto &e: KO_e)     e = parameters[k++];
+        for (auto &w: KO_w)     w = parameters[k++];
+        add_known_object();
+    }
+
+    if(transiting_planet){
+        remove_transiting_planet();
+        for (auto &P: TR_P)   P = parameters[k++];
+        for (auto &K: TR_K)   K = parameters[k++];
+        for (auto &Tc: TR_Tc) Tc = parameters[k++];
+        for (auto &e: TR_e)   e = parameters[k++];
+        for (auto &w: TR_w)   w = parameters[k++];
+        add_transiting_planet();
+    }
+
+    if (apodized_keplerians)
+    {
+        remove_apodized_keplerians();
+        for (auto &P: AK_P)     P = parameters[k++];
+        for (auto &K: AK_K)     K = parameters[k++];
+        for (auto &phi: AK_phi) phi = parameters[k++];
+        for (auto &e: AK_e)     e = parameters[k++];
+        for (auto &w: AK_w)     w = parameters[k++];
+        for (auto &tau: AK_tau) tau = parameters[k++];
+        for (auto &t0: AK_t0)   t0 = parameters[k++];
+        add_apodized_keplerians();
+    }
+
+    k++; // n_dimensions
+    size_t n_dimensions = 5;
+
+    k++; // npmax
+    size_t np = (size_t) parameters[k++];
+
+    std::vector<std::vector<double>> components(np);
+    for (size_t i = 0; i < components.size(); i++)
+        components[i].reserve(n_dimensions);
+
+    for (size_t j = 0; j < n_dimensions; j++)
+    {
+        for (size_t i = 0; i < components.size(); i++)
+            components[i].push_back(parameters[k++]);
+
+        for (size_t i = components.size(); i < npmax; i++)
+            k++; // the "turned-off" Keplerian components
+	}
+    planets.set_components(components);
+
+    k++; // staleness
+
+    if (studentt)
+        nu = parameters[k++];
+
+    background = parameters[k++];
+
+    calculate_mu();
+    calculate_mu_bkg();
+
+    // std::cout << "k: " << k << std::endl;
+    return log_likelihood();
+
+}
+
 void RVmodel::print(std::ostream& out) const
 {
     // output precision
@@ -1326,6 +1431,8 @@ NB_MODULE(RVmodel, m) {
     nb::class_<RVmodel>(m, "RVmodel", "")
         .def(nb::init<bool&, int&, RVdata&>(), "fix"_a, "npmax"_a, "data"_a, RVMODEL_DOC)
         //
+        .def("get_log_likelihood", &RVmodel::get_log_likelihood)
+        // 
         .def_rw("directory", &RVmodel::directory,
                 "directory where the model ran")
         // 

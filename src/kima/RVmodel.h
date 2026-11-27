@@ -292,6 +292,7 @@ class KIMA_API RVmodel
         double marginalised_log_likelihood_StudentT() const;
 
         /// @brief Get the log-likelihood for a set of parameters
+        double get_log_likelihood(std::vector<double>);
 
         // Print parameters to stream
         void print(std::ostream& out) const;
