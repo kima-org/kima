@@ -1,57 +1,326 @@
+from collections.abc import Sequence
+
 import kima.Data
 import kima.GP
+import kima.RVmodel
 import kima.distributions
-from _typeshed import Incomplete
+
 
 class GPmodel:
-    Cprior: kima.distributions.Distribution
-    Jprior: kima.distributions.Distribution
-    KO_Kprior: list[kima.distributions.Distribution]
-    KO_Pprior: list[kima.distributions.Distribution]
-    KO_eprior: list[kima.distributions.Distribution]
-    KO_phiprior: list[kima.distributions.Distribution]
-    KO_wprior: list[kima.distributions.Distribution]
-    Q_prior: kima.distributions.Distribution
-    TR_Kprior: list[kima.distributions.Distribution]
-    TR_Pprior: list[kima.distributions.Distribution]
-    TR_Tcprior: list[kima.distributions.Distribution]
-    TR_eprior: list[kima.distributions.Distribution]
-    TR_wprior: list[kima.distributions.Distribution]
-    beta_prior: Incomplete
-    conditional: Incomplete
-    cubic_prior: kima.distributions.Distribution
-    degree: int
-    directory: str
-    enforce_stability: bool
-    eta1_prior: kima.distributions.Distribution
-    eta2_prior: kima.distributions.Distribution
-    eta3_prior: kima.distributions.Distribution
-    eta4_prior: kima.distributions.Distribution
-    eta5_prior: kima.distributions.Distribution
-    eta6_prior: kima.distributions.Distribution
-    eta7_prior: kima.distributions.Distribution
-    fix: bool
-    indicator_correlations: bool
-    individual_offset_prior: list[kima.distributions.Distribution]
-    kernel: kima.GP.KernelType
-    magnetic_cycle_kernel: bool
-    npmax: int
-    offsets_prior: kima.distributions.Distribution
-    quadr_prior: kima.distributions.Distribution
-    slope_prior: kima.distributions.Distribution
-    star_mass: float
-    trend: bool
-    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVData) -> None: ...
-    def eta2_larger_eta3(self, factor: float = ...) -> None: ...
-    def set_known_object(self, *args, **kwargs): ...
-    def set_transiting_planet(self, *args, **kwargs): ...
+    def __init__(self, fix: bool, npmax: int, data: kima.Data.RVdata) -> None:
+        """
+        Implements a model for the RVs with a sum-of-Keplerians plus a 
+        correlated noise component given by a Gaussian process.
+
+        Args:
+            fix (bool):
+                whether the number of Keplerians should be fixed
+            npmax (int):
+                maximum number of Keplerians
+            data (RVdata):
+                the RV data
+        """
+
+    def get_log_likelihood(self, arg: Sequence[float], /) -> float: ...
+
+    def from_prior(self, arg: kima.distributions.RNG, /) -> None: ...
+
+    def log_likelihood(self) -> float: ...
+
     @property
-    def data(self) -> kima.Data.RVData: ...
+    def directory(self) -> str:
+        """directory where the model ran"""
+
+    @directory.setter
+    def directory(self, arg: str, /) -> None: ...
+
     @property
-    def known_object(self) -> bool: ...
+    def fix(self) -> bool:
+        """whether the number of Keplerians is fixed"""
+
+    @fix.setter
+    def fix(self, arg: bool, /) -> None: ...
+
     @property
-    def n_known_object(self) -> int: ...
+    def npmax(self) -> int:
+        """maximum number of Keplerians"""
+
+    @npmax.setter
+    def npmax(self, arg: int, /) -> None: ...
+
     @property
-    def n_transiting_planet(self) -> int: ...
+    def data(self) -> kima.Data.RVdata:
+        """RV dataset"""
+
     @property
-    def transiting_planet(self) -> bool: ...
+    def trend(self) -> bool:
+        """whether the model includes a polynomial trend"""
+
+    @trend.setter
+    def trend(self, arg: bool, /) -> None: ...
+
+    @property
+    def degree(self) -> int:
+        """degree of the polynomial trend"""
+
+    @degree.setter
+    def degree(self, arg: int, /) -> None: ...
+
+    @property
+    def index_from(self) -> int:
+        """indexing convention for labelling Keplerian parameters"""
+
+    @index_from.setter
+    def index_from(self, arg: int, /) -> None: ...
+
+    def set_known_object(self, arg: int, /) -> None: ...
+
+    @property
+    def known_object(self) -> bool:
+        """whether the model includes (better) known extra Keplerian curve(s)"""
+
+    @property
+    def n_known_object(self) -> int:
+        """how many known objects"""
+
+    def set_transiting_planet(self, arg: int, /) -> None: ...
+
+    @property
+    def transiting_planet(self) -> bool:
+        """whether the model includes transiting planet(s)"""
+
+    @property
+    def n_transiting_planet(self) -> int:
+        """how many transiting planets"""
+
+    @property
+    def star_mass(self) -> float:
+        """stellar mass [Msun]"""
+
+    @star_mass.setter
+    def star_mass(self, arg: float, /) -> None: ...
+
+    @property
+    def enforce_stability(self) -> bool:
+        """whether to enforce AMD-stability"""
+
+    @enforce_stability.setter
+    def enforce_stability(self, arg: bool, /) -> None: ...
+
+    @property
+    def kernel(self) -> kima.GP.KernelType:
+        """GP kernel to use"""
+
+    @kernel.setter
+    def kernel(self, arg: kima.GP.KernelType, /) -> None: ...
+
+    @property
+    def magnetic_cycle_kernel(self) -> bool:
+        """whether to consider a (periodic) GP kernel for a magnetic cycle"""
+
+    @magnetic_cycle_kernel.setter
+    def magnetic_cycle_kernel(self, arg: bool, /) -> None: ...
+
+    @property
+    def indicator_correlations(self) -> bool:
+        """include in the model linear correlations with indicators"""
+
+    @indicator_correlations.setter
+    def indicator_correlations(self, arg: bool, /) -> None: ...
+
+    def __getstate__(self) -> tuple[bool, int, kima.Data.RVdata]: ...
+
+    def __setstate__(self, arg: tuple[bool, int, kima.Data.RVdata], /) -> None: ...
+
+    @property
+    def Cprior(self) -> kima.distributions.Distribution:
+        """Prior for the systemic velocity"""
+
+    @Cprior.setter
+    def Cprior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def Jprior(self) -> kima.distributions.Distribution:
+        """Prior for the extra white noise (jitter)"""
+
+    @Jprior.setter
+    def Jprior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def slope_prior(self) -> kima.distributions.Distribution:
+        """Prior for the slope"""
+
+    @slope_prior.setter
+    def slope_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def quadr_prior(self) -> kima.distributions.Distribution:
+        """Prior for the quadratic coefficient of the trend"""
+
+    @quadr_prior.setter
+    def quadr_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def cubic_prior(self) -> kima.distributions.Distribution:
+        """Prior for the cubic coefficient of the trend"""
+
+    @cubic_prior.setter
+    def cubic_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def offsets_prior(self) -> kima.distributions.Distribution:
+        """Common prior for the between-instrument offsets"""
+
+    @offsets_prior.setter
+    def offsets_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def individual_offset_prior(self) -> list[kima.distributions.Distribution]:
+        """Individual priors for the between-instrument offsets"""
+
+    @individual_offset_prior.setter
+    def individual_offset_prior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def beta_prior(self) -> kima.distributions.Distribution:
+        """(Common) prior for the activity indicator coefficients"""
+
+    @beta_prior.setter
+    def beta_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta1_prior(self) -> kima.distributions.Distribution:
+        """Prior for η1, the GP 'amplitude'"""
+
+    @eta1_prior.setter
+    def eta1_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta2_prior(self) -> kima.distributions.Distribution:
+        """Prior for η2, the GP correlation timescale"""
+
+    @eta2_prior.setter
+    def eta2_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta3_prior(self) -> kima.distributions.Distribution:
+        """Prior for η3, the GP period"""
+
+    @eta3_prior.setter
+    def eta3_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta4_prior(self) -> kima.distributions.Distribution:
+        """
+        Prior for η4, the recurrence timescale or (inverse) harmonic complexity
+        """
+
+    @eta4_prior.setter
+    def eta4_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def Q_prior(self) -> kima.distributions.Distribution:
+        """Prior for Q, the quality factor in SHO kernels"""
+
+    @Q_prior.setter
+    def Q_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    def eta2_larger_eta3(self, factor: float = 1.0) -> None:
+        """Constrain η2 to be larger than factor * η3"""
+
+    @property
+    def eta5_prior(self) -> kima.distributions.Distribution:
+        """Prior for η5"""
+
+    @eta5_prior.setter
+    def eta5_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta6_prior(self) -> kima.distributions.Distribution:
+        """Prior for η6"""
+
+    @eta6_prior.setter
+    def eta6_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def eta7_prior(self) -> kima.distributions.Distribution:
+        """Prior for η7"""
+
+    @eta7_prior.setter
+    def eta7_prior(self, arg: kima.distributions.Distribution, /) -> None: ...
+
+    @property
+    def KO_Pprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for KO orbital period"""
+
+    @KO_Pprior.setter
+    def KO_Pprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def KO_Kprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for KO semi-amplitude"""
+
+    @KO_Kprior.setter
+    def KO_Kprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def KO_eprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for KO eccentricity"""
+
+    @KO_eprior.setter
+    def KO_eprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def KO_wprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for KO argument of periastron"""
+
+    @KO_wprior.setter
+    def KO_wprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def KO_phiprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for KO mean anomaly(ies)"""
+
+    @KO_phiprior.setter
+    def KO_phiprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def TR_Pprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for TR orbital period"""
+
+    @TR_Pprior.setter
+    def TR_Pprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def TR_Kprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for TR semi-amplitude"""
+
+    @TR_Kprior.setter
+    def TR_Kprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def TR_eprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for TR eccentricity"""
+
+    @TR_eprior.setter
+    def TR_eprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def TR_wprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for TR argument of periastron"""
+
+    @TR_wprior.setter
+    def TR_wprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def TR_Tcprior(self) -> list[kima.distributions.Distribution]:
+        """Prior for TR mean anomaly(ies)"""
+
+    @TR_Tcprior.setter
+    def TR_Tcprior(self, arg: Sequence[kima.distributions.Distribution], /) -> None: ...
+
+    @property
+    def conditional(self) -> kima.RVmodel.KeplerianConditionalPrior: ...
+
+    @conditional.setter
+    def conditional(self, arg: kima.RVmodel.KeplerianConditionalPrior, /) -> None: ...
