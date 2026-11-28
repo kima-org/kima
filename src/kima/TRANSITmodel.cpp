@@ -7,23 +7,55 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void TRANSITmodel::initialize_from_data(PHOTdata& data)
 {
-    // resize RV model vector
     mu.resize(data.N());
+    mu_bkg.resize(data.N());
+    t_mid = data.get_t_middle();  // cached: it is O(N) to compute
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
-    // conditional->set_default_priors(data);
+    conditional->set_default_priors(data);
 }
 
+void TRANSITmodel::get_ld(double& u1, double& u2) const
+{
+    if (kipping_ld) {
+        const double sq = std::sqrt(ld1);
+        u1 = 2.0 * sq * ld2;
+        u2 = sq * (1.0 - 2.0 * ld2);
+    } else {
+        u1 = ld1;
+        u2 = ld2;
+    }
+}
+
+/// physical limb darkening: u1 > 0, u1 + u2 < 1, u1 + 2 u2 > 0
+/// (always true for the Kipping parametrisation with q1, q2 in [0, 1])
+bool TRANSITmodel::ld_is_valid() const
+{
+    double u1, u2;
+    get_ld(u1, u2);
+    return (u1 > 0.0) && (u1 + u2 < 1.0) && (u1 + 2.0 * u2 > 0.0);
+}
+
+/// a/Rs = (G rho P^2 / 3 pi)^(1/3), from Kepler's third law (any eccentricity,
+/// planet mass neglected). rho in g/cm^3, P in days.
+double TRANSITmodel::a_over_rs(const std::vector<double>& c) const
+{
+    if (!use_stellar_density)
+        return c[3];
+    constexpr double G_cgs = 6.6743e-8;  // cm^3 g^-1 s^-2
+    const double P = c[0] * 86400.0;
+    return std::cbrt(G_cgs * rho * P * P / (3.0 * M_PI));
+}
 
 /* set default priors if the user didn't change them */
 void TRANSITmodel::setPriors()  // BUG: should be done by only one thread!
 {
     if (!Cprior)
-        Cprior = make_prior<Gaussian>(0, 0.1);
+        Cprior = make_prior<Gaussian>(data.get_flux_mean(), data.get_flux_std());
 
     if (!Jprior)
-        Jprior = make_prior<Uniform>(0, 0.1);
+        Jprior = make_prior<Uniform>(0, data.get_flux_std());
 
     if (trend){
         if (degree == 0)
@@ -38,16 +70,20 @@ void TRANSITmodel::setPriors()  // BUG: should be done by only one thread!
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
-    if (known_object) { // KO mode!
-        // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
-        for (int i = 0; i < n_known_object; i++){
-            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
-                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior)");
-        }
-    }
+    if (!ld1_prior)
+        ld1_prior = make_prior<Uniform>(0.0, 1.0);
+    if (!ld2_prior)
+        ld2_prior = make_prior<Uniform>(0.0, 1.0);
 
-    if (studentt)
+    if (studentt && !nu_prior)
         nu_prior = make_prior<LogUniform>(2, 1000);
+
+    if (use_stellar_density) {
+        if (!rho_prior)
+            rho_prior = make_prior<LogUniform>(0.1, 40.0);  // g/cm^3, broad
+        // a/Rs is derived, so "fix" it in each planet's parameters
+        planets.get_conditional_prior()->aprior = make_prior<Fixed>(1.0);
+    }
 
 }
 
@@ -59,11 +95,9 @@ void TRANSITmodel::from_prior(RNG& rng)
     save_setup();
 
     planets.from_prior(rng);
-    planets.consolidate_diff();
 
     background = Cprior->generate(rng);
-    
-    extra_sigma = Jprior->generate(rng);
+    jitter = Jprior->generate(rng);
 
     if(trend)
     {
@@ -72,92 +106,64 @@ void TRANSITmodel::from_prior(RNG& rng)
         if (degree == 3) cubic = cubic_prior->generate(rng);
     }
 
+    // limb darkening (common to all planets)
+    do {
+        ld1 = ld1_prior->generate(rng);
+        ld2 = ld2_prior->generate(rng);
+    } while (!ld_is_valid());
 
-    if (known_object) { // KO mode!
-        KO_P.resize(n_known_object);
-        KO_K.resize(n_known_object);
-        KO_e.resize(n_known_object);
-        KO_phi.resize(n_known_object);
-        KO_w.resize(n_known_object);
-
-        for (int i=0; i<n_known_object; i++){
-            KO_P[i] = KO_Pprior[i]->generate(rng);
-            KO_K[i] = KO_Kprior[i]->generate(rng);
-            KO_e[i] = KO_eprior[i]->generate(rng);
-            KO_phi[i] = KO_phiprior[i]->generate(rng);
-            KO_w[i] = KO_wprior[i]->generate(rng);
-        }
-    }
+    if (use_stellar_density)
+        rho = rho_prior->generate(rng);
 
     if (studentt)
         nu = nu_prior->generate(rng);
 
-    calculate_mu();
+    calculate_mu(true);
+    calculate_mu_bkg();
+}
+
+void TRANSITmodel::add_transit(const std::vector<double>& c, double sign)
+{
+    // c = {P, t0, Rp, a, inc, ecc, omega}
+    double u1, u2;
+    get_ld(u1, u2);
+
+    const auto& t = data.get_t();
+    auto ds = rsky(t, c[1], c[0], a_over_rs(c), c[4], c[5], c[6]);
+    auto f = quadratic_ld(ds, u1, u2, c[2]);
+    for (size_t i = 0; i < t.size(); i++)
+        mu[i] += sign * (f[i] - 1.0);
 }
 
 /**
- * @brief Calculate the full RV model
- * 
-*/
-void TRANSITmodel::calculate_mu()
+ * @brief Calculate the transit signal of all planets
+ *
+ * Incremental updates are used when possible: planets that were removed by the
+ * last proposal are subtracted and the ones that were added are added. 
+ * @param full  force the recalculation from scratch (e.g. if limb darkening changed)
+ */
+void TRANSITmodel::calculate_mu(bool full)
 {
-    size_t N = data.N();
-
-    // Update or from scratch?
-    bool update = (planets.get_added().size() < planets.get_components().size()) &&
-            (staleness <= 10);
-
-    // Get the components
-    const vector< vector<double> >& components = (update)?(planets.get_added()):
-                (planets.get_components());
-    // at this point, components has:
-    //  if updating: only the added planets' parameters
-    //  if from scratch: all the planets' parameters
-
-    // Zero the signal
-    if(!update) // not updating, means recalculate everything
-    {
-        mu.assign(mu.size(), background);
-        staleness = 0;
-        if(trend)
-        {
-            double tmid = data.get_t_middle();
-            for(size_t i=0; i<N; i++)
-            {
-                mu[i] += slope * (data.t[i] - tmid) +
-                         quadr * pow(data.t[i] - tmid, 2) +
-                         cubic * pow(data.t[i] - tmid, 3);
-            }
-        }
-
-        if (known_object) { // KO mode!
-            add_known_object();
-        }
-    }
-    else // just updating (adding) planets
-        staleness++;
-
+    const bool update = !full &&
+                        (planets.get_added().size() < planets.get_components().size()) &&
+                        (staleness <= 10);
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    double P, t0, Rp, a, inc, ecc, omega;
-    double tmid = data.get_t_middle();
-    for (size_t j = 0; j < components.size(); j++)
-    {
-        P = components[j][0];
-        t0 = components[j][1];
-        Rp = components[j][2];
-        a = components[j][3];
-        inc = components[j][4];
-        ecc = components[j][5];
-        omega = components[j][6];
-        // cout << t0 << " " << P << " " << a << " " << inc << " " << ecc << " " << omega << endl;
-        auto ds = rsky(data.t, t0, P, a, inc, ecc, omega);
-        auto f = quadratic_ld(ds, 0.5, 0.1, Rp);
-        for (size_t i = 0; i < N; i++)
-            mu[i] += f[i];
+    if (update) {
+        staleness++;
+        for (const auto& c : planets.get_removed())
+            add_transit(c, -1.0);
+        for (const auto& c : planets.get_added())
+            add_transit(c, +1.0);
+    }
+    else {
+        staleness = 0;
+        mu.assign(mu.size(), 0.0);
+        for (const auto& c : planets.get_components())
+            add_transit(c, +1.0);
     }
 
     #if TIMING
@@ -167,55 +173,18 @@ void TRANSITmodel::calculate_mu()
 
 }
 
-
-void TRANSITmodel::remove_known_object()
+void TRANSITmodel::calculate_mu_bkg()
 {
-    for (int j = 0; j < n_known_object; j++)
-    {
-        auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] -= v[i];
+    const size_t N = data.N();
+    const auto& t = data.get_t();
+
+    mu_bkg.assign(N, background);
+    if (trend) {
+        for (size_t i = 0; i < N; i++) {
+            const double dt = t[i] - t_mid;
+            mu_bkg[i] += slope * dt + quadr * dt * dt + cubic * dt * dt * dt;
         }
     }
-}
-
-void TRANSITmodel::add_known_object()
-{
-    for (int j = 0; j < n_known_object; j++)
-    {
-        auto v = brandt::keplerian(data.t, KO_P[j], KO_K[j], KO_e[j], KO_w[j], KO_phi[j], data.M0_epoch);
-        for (size_t i = 0; i < data.N(); i++)
-        {
-            mu[i] += v[i];
-        }
-    }
-}
-
-int TRANSITmodel::is_stable() const
-{
-    // Get the components
-    const vector< vector<double> >& components = planets.get_components();
-    if (components.size() == 0 && !known_object)
-        return 0;
-    
-    int stable_planets = 0;
-    int stable_known_object = 0;
-
-    if (components.size() != 0)
-        stable_planets = AMD::AMD_stable(components, star_mass);
-
-    if (known_object) {
-        vector<vector<double>> ko_components;
-        ko_components.resize(n_known_object);
-        for (int j = 0; j < n_known_object; j++) {
-            ko_components[j] = {KO_P[j], KO_K[j], KO_phi[j], KO_e[j], KO_w[j]};
-        }
-        
-        stable_known_object = AMD::AMD_stable(ko_components, star_mass);
-    }
-
-    return stable_planets + stable_known_object;
 }
 
 
@@ -226,73 +195,43 @@ double TRANSITmodel::perturb(RNG& rng)
     #endif
 
     double logH = 0.;
-    double tmid = data.get_t_middle();
 
-
-    if(npmax > 0 && rng.rand() <= 0.75) // perturb planet parameters
+    if(npmax > 0 && rng.rand() <= planet_perturb_prob) // perturb planet parameters
     {
         logH += planets.perturb(rng);
-        planets.consolidate_diff();
         calculate_mu();
-    }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
-    {
-        Jprior->perturb(extra_sigma, rng);
-
-        if (studentt)
-            nu_prior->perturb(nu, rng);
-
-
-        if (known_object)
-        {
-            remove_known_object();
-
-            for (int i=0; i<n_known_object; i++){
-                KO_Pprior[i]->perturb(KO_P[i], rng);
-                KO_Kprior[i]->perturb(KO_K[i], rng);
-                KO_eprior[i]->perturb(KO_e[i], rng);
-                KO_phiprior[i]->perturb(KO_phi[i], rng);
-                KO_wprior[i]->perturb(KO_w[i], rng);
-            }
-
-            add_known_object();
-        }
-    
     }
     else
     {
-        for(size_t i=0; i<mu.size(); i++)
+        const double r = rng.rand();
+
+        if (r <= 0.333) // noise parameters
         {
-            mu[i] -= background;
-            if(trend) {
-                mu[i] -= slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
-            }
+            logH += Jprior->perturb(jitter, rng);
+            if (studentt)
+                logH += nu_prior->perturb(nu, rng);
         }
-
-        // propose new vsys
-        Cprior->perturb(background, rng);
-
-        // propose new slope
-        if(trend) {
-            if (degree >= 1) slope_prior->perturb(slope, rng);
-            if (degree >= 2) quadr_prior->perturb(quadr, rng);
-            if (degree == 3) cubic_prior->perturb(cubic, rng);
-        }
-
-
-        for(size_t i=0; i<mu.size(); i++)
+        else if (r <= 0.666) // limb darkening / stellar density: change every transit
         {
-            mu[i] += background;
-            if(trend) {
-                mu[i] += slope * (data.t[i] - tmid) +
-                            quadr * pow(data.t[i] - tmid, 2) +
-                            cubic * pow(data.t[i] - tmid, 3);
+            if (use_stellar_density && rng.rand() <= 0.5)
+                logH += rho_prior->perturb(rho, rng);
+            else {
+                logH += ld1_prior->perturb(ld1, rng);
+                logH += ld2_prior->perturb(ld2, rng);
             }
+            calculate_mu(true);
+        }
+        else // baseline
+        {
+            logH += Cprior->perturb(background, rng);
+            if (trend) {
+                if (degree >= 1) logH += slope_prior->perturb(slope, rng);
+                if (degree >= 2) logH += quadr_prior->perturb(quadr, rng);
+                if (degree == 3) logH += cubic_prior->perturb(cubic, rng);
+            }
+            calculate_mu_bkg();
         }
     }
-
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -311,47 +250,45 @@ double TRANSITmodel::perturb(RNG& rng)
 */
 double TRANSITmodel::log_likelihood() const
 {
-    size_t N = data.N();
+    const size_t N = data.N();
     const auto& y = data.get_y();
     const auto& sig = data.get_sig();
 
-    double logL = 0.;
+    if (!ld_is_valid())
+        return -std::numeric_limits<double>::infinity();
 
-    if (enforce_stability){
-        int stable = is_stable();
-        if (stable != 0)
+    // the planet's orbit must be outside the star
+    for (const auto& c : planets.get_components())
+        if (a_over_rs(c) <= 1.0 + c[2])
             return -std::numeric_limits<double>::infinity();
-    }
 
+    double logL = 0.;
+    const double jit2 = jitter * jitter;
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    if (studentt){
+    if (studentt) {
         // The following code calculates the log likelihood 
         // in the case of a t-Student model
-        double var;
-        for(size_t i=0; i<N; i++)
+        const double c_nu = std::lgamma(0.5 * (nu + 1.)) - std::lgamma(0.5 * nu)
+                            - 0.5 * log(M_PI * nu);
+        for (size_t i = 0; i < N; i++)
         {
-            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+            const double var = sig[i]*sig[i] + jit2;
+            const double r = y[i] - mu[i] - mu_bkg[i];
+            logL += c_nu - 0.5*log(var) - 0.5*(nu + 1.)*log(1.0 + r * r / var / nu);
         }
-
     }
-
     else{
         // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
-        double var;
         for (size_t i = 0; i < N; i++)
         {
-            var = sig[i] * sig[i] + extra_sigma * extra_sigma;
-
-            logL += -halflog2pi - 0.5 * log(var) - 0.5 * (pow(y[i] - mu[i], 2) / var);
+            const double var = sig[i] * sig[i] + jit2;
+            const double r = y[i] - mu[i] - mu_bkg[i];
+            logL += -halflog2pi - 0.5 * log(var) - 0.5 * (r * r / var);
         }
     }
 
@@ -361,9 +298,8 @@ double TRANSITmodel::log_likelihood() const
     #endif
 
     if(std::isnan(logL) || std::isinf(logL))
-    {
-        logL = std::numeric_limits<double>::infinity();
-    }
+        logL = -std::numeric_limits<double>::infinity();
+
     return logL;
 }
 
@@ -374,9 +310,9 @@ void TRANSITmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    out << extra_sigma << '\t';
+    out << jitter << '\t';
 
-    if(trend)
+    if (trend)
     {
         out.precision(15);
         if (degree >= 1) out << slope << '\t';
@@ -384,15 +320,10 @@ void TRANSITmodel::print(std::ostream& out) const
         if (degree == 3) out << cubic << '\t';
         out.precision(8);
     }
-        
 
-    if(known_object){ // KO mode!
-        for (auto P: KO_P) out << P << "\t";
-        for (auto K: KO_K) out << K << "\t";
-        for (auto phi: KO_phi) out << phi << "\t";
-        for (auto e: KO_e) out << e << "\t";
-        for (auto w: KO_w) out << w << "\t";
-    }
+    out << ld1 << '\t' << ld2 << '\t';
+    if (use_stellar_density)
+        out << rho << '\t';
 
     planets.print(out);
 
@@ -419,19 +350,10 @@ string TRANSITmodel::description() const
         if (degree == 3) desc += "cubic" + sep;
     }
 
+    if (kipping_ld) desc += "q1" + sep + "q2" + sep;
+    else            desc += "u1" + sep + "u2" + sep;
 
-    if(known_object) { // KO mode!
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_P" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_K" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_phi" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_ecc" + std::to_string(i) + sep;
-        for(int i=0; i<n_known_object; i++) 
-            desc += "KO_w" + std::to_string(i) + sep;
-    }
+    if (use_stellar_density) desc += "rho" + sep;
 
     desc += "ndim" + sep + "maxNp" + sep;
     if(false) // hyperpriors
@@ -441,27 +363,17 @@ string TRANSITmodel::description() const
 
     int maxpl = planets.get_max_num_components();
     if (maxpl > 0) {
-        for (int i = 1; i <= maxpl; i++)
-            desc += "P" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "tc" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "Rp" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "a" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "inc" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "ecc" + std::to_string(i) + sep;
-        for (int i = 1; i <= maxpl; i++)
-            desc += "w" + std::to_string(i) + sep;
+        for (const char* name : {"P", "tc", "Rp", "a", "inc", "ecc", "w"})
+            for (int i = 1; i <= maxpl; i++)
+                desc += name + std::to_string(i) + sep;
     }
 
     desc += "staleness" + sep;
+
     if (studentt)
         desc += "nu" + sep;
     
-    desc += "vsys";
+    desc += "vsys"; // TODO: should be called something else
 
     return desc;
 }
@@ -486,12 +398,10 @@ void TRANSITmodel::save_setup() {
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "known_object: " << known_object << endl;
-    fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
-    fout << endl;
-
-    fout << endl;
+    fout << "kipping_ld: " << kipping_ld << endl;
+    fout << "use_stellar_density: " << use_stellar_density << endl;
+    fout << endl << endl;
 
     fout << "[data]" << endl;
     fout << "file: " << data._datafile << endl;
@@ -515,6 +425,12 @@ void TRANSITmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
+    fout << (kipping_ld ? "q1_prior: " : "u1_prior: ") << *ld1_prior << endl;
+    fout << (kipping_ld ? "q2_prior: " : "u2_prior: ") << *ld2_prior << endl;
+    
+    if (use_stellar_density)
+        fout << "rho_prior: " << *rho_prior << endl;
+    
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
@@ -529,17 +445,6 @@ void TRANSITmodel::save_setup() {
         fout << "incprior: " << *conditional->incprior << endl;
         fout << "eprior: " << *conditional->eprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
-    }
-
-    if (known_object) {
-        fout << endl << "[priors.known_object]" << endl;
-        // for(int i=0; i<n_known_object; i++){
-        //     fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
-        //     fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
-        //     fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
-        //     fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
-        //     fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
-        // }
     }
 
     fout << endl;
@@ -565,17 +470,25 @@ class TRANSITmodel_publicist : public TRANSITmodel
         using TRANSITmodel::trend;
         using TRANSITmodel::degree;
         using TRANSITmodel::studentt;
-        using TRANSITmodel::known_object;
-        using TRANSITmodel::n_known_object;
-        using TRANSITmodel::star_mass;
-        using TRANSITmodel::enforce_stability;
+        using TRANSITmodel::kipping_ld;
+        using TRANSITmodel::use_stellar_density;
 };
 
 
 NB_MODULE(TRANSITmodel, m) {
+    // registers TRANSITConditionalPrior so it can be returned
+    bind_TRANSITConditionalPrior(m);
+
     nb::class_<TRANSITmodel>(m, "TRANSITmodel")
         .def(nb::init<bool&, int&, PHOTdata&>(), "fix"_a, "npmax"_a, "data"_a, TRANSITMODEL_DOC)
         //
+        .def_rw("fix", &TRANSITmodel::fix, "whether the number of Keplerians is fixed")
+        .def_rw("npmax", &TRANSITmodel::npmax, "maximum number of Keplerians")
+        .def_ro("data", &TRANSITmodel::data, "the data")
+        // 
+        .def_rw("directory", &TRANSITmodel::directory, "directory where the model ran")
+
+        // 
         .def_rw("trend", &TRANSITmodel_publicist::trend,
                 "whether the model includes a polynomial trend")
         .def_rw("degree", &TRANSITmodel_publicist::degree,
@@ -584,22 +497,25 @@ NB_MODULE(TRANSITmodel, m) {
         .def_rw("studentt", &TRANSITmodel_publicist::studentt,
                 "use a Student-t distribution for the likelihood (instead of Gaussian)")
         //
-        .def_rw("known_object", &TRANSITmodel_publicist::known_object,
-                "whether to include (better) known extra Keplerian curve(s)")
-        .def_rw("n_known_object", &TRANSITmodel_publicist::n_known_object,
-                "how many known objects")
-        //
-        .def_rw("star_mass", &TRANSITmodel_publicist::star_mass,
-                "stellar mass [Msun]")
-        //
-        .def_rw("enforce_stability", &TRANSITmodel_publicist::enforce_stability, 
-                "whether to enforce AMD-stability")
+        .def_rw("kipping_ld", &TRANSITmodel_publicist::kipping_ld,
+                "sample limb darkening as (q1, q2) of Kipping (2013); if False, as (u1, u2)")
+
+        .def_rw("use_stellar_density", &TRANSITmodel_publicist::use_stellar_density,
+                "derive a/Rs of all planets from a common stellar density (g/cm^3)")
+
+        // to un/pickle TRANSITmodel
+        .def("__getstate__", [](const TRANSITmodel &m) { return std::make_tuple(m.fix, m.npmax, m.data); })
+        .def("__setstate__", 
+             [](TRANSITmodel &m, const std::tuple<bool, int, PHOTdata&> &state)
+             {
+                new (&m) TRANSITmodel(std::get<0>(state), std::get<1>(state), std::get<2>(state));
+             })
 
         // priors
         .def_prop_rw("Cprior",
             [](TRANSITmodel &m) { return m.Cprior; },
             [](TRANSITmodel &m, distribution &d) { m.Cprior = d; },
-            "Prior for the systemic velocity")
+            "Prior for the baseline flux")
         .def_prop_rw("Jprior",
             [](TRANSITmodel &m) { return m.Jprior; },
             [](TRANSITmodel &m, distribution &d) { m.Jprior = d; },
@@ -616,11 +532,27 @@ NB_MODULE(TRANSITmodel, m) {
             [](TRANSITmodel &m) { return m.cubic_prior; },
             [](TRANSITmodel &m, distribution &d) { m.cubic_prior = d; },
             "Prior for the cubic coefficient of the trend")
+
+        .def_prop_rw("ld1_prior",
+            [](TRANSITmodel &m) { return m.ld1_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.ld1_prior = d; },
+            "Prior for the first limb-darkening parameter (q1 or u1)")
+        .def_prop_rw("ld2_prior",
+            [](TRANSITmodel &m) { return m.ld2_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.ld2_prior = d; },
+            "Prior for the second limb-darkening parameter (q2 or u2)")
+
+        .def_prop_rw("rho_prior",
+            [](TRANSITmodel &m) { return m.rho_prior; },
+            [](TRANSITmodel &m, distribution &d) { m.rho_prior = d; },
+            "Prior for the stellar density in g/cm^3 (if use_stellar_density)")
+
         .def_prop_rw("nu_prior",
             [](TRANSITmodel &m) { return m.nu_prior; },
             [](TRANSITmodel &m, distribution &d) { m.nu_prior = d; },
             "Prior for the degrees of freedom of the Student-t likelihood")
-        // conditional object
+
+            // conditional object
         .def_prop_rw("conditional",
                      [](TRANSITmodel &m) { return m.get_conditional_prior(); },
                      [](TRANSITmodel &m, TRANSITConditionalPrior& c) { /* does nothing */ });

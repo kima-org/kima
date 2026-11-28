@@ -170,27 +170,18 @@ void KeplerianConditionalPrior::print(std::ostream& out) const
 /*****************************************************************************/
 // TRANSITConditionalPrior
 
-TRANSITConditionalPrior::TRANSITConditionalPrior()
-{
-    if (!Pprior)
-        Pprior = make_shared<LogUniform>(1.0, 1000.0);
-    if (!t0prior)
-        t0prior = make_shared<Gaussian>(0.0, 1.0);
-    if (!RPprior)
-        RPprior = make_shared<Uniform>(0.0, 1.0);
-    if (!aprior)
-        aprior = make_shared<Uniform>(1, 10);
-    if (!incprior)
-        incprior = make_shared<Uniform>(0, M_PI);
-    if (!eprior)
-        eprior = make_shared<Uniform>(0, 1);
-    if (!wprior)
-        wprior = make_shared<Uniform>(0, 2*M_PI);
-}
+TRANSITConditionalPrior::TRANSITConditionalPrior() {}
 
 void TRANSITConditionalPrior::set_default_priors(const PHOTdata &data)
 {
-    Pprior = make_shared<LogUniform>(0.1, max(0.2, data.get_timespan()));
+    const double tmin = data.get_t_min(), tspan = data.get_timespan();
+    if (!Pprior)   Pprior   = make_shared<LogUniform>(1.0, max(0.2, tspan));
+    if (!t0prior)  t0prior  = make_shared<Uniform>(tmin, tmin + tspan);
+    if (!RPprior)  RPprior  = make_shared<Uniform>(0.0, 0.5);
+    if (!aprior)   aprior   = make_shared<LogUniform>(1.1, 100);
+    if (!incprior) incprior = make_shared<Uniform>(0.5*M_PI - 0.5, 0.5*M_PI);
+    if (!eprior)   eprior   = make_shared<Uniform>(0, 1);
+    if (!wprior)   wprior   = make_shared<UniformAngle>();
 }
 
 void TRANSITConditionalPrior::from_prior(RNG& rng)
@@ -803,8 +794,9 @@ void bind_KeplerianConditionalPrior(nb::module_ &m) {
             [](ApodizedKeplerianConditionalPrior &c) { return c.sprior; },
             [](ApodizedKeplerianConditionalPrior &c, distribution &d) { c.sprior = d; },
             "Prior for the shape(s) of the apodizing function (if plateau)");
-        
+}
 
+void bind_TRANSITConditionalPrior(nb::module_ &m) {
     nb::class_<TRANSITConditionalPrior>(m, "TRANSITConditionalPrior")
         .def(nb::init<>())
         .def_prop_rw("Pprior",
@@ -836,7 +828,7 @@ void bind_KeplerianConditionalPrior(nb::module_ &m) {
             [](TRANSITConditionalPrior &c, distribution &d) { c.wprior = d; },
             "Prior for the argument(s) of periastron");
 }
-           
+
 void bind_GAIAConditionalPrior(nb::module_ &m) {            
     nb::class_<GAIAConditionalPrior>(m, "GAIAConditionalPrior")
         .def(nb::init<>())

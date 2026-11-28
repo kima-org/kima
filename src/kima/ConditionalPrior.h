@@ -374,6 +374,7 @@ class ApodizedKeplerianConditionalPrior : public DNest4::ConditionalPrior
 
 
 void bind_KeplerianConditionalPrior(nb::module_ &m);
+void bind_TRANSITConditionalPrior(nb::module_ &m);
 void bind_GAIAConditionalPrior(nb::module_ &m);
 void bind_RVGAIAConditionalPrior(nb::module_ &m);
 void bind_ETVConditionalPrior(nb::module_&m);

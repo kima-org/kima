@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "kepler.h"
 #include "transits.h"
-#include "AMDstability.h"
+#include "default_priors.h"
 
 using namespace std;
 using namespace DNest4;
@@ -23,6 +23,15 @@ using namespace nb::literals;
 
 class  TRANSITmodel
 {
+    public:
+        /// Fix the number of planets? (by default, yes)
+        bool fix {true};
+
+        /// Maximum number of planets (by default 1)
+        int npmax {1};
+
+        PHOTdata data;
+
     protected:
         /// whether the model includes a polynomial trend
         bool trend {false};
@@ -31,66 +40,65 @@ class  TRANSITmodel
 
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
         bool studentt {false};
-    
-        /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        /// how many known objects
-        int n_known_object {0};
 
-        /// stellar mass (in units of Msun)
-        double star_mass = 1.0;
+        /// Sample limb-darkening in the Kipping (2013) (q1, q2) parametrisation
+        /// (default). If false, ld1 and ld2 are the quadratic coefficients u1, u2
+        bool kipping_ld {true};
 
-        /// whether to enforce AMD-stability
-        bool enforce_stability = false;
+        /// Use a stellar-density prior to set a/Rs of every planet (Kepler's
+        /// third law) instead of sampling a/Rs independently for each planet
+        bool use_stellar_density {false};
+
+        /// probability of perturbing the planet parameters
+        double planet_perturb_prob = 0.75;
 
     private:
-        PHOTdata data;
-
-        /// Fix the number of planets? (by default, yes)
-        bool fix {true};
-
-        /// Maximum number of planets (by default 1)
-        int npmax {1};
 
         DNest4::RJObject<TRANSITConditionalPrior> planets =
             DNest4::RJObject<TRANSITConditionalPrior>(7, npmax, fix, TRANSITConditionalPrior());
 
         double background;
-        double extra_sigma;
+        double jitter;
         double slope, quadr=0.0, cubic=0.0;
         double nu;
+        /// limb darkening: (q1, q2) if kipping_ld, else (u1, u2)
+        double ld1 = 0.0, ld2 = 0.0;
 
-        // Parameters for the known object, if set
-        // double KO_P, KO_K, KO_e, KO_phi, KO_w;
-        std::vector<double> KO_P;
-        std::vector<double> KO_K;
-        std::vector<double> KO_e;
-        std::vector<double> KO_phi;
-        std::vector<double> KO_w;
+        /// stellar density [g/cm^3], common to all planets
+        double rho = 1.0;
 
-        // The signal
-        std::vector<double> mu; // = std::vector<double>(data.N());
+        double t_mid = 0.0;  // cached reference epoch for the trend
 
-        void calculate_mu();
-        void add_known_object();
-        void remove_known_object();
+        // The planet signal (sum of (flux - 1)) and the baseline
+        std::vector<double> mu, mu_bkg;
 
-        int is_stable() const;
+        void calculate_mu(bool full = false);
+        void calculate_mu_bkg();
+        /// add (sign=+1) or remove (sign=-1) the transit of one component
+        void add_transit(const std::vector<double>& component, double sign);
+        /// quadratic limb-darkening coefficients u1, u2
+        void get_ld(double& u1, double& u2) const;
+        bool ld_is_valid() const;
+        /// a/Rs for a planet of period P [days]: from rho if
+        /// use_stellar_density, otherwise the value stored in the component
+        double a_over_rs(const std::vector<double>& component) const;
 
-        unsigned int staleness;
+        unsigned int staleness {0};
 
 
     public:
         TRANSITmodel() {};
-        TRANSITmodel(bool fix, int npmax, PHOTdata& data) : fix(fix), npmax(npmax), data(data) {
+        TRANSITmodel(bool fix, int npmax, PHOTdata& data) : fix(fix), npmax(npmax), data(data)
+        {
             initialize_from_data(data);
         };
 
         void initialize_from_data(PHOTdata& data);
 
-        // priors for parameters *not* belonging to the planets
         using distribution = std::shared_ptr<DNest4::ContinuousDistribution>;
-        /// Prior for the systemic velocity.
+        // priors for parameters *not* belonging to the planets
+        
+        /// Prior for the baseline flux level
         distribution Cprior;
         /// Prior for the extra white noise (jitter).
         distribution Jprior;
@@ -101,24 +109,18 @@ class  TRANSITmodel
         /// Prior for the cubic coefficient of the trend
         distribution cubic_prior;
 
-        // priors for KO mode!
-        /// Prior for the KO orbital period(s)
-        std::vector<distribution> KO_Pprior {(size_t) n_known_object};
-        /// Prior for the KO semi-amplitude(s)
-        std::vector<distribution> KO_Kprior {(size_t) n_known_object};
-        /// Prior for the KO eccentricity(ies)
-        std::vector<distribution> KO_eprior {(size_t) n_known_object};
-        /// Prior for the KO mean anomaly(ies)
-        std::vector<distribution> KO_phiprior {(size_t) n_known_object};
-        /// Prior for the KO argument(s) of pericenter
-        std::vector<distribution> KO_wprior {(size_t) n_known_object};
+        /// Prior for q1 (or u1)
+        distribution ld1_prior;
+        /// Prior for q2 (or u2)
+        distribution ld2_prior;
+
+        /// Prior for the stellar density [g/cm^3] (used if use_stellar_density)
+        distribution rho_prior;
 
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         distribution nu_prior;
 
-        // /// @brief an alias for RVData::get_instance()
-        // static RVData& get_data() { return RVData::get_instance(); }
-
+        
         TRANSITConditionalPrior* get_conditional_prior() {
             return planets.get_conditional_prior();
         }
