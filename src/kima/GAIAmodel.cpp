@@ -1067,6 +1067,8 @@ NB_MODULE(GAIAmodel, m) {
         //
         .def("get_log_likelihood", &GAIAmodel::get_log_likelihood)
         // 
+        .def_rw("directory", &GAIAmodel::directory, "directory where the model ran")
+        // 
         .def_rw("fix", &GAIAmodel::fix, "whether the number of Keplerians is fixed")
         .def_rw("npmax", &GAIAmodel::npmax, "maximum number of Keplerians")
         .def_ro("data", &GAIAmodel::data, "the Gaia epoch astrometry dataset")
