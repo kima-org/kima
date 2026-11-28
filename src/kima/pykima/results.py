@@ -2814,7 +2814,7 @@ class KimaResults:
             print('number of transiting planets: ', self.nTR)
             print('orbital parameters: ', end='')
 
-            if self.model (GAIAmodel, MODELS.RVGAIAmodel):
+            if self.model in (MODELS.GAIAmodel, MODELS.RVGAIAmodel):
                 pars = ('P','a','Tc','e','w','cosi','W')
             else:
                 pars = ('P', 'K', 'Tc', 'e', 'w')
