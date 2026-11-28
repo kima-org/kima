@@ -307,7 +307,7 @@ class KIMA_API PHOTdata {
 
   private:
     vector<double> t, y, sig;
-    // vector<int> obsi;
+    vector<int> obsi;
     // vector<vector<double>> actind;
 
   public:
@@ -331,6 +331,24 @@ class KIMA_API PHOTdata {
     /// docs for M0_epoch
     double M0_epoch;
 
+
+    /// State used for pickling (self-contained, no file access needed)
+    using State = std::tuple<
+        int,                       // 0 version
+        vector<double>,       // 1 t
+        vector<double>,       // 2 y
+        vector<double>,       // 3 sig
+        vector<int>,          // 4 obsi
+        string,               // 6 units
+        double,               // 7 M0_epoch
+        string,               // 8 datafile  (provenance only)
+        vector<string>,       // 9 datafiles (provenance only)
+        int                   // 10 skip     (provenance only)
+    >;
+
+    State get_state() const;
+    void set_state(const State& s);
+
     /// Get the total number of RV points
     int N() const { return static_cast<int>(t.size()); }
 
@@ -340,6 +358,8 @@ class KIMA_API PHOTdata {
     const vector<double>& get_y() const { return y; }
     /// Get the array of errors
     const vector<double>& get_sig() const { return sig; }
+    /// Get the array of instrument identifiers
+    const vector<int>& get_obsi() const { return obsi; }
 
     /// Get the mininum (starting) time
     double get_t_min() const { return *min_element(t.begin(), t.end()); }

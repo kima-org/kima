@@ -1072,6 +1072,7 @@ void PHOTdata::load(const string filename, int skip, const string delimiter)
     t = data[0];
     y = data[1];
     sig = data[2];
+    obsi = vector<int>(t.size(), 1);
 
     // epoch for the mean anomaly, by default the mid time
     M0_epoch = get_t_middle();
@@ -1124,6 +1125,33 @@ int PHOTdata::get_trend_magnitude(int degree) const
     return (int)round(log10(get_flux_span() / pow(get_timespan(), degree)));
 }
 
+PHOTdata::State PHOTdata::get_state() const
+{
+    return std::make_tuple(1, t, y, sig, obsi,
+                           _units, M0_epoch, _datafile, _datafiles, _skip);
+}
+
+void PHOTdata::set_state(const PHOTdata::State& s)
+{
+    if (std::get<0>(s) != 1)
+        throw std::runtime_error("PHOTdata: unsupported pickle version");
+
+    t    = std::get<1>(s);
+    y    = std::get<2>(s);
+    sig  = std::get<3>(s);
+    obsi = std::get<4>(s);
+
+    // all vectors must have the same length
+    const size_t n = t.size();
+    if (y.size() != n || sig.size() != n || obsi.size() != n)
+        throw std::runtime_error("PHOTdata: corrupted pickle state (inconsistent array sizes)");
+
+    _units     = std::get<5>(s);
+    M0_epoch   = std::get<6>(s);
+    _datafile  = std::get<7>(s);
+    _datafiles = std::get<8>(s);
+    _skip      = std::get<9>(s);
+}
 
 ostream& operator<<(ostream& os, const PHOTdata& d)
 {
@@ -1662,11 +1690,22 @@ NB_MODULE(Data, m) {
              "filename"_a, "skip"_a=0, "delimiter"_a=" \t,",
              "Load photometric data from a file")
         // properties
+        .def_prop_ro("sig", [](PHOTdata &d) { return d.get_sig(); }, "The observed flux uncertainties")
+        .def_prop_ro("obsi", [](PHOTdata &d) { return d.get_obsi(); }, "The instrument identifier")
+        .def_prop_ro("N", [](PHOTdata &d) { return d.N(); }, "Total number of observations")
+        .def_ro("datafile", &PHOTdata::_datafile, "The file name")
+        .def_ro("datafiles", &PHOTdata::_datafiles, "The list of file names")
+        // 
         .def_prop_ro("t", [](PHOTdata &d) { return d.get_t(); }, "The times of observations")
         .def_prop_ro("y", [](PHOTdata &d) { return d.get_y(); }, "The observed flux")
-        .def_prop_ro("sig", [](PHOTdata &d) { return d.get_sig(); }, "The observed flux uncertainties")
-        .def_prop_ro("N", [](PHOTdata &d) { return d.N(); }, "Total number of observations");
-        
+
+        // to un/pickle PHOTdata
+        .def("__getstate__", [](const PHOTdata &d) { return d.get_state(); })
+        .def("__setstate__", [](PHOTdata &d, const PHOTdata::State &s) {
+            new (&d) PHOTdata(); // empty object
+            d.set_state(s);
+        });
+
     // 
 
     nb::class_<GAIAdata>(m, "GAIAdata", "Load and store Gaia astrometric data")
