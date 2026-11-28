@@ -1,6 +1,7 @@
 #include "TRANSITmodel.h"
 
 #define TIMING false
+#define CHECK_WINDOWS false  // debug: compare windowed vs full transit model
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
@@ -10,6 +11,11 @@ void TRANSITmodel::initialize_from_data(PHOTdata& data)
     mu.resize(data.N());
     mu_bkg.resize(data.N());
     t_mid = data.get_t_middle();  // cached: it is O(N) to compute
+
+    t_sorted = std::is_sorted(data.get_t().begin(), data.get_t().end());
+    if (!t_sorted)
+        std::cerr << "kima: TRANSITmodel: times are not sorted, "
+                  << "transit windows disabled (the model will be slower)" << std::endl;
 
     // set default conditional priors that depend on data
     auto conditional = planets.get_conditional_prior();
@@ -122,6 +128,21 @@ void TRANSITmodel::from_prior(RNG& rng)
     calculate_mu_bkg();
 }
 
+/// Any point where the planet overlaps the stellar disk has d < 1 + Rp. Since
+/// d >= r |cos(w + f)| and r >= a(1 - e), this requires
+///     |f - f_transit| < asin((1 + Rp) / (a (1 - e)))
+/// and the mean anomaly changes at most by (1-e^2)^(3/2) / (1-e)^2 per unit f,
+/// which gives a (conservative) bound on the time from mid-transit.
+bool TRANSITmodel::transit_halfwidth(double P, double Rp, double a, double e, double& half) const
+{
+    const double x = (1.0 + Rp) / (a * (1.0 - e));
+    if (!(x < 1.0))
+        return false;
+    const double s = std::sqrt(1.0 - e * e);
+    half = window_margin * P / (2.0 * M_PI) * std::asin(x) * (s * s * s) / ((1.0 - e) * (1.0 - e));
+    return half < 0.5 * P;
+}
+
 void TRANSITmodel::add_transit(const std::vector<double>& c, double sign)
 {
     // c = {P, t0, Rp, a, inc, ecc, omega}
@@ -129,10 +150,64 @@ void TRANSITmodel::add_transit(const std::vector<double>& c, double sign)
     get_ld(u1, u2);
 
     const auto& t = data.get_t();
-    auto ds = rsky(t, c[1], c[0], a_over_rs(c), c[4], c[5], c[6]);
-    auto f = quadratic_ld(ds, u1, u2, c[2]);
-    for (size_t i = 0; i < t.size(); i++)
-        mu[i] += sign * (f[i] - 1.0);
+    const double P = c[0], t0 = c[1], Rp = c[2], a = a_over_rs(c);
+    const double inc = c[4], ecc = c[5], omega = c[6];
+
+    double half;
+    if (use_transit_windows && t_sorted && !t.empty() &&
+        transit_halfwidth(P, Rp, a, ecc, half))
+    {
+        // gather the points inside the windows around each mid-transit
+        // (half < P/2, so windows never overlap)
+        std::vector<size_t> idx;
+        std::vector<double> tw;
+
+        const long n0 = static_cast<long>(std::ceil((t.front() - half - t0) / P));
+        const long n1 = static_cast<long>(std::floor((t.back() + half - t0) / P));
+        for (long n = n0; n <= n1; n++)
+        {
+            const double tc = t0 + n * P;
+            auto lo = std::lower_bound(t.begin(), t.end(), tc - half);
+            auto hi = std::upper_bound(lo, t.end(), tc + half);
+            for (auto it = lo; it != hi; ++it) {
+                idx.push_back(static_cast<size_t>(it - t.begin()));
+                tw.push_back(*it);
+            }
+        }
+
+        if (!tw.empty()) {
+            auto ds = rsky_new(tw, t0, P, a, inc, ecc, omega);
+            auto f = quadratic_ld(ds, u1, u2, Rp);
+            for (size_t k = 0; k < idx.size(); k++)
+                mu[idx[k]] += sign * (f[k] - 1.0);
+        }
+
+        #if CHECK_WINDOWS
+        {
+            auto ds_full = rsky_new(t, t0, P, a, inc, ecc, omega);
+            auto f_full = quadratic_ld(ds_full, u1, u2, Rp);
+            std::vector<double> f_win(t.size(), 1.0);
+            if (!tw.empty()) {
+                auto ds = rsky_new(tw, t0, P, a, inc, ecc, omega);
+                auto f = quadratic_ld(ds, u1, u2, Rp);
+                for (size_t k = 0; k < idx.size(); k++) f_win[idx[k]] = f[k];
+            }
+            double maxdiff = 0.0;
+            for (size_t i = 0; i < t.size(); i++)
+                maxdiff = std::max(maxdiff, std::abs(f_full[i] - f_win[i]));
+            if (maxdiff > 1e-12)
+                std::cerr << "kima: transit window misses signal: max diff = "
+                          << maxdiff << " (P=" << P << ", e=" << ecc << ")" << std::endl;
+        }
+        #endif
+    }
+    else  // fallback and evaluate all the points
+    {
+        auto ds = rsky_new(t, c[1], c[0], a_over_rs(c), c[4], c[5], c[6]);
+        auto f = quadratic_ld(ds, u1, u2, c[2]);
+        for (size_t i = 0; i < t.size(); i++)
+            mu[i] += sign * (f[i] - 1.0);
+    }
 }
 
 /**
@@ -401,6 +476,7 @@ void TRANSITmodel::save_setup() {
     fout << "studentt: " << studentt << endl;
     fout << "kipping_ld: " << kipping_ld << endl;
     fout << "use_stellar_density: " << use_stellar_density << endl;
+    fout << "use_transit_windows: " << use_transit_windows << endl;
     fout << endl << endl;
 
     fout << "[data]" << endl;
@@ -472,6 +548,8 @@ class TRANSITmodel_publicist : public TRANSITmodel
         using TRANSITmodel::studentt;
         using TRANSITmodel::kipping_ld;
         using TRANSITmodel::use_stellar_density;
+        using TRANSITmodel::use_transit_windows;
+        using TRANSITmodel::window_margin;
 };
 
 
@@ -502,6 +580,11 @@ NB_MODULE(TRANSITmodel, m) {
 
         .def_rw("use_stellar_density", &TRANSITmodel_publicist::use_stellar_density,
                 "derive a/Rs of all planets from a common stellar density (g/cm^3)")
+
+        .def_rw("use_transit_windows", &TRANSITmodel_publicist::use_transit_windows,
+                "only evaluate the transit model near the transits (exact speed-up)")
+        .def_rw("window_margin", &TRANSITmodel_publicist::window_margin,
+                "safety factor (>= 1) for the half-width of the transit windows")
 
         // to un/pickle TRANSITmodel
         .def("__getstate__", [](const TRANSITmodel &m) { return std::make_tuple(m.fix, m.npmax, m.data); })

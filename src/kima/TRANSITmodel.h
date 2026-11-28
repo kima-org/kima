@@ -49,6 +49,13 @@ class  TRANSITmodel
         /// third law) instead of sampling a/Rs independently for each planet
         bool use_stellar_density {false};
 
+        /// only evaluate the transit model for the points that can be in
+        /// transit (windows around each mid-transit). Exact, up to the safety
+        /// margin below. Requires the times to be sorted.
+        bool use_transit_windows {true};
+        /// safety factor (>= 1) applied to the window half-width
+        double window_margin {1.05};
+
         /// probability of perturbing the planet parameters
         double planet_perturb_prob = 0.75;
 
@@ -68,6 +75,7 @@ class  TRANSITmodel
         double rho = 1.0;
 
         double t_mid = 0.0;  // cached reference epoch for the trend
+        bool t_sorted = true;  // are the times sorted? (needed for the windows)
 
         // The planet signal (sum of (flux - 1)) and the baseline
         std::vector<double> mu, mu_bkg;
@@ -79,6 +87,10 @@ class  TRANSITmodel
         /// quadratic limb-darkening coefficients u1, u2
         void get_ld(double& u1, double& u2) const;
         bool ld_is_valid() const;
+        /// half-width [days] of the window around a mid-transit outside of
+        /// which the planet cannot overlap the stellar disk. Returns false if
+        /// no useful (< P/2) window exists, in which case all points are used
+        bool transit_halfwidth(double P, double Rp, double a, double e, double& half) const;
         /// a/Rs for a planet of period P [days]: from rho if
         /// use_stellar_density, otherwise the value stored in the component
         double a_over_rs(const std::vector<double>& component) const;

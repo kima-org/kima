@@ -22,6 +22,8 @@ inline double ellk(double k);
 
 std::vector<double> rsky(const std::vector<double>& time, double tc, double P, 
                          double a, double inc, double ecc, double omega);
+std::vector<double> rsky_new(const std::vector<double>& time, double tc, double P, 
+                             double a, double inc, double ecc, double omega);
 
 std::vector<double> quadratic_ld(const std::vector<double>& ds,
                                  double c1, double c2, double p);

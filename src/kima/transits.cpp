@@ -95,9 +95,72 @@ std::vector<double> rsky(const std::vector<double>& time, double tc, double P,
         M = n*(time[i] - tp);
         E = brandt::solver(M, ecc, &sinE, &cosE);
         f = 2.0 * atan(sqrt((1.0 + ecc) / (1.0 - ecc)) * tan(E / 2.0));
+        // z < 0, so d is set to large value in order to not model primary
+        // transit during secondary eclipse
+        if (sin(f + omega) * sin(inc) <= 0.0) {
+            d = 100.0;
+        }
+        // z > 0, so d is set to large value in order not to model secondary
+        // eclipse during primary transit
+        // if (sin(f + omega) * sin(inc) >= 0.0) {
+        //     d = 100;
+        // }
         // separation of centers
-        d = a * (1.0 - ecc * ecc) / (1.0 + ecc * cos(f)) * sqrt(1.0 - sin(omega + f) * sin(omega + f) * sin(inc) * sin(inc));
+        else {
+            d = a * (1.0 - ecc * ecc) / (1.0 + ecc * cos(f)) * sqrt(1.0 - sin(omega + f) * sin(omega + f) * sin(inc) * sin(inc));
+        }
         r[i] = d;
+    }
+    return r;
+}
+
+// Drop-in replacement for rsky()
+std::vector<double> rsky_new(const std::vector<double>& time, double tc, double P,
+                             double a, double inc, double ecc, double omega)
+{
+    std::vector<double> r(time.size());
+
+    // once per orbit
+    const double n = 2.0 * M_PI / P;  // mean motion
+    double sinw, cosw;
+    sincos(omega, &sinw, &cosw);
+    const double sini = sin(inc);
+    const double sini2 = sini * sini;
+    const double ome = 1.0 - ecc;
+    const double a_ome2 = a * (1.0 - ecc * ecc);
+
+    // mean anomaly at conjunction, where the true anomaly is f_c = pi/2 - omega:
+    //   sin f_c = cos w,  cos f_c = sin w
+    // going f -> E -> M is closed-form (no iterations), no tan(f/2) singularity
+    const double denom_c = 1.0 + ecc * sinw;
+    const double sinE_c = sqrt(1.0 - ecc * ecc) * cosw / denom_c;
+    const double cosE_c = (ecc + sinw) / denom_c;
+    const double M_c = atan2(sinE_c, cosE_c) - ecc * sinE_c;
+
+    // tables for the Brandt solver, once per orbit
+    double bounds[13];
+    double EA_tab[6 * 13];
+    brandt::get_bounds(bounds, EA_tab, ecc);
+
+    // ---------------- per point ----------------
+    for (size_t i = 0; i < time.size(); i++)
+    {
+        const double M = M_c + n * (time[i] - tc);
+
+        // Kepler's equation: M -> (sin E, cos E), then in place -> (sin f, cos f)
+        double sinf, cosf;
+        brandt::solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinf, &cosf);
+        brandt::to_f(ecc, ome, &sinf, &cosf);
+
+        const double sin_theta = sinf * cosw + cosf * sinw;  // sin(f + omega)
+
+        if (sin_theta * sini <= 0.0) {
+            // planet behind the star: not a primary transit
+            r[i] = 100.0;
+        }
+        else {
+            r[i] = a_ome2 / (1.0 + ecc * cosf) * sqrt(1.0 - sin_theta * sin_theta * sini2);
+        }
     }
     return r;
 }
@@ -106,13 +169,13 @@ std::vector<double> quadratic_ld(const std::vector<double>& ds,
                                  double c1, double c2, double p)
 {
     std::vector<double> flux(ds.size());
-    double omega = 1.0 - c1 / 3.0 - c2 / 6.0;
-    double tol = 1.0e-14;
+    const double omega = 1.0 - c1 / 3.0 - c2 / 6.0;
+    const double tol = 1.0e-14;
 
     for (size_t i = 0; i < ds.size(); i++)
     {
         double kap0 = 0.0, kap1 = 0.0;
-        double lambdad, lambdae, etad;
+        double lambdad = 0.0, lambdae = 0.0, etad = 0.0;
         double d = ds[i];
 
         // allow for negative impact parameters
@@ -244,5 +307,19 @@ NB_MODULE(transits, m) {
     m.def("ellec", &ellec);
     m.def("ellk", &ellk);
     m.def("rsky", &rsky);
+    m.def("rsky_new", &rsky_new);
     m.def("quadratic_ld", &quadratic_ld);
+    m.def("transit_model", [](
+        const std::vector<double> &t,
+        const double &P, const double &t0, const double &Rp, const double &a, 
+        const double &i, const double &ecc, const double &w)
+    {
+        size_t size = t.size();
+        struct Temp { std::vector<double> f; };
+        Temp *temp = new Temp();
+        auto ds = rsky_new(t, t0, P, a, i, ecc, w);
+        temp->f = quadratic_ld(ds, 0.5, 0.1, Rp);
+        nb::capsule owner(temp, [](void *p) noexcept { delete (Temp *) p; });
+        return nb::ndarray<nb::numpy, double>(temp->f.data(), {size}, owner);
+    }, "t"_a, "P"_a, "t0"_a, "Rp"_a, "a"_a, "i"_a, "ecc"_a, "w"_a);
 }
